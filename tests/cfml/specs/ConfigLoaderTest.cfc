@@ -1,7 +1,11 @@
 component extends="icfwalktests.BaseSpec" output="false" {
 
 	private any function loader(required struct values) {
-		return createObject("component", "icfwalktests.support.StubConfigLoader").initWithValues(variables.c.repoRoot, arguments.values);
+		// Production requires an SSO proxy allowlist (covered separately in IdentityTest); supply one
+		// here so the remaining rules can be exercised in isolation.
+		var values = duplicate(arguments.values);
+		if (!structKeyExists(values, "ICFWALK_SSO_TRUSTED_PROXIES")) values["ICFWALK_SSO_TRUSTED_PROXIES"] = "10.0.0.1";
+		return createObject("component", "icfwalktests.support.StubConfigLoader").initWithValues(variables.c.repoRoot, values);
 	}
 
 	public void function testDefaultsFailClosedToProduction() {
@@ -14,6 +18,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(cfg.outboundEmailEnabled);
 		assertEquals("RETAIN_HIDDEN", cfg.hiddenPeriodPolicy);
 		assertEquals(0, cfg.reportSuppressionThreshold);
+		assertEquals("header", cfg.ssoMode);
+		assertTrue(cfg.cookieSecure);
+		assertTrue(cfg.autoProvisionUsers);
 	}
 
 	public void function testDevIdentityStubCannotBeEnabledInProduction() {

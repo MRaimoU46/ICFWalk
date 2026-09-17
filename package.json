@@ -11,6 +11,7 @@
     "test:package": "node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs",
     "test:db": "node --test tests/node/db-scripts.test.mjs",
     "test:cfml": "node --test tests/node/cfml-suite.test.mjs",
+    "test:auth": "node --test tests/node/auth.test.mjs",
     "db:apply": "node scripts/db/apply-schema.mjs"
   },
   "engines": {

@@ -63,6 +63,35 @@ component output="false" {
 			arrayAppend(errors, "ICFWALK_DEV_IDENTITY_ENABLED is only permitted in the development or test environment.");
 		}
 
+		// Identity / SSO seam (Phase 2). The provider itself is not specified; the adapter contract is.
+		cfg["ssoMode"] = lCase(value("ICFWALK_SSO_MODE", "header"));
+		cfg["ssoSubjectHeader"] = value("ICFWALK_SSO_SUBJECT_HEADER", "X-Auth-Subject");
+		cfg["ssoNameHeader"] = value("ICFWALK_SSO_NAME_HEADER", "X-Auth-Name");
+		cfg["ssoEmailHeader"] = value("ICFWALK_SSO_EMAIL_HEADER", "X-Auth-Email");
+		cfg["ssoSecretHeader"] = value("ICFWALK_SSO_SECRET_HEADER", "X-Auth-Proxy-Secret");
+		cfg["ssoSharedSecret"] = value("ICFWALK_SSO_SHARED_SECRET", "");
+		cfg["ssoTrustedProxies"] = value("ICFWALK_SSO_TRUSTED_PROXIES", "");
+		cfg["autoProvisionUsers"] = boolValue("ICFWALK_AUTO_PROVISION_USERS", true);
+		if (cfg.ssoMode != "header" && cfg.ssoMode != "development") {
+			arrayAppend(errors, "ICFWALK_SSO_MODE must be 'header' or 'development'.");
+		}
+		if (cfg.ssoMode == "development" && !cfg.devIdentityEnabled) {
+			arrayAppend(errors, "ICFWALK_SSO_MODE=development requires ICFWALK_DEV_IDENTITY_ENABLED=true (never permitted in production).");
+		}
+		if (cfg.ssoMode == "header" && cfg.isProduction && !len(trim(cfg.ssoTrustedProxies))) {
+			arrayAppend(errors, "ICFWALK_SSO_TRUSTED_PROXIES must list the SSO gateway/proxy addresses in production.");
+		}
+		if (len(cfg.ssoSharedSecret) && len(cfg.ssoSharedSecret) < 32) {
+			arrayAppend(errors, "ICFWALK_SSO_SHARED_SECRET must be at least 32 characters when set.");
+		}
+
+		// Sessions and cookies.
+		var timeoutMinutes = value("ICFWALK_SESSION_TIMEOUT_MINUTES", "60");
+		cfg["sessionTimeoutMinutes"] = isNumeric(timeoutMinutes) && timeoutMinutes >= 5 && timeoutMinutes <= 720 ? int(timeoutMinutes) : 0;
+		if (cfg.sessionTimeoutMinutes == 0) arrayAppend(errors, "ICFWALK_SESSION_TIMEOUT_MINUTES must be between 5 and 720.");
+		cfg["cookieSecure"] = boolValue("ICFWALK_COOKIE_SECURE", true);
+		if (!cfg.cookieSecure && cfg.isProduction) arrayAppend(errors, "ICFWALK_COOKIE_SECURE cannot be false in production.");
+
 		// Open-decision seams (docs/OPEN_DECISIONS.md). Defaults are the documented safe defaults.
 		cfg["placeholderWarningsBlockPublish"] = boolValue("ICFWALK_PLACEHOLDER_WARNINGS_BLOCK_PUBLISH", false);
 		cfg["hiddenPeriodPolicy"] = value("ICFWALK_HIDDEN_PERIOD_POLICY", "RETAIN_HIDDEN");
@@ -95,6 +124,12 @@ component output="false" {
 			"maintenanceAllowRemote": arguments.cfg.maintenanceAllowRemote,
 			"testsEnabled": arguments.cfg.testsEnabled,
 			"devIdentityEnabled": arguments.cfg.devIdentityEnabled,
+			"ssoMode": arguments.cfg.ssoMode,
+			"ssoTrustedProxiesConfigured": len(trim(arguments.cfg.ssoTrustedProxies)) > 0,
+			"ssoSharedSecretConfigured": len(arguments.cfg.ssoSharedSecret) > 0,
+			"autoProvisionUsers": arguments.cfg.autoProvisionUsers,
+			"sessionTimeoutMinutes": arguments.cfg.sessionTimeoutMinutes,
+			"cookieSecure": arguments.cfg.cookieSecure,
 			"placeholderWarningsBlockPublish": arguments.cfg.placeholderWarningsBlockPublish,
 			"hiddenPeriodPolicy": arguments.cfg.hiddenPeriodPolicy,
 			"reportSuppressionThreshold": arguments.cfg.reportSuppressionThreshold

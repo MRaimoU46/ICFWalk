@@ -31,6 +31,10 @@ const expected = {
   instrument_dimension: ["version_id", "dimension_id", "section_id", "display_order", "required", "rule_key", "label_override", "settings_json", "updated_at"],
   item_definition: ["item_id", "version_id", "section_id", "response_set_id", "item_key", "reporting_key", "item_type", "prompt", "help_text", "display_order", "required", "settings_json", "active", "updated_at"],
   walk: ["walk_id", "version_id", "org_unit_id", "owner_user_id", "status", "row_version"],
+  org_unit: ["org_unit_id", "parent_org_unit_id", "org_unit_code", "org_unit_type", "name", "active", "updated_at"],
+  app_user: ["user_id", "identity_subject", "display_name", "email", "active", "last_sign_in_at", "updated_at"],
+  app_role: ["role_id", "role_code", "scope_type", "can_create_walk", "can_open_walk_details", "can_edit_owned_walks", "can_view_aggregate_reports", "can_manage_instruments", "active"],
+  user_role_scope: ["user_role_scope_id", "user_id", "role_id", "org_unit_id", "effective_start", "effective_end", "include_descendants", "created_by_user_id"],
   audit_event: ["event_id", "entity_type", "entity_id", "event_type", "actor_user_id", "event_at", "correlation_id", "details_json"],
 };
 
@@ -47,7 +51,8 @@ test("002 patch adds response_option.definition idempotently", () => {
 });
 
 test("CFML SQL references only known icf tables", () => {
-  const cfml = ["src/instrument/DefinitionRepository.cfc", "src/audit/AuditRepository.cfc", "src/controllers/HealthController.cfc", "src/instrument/InstrumentImportService.cfc"]
+  const cfml = ["src/instrument/DefinitionRepository.cfc", "src/audit/AuditRepository.cfc", "src/controllers/HealthController.cfc", "src/instrument/InstrumentImportService.cfc",
+    "src/identity/UserRepository.cfc", "src/authorization/OrgUnitRepository.cfc", "src/authorization/RoleScopeRepository.cfc", "src/authorization/AuthorizationService.cfc", "src/controllers/MaintenanceController.cfc"]
     .map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
   const known = new Set([...schema.matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
   for (const match of cfml.matchAll(/\[icf\]\.\[([a-z_]+)\]/g)) assert.ok(known.has(match[1]), `unknown table icf.${match[1]}`);

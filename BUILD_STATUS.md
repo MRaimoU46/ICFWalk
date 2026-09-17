@@ -1,7 +1,9 @@
 # ICFWalk build status
 
-Scope of this record: **Phase 0 (baseline) and Phase 1 (application and database foundation)**
-from `docs/IMPLEMENTATION_PLAN.md`. Phase 2 and later have not been started.
+Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation), and
+Phase 2 (identity, roles, authorization, organizational scope)** from `docs/IMPLEMENTATION_PLAN.md`.
+Phase 3 and later have not been started. Phase 2 details are in the section "Phase 2" near the end;
+Phase 0/1 records are kept as delivered.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/hopeful-keller-wwpeio`.
 
@@ -172,20 +174,137 @@ wording for the 17 placeholder prompts (tracked as warnings, not blockers).
 | Referential checks | Met (validator MISSING_REFERENCE/… plus DB round-trip checksum) |
 | No published-version overwrite | Met (DB-06) |
 
-## Exact recommended starting point for Phase 2
+## Phase 2: identity, roles, authorization, and organizational scope
 
-1. Read `docs/ARCHITECTURE.md` ("What Phase 2 builds on") and `src/http/Router.cfc`.
-2. Add `src/identity/`: an `IdentityProvider` interface (SSO adapter driven by `ICFWALK_SSO_*`
-   environment values), the development stub gated by `config.devIdentityEnabled` (already
-   validated to be impossible in production), and `UserRepository` over `icf.app_user`.
-3. Add `src/authorization/AuthorizationService.cfc` resolving `icf.user_role_scope` with
-   `effective_start/effective_end`, `include_descendants` over `icf.org_unit`, and the five role
-   flags from `icf.app_role`; expose `requirePermission(user, permission, orgUnitId)` and a
-   `Router.dispatch` hook so every non-maintenance route declares its authorization explicitly.
-4. Enable sessions in `app/Application.cfc` (`this.sessionManagement = true`, secure/HttpOnly/
-   SameSite cookie settings, rotation on sign-in) and add CSRF tokens for state-changing routes.
-5. Write negative tests first (AUTH-01, AUTH-04..AUTH-09) in `tests/cfml/specs/AuthorizationTest.cfc`
-   using synthetic org units/users/assignments created and removed by the spec, and extend
-   `tests/node/cfml-suite.test.mjs` with unauthenticated-request checks.
-6. Record `USER_SIGNED_IN`, `ACCESS_DENIED` audit events through `AuditRepository.record`
-   with the actor user id.
+Base: commit `cce5e79`. No Phase 0/1 code was reworked except two additive changes required by
+Phase 2 (`Router` route policies, `Logger` actor id); no Phase 1 regression was found.
+
+### Work completed
+
+1. **Identity abstraction** (`src/identity/`): `IdentityProvider` interface; `HeaderIdentityProvider`
+   as the production SSO seam (gateway-asserted subject/name/email headers with configurable names,
+   trusted-proxy allowlist with IPv4/CIDR, optional shared secret, spoofing attempts logged);
+   `IdentityProviderFactory` (unknown modes fail at startup); `DevelopmentIdentityProvider`
+   (`X-ICFWalk-Dev-Subject`) constructible only when `ICFWALK_DEV_IDENTITY_ENABLED=true` outside
+   production, guarded three times (ConfigLoader, factory, constructor). No identity-provider
+   product was invented; an OIDC/SAML adapter plugs into the same interface.
+2. **Users and sessions**: `UserRepository` (lookup by subject, JIT provisioning, sign-in
+   bookkeeping, email-collision tolerance), `SessionService` (rotation at sign-in, invalidation at
+   sign-out, 256-bit synchronizer CSRF token), `AuthenticationService` (per-request flow, inactive
+   users rejected, audits `USER_PROVISIONED`/`USER_SIGNED_IN`/`USER_SIGNED_OUT`). `Application.cfc`
+   enables sessions with HttpOnly, SameSite=Lax, and Secure cookies (Secure cannot be disabled in
+   production; idle timeout configurable).
+3. **Roles and scope** (`src/authorization/`): `OrgUnitRepository` (active tree, descendant
+   resolution, idempotent upsert), `RoleScopeRepository` (effective-dated assignments filtered by the
+   database clock, role and unit active flags), `AuthorizationService` (principal with permissions
+   `walk.create`, `walk.read`, `walk.edit_owned`, `report.view` scoped to covered org units and global
+   `instrument.manage`; `requirePermission`, `visibleOrgUnitIds`, `resolveScopedOrgUnit`, record-level
+   `authorizeWalk` with owner rule; 403 vs 404 fail-closed semantics; every denial audited).
+4. **Centralized route authorization**: every route declares `public`, `maintenance`,
+   `{ authenticated }`, or `{ permission }` in `Router`; no default grants access; CSRF token
+   required on session-authenticated mutating requests. New routes: `GET /api/me`,
+   `GET /api/auth/csrf-token`, `POST /api/auth/sign-out`, `GET /api/admin/instrument/versions`
+   (`instrument.manage`).
+5. **Bootstrap seams** (maintenance, token-guarded): org-unit import (`config/org-units.example.json`
+   generated from the instrument's school list), user provisioning, role assignment, and a
+   tests-only fixture cleanup.
+6. **Tests**: `AuthorizationTest` (12 cases, AUTH-03..09 plus owner rule, inactive unit, audit
+   content), `IdentityTest` (10 cases: header adapter trust/secret/malformed input, stub guards,
+   config rules, provisioning, inactive users, authentication flow), `tests/node/auth.test.mjs`
+   (5 HTTP cases: AUTH-01, session cookie flags, CSRF, AUTH-06 route separation, maintenance
+   isolation), `ConfigLoaderTest` extended, schema/DAO contract extended to the new tables.
+7. **Documentation**: `docs/ARCHITECTURE.md` (Phase 2 section, Phase 3 hand-off),
+   `docs/ENDPOINTS.md` (policies and new routes), `docs/LOCAL_SETUP.md` (SSO configuration and
+   bootstrap), `docs/ACCEPTANCE_TRACKING.md`, `.env.example`.
+
+### Files created or changed (Phase 2)
+
+```
+Created: src/identity/{IdentityProvider,HeaderIdentityProvider,DevelopmentIdentityProvider,IdentityProviderFactory,UserRepository,SessionService,AuthenticationService}.cfc
+         src/authorization/{OrgUnitRepository,RoleScopeRepository,AuthorizationService}.cfc
+         src/controllers/{AuthController,AdminInstrumentController}.cfc
+         config/org-units.example.json
+         tests/cfml/support/Fixtures.cfc  tests/cfml/specs/{AuthorizationTest,IdentityTest}.cfc
+         tests/node/auth.test.mjs  docs/evidence/phase2-npm-test.txt
+Changed: app/Application.cfc (sessions/cookies)  src/Bootstrap.cfc  src/http/Router.cfc (policies, CSRF)
+         src/config/ConfigLoader.cfc (SSO/session settings)  src/core/Logger.cfc (actor id)
+         src/controllers/MaintenanceController.cfc (org units, provision, assign, cleanup)
+         tests/cfml/specs/ConfigLoaderTest.cfc  tests/node/schema-contract.test.mjs  package.json
+         docs/{ARCHITECTURE,ENDPOINTS,LOCAL_SETUP,ACCEPTANCE_TRACKING}.md  .env.example  BUILD_STATUS.md
+```
+
+### Tests and validators executed (Phase 2)
+
+| Command | Result |
+| --- | --- |
+| `npm test` (full regression, `docs/evidence/phase2-npm-test.txt`) | 26/26 pass (Phase 1's 21 plus 5 HTTP auth cases) |
+| CFML suite via `/api/maintenance/tests/run` | 64 passed, 0 failed, 0 skipped (Phase 1's 42 + AuthorizationTest 12 + IdentityTest 10) |
+| Targeted runs during implementation | `?filter=Identity`, `?filter=Authorization`, `?filter=ConfigLoader`, `node --test tests/node/auth.test.mjs` |
+| `node scripts/validate-handoff.mjs` | ok, 51 checks (unchanged supplied files) |
+
+Acceptance IDs satisfied in Phase 2: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, AUTH-07,
+AUTH-08, SEC-03; partial: AUTH-09 (org-unit and walk identifiers; item/option/dimension tampering
+belongs to the Phase 4 response endpoints), SEC-04 (local cookie evidence; Secure flag by
+configuration rule). See `docs/ACCEPTANCE_TRACKING.md`.
+
+### Assumptions and decisions (Phase 2)
+
+1. **SSO topology**: the production adapter is header assertion by a trusted SSO gateway/reverse
+   proxy, the common district pattern (ADFS/Entra/Shibboleth in front of IIS). The provider product
+   and claim names are configuration. The web server must strip the identity headers from client
+   traffic; the adapter additionally refuses headers from non-allowlisted source addresses and can
+   require a shared secret.
+2. **Just-in-time provisioning** creates `app_user` rows on first sign-in (configurable). A row
+   without role assignments grants nothing.
+3. **Role assignments are administered out of band** in Phase 2 (maintenance endpoints or DBA
+   scripts); a role-administration UI is not in any phase of the plan and was not added.
+4. **Global roles still need an org unit** because `user_role_scope.org_unit_id` is NOT NULL; for
+   `MASTER_INSTRUMENT_ADMIN` the unit is informational (the district root by convention).
+5. **Denial semantics**: 403 when the caller has no such capability anywhere, 404 when the
+   capability exists but not for that unit or record, 400 for malformed identifiers.
+6. **Owner rule**: `walk.edit_owned` applies only to the owner and only within an assignment
+   covering the walk's unit; non-owners with `walk.read` may open but never edit.
+7. **Sessions** hold no roles; the principal is rebuilt every request so revocations apply
+   immediately.
+
+### Not testable in this environment (Phase 2 additions)
+
+- Adobe ColdFusion 2023: `this.sessionCookie` keys (`httpOnly`, `secure`, `sameSite`),
+  `sessionRotate()`/`sessionInvalidate()` behavior, `interface`/`implements` compilation, and CFML
+  session cookie names under the IIS connector. `npm test` plus `npm run test:auth` against a
+  ColdFusion deployment with `ICFWALK_SSO_MODE=development` in a development environment verifies
+  all of it.
+- The header adapter over HTTP end to end (a gateway is required); covered by `IdentityTest` at
+  the adapter level with trusted, untrusted, CIDR, secret, and malformed cases.
+- The `Secure` cookie flag over TLS (local runtime is plain HTTP).
+
+### Unresolved defects or blockers (Phase 2)
+
+None open. External items before production: identity gateway addresses and header names
+(`ICFWALK_SSO_*`), and the district's org-unit codes/names replacing the example fixture.
+
+### Phase 2 completion gate
+
+| Gate item | Status |
+| --- | --- |
+| Every endpoint has explicit authorization | Met: `Router` requires a declared policy per route; maintenance routes token-guarded; user routes authenticated with permission checks |
+| Cross-scope tests fail closed | Met: AUTH-04/05/06/07/08/09 negative tests at service level and AUTH-01/06 at HTTP level, all denials audited |
+
+## Exact recommended starting point for Phase 3
+
+1. Read `docs/ARCHITECTURE.md` ("What Phase 3 builds on"), `src/http/Router.cfc`, and
+   `src/authorization/AuthorizationService.cfc` (`visibleOrgUnitIds`, `authorizeWalk`).
+2. Add a snapshot loader (`src/instrument/SnapshotService.cfc`) that returns the current
+   published version's compiled snapshot (for Phase 3 fixtures, the seeded DRAFT may be published
+   through a test-only path or the renderer can be pointed at the DRAFT snapshot explicitly; do not
+   change publish semantics ahead of Phase 6).
+3. Build the renderer/visual shell from the snapshot only (sections by `parentSectionKey` +
+   `displayOrder`, placements by authored `displayOrder`, rules from `conditions`), matching
+   `source/current-prototype.html`; no question text in templates.
+4. Serve static assets from `app/assets/` and an HTML shell route (`GET /` → authenticated) that
+   embeds `/api/me` data and the CSRF token; keep JSON APIs under `/api`.
+5. Keep My Walks scoping to `visibleOrgUnitIds(principal, "walk.read")` plus owned drafts, and
+   walk creation to `{ "permission": "walk.create", "orgUnitBody": "orgUnitId" }` routes.
+6. Write fixture-driven renderer tests first (desktop/mobile snapshots of the editor states via
+   Playwright, which is pre-installed) and extend `tests/node/` with an authenticated browser flow
+   using the development identity header.

@@ -10,13 +10,24 @@ component output="false" {
 
 	this.name = "ICFWalk";
 	this.applicationTimeout = createTimeSpan(1, 0, 0, 0);
-	// Phase 2 (identity) enables session management with secure cookie settings.
-	this.sessionManagement = false;
-	this.clientManagement = false;
-	this.setClientCookies = false;
 
 	variables.appRoot = getDirectoryFromPath(getCurrentTemplatePath());
 	variables.repoRoot = createObject("java", "java.io.File").init(variables.appRoot & "..").getCanonicalPath() & "/";
+
+	// Sessions hold only the signed-in user id, subject, and CSRF token (see SessionService).
+	// Cookie flags: HttpOnly always; Secure unless explicitly disabled outside production
+	// (ConfigLoader refuses ICFWALK_COOKIE_SECURE=false in production); SameSite=Lax.
+	variables.sessionMinutes = envValue("ICFWALK_SESSION_TIMEOUT_MINUTES", "60");
+	if (!isNumeric(variables.sessionMinutes) || variables.sessionMinutes < 5 || variables.sessionMinutes > 720) variables.sessionMinutes = 60;
+	this.sessionManagement = true;
+	this.sessionTimeout = createTimeSpan(0, 0, int(variables.sessionMinutes), 0);
+	this.clientManagement = false;
+	this.setClientCookies = true;
+	this.sessionCookie = {
+		"httpOnly": true,
+		"secure": lCase(envValue("ICFWALK_COOKIE_SECURE", "true")) != "false",
+		"sameSite": "Lax"
+	};
 
 	this.mappings["/icfwalk"] = variables.repoRoot & "src";
 	this.mappings["/icfwalktests"] = variables.repoRoot & "tests/cfml";

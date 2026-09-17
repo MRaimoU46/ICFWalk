@@ -1,0 +1,311 @@
+{
+  "description": "Example organizational hierarchy for ICFWalk bootstrap: one district root plus one SCHOOL unit per school in the current instrument school list (generated from config/instrument-config.json dimension values; the Other value is not an org unit). Deployment owners adjust codes, names, and types before import; codes are stable identifiers used by role assignments and must not change once assignments exist.",
+  "orgUnits": [
+    {
+      "code": "district",
+      "type": "DISTRICT",
+      "name": "School District",
+      "parentCode": null
+    },
+    {
+      "code": "abbott_middle_school",
+      "type": "SCHOOL",
+      "name": "Abbott Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "bartlett_elementary_school",
+      "type": "SCHOOL",
+      "name": "Bartlett Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "bartlett_high_school",
+      "type": "SCHOOL",
+      "name": "Bartlett High School",
+      "parentCode": "district"
+    },
+    {
+      "code": "canton_middle_school",
+      "type": "SCHOOL",
+      "name": "Canton Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "centennial_elementary_school",
+      "type": "SCHOOL",
+      "name": "Centennial Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "central_school",
+      "type": "SCHOOL",
+      "name": "Central School",
+      "parentCode": "district"
+    },
+    {
+      "code": "century_oaks_elementary_school",
+      "type": "SCHOOL",
+      "name": "Century Oaks Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "channing_elementary_school",
+      "type": "SCHOOL",
+      "name": "Channing Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "clinton_elementary_school",
+      "type": "SCHOOL",
+      "name": "Clinton Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "coleman_elementary_school",
+      "type": "SCHOOL",
+      "name": "Coleman Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "creekside_elementary_school",
+      "type": "SCHOOL",
+      "name": "Creekside Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "dream_academy",
+      "type": "SCHOOL",
+      "name": "Dream Academy",
+      "parentCode": "district"
+    },
+    {
+      "code": "eastview_middle_school",
+      "type": "SCHOOL",
+      "name": "Eastview Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "elgin_high_school",
+      "type": "SCHOOL",
+      "name": "Elgin High School",
+      "parentCode": "district"
+    },
+    {
+      "code": "ellis_middle_school",
+      "type": "SCHOOL",
+      "name": "Ellis Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "fox_meadow_elementary_school",
+      "type": "SCHOOL",
+      "name": "Fox Meadow Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "gifford_elementary_school",
+      "type": "SCHOOL",
+      "name": "Gifford Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "glenbrook_elementary_school",
+      "type": "SCHOOL",
+      "name": "Glenbrook Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "hanover_countryside_elementary_school",
+      "type": "SCHOOL",
+      "name": "Hanover Countryside Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "heritage_elementary_school",
+      "type": "SCHOOL",
+      "name": "Heritage Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "highland_elementary_school",
+      "type": "SCHOOL",
+      "name": "Highland Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "hillcrest_elementary_school",
+      "type": "SCHOOL",
+      "name": "Hillcrest Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "hilltop_elementary_school",
+      "type": "SCHOOL",
+      "name": "Hilltop Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "horizon_elementary_school",
+      "type": "SCHOOL",
+      "name": "Horizon Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "huff_elementary_school",
+      "type": "SCHOOL",
+      "name": "Huff Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "kenyon_woods_middle_school",
+      "type": "SCHOOL",
+      "name": "Kenyon Woods Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "kimball_middle_school",
+      "type": "SCHOOL",
+      "name": "Kimball Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "larkin_high_school",
+      "type": "SCHOOL",
+      "name": "Larkin High School",
+      "parentCode": "district"
+    },
+    {
+      "code": "larsen_middle_school",
+      "type": "SCHOOL",
+      "name": "Larsen Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "liberty_elementary_school",
+      "type": "SCHOOL",
+      "name": "Liberty Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "lincoln_elementary_school",
+      "type": "SCHOOL",
+      "name": "Lincoln Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "lords_park_elementary_school",
+      "type": "SCHOOL",
+      "name": "Lords Park Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "lowrie_elementary_school",
+      "type": "SCHOOL",
+      "name": "Lowrie Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "mckinley_elementary_school",
+      "type": "SCHOOL",
+      "name": "McKinley Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "nature_ridge_elementary_school",
+      "type": "SCHOOL",
+      "name": "Nature Ridge Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "o_neal_elementary_school",
+      "type": "SCHOOL",
+      "name": "O'Neal Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "oakhill_elementary_school",
+      "type": "SCHOOL",
+      "name": "Oakhill Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "ontarioville_elementary_school",
+      "type": "SCHOOL",
+      "name": "Ontarioville Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "otter_creek_elementary_school",
+      "type": "SCHOOL",
+      "name": "Otter Creek Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "parkwood_elementary_school",
+      "type": "SCHOOL",
+      "name": "Parkwood Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "prairieview_elementary_school",
+      "type": "SCHOOL",
+      "name": "Prairieview Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "ridge_circle_elementary_school",
+      "type": "SCHOOL",
+      "name": "Ridge Circle Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "south_elgin_high_school",
+      "type": "SCHOOL",
+      "name": "South Elgin High School",
+      "parentCode": "district"
+    },
+    {
+      "code": "streamwood_high_school",
+      "type": "SCHOOL",
+      "name": "Streamwood High School",
+      "parentCode": "district"
+    },
+    {
+      "code": "sunnydale_elementary_school",
+      "type": "SCHOOL",
+      "name": "Sunnydale Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "tefft_middle_school",
+      "type": "SCHOOL",
+      "name": "Tefft Middle School",
+      "parentCode": "district"
+    },
+    {
+      "code": "timber_trails_elementary_school",
+      "type": "SCHOOL",
+      "name": "Timber Trails Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "washington_elementary_school",
+      "type": "SCHOOL",
+      "name": "Washington Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "wayne_elementary_school",
+      "type": "SCHOOL",
+      "name": "Wayne Elementary School",
+      "parentCode": "district"
+    },
+    {
+      "code": "willard_elementary_school",
+      "type": "SCHOOL",
+      "name": "Willard Elementary School",
+      "parentCode": "district"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# HTTP endpoints (Phase 1)
+# HTTP endpoints (Phases 1 and 2)
 
 All routes are served through `index.cfm`; with the ColdFusion connector's default configuration the
 paths below are reached as `/index.cfm/api/...`. Responses are JSON (`application/json; charset=utf-8`)
@@ -6,19 +6,50 @@ serialized in canonical form. Every response carries `X-Correlation-Id`.
 
 Errors: `{ "error": { "code": "...", "message": "...", "correlationId": "...", "details": {...} } }`.
 
-| Method | Path | Auth | Purpose |
+## Authorization policies
+
+Every route declares one policy in `src/http/Router.cfc`:
+
+| Policy | Meaning |
+| --- | --- |
+| `public` | No identity required (health only). |
+| `maintenance` | Operator token guard: `X-ICFWalk-Maintenance-Token`, explicit enable flag, loopback caller unless remote access is allowed. No session, no CSRF. Denials are 404. |
+| `{ authenticated }` | A signed-in user (identity asserted by the configured adapter), with or without roles. |
+| `{ permission }` | A signed-in user holding the permission (`instrument.manage` globally, or an org-scoped permission for the unit named by the route). Record-level checks (walk owner/scope) happen in controllers through `AuthorizationService.authorizeWalk`. |
+
+Status codes on denial: 401 `UNAUTHENTICATED` (no identity), 403 `FORBIDDEN` (capability missing),
+403 `CSRF_TOKEN_INVALID`, 404 `NOT_FOUND` (record or unit outside the caller's scope, so existence
+is not disclosed).
+
+Session-authenticated state-changing requests (POST/PUT/PATCH/DELETE) must send the session's token
+in `X-ICFWalk-CSRF-Token` (from `GET /api/me` or `GET /api/auth/csrf-token`).
+
+Identity headers by adapter (`ICFWALK_SSO_MODE`):
+
+- `header` (production): the SSO gateway sends `X-Auth-Subject` (+ optional `X-Auth-Name`,
+  `X-Auth-Email`, `X-Auth-Proxy-Secret`); header names are configurable. Only requests from
+  `ICFWALK_SSO_TRUSTED_PROXIES` are believed.
+- `development` (dev/test only): `X-ICFWalk-Dev-Subject` (+ `X-ICFWalk-Dev-Name`, `X-ICFWalk-Dev-Email`).
+
+## Routes
+
+| Method | Path | Policy | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/health` | none | Liveness/readiness: `{ application, status: ok/degraded, checks: { database, schema }, correlationId }`. 503 when the database is unreachable. Non-production adds `environment` and `engine`. |
-| POST | `/api/maintenance/instrument/import` | maintenance token | Imports the instrument configuration (`config/instrument-config.json` by default, or `{ "configFile": "name.json" }` inside the same directory) as a DRAFT. 201 when created, 200 when an existing DRAFT was updated. Body: import result (ids, checksum, counts, warnings, placeholders). 422 `INSTRUMENT_CONFIG_INVALID` with `details.issues[]`; 409 `INSTRUMENT_VERSION_IMMUTABLE` / `INSTRUMENT_VERSION_IN_USE`. |
-| GET | `/api/maintenance/instrument/versions` | maintenance token | Lists instrument versions with status, checksum, timestamps, and walk counts. |
-| POST | `/api/maintenance/instrument/discard-draft` | maintenance token | `{ "versionLabel": "..." }` deletes a DRAFT no walk references. Published/retired versions are refused (409). |
-| POST/GET | `/api/maintenance/tests/run` | maintenance token + `ICFWALK_TESTS_ENABLED` | Runs the CFML test suite; optional `?filter=Name`. Never available in production. |
+| GET | `/api/health` | public | Liveness/readiness: `{ application, status, checks: { database, schema }, correlationId }`. 503 when the database is unreachable. Non-production adds `environment` and `engine`. |
+| GET | `/api/me` | authenticated | `{ user: { userId, displayName, email }, identityProvider, permissions, orgUnits, assignments, csrfToken, correlationId }`. `permissions` maps `walk.create`, `walk.read`, `walk.edit_owned`, `report.view` to arrays of covered org unit ids and `instrument.manage` to a boolean. |
+| GET | `/api/auth/csrf-token` | authenticated | `{ csrfToken }`. |
+| POST | `/api/auth/sign-out` | authenticated + CSRF | Invalidates the server session; audited. |
+| GET | `/api/admin/instrument/versions` | permission `instrument.manage` | Instrument versions with status, checksum, timestamps, walk counts. |
+| POST | `/api/maintenance/instrument/import` | maintenance | Imports the instrument configuration as a DRAFT (`config/instrument-config.json` or `{ "configFile": "name.json" }`). 201 created / 200 updated; 422 `INSTRUMENT_CONFIG_INVALID`; 409 `INSTRUMENT_VERSION_IMMUTABLE` / `INSTRUMENT_VERSION_IN_USE`. |
+| GET | `/api/maintenance/instrument/versions` | maintenance | Same listing as the admin route, for operators without a session. |
+| POST | `/api/maintenance/instrument/discard-draft` | maintenance | `{ "versionLabel" }` deletes a DRAFT no walk references. |
+| POST | `/api/maintenance/org-units/import` | maintenance | `{ "orgUnits": [ { code, type, name, parentCode, active? } ] }` or `{ "file": "org-units.example.json" }`. Idempotent upsert by code, parents resolved in a second pass. |
+| POST | `/api/maintenance/identity/provision-user` | maintenance | `{ subject, displayName?, email? }` creates the application account (201) or returns the existing one (200). |
+| POST | `/api/maintenance/identity/assign-role` | maintenance | `{ subject, roleCode, orgUnitCode, includeDescendants?, effectiveStart?, effectiveEnd? }` (ISO-8601 instants). 201 with the assignment id. |
+| POST | `/api/maintenance/identity/cleanup-fixtures` | maintenance, tests enabled only | `{ tag }` removes test fixture users/units whose subject/code starts with `tag-`. Never available in production. |
+| POST/GET | `/api/maintenance/tests/run` | maintenance, tests enabled only | Runs the CFML test suite; optional `?filter=Name`. |
 
-Maintenance token header: `X-ICFWalk-Maintenance-Token`. Requests without a valid token, from a
-non-loopback address (unless `ICFWALK_MAINTENANCE_ALLOW_REMOTE=true`), or while maintenance is
-disabled receive 404.
-
-Import result shape:
+Import result shape (instrument import):
 
 ```json
 {

@@ -1,27 +1,61 @@
 /**
- * Maps HTTP method + path to controller actions. Routes are explicit; anything unmatched is a
- * JSON 404. Controllers receive a request struct (path params, query, parsed JSON body, headers)
- * and return { status, body } which the Responder serializes.
+ * Maps HTTP method + path to controller actions and enforces the route's authorization policy
+ * before the controller runs. Every route declares a policy explicitly; there is no default that
+ * grants access:
  *
- * Phase 1 routes are health and maintenance only. Phase 2 adds identity and wraps every walk,
- * report, and administration route in server-side authorization.
+ *   "public"                        no identity required (health only)
+ *   "maintenance"                   operator token guard (MaintenanceGuard, no session)
+ *   { "authenticated": true }       a signed-in user (any or no roles)
+ *   { "permission": "x", ... }      a signed-in user holding permission x globally, or for the org
+ *                                   unit named by "orgUnitParam" (path capture index) / "orgUnitBody"
+ *                                   (JSON body key). Record-level checks happen in controllers via
+ *                                   AuthorizationService.authorizeWalk.
+ *
+ * State-changing requests (POST/PUT/PATCH/DELETE) on session-authenticated routes must carry the
+ * session's CSRF token in X-ICFWalk-CSRF-Token. Controllers receive a request struct (path params,
+ * query, parsed JSON body, headers, principal) and return { status, body }.
  */
 component output="false" {
+
+	variables.MUTATING = ["POST", "PUT", "PATCH", "DELETE"];
 
 	public Router function init(required struct container) {
 		variables.c = arguments.container;
 		variables.routes = [];
-		add("GET", "^/api/health$", "healthController", "get");
-		add("POST", "^/api/maintenance/instrument/import$", "maintenanceController", "importInstrument");
-		add("GET", "^/api/maintenance/instrument/versions$", "maintenanceController", "listVersions");
-		add("POST", "^/api/maintenance/instrument/discard-draft$", "maintenanceController", "discardDraft");
-		add("POST", "^/api/maintenance/tests/run$", "maintenanceController", "runTests");
-		add("GET", "^/api/maintenance/tests/run$", "maintenanceController", "runTests");
+		add("GET", "^/api/health$", "healthController", "get", "public");
+
+		add("GET", "^/api/me$", "authController", "me", { "authenticated": true });
+		add("GET", "^/api/auth/csrf-token$", "authController", "csrfToken", { "authenticated": true });
+		add("POST", "^/api/auth/sign-out$", "authController", "signOut", { "authenticated": true });
+
+		add("GET", "^/api/admin/instrument/versions$", "adminInstrumentController", "listVersions", { "permission": "instrument.manage" });
+
+		add("POST", "^/api/maintenance/instrument/import$", "maintenanceController", "importInstrument", "maintenance");
+		add("GET", "^/api/maintenance/instrument/versions$", "maintenanceController", "listVersions", "maintenance");
+		add("POST", "^/api/maintenance/instrument/discard-draft$", "maintenanceController", "discardDraft", "maintenance");
+		add("POST", "^/api/maintenance/org-units/import$", "maintenanceController", "importOrgUnits", "maintenance");
+		add("POST", "^/api/maintenance/identity/provision-user$", "maintenanceController", "provisionUser", "maintenance");
+		add("POST", "^/api/maintenance/identity/assign-role$", "maintenanceController", "assignRole", "maintenance");
+		add("POST", "^/api/maintenance/identity/cleanup-fixtures$", "maintenanceController", "cleanupFixtures", "maintenance");
+		add("POST", "^/api/maintenance/tests/run$", "maintenanceController", "runTests", "maintenance");
+		add("GET", "^/api/maintenance/tests/run$", "maintenanceController", "runTests", "maintenance");
 		return this;
 	}
 
-	public void function add(required string method, required string pattern, required string controller, required string action) {
-		arrayAppend(variables.routes, { "method": uCase(arguments.method), "pattern": arguments.pattern, "controller": arguments.controller, "action": arguments.action });
+	public void function add(required string method, required string pattern, required string controller, required string action, required any policy) {
+		if (!isSimpleValue(arguments.policy) && !isStruct(arguments.policy)) {
+			throw(type = "ICFWalk.Configuration", message = "Route policy must be a string or struct.", errorcode = "ROUTE_POLICY_INVALID");
+		}
+		if (isSimpleValue(arguments.policy) && arguments.policy != "public" && arguments.policy != "maintenance") {
+			throw(type = "ICFWalk.Configuration", message = "Unknown route policy '" & arguments.policy & "'.", errorcode = "ROUTE_POLICY_INVALID");
+		}
+		arrayAppend(variables.routes, { "method": uCase(arguments.method), "pattern": arguments.pattern, "controller": arguments.controller, "action": arguments.action, "policy": arguments.policy });
+	}
+
+	public array function routes() {
+		var out = [];
+		for (var r in variables.routes) arrayAppend(out, { "method": r.method, "pattern": r.pattern, "policy": r.policy });
+		return out;
 	}
 
 	public void function dispatch() {
@@ -37,6 +71,7 @@ component output="false" {
 				if (route.method != method) { methodMismatch = true; continue; }
 				matched = true;
 				var req = buildRequest(path, m);
+				enforcePolicy(route, req);
 				var controller = variables.c[route.controller];
 				var result = invoke(controller, route.action, { "req": req });
 				responder.send(result);
@@ -52,6 +87,36 @@ component output="false" {
 		}
 	}
 
+	/**
+	 * Applies the route policy. Maintenance routes keep their guard inside the controller (token
+	 * header, no session); every other non-public route authenticates first, then checks CSRF for
+	 * mutating methods, then the declared permission.
+	 */
+	private void function enforcePolicy(required struct route, required struct req) {
+		var policy = arguments.route.policy;
+		if (isSimpleValue(policy)) {
+			if (policy == "public" || policy == "maintenance") return;
+			variables.c.errors.forbidden();
+		}
+		var principal = variables.c.authenticationService.authenticate(arguments.req);
+		arguments.req["principal"] = principal;
+		if (arrayContains(variables.MUTATING, arguments.req.method)) {
+			var supplied = structKeyExists(arguments.req.headers, "x-icfwalk-csrf-token") ? trim(arguments.req.headers["x-icfwalk-csrf-token"]) : "";
+			if (!variables.c.sessionService.csrfTokenValid(supplied)) {
+				variables.c.logger.warn("csrf.rejected", { "path": arguments.req.path, "userId": principal.userId });
+				variables.c.errors.forbidden("Missing or invalid CSRF token.", "CSRF_TOKEN_INVALID");
+			}
+		}
+		if (structKeyExists(policy, "permission")) {
+			var orgUnitId = "";
+			if (structKeyExists(policy, "orgUnitParam") && arrayLen(arguments.req.params) >= policy.orgUnitParam) orgUnitId = arguments.req.params[policy.orgUnitParam];
+			if (structKeyExists(policy, "orgUnitBody") && structKeyExists(arguments.req.body, policy.orgUnitBody) && isSimpleValue(arguments.req.body[policy.orgUnitBody])) orgUnitId = arguments.req.body[policy.orgUnitBody];
+			variables.c.authorizationService.requirePermission(principal, policy.permission, orgUnitId);
+		} else if (!structKeyExists(policy, "authenticated") || !policy.authenticated) {
+			variables.c.errors.forbidden();
+		}
+	}
+
 	private struct function buildRequest(required string path, required struct match) {
 		var data = getHttpRequestData(true);
 		var req = {
@@ -61,7 +126,8 @@ component output="false" {
 			"query": duplicate(url),
 			"headers": {},
 			"remoteAddress": cgi.remote_addr,
-			"body": {}
+			"body": {},
+			"principal": {}
 		};
 		for (var name in structKeyArray(data.headers)) {
 			req.headers[lCase(name)] = data.headers[name];

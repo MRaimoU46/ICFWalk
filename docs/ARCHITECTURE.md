@@ -1,4 +1,4 @@
-# Architecture notes (Phase 1 baseline)
+# Architecture notes (Phases 1 and 2)
 
 ## Shape
 
@@ -114,10 +114,62 @@ per section. Reporting and rendering must read the authored order from the snaps
 - `configFile` for the import endpoint is restricted to a `.json` file name inside the configured
   instrument directory (no path traversal).
 
-## What Phase 2 builds on
+## Identity, roles, and organizational scope (Phase 2)
 
-- `Router.add` for new routes and a per-route authorization hook in `Router.dispatch`.
-- `ConfigLoader` already validates `ICFWALK_DEV_IDENTITY_ENABLED`; the stub itself, the SSO adapter
-  interface, `app_user`/`user_role_scope` resolution with effective dates and descendants, and
-  session cookie settings (`this.sessionManagement`, `this.sessionCookie`) are Phase 2 work.
-- `AuditRepository.record` accepts the actor user id once identity exists.
+```
+request -> IdentityProvider.resolve(req) -> UserRepository (JIT provision) -> SessionService
+        -> AuthorizationService.principalFor(user) -> Router policy check -> controller
+                                                    -> authorizeWalk / requirePermission (record level)
+```
+
+**Identity adapters** implement `identity/IdentityProvider` (`resolve(req)` returns an asserted
+subject or an anonymous result with a reason). `HeaderIdentityProvider` is the production SSO seam:
+the district's SSO gateway/reverse proxy authenticates the user and asserts the subject, name, and
+email in headers whose names come from `ICFWALK_SSO_*_HEADER`. Only source addresses in
+`ICFWALK_SSO_TRUSTED_PROXIES` (IPv4 or CIDR) are believed, an optional shared secret header can be
+required, and requests carrying identity headers from untrusted addresses are logged as spoofing
+attempts and treated as anonymous. No identity provider product is assumed; an OIDC or SAML adapter
+would implement the same interface with `perRequest() = false` so the session retains the identity
+between requests. `DevelopmentIdentityProvider` reads `X-ICFWalk-Dev-Subject` and can only be
+constructed when `ICFWALK_DEV_IDENTITY_ENABLED=true` outside production; `ConfigLoader` refuses that
+setting in production, `IdentityProviderFactory` refuses the mode without it, and the provider's
+constructor refuses again, so it cannot be enabled by accident (AUTH-02).
+
+**Users** are matched by `app_user.identity_subject` only. First sign-in provisions the row
+(`ICFWALK_AUTO_PROVISION_USERS`, default true; users still have no access until a role assignment
+exists). Inactive users are rejected. Sign-in rotates the session id, stores only user id, subject,
+sign-in time, and a 256-bit CSRF token, and is audited (`USER_PROVISIONED`, `USER_SIGNED_IN`,
+`USER_SIGNED_OUT`). Cookies are HttpOnly, SameSite=Lax, and Secure (the Secure flag cannot be
+disabled in production).
+
+**Authorization** (`authorization/AuthorizationService`) rebuilds the principal on every request from
+`user_role_scope` joined to `app_role` and `org_unit`, filtered in SQL by the database clock
+(`effective_start <= now < effective_end`), active role, and active unit. `include_descendants`
+expands to every active descendant of the assigned unit through the in-memory active tree. The five
+schema role flags map to permissions `walk.create`, `walk.read`, `walk.edit_owned`, `report.view`
+(org-scoped) and `instrument.manage` (global, never grants walks or reports). `requirePermission`
+distinguishes a missing capability (403) from an out-of-scope or unknown unit (404) so existence is
+not disclosed; malformed identifiers are 400. `authorizeWalk(principal, walkId, action)` re-resolves
+the walk's org unit and owner from the database: `read` needs `walk.read` in the walk's unit (or
+ownership with `walk.edit_owned`), `edit`/`void` need ownership plus `walk.edit_owned`. Report-only
+roles therefore never reach individual walk details. Every denial is audited as `ACCESS_DENIED` with
+permission, unit, and record id only.
+
+**Router policies**: every route declares `public`, `maintenance`, `{ authenticated }`, or
+`{ permission }`; there is no permissive default. State-changing session routes require the
+synchronizer CSRF token header. Maintenance routes (seed, org-unit import, user provisioning, role
+assignment, test runner, fixture cleanup) remain token-guarded and never use the session.
+
+**Bootstrap of a deployment**: import org units (`config/org-units.example.json` as a template),
+provision the first administrator, assign `MASTER_INSTRUMENT_ADMIN`, then assign walk/report roles
+per district or school, all through the maintenance endpoints (documented in `docs/LOCAL_SETUP.md`).
+
+## What Phase 3 builds on
+
+- `AuthorizationService.visibleOrgUnitIds(principal, "walk.read")` and `authorizeWalk` are the
+  scope primitives for My Walks and the walk editor; `req.principal` is available in every
+  authenticated controller.
+- `Router.add(method, pattern, controller, action, policy)` with `{ "permission": "walk.create",
+  "orgUnitBody": "orgUnitId" }` authorizes creation against the unit named in the JSON body.
+- The compiled snapshot on `instrument_version` is the rendering contract; `DefinitionRepository`
+  resolves keys to GUIDs for persistence.

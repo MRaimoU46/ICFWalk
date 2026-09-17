@@ -38,6 +38,9 @@ component output="false" {
 		if (structKeyExists(request, "icf") && structKeyExists(request.icf, "correlationId")) {
 			entry["correlationId"] = request.icf.correlationId;
 		}
+		if (structKeyExists(request, "icf") && structKeyExists(request.icf, "actorUserId") && len(request.icf.actorUserId)) {
+			entry["actorUserId"] = request.icf.actorUserId;
+		}
 		entry["fields"] = redact(arguments.fields, 0);
 		return entry;
 	}

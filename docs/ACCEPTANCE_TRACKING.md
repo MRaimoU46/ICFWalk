@@ -38,9 +38,15 @@ marked explicitly.
 
 | ID | Status | Method / evidence |
 | --- | --- | --- |
-| AUTH-01 | PENDING (Phase 2) | Router/authorization hook exists; identity not yet implemented. Maintenance routes already fail closed (404 without token). |
-| AUTH-02 | PASS (config seam) | `ConfigLoaderTest.testDevIdentityStubCannotBeEnabledInProduction`: startup refused with `CONFIGURATION_INVALID`. The stub itself is Phase 2. |
-| AUTH-03 .. AUTH-09 | PENDING (Phase 2) | |
+| AUTH-01 | PASS | `tests/node/auth.test.mjs`: `/api/me`, `/api/auth/csrf-token`, `/api/admin/instrument/versions`, and `POST /api/auth/sign-out` return 401 `UNAUTHENTICATED` with no protected data; SSO gateway headers sent directly are ignored. |
+| AUTH-02 | PASS | `ConfigLoaderTest` (startup refused with `CONFIGURATION_INVALID`), `IdentityTest.testDevelopmentStubCannotBeConstructedWhenNotPermitted` (factory and constructor refuse), `IdentityTest.testConfigLoaderRejectsUnsafeIdentitySettings`. |
+| AUTH-03 | PASS | `AuthorizationTest.testAuth03...`: district walk/report role reads walks in descendant schools, edits its own, creates in scope. `auth.test.mjs`: `/api/me` permissions for the district walker. |
+| AUTH-04 | PASS | `AuthorizationTest.testAuth04...`: school role denied (404, audited) for walks in unassigned schools even with the GUID. |
+| AUTH-05 | PASS | `AuthorizationTest.testAuth05...`: report-only roles have no `walk.read`/`walk.create`/`walk.edit_owned`; walk access is 403 with no identifier in the message. Walk endpoints themselves arrive in Phase 4 and must call `authorizeWalk`. |
+| AUTH-06 | PASS | `AuthorizationTest.testAuth06...` (admin has no walk/report capability; walkers lack `instrument.manage`) and `auth.test.mjs` (admin route 403 for walkers and role-less users, 200 for the admin; admin `/api/me` shows no walk/report scope). |
+| AUTH-07 | PASS | `AuthorizationTest.testAuth07...` (future and expired assignments yield no scope) and `testEndingAnAssignmentRevokesAccessImmediately`. |
+| AUTH-08 | PASS | `AuthorizationTest.testAuth08...`: descendants included, unrelated branch and inactive descendants excluded; `include_descendants = 0` covers only the assigned unit. |
+| AUTH-09 | PARTIAL | Org-unit and walk identifiers: `AuthorizationTest.testAuth09...` (out-of-scope 404, unknown 404, malformed 400, injection-shaped input rejected, `resolveScopedOrgUnit` re-resolves). Version/item/option/dimension GUID tampering is exercised with the walk response endpoints in Phase 4. |
 
 ## My Walks and lifecycle, conditional UI, autosave, summary, administration, reporting
 
@@ -60,9 +66,9 @@ marked explicitly.
 | --- | --- | --- |
 | SEC-01 | PARTIAL | All Phase 1 SQL is parameterized (`core/Db`; `tests/node/schema-contract.test.mjs` checks table references). Payload tests arrive with user-facing endpoints (Phase 8). |
 | SEC-02 | PENDING (Phase 3+) | API responses are canonical JSON; HTML output does not exist yet. |
-| SEC-03 | N/A for Phase 1 | Maintenance routes are token-header authenticated (not cookie based). CSRF for session routes is Phase 2. |
-| SEC-04 | PENDING (Phase 2) | |
-| SEC-05 | PASS (unit) | `LoggerTest` redaction and truncation; audit details denylist in `AuditRepository`. Full save/conflict/export log inspection is Phase 8. |
+| SEC-03 | PASS | `auth.test.mjs`: `POST /api/auth/sign-out` without or with a wrong `X-ICFWalk-CSRF-Token` is 403 `CSRF_TOKEN_INVALID` with no mutation; with the session token it succeeds. Maintenance routes are token-header authenticated (no cookies). |
+| SEC-04 | PASS (local) | Session cookie observed `HttpOnly; SameSite=Lax` (`auth.test.mjs`); `Secure` enforced by configuration (`ICFWALK_COOKIE_SECURE` cannot be false in production, `ConfigLoaderTest`/`IdentityTest`); session id rotated at sign-in, invalidated at sign-out, idle timeout `ICFWALK_SESSION_TIMEOUT_MINUTES`. TLS termination is a deployment responsibility (documented). NOT TESTABLE HERE: Adobe ColdFusion's `this.sessionCookie` handling. |
+| SEC-05 | PASS (unit) | `LoggerTest` redaction and truncation; audit details denylist in `AuditRepository`; `AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens`. Full save/conflict/export log inspection is Phase 8. |
 | SEC-06 | PENDING (Phase 4) | |
 | SEC-07 | PASS (local) | `docs/LOCAL_SETUP.md` clean-install steps executed end to end in this environment (Docker SQL Server, schema apply, Lucee start, seed, tests). NOT TESTABLE HERE on Adobe ColdFusion 2023 itself. |
 

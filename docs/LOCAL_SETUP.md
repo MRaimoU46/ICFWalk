@@ -33,8 +33,10 @@ node scripts/validate-handoff.mjs             # package integrity (PKG-01)
 
 tools/runtime/mssql-up.sh                     # SQL Server 2022 container, generates .runtime/mssql.env
 cp .env.example .env                          # then set ICFWALK_DB_* from .runtime/mssql.env, a
-                                              # 32+ char ICFWALK_MAINTENANCE_TOKEN, and
-                                              # ICFWALK_MAINTENANCE_ENABLED=true / ICFWALK_TESTS_ENABLED=true
+                                              # 32+ char ICFWALK_MAINTENANCE_TOKEN,
+                                              # ICFWALK_MAINTENANCE_ENABLED=true / ICFWALK_TESTS_ENABLED=true,
+                                              # and for local sign-in: ICFWALK_SSO_MODE=development,
+                                              # ICFWALK_DEV_IDENTITY_ENABLED=true, ICFWALK_COOKIE_SECURE=false
 node scripts/db/apply-schema.mjs              # applies database/001_schema.sql then 002_alignment_patch.sql
 
 tools/runtime/lucee-up.sh                     # or deploy app/ to ColdFusion 2023 (below)
@@ -65,6 +67,29 @@ npm test                                      # all Node tests + the CFML suite 
    then disable maintenance again. Phase 6 adds the authenticated administration UI for the same
    import/publish operations.
 7. The seeded version is a DRAFT. Publishing (Phase 6) compiles and freezes the snapshot.
+8. Configure identity. In production `ICFWALK_SSO_MODE=header`: the district SSO gateway or reverse
+   proxy authenticates users and asserts the subject/name/email in the headers named by
+   `ICFWALK_SSO_SUBJECT_HEADER`, `ICFWALK_SSO_NAME_HEADER`, `ICFWALK_SSO_EMAIL_HEADER`. List the
+   gateway addresses in `ICFWALK_SSO_TRUSTED_PROXIES` (required in production; nobody is trusted when
+   empty) and optionally require `ICFWALK_SSO_SHARED_SECRET` in `ICFWALK_SSO_SECRET_HEADER`. The web
+   server must strip those headers from client requests so only the gateway can set them.
+9. Bootstrap the organization and the first administrator with maintenance enabled temporarily:
+
+   ```bash
+   H="X-ICFWalk-Maintenance-Token: $ICFWALK_MAINTENANCE_TOKEN"
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"file":"org-units.example.json"}' \
+     http://127.0.0.1/index.cfm/api/maintenance/org-units/import
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"subject":"<sso subject>","displayName":"<name>"}' \
+     http://127.0.0.1/index.cfm/api/maintenance/identity/provision-user
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' \
+     -d '{"subject":"<sso subject>","roleCode":"MASTER_INSTRUMENT_ADMIN","orgUnitCode":"district"}' \
+     http://127.0.0.1/index.cfm/api/maintenance/identity/assign-role
+   ```
+
+   Walk and report roles (`DISTRICT_WALK_REPORT`, `DISTRICT_REPORT_ONLY`, `SCHOOL_WALK_REPORT`,
+   `SCHOOL_REPORT_ONLY`) are assigned the same way with `orgUnitCode` of the district (with
+   `"includeDescendants": true`) or of a school. Adjust `config/org-units.example.json` (codes are
+   stable identifiers) before the first import; re-importing updates names and parents by code.
 
 ### Database login permissions
 
@@ -91,7 +116,8 @@ not a supported production platform for ICFWalk.
 | `npm run validate:handoff` | Supplied handoff validator (PKG-01). |
 | `npm run test:package` | PKG-02..05, canonical JSON vectors, reference snapshot golden, schema/DAO contract. No database needed. |
 | `npm run test:db` | DB-01..03 against a disposable SQL Server database (needs `ICFWALK_DB_*` admin credentials). |
-| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs plus DB-04..09), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. |
+| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity and authorization specs), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. |
+| `npm run test:auth` | HTTP identity/authorization checks (AUTH-01, CSRF, cookies, admin route separation). Needs the app in development mode with `ICFWALK_SSO_MODE=development` and `ICFWALK_DEV_IDENTITY_ENABLED=true`. |
 | `npm test` | Everything above. |
 
 The CFML suite can also be triggered directly:

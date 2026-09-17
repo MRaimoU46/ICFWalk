@@ -33,12 +33,25 @@ component output="false" {
 		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
 		c["maintenanceGuard"] = new icfwalk.http.MaintenanceGuard(c.config, c.logger, c.errors, c.auditRepository, c.requestContext);
+
+		// Identity, roles, and scope (Phase 2).
+		c["userRepository"] = new icfwalk.identity.UserRepository(c.db);
+		c["orgUnitRepository"] = new icfwalk.authorization.OrgUnitRepository(c.db);
+		c["roleScopeRepository"] = new icfwalk.authorization.RoleScopeRepository(c.db);
+		c["authorizationService"] = new icfwalk.authorization.AuthorizationService(c.db, c.orgUnitRepository, c.roleScopeRepository, c.auditRepository, c.logger, c.errors);
+		c["sessionService"] = new icfwalk.identity.SessionService(c.config);
+		c["identityProvider"] = new icfwalk.identity.IdentityProviderFactory(c.config, c.logger).build();
+		c["authenticationService"] = new icfwalk.identity.AuthenticationService(c.config, c.logger, c.identityProvider, c.userRepository, c.sessionService, c.authorizationService, c.auditRepository, c.errors);
+
 		c["healthController"] = new icfwalk.controllers.HealthController(c.config, c.db, c.requestContext);
+		c["authController"] = new icfwalk.controllers.AuthController(c);
+		c["adminInstrumentController"] = new icfwalk.controllers.AdminInstrumentController(c);
 		c["maintenanceController"] = new icfwalk.controllers.MaintenanceController(c);
 		c["router"] = new icfwalk.http.Router(c);
 		c.logger.info("application.started", {
 			"environment": c.config.environment,
 			"engine": c.healthController.engineDescription(),
+			"identityProvider": c.identityProvider.name(),
 			"maintenanceEnabled": c.config.maintenanceEnabled,
 			"testsEnabled": c.config.testsEnabled
 		});
