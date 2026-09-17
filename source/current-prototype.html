@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICFWalk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Official School District U-46 brand palette, sampled directly from the
+       2025-2030 Strategic Plan and the U-46 logo (navy + gold), plus the
+       four Goal accent colors used throughout that document. */
+    --navy:#003466; --navy-dark:#002347; --blue:#144B8E; --gold:#FFCF01;
+    --ink:#142433; --gray:#4E5D6C; --muted:#7C8A97;
+    --line:#D7E1EA; --card:#FFFFFF; --page:#EDF3F9; --tint:#E3EDF5;
+    --good:#1E8E5A; --warn:#D55300;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Work Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink);
+    background:linear-gradient(180deg, #E4EEF7 0%, #F5F9FC 320px, #F5F9FC 100%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:24px 20px 80px}
+  .topbar{position:sticky;top:0;background:var(--navy);z-index:20;padding:18px 0 14px;border-bottom:4px solid var(--gold);margin-bottom:20px;box-shadow:0 2px 10px rgba(0,52,102,.15)}
+  .topbar-inner{max-width:900px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:12px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff;font-size:15px;letter-spacing:.2px}
+  .brand img{height:40px;width:40px;flex-shrink:0;background:#fff;border-radius:50%;padding:3px;object-fit:contain}
+  .brand small{display:block;font-weight:400;color:rgba(255,255,255,.78);font-size:30px;letter-spacing:.3px}
+  .spacer{flex:1}
+  button{font-family:inherit;cursor:pointer}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
+  .btn:hover{border-color:var(--blue)}
+  .btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
+  .btn-primary:hover{background:var(--navy-dark)}
+  .btn-ghost{border:none;background:transparent;color:var(--gray);font-size:13px}
+  .btn-ghost:hover{color:var(--navy)}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+  h1{font-size:22px;margin:0 0 4px;color:var(--navy)}
+  h2{font-size:15px;margin:0;color:var(--navy)}
+  .muted{color:var(--muted)}
+  .status{font-size:12px;color:var(--muted)}
+
+  /* list view */
+  .list-header{display:flex;align-items:center;margin-bottom:16px}
+  .walk-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+  .walk-card:hover{border-color:var(--blue)}
+  .walk-card .info{flex:1;min-width:0}
+  .walk-card .title{font-weight:600;font-size:14px;margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .walk-card .meta{font-size:12px;color:var(--muted)}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty-state i{font-size:32px;display:block;margin-bottom:10px;opacity:.5}
+
+  /* form fields */
+  .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  label{display:block;font-size:11px;font-weight:600;color:var(--gray);letter-spacing:.3px;margin-bottom:4px}
+  input[type=text],input[type=date],input[type=number],select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;
+    font-family:inherit;background:#fff;color:var(--ink)
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,75,142,.15)}
+  textarea{resize:vertical;min-height:56px;background:#FFF9E7;border:3px solid var(--navy)}
+
+  .section-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+  .section-title{font-size:16px;font-weight:700;color:var(--navy);margin:0 0 4px}
+  .required-badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--warn);border-radius:5px;padding:2px 7px;vertical-align:middle;margin-left:6px}
+  .section-sub{font-size:12px;color:var(--muted);margin:0 0 14px}
+
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .stat{background:var(--tint);border-radius:var(--radius);padding:12px 14px}
+  .stat .num{font-size:20px;font-weight:700;color:var(--navy)}
+  .stat .lab{font-size:11px;color:var(--muted);letter-spacing:.3px}
+
+  /* part1 question */
+  .q-block{padding:12px 0;border-top:3px solid var(--navy)}
+  .q-block:first-child{border-top:none}
+  .q-text{font-size:13.5px;margin:0 0 8px;line-height:1.4}
+  .pillrow{display:flex;flex-wrap:wrap;gap:6px}
+  .pill{border:1px solid var(--line);border-radius:7px;padding:6px 11px;font-size:12.5px;background:#fff;color:var(--gray)}
+  .pill:hover{border-color:var(--blue)}
+  .pill.active{background:var(--navy);border-color:var(--navy);color:#fff}
+  .pill.na{color:var(--muted);font-style:italic}
+  .pill.na.active{background:var(--tint);border-color:var(--line);color:var(--gray)}
+  .defs-toggle{background:none;border:none;color:var(--blue);font-size:12px;padding:0;margin-top:8px;font-weight:600}
+  .defs-toggle:hover{text-decoration:underline}
+  .defs-box{display:none;margin-top:8px;background:var(--tint);border-radius:7px;padding:10px 12px}
+  .defs-box.open{display:block}
+  .defs-row{font-size:12px;line-height:1.5;margin-bottom:6px}
+  .defs-row:last-child{margin-bottom:0}
+  .defs-row b{color:var(--navy)}
+  .applic-block{background:var(--tint);border-radius:8px;padding:12px 14px;margin-bottom:6px}
+  .applic-q{font-size:13.5px;font-weight:600;margin:0 0 8px;color:var(--ink)}
+  .applic-note{font-size:12.5px;color:var(--gray);margin:8px 0 0;font-style:italic}
+  .yn-row{padding:10px 0;border-top:3px solid var(--navy);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .yn-row:first-child{border-top:none}
+  .yn-row .yn-text{font-size:13.5px;flex:1;min-width:200px}
+  .checkrow{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink);background:var(--tint);border-radius:7px;padding:8px 12px;cursor:pointer;text-transform:none;letter-spacing:0}
+  .checkrow input{width:15px;height:15px;flex-shrink:0}
+  .email-prompt{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .email-q{font-size:13.5px;font-weight:600;margin:0 0 8px;color:var(--navy)}
+  #email-box label{margin-bottom:4px}
+
+  /* accordion */
+  .acc{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;background:#fff}
+  .acc-head{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer}
+  .acc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .acc-title{font-size:14.5px;font-weight:600;flex:1}
+  .acc-count{font-size:11.5px;color:var(--muted)}
+  .chev{transition:transform .15s;color:var(--muted);font-size:16px}
+  .chev.open{transform:rotate(90deg)}
+  .acc-body{display:none;padding:0 16px 16px}
+  .acc-body.open{display:block}
+  .acc-blurb{font-size:12px;color:var(--muted);margin:0 0 8px;font-style:italic}
+  .notes-label{font-size:11px;font-weight:600;color:var(--gray);letter-spacing:.3px;margin:12px 0 6px}
+
+  .footer-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  @media (max-width:600px){
+    .stat-row{grid-template-columns:1fr 1fr}
+    .field-grid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <img src="https://cmsv2-assets.apptegy.net/uploads/33857/logo/36903/U-46_Logo.png" alt="School District U-46 logo" onerror="this.style.display='none'">
+      <div>School District U-46<small>ICFWalk &middot; Instructional Clarity Framework</small></div>
+    </div>
+    <div class="spacer"></div>
+    <span class="status" id="global-status"></span>
+    <button class="btn btn-ghost" id="nav-list-btn" style="display:none">My walks</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- LIST VIEW -->
+  <div id="view-list">
+    <div class="list-header">
+      <div>
+        <h1>My walks</h1>
+        <p class="muted" style="margin:0;font-size:13px">Saved automatically on this device as you type.</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="new-walk-btn">+ New walk</button>
+    </div>
+    <div id="walk-list"></div>
+  </div>
+
+  <!-- WALK VIEW -->
+  <div id="view-walk" style="display:none">
+    <div class="footer-actions" style="margin-bottom:16px">
+      <button class="btn btn-ghost" id="back-btn">&larr; My walks</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="status" id="save-status">All changes saved</span>
+        <button class="btn btn-sm" id="export-btn">Export summary</button>
+        <button class="btn btn-sm btn-primary" id="save-btn">Save</button>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <p class="section-title">Visit information</p>
+      <p class="section-sub">Used to tag and disaggregate this walk later.</p>
+      <div class="field-grid" id="meta-fields"></div>
+    </div>
+
+    <div class="section-card" id="prek-k-card" style="display:none">
+      <p class="section-title">PreK&ndash;K Classroom</p>
+      <p class="section-sub">Shown automatically because the grade level selected is PreK or K.</p>
+      <div id="prek-k-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="prek-k-notes" placeholder="Notes for this PreK&ndash;K classroom..."></textarea>
+    </div>
+
+    <div class="section-card" id="dual-lang-card" style="display:none">
+      <p class="section-title">Dual Language Classroom</p>
+      <p class="section-sub">Shown automatically because the class type selected is Dual Language.</p>
+      <div id="dual-lang-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="dual-lang-notes" placeholder="Notes for this Dual Language classroom..."></textarea>
+    </div>
+
+    <div class="section-card" id="mac-prer-card" style="display:none">
+      <p class="section-title">MAC / PREP Classroom</p>
+      <p class="section-sub">Shown automatically because the class type selected is MAC or PREP &mdash; same look-fors for both.</p>
+      <div id="mac-prer-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="mac-prer-notes" placeholder="Notes for this MAC / PREP classroom..."></textarea>
+    </div>
+
+    <div class="section-card" id="ignite-card" style="display:none">
+      <p class="section-title">Ignite Classroom</p>
+      <p class="section-sub">Shown automatically because the class type selected is Ignite.</p>
+      <div id="ignite-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="ignite-notes" placeholder="Notes for this Ignite classroom..."></textarea>
+    </div>
+
+    <div class="section-card" id="avid-card" style="display:none">
+      <p class="section-title">AVID Classroom</p>
+      <p class="section-sub">Shown automatically because the class type selected is AVID.</p>
+      <div id="avid-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="avid-notes" placeholder="Notes for this AVID classroom..."></textarea>
+    </div>
+
+    <div class="section-card" id="esl-card" style="display:none">
+      <p class="section-title">ESL Classroom</p>
+      <p class="section-sub">Shown automatically because the class type selected is ESL.</p>
+      <div id="esl-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="esl-notes" placeholder="Notes for this ESL classroom..."></textarea>
+    </div>
+
+    <div class="section-card" id="contentarea-card" style="display:none">
+      <p class="section-title" id="contentarea-title">Content-Area Look-Fors</p>
+      <p class="section-sub" id="contentarea-sub">Shown automatically because of the content area selected.</p>
+      <div id="contentarea-items"></div>
+      <div class="notes-label" style="margin-top:14px">Notes</div>
+      <textarea id="contentarea-notes" placeholder="Notes for this content area..."></textarea>
+    </div>
+
+    <div class="acc" id="part1-card" style="margin-bottom:16px">
+      <div class="acc-head" id="part1-head">
+        <i class="chev">&#8250;</i>
+        <span class="acc-title" style="font-size:16px;font-weight:700;color:var(--navy);flex:none">Part 1 &middot; Target / Taxonomy / Pacing</span>
+        <span class="required-badge">REQUIRED</span>
+      </div>
+      <div class="acc-body" id="part1-body">
+        <div style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)">
+          <label>Lesson Standard</label>
+          <input type="text" id="part1-lesson-standard" placeholder="Standard being taught...">
+          <label style="margin-top:10px">Other disaggregation tag(s)</label>
+          <input type="text" id="part1-tag" placeholder="Optional tag(s) for later filtering...">
+        </div>
+        <div id="part1-block"></div>
+        <div id="part1-sections"></div>
+      </div>
+    </div>
+
+    <div class="acc" id="part2-card" style="margin-bottom:16px">
+      <div class="acc-head" id="part2-head">
+        <i class="chev">&#8250;</i>
+        <span class="acc-title" style="font-size:16px;font-weight:700;color:var(--navy);flex:none">Part 2 &middot; Instructional Clarity Framework Components</span>
+      </div>
+      <div class="acc-body" id="part2-body">
+        <p class="acc-blurb">Tap a component to expand it and rate the evidence observed.</p>
+        <div id="accordion"></div>
+      </div>
+    </div>
+
+    <div class="acc" id="part3-card" style="margin-bottom:16px">
+      <div class="acc-head" id="part3-head">
+        <i class="chev">&#8250;</i>
+        <span class="acc-title" style="font-size:16px;font-weight:700;color:var(--navy);flex:none">Part 3 &middot; Conditions for Learning</span>
+      </div>
+      <div class="acc-body" id="part3-body">
+        <div id="belonging-block"></div>
+        <div class="notes-label" style="margin-top:14px">Evidence / look-fors noted</div>
+        <textarea id="belonging-notes" placeholder="Notes for this section..."></textarea>
+      </div>
+    </div>
+
+    <div class="acc" id="part4-card" style="margin-bottom:16px">
+      <div class="acc-head" id="part4-head">
+        <i class="chev">&#8250;</i>
+        <span class="acc-title" style="font-size:16px;font-weight:700;color:var(--navy);flex:none">Part 4 &middot; Walk Summary</span>
+      </div>
+      <div class="acc-body" id="part4-body">
+        <div class="field-grid">
+          <div>
+            <label>Overall strengths observed</label>
+            <textarea id="summary-strengths" placeholder="..."></textarea>
+          </div>
+          <div>
+            <label>Priority area(s) for growth</label>
+            <textarea id="summary-growth" placeholder="..."></textarea>
+          </div>
+        </div>
+
+        <div id="email-slot-summary"></div>
+      </div>
+    </div>
+
+    <div class="footer-actions" style="margin-top:6px">
+      <span class="status" id="save-status-bottom">All changes saved</span>
+      <button class="btn btn-primary" id="save-btn-bottom">Save</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+
+// ---------------- DATA MODEL ----------------
+
+const PART1 = [
+  {id:'p1q1', text:'There is a learning target that is directly from the content area standard.', options:['No','Partial','Yes'],
+   defs:{
+     'No':'There\u2019s no target visible or communicated during the visit, or what\u2019s posted isn\u2019t derived from the content-area standard at all \u2014 it\u2019s a task description, activity name, or something unrelated.',
+     'Partial':'A target is posted, but it isn\u2019t pulled directly from the standard \u2014 it paraphrases, narrows, or drifts from the standard\u2019s actual language or intent.',
+     'Yes':'The target is taken directly from the content-area standard \u2014 its language and intent match what the standard calls for.'
+   }},
+  {id:'p1q2', text:'The content area standard is written at this level of thinking.', options:['No Learning Target','Retrieval','Comprehension','Analysis','Knowledge Utilization'],
+   defs:{
+     'No Learning Target':'A target was expected to be visible by this point but wasn\u2019t provided at all. This is a real finding, not a timing gap \u2014 it stays in scoring.',
+     'Retrieval':'Recalling facts or carrying out a known procedure.',
+     'Comprehension':'Explaining or representing the key ideas within a concept.',
+     'Analysis':'Breaking down knowledge to draw new conclusions or make comparisons.',
+     'Knowledge Utilization':'Using knowledge purposefully in a real task \u2014 building an argument, testing an idea, or applying it across more than one standard.'
+   }},
+  {id:'p1q3', text:'The student evidence during the visit requires this level of thinking.', options:['No Evidence','Retrieval','Comprehension','Analysis','Knowledge Utilization'],
+   defs:{
+     'No Evidence':'Students had a chance to produce evidence by this point but didn\u2019t, or the visit ran long enough that evidence should exist and doesn\u2019t.',
+     'Retrieval':'Recalling facts or carrying out a known procedure \u2014 based on what students actually said, wrote, made, or did.',
+     'Comprehension':'Explaining or representing the key ideas within a concept \u2014 based on what students actually said, wrote, made, or did.',
+     'Analysis':'Breaking down knowledge to draw new conclusions or make comparisons \u2014 based on what students actually said, wrote, made, or did.',
+     'Knowledge Utilization':'Using knowledge purposefully in a real task \u2014 based on what students actually said, wrote, made, or did.'
+   }},
+];
+
+// Two rated sections inside Part 1, drawn from the U-46 Strategic Plan's
+// "Practices for Effective Teaching and Engaging Learning" pages for Adopted
+// Curriculum (p.32) and Target/Task Alignment (p.33). Each question is scored
+// 1-5; the student/teacher actions from those pages are shown as look-fors.
+const PART1_SECTIONS = [
+  {
+    id:'adopted', title:'Adopted Curriculum', color:'#2CA6C9',
+    pacing:{
+      label:'Pacing',
+      options:[
+        {value:'behind', label:'BEHIND pacing', def:'A week and a half or more behind where the pacing guide indicates the class should be.'},
+        {value:'on', label:'ON pace', def:'Within 5 days on either side of where the pacing guide indicates the class should be.'},
+        {value:'ahead', label:'AHEAD of pacing', def:'More than a week and a half ahead of where the pacing guide indicates the class should be.'}
+      ]
+    },
+    studentActions:[
+      'Students can articulate the purpose of their learning.',
+      'Students are actively working with materials and resources from the adopted curriculum.',
+      'Students are using curriculum-based tools, technology, or manipulatives as designed.'
+    ],
+    teacherActions:[
+      'Teachers communicate passion for the subject and the belief in the value of what is being learned.',
+      'Teachers use adopted curriculum, assessments, and resources with integrity to guide students through learning.',
+      'Teachers plan lessons in alignment with pacing guides and curricular frameworks.'
+    ],
+    qs:[
+      {id:'ac1', text:'The learning students are experiencing is clearly grounded in the district\u2019s adopted curriculum and grade/course-level expectations.',
+       defs:{
+         '1':'The learning has no clear connection to the adopted curriculum or to grade/course-level expectations \u2014 materials and content appear to come from elsewhere.',
+         '2':'A loose connection to the adopted curriculum is visible, but the content sits noticeably below or outside grade/course-level expectations.',
+         '3':'The learning is generally grounded in the adopted curriculum at grade/course level, though the connection is uneven or partly implicit.',
+         '4':'The learning is clearly grounded in the adopted curriculum and matches grade/course-level expectations throughout the observed segment.',
+         '5':'The learning is unmistakably grounded in the adopted curriculum at grade/course level, and students can name what they are learning and why it matters.'
+       }},
+      {id:'ac2', text:'Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.',
+       defs:{
+         '1':'Intended curricular materials are absent, replaced, or used in ways that lose the rigor and purpose of the lesson.',
+         '2':'Some intended materials are present, but they are used superficially or in ways that noticeably reduce the intended rigor.',
+         '3':'Students use the intended materials, though not always as designed \u2014 some of the intended rigor or purpose is diluted.',
+         '4':'Students use the intended high-quality materials largely as designed, preserving the rigor and purpose of the lesson.',
+         '5':'Students use the intended materials, tools, technology, and manipulatives fully as designed, and the rigor and purpose of the lesson are preserved throughout.'
+       }}
+    ]
+  },
+  {
+    id:'targetTask', title:'Target/Task Alignment', color:'#E8A33D',
+    studentActions:[
+      'Student work provides evidence of learning that matches the intent of the standard.',
+      'Students are engaged in tasks that are aligned to the learning and language targets.',
+      'Students indicate that they clearly understand the success criteria of high-quality work.'
+    ],
+    teacherActions:[
+      'Teachers design and use learning/language targets that are aligned with the standards identified in the unit of the adopted curriculum, ensuring consistency and clarity in instruction.',
+      'Teachers plan and implement tasks that support the thinking processes needed to achieve the learning target in alignment with the common assessment.',
+      'Teachers communicate learning and language targets visually and orally to students.'
+    ],
+    qs:[
+      {id:'tt1', text:'There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)',
+       defs:{
+         '1':'There is no evidence students know what they are learning or what success looks like \u2014 no target or success criteria are communicated.',
+         '2':'A target is posted or stated, but students show little sign of understanding it, and success criteria are absent or unclear.',
+         '3':'Students have some sense of what they are learning; success criteria exist but are used inconsistently or only by the teacher.',
+         '4':'Students can generally explain what they are learning, and success criteria are communicated clearly and referenced during the lesson.',
+         '5':'Students can articulate what they are learning and what high-quality work looks like, and actively use the success criteria to judge their own progress.'
+       }},
+      {id:'tt2', text:'The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.',
+       defs:{
+         '1':'Tasks do not connect to the target/standard, or they require thinking well below what the standard calls for.',
+         '2':'Tasks connect to the target\u2019s content but sit at a noticeably lower level of thinking or produce little usable evidence of learning.',
+         '3':'Tasks partially match the target\u2019s intent \u2014 some require the called-for thinking, others fall short or stop at recall.',
+         '4':'Tasks require the level of thinking and rigor the target/standard calls for, and students produce evidence aligned to that intent.',
+         '5':'Tasks consistently require the full thinking, rigor, and evidence called for by the target/standard, and student work demonstrates it.'
+       }}
+    ]
+  }
+];
+
+
+
+const COMPONENTS = [
+  {id:'s1', color:'#D9622B', title:'Daily Engagement with Complex Texts',
+   studentActions:[
+     'Students read and write in each class daily.',
+     'Students employ a variety of strategies \u2014 such as annotation, summarization, questioning, and using available resources \u2014 to comprehend and analyze complex texts.',
+     'Students support their ideas with textual evidence in discussions and writing, demonstrating critical thinking and deep engagement with the content.'
+   ],
+   teacherActions:[
+     'Teachers intentionally provide opportunities for students to read and write daily.',
+     'Teachers provide strategies such as guided reading, text chunking, annotation techniques, and questioning to help students navigate, comprehend, and analyze challenging texts.',
+     'Teachers prompt students to cite textual evidence in discussions and writing, guiding them in analyzing and justifying their ideas through structured academic discourse.'
+   ],
+   qs:[
+     {id:'q1', text:'ENGAGEMENT: Students are required to make meaning from the text/content \u2014 citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking \u2014 rather than primarily receiving the meaning from the teacher.',
+      defs:{
+        '1':'The teacher delivers the meaning of the text/content; students receive it without being asked to make meaning themselves.',
+        '2':'Students are occasionally asked a recall question, but the teacher still does nearly all of the meaning-making.',
+        '3':'Students do some meaning-making \u2014 answering text-based questions or annotating \u2014 but the teacher still supplies most conclusions.',
+        '4':'Students regularly make meaning from the text/content by citing evidence, questioning, analyzing, or explaining their thinking.',
+        '5':'Students consistently do the meaning-making \u2014 citing evidence, questioning, analyzing, and explaining \u2014 and the teacher\u2019s role is to prompt and press, not to supply the answer.'
+      }},
+     {id:'q2', text:'ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.',
+      defs:{
+        '1':'No reading, writing, speaking, or listening with text/content is taking place, or the material is far below grade level.',
+        '2':'Some engagement with text/content occurs, but it is brief, passive, or noticeably below grade-level complexity.',
+        '3':'Students engage with grade-level text/content, though participation is uneven or the work stays at the easier end of the range.',
+        '4':'Students are actively reading, writing, speaking, and/or listening with appropriately challenging grade-level text or content.',
+        '5':'All students are actively engaged with appropriately complex grade-level text or content across multiple modes \u2014 reading, writing, speaking, and listening.'
+      }}
+   ]},
+  {id:'s2', color:'#E8A33D', title:'Daily Engagement with Academic Vocabulary',
+   studentActions:[
+     'Students integrate academic vocabulary into their reading, writing, speaking, and listening, effectively articulating their thoughts and engaging in meaningful discussions.'
+   ],
+   teacherActions:[
+     'Teachers use a variety of appropriately challenging and complex texts to intentionally model and reinforce the use of academic vocabulary across reading, writing, speaking, and listening, providing sentence stems, word banks, and discussion prompts to support student use.',
+     'Teachers engage students in how to learn new words and the meanings of specific words with intentional word selection, systematic and explicit direct instruction, morphology, and use of new words throughout language acquisition.'
+   ],
+   qs:[
+     {id:'q1', text:'VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)',
+      defs:{
+        '1':'No academic or discipline-specific vocabulary is taught or reinforced during the lesson.',
+        '2':'Vocabulary appears incidentally \u2014 a word is mentioned or defined in passing, with no intentional instruction.',
+        '3':'Some vocabulary is taught intentionally, but selection seems incidental or the words are not reinforced within the context of the learning.',
+        '4':'Essential academic and discipline-specific words are intentionally selected, explicitly taught, and reinforced within the lesson\u2019s context.',
+        '5':'Intentionally selected essential vocabulary is explicitly taught through systematic instruction (including word parts/morphology) and reinforced repeatedly throughout the learning.'
+      }},
+     {id:'q2', text:'VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)',
+      defs:{
+        '1':'Students are not expected to use academic vocabulary; it is not present in their speaking or writing.',
+        '2':'Students may repeat a word back, but there is no expectation that they use it in their own reasoning or work.',
+        '3':'Students use some academic vocabulary when prompted, though accuracy is inconsistent or use is limited to a few students.',
+        '4':'Students are expected to and do use newly learned academic vocabulary accurately in speaking, writing, reasoning, or discussion.',
+        '5':'Students consistently and accurately use newly learned academic vocabulary across modes \u2014 speaking, writing, reasoning, and discussion \u2014 with supports such as stems or word banks used as needed.'
+      }}
+   ]},
+  {id:'s3', color:'#C4267A', title:'Workshop Model of Instruction', canBeSkipped:true,
+   studentActions:[
+     'Students understand the purpose and use the structures of the workshop model to monitor their progress toward meeting the success criteria.',
+     'Students participate in whole-group, small-group, and independent activities that allow them to produce evidence of learning.',
+     'Students use anchor charts, manipulatives, mentor texts, and graphic organizers to support learning and problem-solving.'
+   ],
+   teacherActions:[
+     'Teachers explicitly communicate the purpose of the workshop model, establish clear routines, and support students in using structures (mini-lessons, work time, and share time) to monitor their progress toward meeting success criteria.',
+     'Teachers intentionally plan student work time for students to engage deeply with reading, writing, and problem-solving through mini-lessons, modeling, guided practice, and independent application across literacy and numeracy contexts.',
+     'Teachers integrate anchor charts, manipulatives, mentor texts, and graphic organizers into instruction, explicitly modeling how students can use these tools to support their learning and problem-solving.'
+   ],
+   qs:[
+     {id:'q1', text:'Instruction is intentionally structured so that students move from explicit teaching/modeling into guided and increasingly independent application of the learning.',
+      defs:{
+        '1':'There is no discernible structure \u2014 instruction does not move from modeling toward student application.',
+        '2':'Some explicit teaching occurs, but students never move into guided or independent application within the lesson.',
+        '3':'The lesson includes modeling and application, but the release toward independence is abrupt, uneven, or incomplete.',
+        '4':'Instruction is structured so students move from explicit teaching/modeling into guided and then increasingly independent application.',
+        '5':'The release of responsibility is deliberate and visible \u2014 students move purposefully from modeling to guided to independent application, and use the structure to monitor their own progress.'
+      }},
+     {id:'q2', text:'Students are doing the majority of the cognitive work \u2014 reading, writing, discussing, reasoning, problem-solving, creating, or applying \u2014 rather than primarily watching or listening to the teacher.',
+      defs:{
+        '1':'The teacher does nearly all of the cognitive work; students primarily watch and listen.',
+        '2':'Students do some work, but the large majority of thinking and talking is still done by the teacher.',
+        '3':'The cognitive work is split \u2014 students do a meaningful share, but teacher-led delivery still takes up much of the time.',
+        '4':'Students do the majority of the cognitive work through reading, writing, discussing, reasoning, problem-solving, or applying.',
+        '5':'Students are clearly doing the cognitive heavy lifting throughout, producing evidence of learning, while the teacher facilitates and monitors.'
+      }}
+   ]},
+  {id:'s4', color:'#9B2C7A', title:'Academic Teaming', canBeSkipped:true,
+   studentActions:[
+     'Students know the roles of all members of the team and hold themselves and each other accountable for learning.',
+     'Students engage in discourse, consider multiple perspectives, and empathetically respond to their peers to produce evidence of learning.',
+     'Students communicate their thinking through partner talk, small-group discussions, and whole-class reflections, using academic language and reasoning.',
+     'Students participate in two-way dialogues where students focus on a topic and explore it by building, challenging, and negotiating ideas.'
+   ],
+   teacherActions:[
+     'Teachers explicitly define and reinforce team member roles, ensuring that students understand their responsibilities and hold themselves and each other accountable for contributing to the team\u2019s learning.',
+     'Teachers model and reinforce the use of academic language and reasoning, guiding students in articulating their thinking through partner talk, small-group discussions, and whole-class reflections.',
+     'Teachers develop protocols and structure opportunities for students to engage in rich, student-led discussions where they build upon, challenge, and negotiate ideas to deepen understanding and produce evidence of learning.'
+   ],
+   qs:[
+     {id:'q1', text:'Students are engaged in purposeful academic dialogue in which they explain their thinking, respond to others, ask questions, and build on or challenge ideas.',
+      defs:{
+        '1':'There is no student-to-student academic dialogue; any talk is off-topic or teacher-directed only.',
+        '2':'Students talk briefly, but the exchange is procedural (\u201cwhat page?\u201d) rather than academic reasoning.',
+        '3':'Students explain their thinking to peers, but the dialogue is mostly one-way \u2014 little responding, questioning, or building on ideas.',
+        '4':'Students engage in purposeful academic dialogue \u2014 explaining thinking, responding to others, and asking questions.',
+        '5':'Students sustain rich, student-led dialogue in which they explain, question, build upon, challenge, and negotiate ideas using academic language.'
+      }},
+     {id:'q2', text:'The structure of collaborative learning requires individual accountability and meaningful contribution from all students \u2014 not simply students sitting or working together.',
+      defs:{
+        '1':'Students are grouped but there is no structure requiring contribution; some students do nothing.',
+        '2':'Students work near each other rather than with each other \u2014 no roles, and one or two students carry the work.',
+        '3':'Some structure exists (roles or a protocol), but accountability is inconsistent and participation is uneven.',
+        '4':'The structure requires individual accountability, and most students contribute meaningfully to the team\u2019s learning.',
+        '5':'Roles and protocols are clear and reinforced; every student is individually accountable and contributes meaningfully to the team\u2019s evidence of learning.'
+      }}
+   ]},
+  {id:'s5', color:'#6D3FA0', title:'Formative Assessment',
+   studentActions:[
+     'Students engage in a variety of formative assessment opportunities (e.g., discussions, written responses, problem-solving tasks, peer collaboration) to demonstrate their understanding and progress toward mastery in alignment with the summative assessment.',
+     'Students actively review and reflect on teacher feedback, using it to adjust their learning strategies, clarify misconceptions, and determine their next steps toward meeting the standard.',
+     'Students take ownership of their learning by tracking their progress, setting goals based on formative assessments, and making informed decisions about how to improve their mastery of concepts.'
+   ],
+   teacherActions:[
+     'Teachers analyze summative assessments to plan instruction that provides multiple opportunities for students to demonstrate evidence of learning through diverse assessment methods, such as discussions, written reflections, problem-solving tasks, and performance-based activities.',
+     'Teachers create structures for students to analyze their progress, set learning goals, and determine next steps based on formative assessment results, fostering a sense of ownership in the learning process.',
+     'Teachers continuously analyze student responses and performance data to modify instruction, reteach concepts as needed, and provide targeted support to help all students progress toward mastery.'
+   ],
+   qs:[
+     {id:'q1', text:'The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.',
+      defs:{
+        '1':'No evidence of learning is elicited; the teacher proceeds without checking understanding.',
+        '2':'The teacher checks in with a few volunteers or asks \u201cany questions?\u201d, which surfaces little real evidence.',
+        '3':'The teacher elicits evidence from some students, but not broadly enough to know who understands and who does not.',
+        '4':'The teacher actively elicits evidence of learning from multiple students across the class during the lesson.',
+        '5':'The teacher systematically elicits evidence from all students through varied methods, building a clear picture of who understands, who does not, and why.'
+      }},
+     {id:'q2', text:'There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.',
+      defs:{
+        '1':'Information gathered is not used; instruction proceeds unchanged regardless of student understanding.',
+        '2':'A brief acknowledgment of confusion occurs, but no real adjustment to instruction or next steps follows.',
+        '3':'Some adjustment occurs \u2014 a reteach or a hint \u2014 but it is limited or does not reach the students who need it.',
+        '4':'The teacher and/or students use the evidence to adjust instruction, strategy, grouping, pacing, or next steps.',
+        '5':'Evidence drives visible, responsive change \u2014 instruction, grouping, or pacing shifts in the moment, and students use it to set goals and determine their own next steps.'
+      }}
+   ]},
+  {id:'s6', color:'#3B6FB0', title:'Actionable Feedback',
+   studentActions:[
+     'Students use rubrics, success criteria, and exemplars to assess their own work and provide meaningful, standards-based feedback to peers.',
+     'Students actively revise and refine their work based on teacher and peer feedback, demonstrating a growth mindset and a commitment to improving their understanding.',
+     'Students use feedback to monitor their progress, make adjustments to their learning strategies, and set specific goals to achieve mastery of the learning target.'
+   ],
+   teacherActions:[
+     'Teachers provide students with rubrics, exemplars, and clear success criteria to guide self-reflection, peer feedback, and understanding of expectations for mastery in alignment with the summative assessment.',
+     'Teachers give specific, targeted, and constructive feedback that is directly tied to learning goals, ensuring students understand what steps to take for improvement.',
+     'Teachers create structured opportunities for students to immediately apply feedback by revising their work, discussing next steps, and refining their understanding.'
+   ],
+   qs:[
+     {id:'q1', text:'Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)',
+      defs:{
+        '1':'No feedback is given, or feedback is limited to marks and general praise with no connection to the learning target.',
+        '2':'Feedback is evaluative rather than instructional (\u201cgood job,\u201d \u201cnot quite\u201d) and does not point to next steps.',
+        '3':'Some feedback is specific, but it is inconsistent across students or only loosely tied to the success criteria.',
+        '4':'Students receive specific feedback tied to the learning target/success criteria that clarifies where they are and what to do next.',
+        '5':'Feedback is consistently specific, targeted, and tied to success criteria \u2014 from the teacher and from peers using rubrics and exemplars \u2014 and clearly names next steps.'
+      }},
+     {id:'q2', text:'Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)',
+      defs:{
+        '1':'Students do not act on feedback; there is no opportunity to revise during the lesson.',
+        '2':'Students receive feedback but move on without using it; any revision is limited to fixing a marked answer.',
+        '3':'Some students act on feedback when directed, but revision is not a routine part of the learning.',
+        '4':'Students use feedback to revise, refine, or improve their work or thinking during the learning process.',
+        '5':'Students routinely and independently apply feedback to revise and refine their work, monitor progress, and set goals toward mastery.'
+      }}
+   ]},
+  {id:'s7', color:'#2CA6C9', title:'Culturally & Linguistically Responsive',
+   studentActions:[
+     'Students contribute their unique backgrounds, experiences, and viewpoints to classroom discussions while actively listening to and valuing the perspectives of their peers.',
+     'Students participate in discussions that highlight diverse voices, cultures, and lived experiences, recognizing the importance of their individual contributions to the learning community.',
+     'Students make meaningful connections between academic content and their own cultural and linguistic backgrounds, applying their knowledge to real-world situations and experiences.'
+   ],
+   teacherActions:[
+     'Teachers recognize, address and engage the students\u2019 culture, linguistics, knowledge and skills to ensure that they are embedded in their daily practice.',
+     'Teachers thoughtfully choose texts, resources, and learning tasks that reflect and affirm the diverse backgrounds of students, ensuring that all voices and perspectives are represented.',
+     'Teachers embed explicit language acquisition instruction through the use of the 4 language domains in all lessons (and all content areas) for all students.',
+     'Teachers employ targeted scaffolding techniques \u2014 such as visuals, sentence frames, small-group support, and differentiated instruction \u2014 to ensure that all students, including multilingual learners and those receiving special education services, can engage meaningfully with grade-level content.'
+   ],
+   qs:[
+     {id:'q1', text:'Students\u2019 cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.',
+      defs:{
+        '1':'Students\u2019 cultural and linguistic backgrounds are absent from the materials, tasks, and discussion.',
+        '2':'Representation is superficial or decorative \u2014 present on a wall, but not part of the learning.',
+        '3':'Some texts, resources, or discussion reflect students\u2019 backgrounds, but the connection is occasional rather than intentional.',
+        '4':'Texts, resources, and tasks intentionally reflect and affirm students\u2019 diverse backgrounds, and students contribute their perspectives.',
+        '5':'Students\u2019 cultures, languages, and experiences are woven throughout the learning \u2014 students draw on them to make meaning and connect content to real-world experience.'
+      }},
+     {id:'q2', text:'Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.',
+      defs:{
+        '1':'No scaffolds or language supports are present; some students cannot access the grade-level content.',
+        '2':'Minimal supports exist, or support is provided by lowering the demand rather than scaffolding access to grade-level work.',
+        '3':'Some scaffolds are in place, but they are inconsistent or do not reach all students who need them.',
+        '4':'Targeted scaffolds and language supports allow all students, including multilingual learners and students with disabilities, to engage with grade-level content.',
+        '5':'Explicit language instruction across the four domains and well-matched scaffolds are embedded throughout, and every student engages meaningfully with grade-level content.'
+      }}
+   ]},
+];
+
+// Part 3 \u2014 Conditions for Learning. Six look-fors scored 1-5.
+const BELONGING_QS = [
+  {id:'b1', text:'Adults consistently initiate positive interactions with students \u2014 using names, greeting them, checking in, listening, and showing interest in them as individuals.',
+   defs:{
+     '1':'Adults rarely initiate interaction with students; exchanges are impersonal, transactional, or negative.',
+     '2':'A few adults greet or acknowledge students, but positive personal interaction is inconsistent and names are seldom used.',
+     '3':'Adults generally interact positively with students, though warmth and personal interest vary by adult or by student.',
+     '4':'Adults consistently greet students by name, check in, listen, and show interest in them as individuals.',
+     '5':'Every adult observed initiates warm, personal interaction \u2014 using names, greeting, checking in, listening closely \u2014 and students are visibly known as individuals.'
+   }},
+  {id:'b2', text:'Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.',
+   defs:{
+     '1':'Students avoid adults or do not seek help; requests that are made are ignored or dismissed.',
+     '2':'Only a few students approach adults, and responses are inconsistent, rushed, or perfunctory.',
+     '3':'Students approach adults when needed, and adults generally respond supportively, though attentiveness varies.',
+     '4':'Students readily approach and seek assistance from adults, and adults respond with attention, respect, and support.',
+     '5':'Students seek out adults comfortably and often, and adults consistently respond with full attention, respect, and meaningful support.'
+   }},
+  {id:'b3', text:'Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.',
+   defs:{
+     '1':'Peer interactions are exclusionary, disrespectful, or negative; students do not listen to or support one another.',
+     '2':'Some positive peer interaction occurs, but exclusion, side conversations, or dismissiveness are also evident.',
+     '3':'Students generally interact respectfully, though inclusion and encouragement are uneven across groups or spaces.',
+     '4':'Students consistently listen to, include, help, and encourage one another across classrooms and common spaces.',
+     '5':'Inclusive, respectful peer relationships are the clear norm \u2014 students actively listen, include, help, and encourage each other without adult prompting.'
+   }},
+  {id:'b4', text:'Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.',
+   defs:{
+     '1':'Expectations are unclear or absent, and adult responses to behavior are inconsistent, harsh, or undermine student dignity.',
+     '2':'Expectations exist but are unevenly communicated or enforced; adult responses are sometimes reactive or publicly corrective.',
+     '3':'Expectations and routines are generally clear and reinforced, and most adult responses are calm and respectful.',
+     '4':'Expectations and routines are clearly communicated and consistently reinforced, and adults respond calmly and respectfully.',
+     '5':'Expectations and routines are clear, predictable, and consistently reinforced; adults respond to behavior calmly and privately in ways that fully preserve student dignity.'
+   }},
+  {id:'b5', text:'Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.',
+   defs:{
+     '1':'The experience is entirely adult-directed; students have no observable voice, choice, or responsibility.',
+     '2':'Student voice is limited to token opportunities, or choice is confined to trivial matters.',
+     '3':'Students have some opportunities for voice, choice, or responsibility, but these vary by setting and are adult-controlled.',
+     '4':'Students regularly contribute ideas, make meaningful choices, and take on leadership or responsibility.',
+     '5':'Students authentically shape their learning and school experience \u2014 contributing ideas, making meaningful choices, leading, and participating in decisions that affect them.'
+   }},
+  {id:'b6', text:'When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.',
+   defs:{
+     '1':'Disengaged or isolated students go unnoticed; adults do not approach or reconnect them.',
+     '2':'Adults notice only the most visible cases, and responses tend to be corrective rather than reconnecting.',
+     '3':'Adults notice and respond to many students who disengage, though some are missed or the follow-through is brief.',
+     '4':'Adults notice when students disengage or struggle and consistently approach, support, redirect, and reconnect them.',
+     '5':'Adults proactively monitor for disconnection and reliably reconnect students with warmth and support, so no student remains isolated or disengaged.'
+   }},
+];
+
+// Overall part numbering used by the "email the teacher" prompt at the end of
+// the walk (Walk Summary): Part 1 = standards-based evidence + Target/Task
+// Alignment (merged), Part 2 = the Instructional Clarity Framework Components
+// (sub-numbered 2.1-2.6), Part 3 = the walk summary.
+// Each entry's `key` is a stable id used in saved data.
+const SHORT_TITLES = {
+  part1: 'Target / Taxonomy / Pacing',
+  s1: 'Complex Texts',
+  s2: 'Academic Vocabulary',
+  s3: 'Workshop Model',
+  s4: 'Academic Teaming',
+  s5: 'Formative Assessment',
+  s6: 'Actionable Feedback',
+  s7: 'Culturally Responsive',
+  belonging: 'Conditions for Learning',
+  summary: 'Walk Summary'
+};
+
+// Part 1 now merges the standards-based evidence questions with the
+// Target/Task Alignment component (s1) \u2014 s1 no longer gets its own PART_SEQUENCE
+// entry or accordion card; its questions render directly inside Part 1.
+const REMAINING_COMPONENTS = COMPONENTS;
+
+const PART_SEQUENCE = [
+  {key:'part1', kind:'part1merged', partNum:'Part 1', label:'Part 1: '+SHORT_TITLES.part1},
+  ...REMAINING_COMPONENTS.map((c,i)=>({key:'comp_'+c.id, kind:'component', compId:c.id, partNum:'2.'+(i+1), label:'2.'+(i+1)+': '+SHORT_TITLES[c.id], compTitle:c.title})),
+  {key:'belonging', kind:'belonging', partNum:'Part 3', label:'Part 3: '+SHORT_TITLES.belonging},
+  {key:'summary', kind:'summary', partNum:'Part 4', label:'Part 4: '+SHORT_TITLES.summary}
+];
+
+
+
+const GRADE_OPTIONS = ['PreK','K','1','2','3','4','5','6','7','8','9','10','11','12'];
+const CONTENT_OPTIONS = ['ELA','Math','Science','Social Studies','Art','Music','PE','Digital Literacy','Health','CTE','Other'];
+const CLASS_TYPE_OPTIONS = ['General Education','MAC','PREP','Ignite','AVID','ESL','Dual Language','Other'];
+
+// Shown only when the selected grade is PreK or K, just before Part 1.
+const PREK_K_ITEMS = [
+  {id:'q1', text:'1 - Question place holder'},
+  {id:'q2', text:'2 - Question place holder'},
+  {id:'q3', text:'3 - Question place holder'}
+];
+
+// Shown only when the selected class type is Dual Language, just before Part 1.
+const DUAL_LANG_ITEMS = [
+  {id:'q1', text:'Is the target language of instruction consistently used by the teacher and students and reflected in the learning tasks?'},
+  {id:'q2', text:'Is there evidence of explicit/pre-planned Oracy instruction \u2014 for example, students using academic oracy to interact with each other, or teachers using oracy strategies to support language acquisition (i.e., TPR, Concept Attainment, structured conversations, etc.)?',
+   linkText:'High Impact Reference \u2014 Oracy',
+   link:'https://drive.google.com/file/d/1tV3OclLfOszteUyshWNRWLP32bv2h0LL/view?usp=sharing'},
+  {id:'q3', text:'Is there evidence of linguistic transfer and/or contrastive/metalinguistic analysis in the Bridge space?'}
+];
+
+// Shown only when the selected class type is MAC or PREP (shared look-fors for
+// both), just before Part 1.
+const MAC_PRER_ITEMS = [
+  {id:'q1', text:'1 - Question place holder'},
+  {id:'q2', text:'2 - Question place holder'},
+  {id:'q3', text:'3 - Question place holder'}
+];
+
+const IGNITE_ITEMS = [
+  {id:'q1', text:'1 - Question place holder'},
+  {id:'q2', text:'2 - Question place holder'},
+  {id:'q3', text:'3 - Question place holder'}
+];
+
+const AVID_ITEMS = [
+  {id:'q1', text:'1 - Question place holder'},
+  {id:'q2', text:'2 - Question place holder'},
+  {id:'q3', text:'3 - Question place holder'}
+];
+
+const ESL_ITEMS = [
+  {id:'q1', text:'Is there evidence of linguistic transfer and/or contrastive/metalinguistic analysis in the Bridge space?'},
+  {id:'q2', text:'Is the classroom teacher incorporating language acquisition instruction to support students\u2019 access to the Core Curriculum (10 Key Language Acquisition Strategies)?'},
+  {id:'q3', text:'Is there evidence of intentional oracy instruction to support language acquisition and academic discourse (e.g., structured student conversations, such as the use of academic language stems; collaborative discussions; teacher modeling of language; TPR; Concept Attainment; or other language acquisition strategies)?'}
+];
+
+// Shown only when the Content area / subject is Music, Art, or CTE.
+const CONTENT_AREA_TRIGGERS = ['Music','Art','CTE'];
+const CONTENT_AREA_ITEMS = [
+  {id:'q1', text:'1 - Question place holder \u2014 specific questions to this content area'},
+  {id:'q2', text:'2 - Question place holder \u2014 specific questions to this content area'},
+  {id:'q3', text:'3 - Question place holder \u2014 specific questions to this content area'},
+  {id:'q4', text:'4 - Question place holder \u2014 specific questions to this content area'},
+  {id:'q5', text:'5 - Question place holder \u2014 specific questions to this content area'}
+];
+
+// Elementary, middle, and high schools in School District U-46 per public
+// district records. Early learning centers, alternative/options programs, and
+// other district facilities may not all be reflected here \u2014 pick "Other" and
+// type the name if a site isn't listed.
+const SCHOOL_OPTIONS = [
+  'Abbott Middle School','Bartlett Elementary School','Bartlett High School','Canton Middle School',
+  'Centennial Elementary School','Central School','Century Oaks Elementary School','Channing Elementary School',
+  'Clinton Elementary School','Coleman Elementary School','Creekside Elementary School',
+  'Dream Academy','Eastview Middle School','Elgin High School','Ellis Middle School','Fox Meadow Elementary School',
+  'Gifford Elementary School','Glenbrook Elementary School','Hanover Countryside Elementary School',
+  'Heritage Elementary School','Highland Elementary School','Hillcrest Elementary School',
+  'Hilltop Elementary School','Horizon Elementary School','Huff Elementary School',
+  'Kenyon Woods Middle School','Kimball Middle School','Larkin High School','Larsen Middle School',
+  'Liberty Elementary School','Lincoln Elementary School','Lords Park Elementary School',
+  'Lowrie Elementary School','McKinley Elementary School','Nature Ridge Elementary School',
+  "O'Neal Elementary School",'Oakhill Elementary School','Ontarioville Elementary School',
+  'Otter Creek Elementary School','Parkwood Elementary School','Prairieview Elementary School',
+  'Ridge Circle Elementary School','South Elgin High School','Streamwood High School',
+  'Sunnydale Elementary School','Tefft Middle School','Timber Trails Elementary School',
+  'Washington Elementary School','Wayne Elementary School','Willard Elementary School','Other'
+];
+
+const VISIT_TIMING_OPTIONS = ['Beginning of Lesson','Middle of the Lesson','End of the Lesson'];
+
+const PERIOD_OPTIONS = ['First','Second','Third','Fourth','Fifth','Sixth','Seventh','Eighth'];
+
+const META_FIELDS = [
+  {id:'date', label:'Date', type:'date'},
+  {id:'observer', label:'Observer(s)', type:'text'},
+  {id:'school', label:'School', type:'select', options:SCHOOL_OPTIONS, hasOther:true},
+  {id:'grade', label:'Grade level', type:'select', options:GRADE_OPTIONS},
+  {id:'content', label:'Content area / subject', type:'select', options:CONTENT_OPTIONS, hasOther:true},
+  {id:'period', label:'Period', type:'select', options:PERIOD_OPTIONS, hasOther:true},
+  {id:'classType', label:'Class type', type:'select', options:CLASS_TYPE_OPTIONS, hasOther:true},
+  {id:'visitTiming', label:'Visit occurred at the:', type:'select', options:VISIT_TIMING_OPTIONS},
+];
+
+const TOTAL_ITEMS = COMPONENTS.reduce((n,c)=>n+c.qs.length,0);
+
+const ELEM_GRADES = ['PreK','K','1','2','3','4','5'];
+const MIDDLE_GRADES = ['6','7','8'];
+const HIGH_GRADES = ['9','10','11','12'];
+
+function classifySchool(name){
+  if(!name) return null;
+  if(name==='Dream Academy' || name==='Central School') return 'high';
+  if(/High School/i.test(name)) return 'high';
+  if(/Middle School/i.test(name)) return 'middle';
+  if(/Elementary School/i.test(name)) return 'elementary';
+  return null; // "Other" or anything unrecognized \u2014 show the full grade range
+}
+
+function gradeOptionsForSchool(schoolName){
+  const type = classifySchool(schoolName);
+  if(type==='elementary') return ELEM_GRADES;
+  if(type==='middle') return MIDDLE_GRADES;
+  if(type==='high') return HIGH_GRADES;
+  return GRADE_OPTIONS;
+}
+
+// ---------------- STATE ----------------
+
+let current = null;       // the walk object currently being edited
+let saveTimer = null;
+let index = [];           // walk summaries
+
+function defaultEmailState(){
+  const finalEntry = PART_SEQUENCE[PART_SEQUENCE.length-1];
+  const inc = {};
+  PART_SEQUENCE.forEach(e=>{ inc[e.key] = false; });
+  return {
+    checkpoints: {
+      [finalEntry.key]: {inc, drafted:false, to:'', subject:'', body:''}
+    }
+  };
+}
+
+function blankWalk(){
+  const id = 'w_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const meta = {}; META_FIELDS.forEach(f=>{ meta[f.id]=''; if(f.hasOther) meta[f.id+'_other']=''; });
+  meta.topic = ''; meta.tag = '';
+  const part1 = {}; PART1.forEach(q=>part1[q.id]='');
+  const belonging = {notes:''};
+  BELONGING_QS.forEach(q=>{ belonging[q.id] = ''; });
+  const part1Sections = {};
+  PART1_SECTIONS.forEach(sec=>{
+    part1Sections[sec.id] = {notes:''};
+    if(sec.pacing) part1Sections[sec.id].pacing = '';
+    sec.qs.forEach(q=>{ part1Sections[sec.id][q.id] = ''; });
+  });
+  const components = {};
+  COMPONENTS.forEach(c=>{ components[c.id] = {ratings:c.qs.map(()=>''), notes:'', applicable: c.canBeSkipped ? false : null}; });
+  const prekK = {notes:''};
+  PREK_K_ITEMS.forEach(it=>{ prekK[it.id] = ''; });
+  const dualLang = {notes:''};
+  DUAL_LANG_ITEMS.forEach(it=>{ dualLang[it.id] = ''; });
+  const macPrer = {notes:''};
+  MAC_PRER_ITEMS.forEach(it=>{ macPrer[it.id] = ''; });
+  const ignite = {notes:''};
+  IGNITE_ITEMS.forEach(it=>{ ignite[it.id] = ''; });
+  const avid = {notes:''};
+  AVID_ITEMS.forEach(it=>{ avid[it.id] = ''; });
+  const esl = {notes:''};
+  ESL_ITEMS.forEach(it=>{ esl[it.id] = ''; });
+  const contentArea = {notes:''};
+  CONTENT_AREA_ITEMS.forEach(it=>{ contentArea[it.id] = ''; });
+  return {
+    id, createdAt: Date.now(), updatedAt: Date.now(),
+    meta, part1, part1Sections, part1Notes:'', components, belonging,
+    summaryStrengths:'', summaryGrowth:'',
+    prekK, dualLang, macPrer, ignite, avid, esl, contentArea,
+    email: defaultEmailState()
+  };
+}
+
+// ---------------- STORAGE ----------------
+
+// Browser-native storage adapter (replaces the Claude-artifact-only
+// window.storage API), so this file works as a genuinely standalone HTML
+// app in any browser -- data is saved in that browser's own localStorage,
+// scoped to whoever opens the file on their own device.
+const appStorage = {
+  async get(key){
+    const raw = localStorage.getItem('icfwalk_'+key);
+    return raw===null ? null : {key, value: raw};
+  },
+  async set(key, value){
+    localStorage.setItem('icfwalk_'+key, value);
+    return {key, value};
+  },
+  async delete(key){
+    localStorage.removeItem('icfwalk_'+key);
+    return {key, deleted:true};
+  }
+};
+
+async function loadIndex(){
+  try{
+    const res = await appStorage.get('walks-index');
+    index = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){ index = []; }
+}
+
+async function saveIndex(){
+  try{ await appStorage.set('walks-index', JSON.stringify(index)); }
+  catch(e){ console.error('index save failed', e); }
+}
+
+async function loadWalk(id){
+  try{
+    const res = await appStorage.get('walk:'+id);
+    return res && res.value ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+
+async function persistWalk(){
+  if(!current) return;
+  current.updatedAt = Date.now();
+  setSaveStatus('Saving...');
+  try{
+    await appStorage.set('walk:'+current.id, JSON.stringify(current));
+    const summary = summarize(current);
+    const i = index.findIndex(w=>w.id===current.id);
+    if(i>=0) index[i] = summary; else index.unshift(summary);
+    await saveIndex();
+    setSaveStatus('All changes saved');
+  }catch(e){
+    console.error(e);
+    setSaveStatus('Could not save \u2014 changes kept on screen only');
+  }
+}
+
+function scheduleSave(){
+  setSaveStatus('Unsaved changes');
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(persistWalk, 700);
+}
+
+function setSaveStatus(text){
+  const el = document.getElementById('save-status');
+  if(el) el.textContent = text;
+  const el2 = document.getElementById('save-status-bottom');
+  if(el2) el2.textContent = text;
+}
+
+function metaDisplay(walk, fieldId){
+  const f = META_FIELDS.find(x=>x.id===fieldId);
+  const val = walk.meta[fieldId];
+  if(f && f.hasOther && val==='Other'){
+    return walk.meta[fieldId+'_other'] || 'Other';
+  }
+  return val || '';
+}
+
+function summarize(walk){
+  const title = [metaDisplay(walk,'grade'), metaDisplay(walk,'content')].filter(Boolean).join(' \u00b7 ') || 'Untitled walk';
+  return {
+    id: walk.id, title,
+    school: metaDisplay(walk,'school') || '',
+    date: walk.meta.date || '',
+    updatedAt: walk.updatedAt
+  };
+}
+
+async function deleteWalk(id){
+  try{ await appStorage.delete('walk:'+id); }catch(e){}
+  index = index.filter(w=>w.id!==id);
+  await saveIndex();
+  renderList();
+}
+
+// ---------------- RENDER: LIST VIEW ----------------
+
+function relTime(ts){
+  if(!ts) return '';
+  const diff = Date.now()-ts, m=Math.floor(diff/60000), h=Math.floor(diff/3600000), d=Math.floor(diff/86400000);
+  if(m<1) return 'just now';
+  if(m<60) return m+'m ago';
+  if(h<24) return h+'h ago';
+  if(d<7) return d+'d ago';
+  return new Date(ts).toLocaleDateString();
+}
+
+function renderList(){
+  const list = document.getElementById('walk-list');
+  list.innerHTML = '';
+  if(index.length===0){
+    list.innerHTML = '<div class="empty-state">No walks saved yet.<br>Start one with "New walk" above.</div>';
+    return;
+  }
+  const sorted = [...index].sort((a,b)=>b.updatedAt-a.updatedAt);
+  sorted.forEach(w=>{
+    const card = document.createElement('div');
+    card.className = 'walk-card';
+    card.innerHTML =
+      '<div class="info">'+
+        '<p class="title">'+escapeHtml(w.title)+'</p>'+
+        '<p class="meta">'+[escapeHtml(w.school), escapeHtml(w.date), relTime(w.updatedAt)].filter(Boolean).join(' \u00b7 ')+'</p>'+
+      '</div>'+
+      '<button class="btn btn-sm open-btn">Open</button>'+
+      '<button class="btn btn-sm delete-btn" style="color:#B3261E">Delete</button>';
+    card.querySelector('.open-btn').addEventListener('click', ()=>openWalk(w.id));
+    card.querySelector('.delete-btn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(confirm('Delete this walk? This cannot be undone.')) deleteWalk(w.id);
+    });
+    list.appendChild(card);
+  });
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Mixes a hex color toward white to produce a light/pastel tint, used to
+// fill each Part 2 component's header bar with a soft version of its dot color.
+function lightTint(hex, amt){
+  amt = (amt===undefined) ? 0.85 : amt;
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  const nr = Math.round(r + (255-r)*amt);
+  const ng = Math.round(g + (255-g)*amt);
+  const nb = Math.round(b + (255-b)*amt);
+  return 'rgb('+nr+','+ng+','+nb+')';
+}
+
+// ---------------- RENDER: WALK VIEW ----------------
+
+function showView(name){
+  document.getElementById('view-list').style.display = name==='list' ? 'block' : 'none';
+  document.getElementById('view-walk').style.display = name==='walk' ? 'block' : 'none';
+  document.getElementById('nav-list-btn').style.display = name==='walk' ? 'inline-block' : 'none';
+}
+
+async function openWalk(id){
+  const w = await loadWalk(id);
+  if(!w){ alert('Could not load that walk.'); return; }
+  if(!w.email || !w.email.checkpoints) w.email = defaultEmailState();
+  const finalKey = PART_SEQUENCE[PART_SEQUENCE.length-1].key;
+  if(!w.email.checkpoints[finalKey]){
+    const inc = {}; PART_SEQUENCE.forEach(e=>{ inc[e.key] = false; });
+    w.email.checkpoints[finalKey] = {inc, drafted:false, to:'', subject:'', body:''};
+  }
+  if(!w.part1Sections) w.part1Sections = {};
+  PART1_SECTIONS.forEach(sec=>{
+    if(!w.part1Sections[sec.id]) w.part1Sections[sec.id] = {notes:''};
+    if(sec.pacing && w.part1Sections[sec.id].pacing===undefined) w.part1Sections[sec.id].pacing = '';
+    sec.qs.forEach(q=>{
+      if(w.part1Sections[sec.id][q.id]===undefined) w.part1Sections[sec.id][q.id] = '';
+    });
+  });
+  if(!w.belonging){ w.belonging = {notes:''}; }
+  BELONGING_QS.forEach(q=>{ if(w.belonging[q.id]===undefined) w.belonging[q.id]=''; });
+  if(!w.prekK){ const prekK={notes:''}; PREK_K_ITEMS.forEach(it=>{ prekK[it.id]=''; }); w.prekK = prekK; }
+  if(!w.dualLang){ const dualLang={notes:''}; DUAL_LANG_ITEMS.forEach(it=>{ dualLang[it.id]=''; }); w.dualLang = dualLang; }
+  if(!w.macPrer){ const macPrer={notes:''}; MAC_PRER_ITEMS.forEach(it=>{ macPrer[it.id]=''; }); w.macPrer = macPrer; }
+  if(!w.ignite){ const ignite={notes:''}; IGNITE_ITEMS.forEach(it=>{ ignite[it.id]=''; }); w.ignite = ignite; }
+  if(!w.avid){ const avid={notes:''}; AVID_ITEMS.forEach(it=>{ avid[it.id]=''; }); w.avid = avid; }
+  if(!w.esl){ const esl={notes:''}; ESL_ITEMS.forEach(it=>{ esl[it.id]=''; }); w.esl = esl; }
+  if(!w.contentArea){ const ca={notes:''}; CONTENT_AREA_ITEMS.forEach(it=>{ ca[it.id]=''; }); w.contentArea = ca; }
+  COMPONENTS.forEach(c=>{
+    if(c.canBeSkipped && w.components[c.id] && (w.components[c.id].applicable===null || w.components[c.id].applicable===undefined)){
+      w.components[c.id].applicable = false;
+    }
+  });
+  current = w;
+  renderWalkView();
+  showView('walk');
+}
+
+function startNewWalk(){
+  current = blankWalk();
+  renderWalkView();
+  showView('walk');
+}
+
+function renderWalkView(){
+  renderMetaFields();
+  renderPrekK();
+  renderDualLang();
+  renderMacPrer();
+  renderIgnite();
+  renderAvid();
+  renderEsl();
+  renderContentArea();
+  renderPart1();
+  renderAccordion();
+  renderBelonging();
+  document.getElementById('summary-strengths').value = current.summaryStrengths || '';
+  document.getElementById('summary-growth').value = current.summaryGrowth || '';
+  renderEmailCheckpoint(PART_SEQUENCE[PART_SEQUENCE.length-1], document.getElementById('email-slot-summary'));
+  updateStats();
+  setSaveStatus('All changes saved');
+}
+
+function renderMetaFields(){
+  const grid = document.getElementById('meta-fields');
+  grid.innerHTML = '';
+  META_FIELDS.forEach(f=>{
+    const wrap = document.createElement('div');
+    wrap.id = 'meta-field-wrap-'+f.id;
+    if(f.wide) wrap.style.gridColumn = '1 / -1';
+
+    if(f.type==='select'){
+      const selectId = 'meta-'+f.id;
+      const otherId = 'meta-'+f.id+'-other';
+      wrap.innerHTML =
+        '<label>'+f.label+'</label>'+
+        '<select id="'+selectId+'"><option value="">Select...</option>'+
+        f.options.map(o=>'<option value="'+escapeHtml(o)+'">'+escapeHtml(o)+'</option>').join('')+
+        '</select>'+
+        (f.hasOther ? '<input type="text" id="'+otherId+'" placeholder="Please specify..." style="margin-top:6px;display:none">' : '');
+      grid.appendChild(wrap);
+      const select = wrap.querySelector('select');
+      const otherInput = f.hasOther ? wrap.querySelector('#'+otherId) : null;
+      select.value = current.meta[f.id] || '';
+      if(otherInput){
+        otherInput.value = current.meta[f.id+'_other'] || '';
+        otherInput.style.display = current.meta[f.id]==='Other' ? 'block' : 'none';
+        otherInput.addEventListener('input', ()=>{ current.meta[f.id+'_other'] = otherInput.value; scheduleSave(); });
+      }
+      select.addEventListener('change', ()=>{
+        current.meta[f.id] = select.value;
+        if(otherInput) otherInput.style.display = select.value==='Other' ? 'block' : 'none';
+        scheduleSave();
+      });
+    } else {
+      wrap.innerHTML = '<label>'+f.label+'</label><input type="'+f.type+'" id="meta-'+f.id+'">';
+      grid.appendChild(wrap);
+      const input = wrap.querySelector('input');
+      input.value = current.meta[f.id] || '';
+      input.addEventListener('input', ()=>{ current.meta[f.id] = input.value; scheduleSave(); });
+    }
+  });
+
+  // Grade options narrow to the selected school's type (PreK\u20135 for
+  // elementary, 6\u20138 for middle, 9\u201312 for high \u2014 Dream Academy and
+  // Central School are grouped with high schools). Falls back to the full
+  // range when no school is selected yet or the school isn't recognized.
+  const schoolSelect = document.getElementById('meta-school');
+  const gradeSelect = document.getElementById('meta-grade');
+  if(schoolSelect && gradeSelect){
+    function refreshGradeOptions(){
+      const allowed = gradeOptionsForSchool(current.meta.school);
+      const prevVal = current.meta.grade || '';
+      gradeSelect.innerHTML = '<option value="">Select...</option>' +
+        allowed.map(o=>'<option value="'+escapeHtml(o)+'">'+escapeHtml(o)+'</option>').join('');
+      if(allowed.includes(prevVal)){
+        gradeSelect.value = prevVal;
+      } else {
+        gradeSelect.value = '';
+        if(current.meta.grade !== ''){ current.meta.grade = ''; scheduleSave(); }
+      }
+      updatePrekKVisibility();
+    }
+    refreshGradeOptions();
+    schoolSelect.addEventListener('change', refreshGradeOptions);
+    gradeSelect.addEventListener('change', updatePrekKVisibility);
+    gradeSelect.addEventListener('change', updatePeriodVisibility);
+  }
+  updatePeriodVisibility();
+
+  const contentSelect = document.getElementById('meta-content');
+  if(contentSelect){
+    updateContentAreaVisibility();
+    contentSelect.addEventListener('change', updateContentAreaVisibility);
+  }
+
+  const classTypeSelect = document.getElementById('meta-classType');
+  if(classTypeSelect){
+    updateDualLangVisibility();
+    updateMacPrerVisibility();
+    updateIgniteVisibility();
+    updateAvidVisibility();
+    updateEslVisibility();
+    classTypeSelect.addEventListener('change', updateDualLangVisibility);
+    classTypeSelect.addEventListener('change', updateMacPrerVisibility);
+    classTypeSelect.addEventListener('change', updateIgniteVisibility);
+    classTypeSelect.addEventListener('change', updateAvidVisibility);
+    classTypeSelect.addEventListener('change', updateEslVisibility);
+  }
+}
+
+function renderPart1(){
+  const lessonStandardInput = document.getElementById('part1-lesson-standard');
+  const tagInput = document.getElementById('part1-tag');
+  lessonStandardInput.value = current.meta.topic || '';
+  tagInput.value = current.meta.tag || '';
+  lessonStandardInput.oninput = ()=>{ current.meta.topic = lessonStandardInput.value; scheduleSave(); };
+  tagInput.oninput = ()=>{ current.meta.tag = tagInput.value; scheduleSave(); };
+
+  const block = document.getElementById('part1-block');
+  block.innerHTML = '';
+  PART1.forEach((q, qi)=>{
+    const row = document.createElement('div');
+    row.className = 'q-block';
+    const opts = [...q.options];
+    row.innerHTML = '<p class="q-text">'+(qi+1)+'. '+escapeHtml(q.text)+'</p><div class="pillrow"></div>';
+    const pillrow = row.querySelector('.pillrow');
+    opts.forEach(opt=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pill' + (opt==='N/A' ? ' na' : '');
+      btn.textContent = opt;
+      const val = opt==='N/A' ? 'na' : opt;
+      if(current.part1[q.id]===val) btn.classList.add('active');
+      btn.addEventListener('click', ()=>{
+        current.part1[q.id] = val;
+        pillrow.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+        btn.classList.add('active');
+        scheduleSave();
+      });
+      pillrow.appendChild(btn);
+    });
+
+    if(q.defs){
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'defs-toggle';
+      toggle.textContent = 'What do these mean?';
+      const box = document.createElement('div');
+      box.className = 'defs-box';
+      box.innerHTML = opts.map(opt=>{
+        const def = q.defs[opt];
+        return def ? '<div class="defs-row"><b>'+escapeHtml(opt)+':</b> '+escapeHtml(def)+'</div>' : '';
+      }).join('');
+      toggle.addEventListener('click', ()=>{
+        const open = box.classList.toggle('open');
+        toggle.textContent = open ? 'Hide definitions' : 'What do these mean?';
+      });
+      row.appendChild(toggle);
+      row.appendChild(box);
+    }
+
+    block.appendChild(row);
+  });
+
+  // The two rated sections: Adopted Curriculum and Target/Task Alignment.
+  const sectionsWrap = document.getElementById('part1-sections');
+  sectionsWrap.innerHTML = '';
+  PART1_SECTIONS.forEach(sec=>{
+    const state = current.part1Sections[sec.id];
+
+    const card = document.createElement('div');
+    card.style.cssText = 'margin-top:20px;padding-top:16px;border-top:1px solid var(--line)';
+
+    const heading = document.createElement('p');
+    heading.style.cssText = 'font-weight:700;color:var(--navy);font-size:14px;margin:0 0 10px';
+    heading.textContent = sec.title;
+    card.appendChild(heading);
+
+    // Look-fors: student and teacher actions, straight from the Strategic Plan.
+    const lookForToggle = document.createElement('button');
+    lookForToggle.type = 'button';
+    lookForToggle.className = 'btn btn-sm';
+    lookForToggle.style.marginBottom = '10px';
+    lookForToggle.textContent = 'Look Fors';
+    const lookForBox = document.createElement('div');
+    lookForBox.style.cssText = 'display:none;background:'+lightTint(sec.color, 0.88)+';border-radius:8px;padding:12px 14px;margin-bottom:14px';
+    lookForBox.innerHTML =
+      '<div style="font-weight:700;font-size:12.5px;color:var(--gray);margin-bottom:5px">Student Actions &mdash; look for</div>'+
+      '<ul style="margin:0 0 10px;padding-left:18px;font-size:13px">'+
+        sec.studentActions.map(a=>'<li style="margin-bottom:4px">'+escapeHtml(a)+'</li>').join('')+
+      '</ul>'+
+      '<div style="font-weight:700;font-size:12.5px;color:var(--gray);margin-bottom:5px">Teacher Actions &mdash; look for</div>'+
+      '<ul style="margin:0;padding-left:18px;font-size:13px">'+
+        sec.teacherActions.map(a=>'<li style="margin-bottom:4px">'+escapeHtml(a)+'</li>').join('')+
+      '</ul>';
+    lookForToggle.addEventListener('click', ()=>{
+      const open = lookForBox.style.display !== 'none';
+      lookForBox.style.display = open ? 'none' : 'block';
+      lookForToggle.textContent = open ? 'Look Fors' : 'Hide Look Fors';
+      lookForToggle.classList.toggle('btn-primary', !open);
+    });
+    card.appendChild(lookForToggle);
+    card.appendChild(lookForBox);
+
+    if(sec.pacing){
+      const pRow = document.createElement('div');
+      pRow.className = 'q-block';
+      pRow.innerHTML = '<p class="q-text">'+escapeHtml(sec.pacing.label)+'</p><div class="pillrow"></div>';
+      const pPills = pRow.querySelector('.pillrow');
+      sec.pacing.options.forEach(opt=>{
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pill';
+        btn.textContent = opt.label;
+        if(state.pacing===opt.value) btn.classList.add('active');
+        btn.addEventListener('click', ()=>{
+          state.pacing = opt.value;
+          pPills.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+          btn.classList.add('active');
+          scheduleSave();
+        });
+        pPills.appendChild(btn);
+      });
+      const pToggle = document.createElement('button');
+      pToggle.type = 'button';
+      pToggle.className = 'defs-toggle';
+      pToggle.textContent = 'What do these mean?';
+      const pBox = document.createElement('div');
+      pBox.className = 'defs-box';
+      pBox.innerHTML = sec.pacing.options.map(o=>
+        '<div class="defs-row"><b>'+escapeHtml(o.label)+':</b> '+escapeHtml(o.def)+'</div>'
+      ).join('');
+      pToggle.addEventListener('click', ()=>{
+        const open = pBox.classList.toggle('open');
+        pToggle.textContent = open ? 'Hide definitions' : 'What do these mean?';
+      });
+      pRow.appendChild(pToggle);
+      pRow.appendChild(pBox);
+      card.appendChild(pRow);
+    }
+
+    sec.qs.forEach((q, qi)=>{
+      const row = document.createElement('div');
+      row.className = 'q-block';
+      row.innerHTML = '<p class="q-text">'+(qi+1)+'. '+escapeHtml(q.text)+'</p><div class="pillrow"></div>';
+      const pillrow = row.querySelector('.pillrow');
+      ['1','2','3','4','5'].forEach(opt=>{
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pill';
+        btn.textContent = opt;
+        if(state[q.id]===opt) btn.classList.add('active');
+        btn.addEventListener('click', ()=>{
+          state[q.id] = opt;
+          pillrow.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+          btn.classList.add('active');
+          scheduleSave();
+        });
+        pillrow.appendChild(btn);
+      });
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'defs-toggle';
+      toggle.textContent = 'What do these mean?';
+      const box = document.createElement('div');
+      box.className = 'defs-box';
+      box.innerHTML = ['1','2','3','4','5'].map(opt=>
+        '<div class="defs-row"><b>'+opt+':</b> '+escapeHtml(q.defs[opt])+'</div>'
+      ).join('');
+      toggle.addEventListener('click', ()=>{
+        const open = box.classList.toggle('open');
+        toggle.textContent = open ? 'Hide definitions' : 'What do these mean?';
+      });
+      row.appendChild(toggle);
+      row.appendChild(box);
+
+      card.appendChild(row);
+    });
+
+    const notesLabel = document.createElement('div');
+    notesLabel.className = 'notes-label';
+    notesLabel.style.marginTop = '12px';
+    notesLabel.textContent = 'Evidence / look-fors noted';
+    card.appendChild(notesLabel);
+    const notes = document.createElement('textarea');
+    notes.placeholder = 'Notes for this section...';
+    notes.value = state.notes || '';
+    notes.oninput = ()=>{ state.notes = notes.value; scheduleSave(); };
+    card.appendChild(notes);
+
+    sectionsWrap.appendChild(card);
+  });
+}
+
+// ---------------- EMAIL-THE-TEACHER (PART 1 / PART 2 / PART 3) ----------------
+
+function p1AnswerLabel(val){
+  if(val==='' || val===undefined) return null;
+  if(val==='na') return 'N/A';
+  return val;
+}
+
+function buildPart1EmailLines(w){
+  const notes = [];
+  PART1_SECTIONS.forEach(sec=>{
+    const st = w.part1Sections && w.part1Sections[sec.id];
+    if(st && st.notes) notes.push(sec.title + ' notes: ' + st.notes);
+  });
+  return {bullets: [], notes: notes.join('\n')};
+}
+
+function buildComponentEmailLines(w, compId, compTitle){
+  const cs = w.components[compId];
+  const rated = cs.ratings.filter(v=>v!=='' && v!=='na').map(Number);
+  const avg = rated.length ? (rated.reduce((a,b)=>a+b,0)/rated.length).toFixed(1) : null;
+  return {title: compTitle, avg, notes: cs.notes || '', notApplicable: cs.applicable===false};
+}
+
+function buildSummaryEmailLines(w){
+  return {strengths: w.summaryStrengths || '', growth: w.summaryGrowth || ''};
+}
+
+// Builds the text for one PART_SEQUENCE entry, used when that part is checked
+// for inclusion in a draft.
+function partSectionText(entry, w){
+  if(entry.kind==='part1merged'){
+    const p1 = buildPart1EmailLines(w);
+    const lines = [entry.partNum + ' \u2014 Target / Taxonomy / Pacing:'];
+    if(p1.notes) lines.push(p1.notes);
+    else lines.push('(No notes recorded for this part.)');
+    return lines;
+  }
+  if(entry.kind==='component'){
+    const r = buildComponentEmailLines(w, entry.compId, entry.compTitle);
+    const lines = [entry.partNum + ' \u2014 ' + r.title + ':'];
+    if(r.notApplicable){
+      lines.push('\u2022 Not part of this lesson at the time of the visit.');
+    }
+    if(r.notes) lines.push('Notes: ' + r.notes);
+    else if(!r.notApplicable) lines.push('(No notes recorded for this component.)');
+    return lines;
+  }
+  if(entry.kind==='belonging'){
+    const st = w.belonging || {};
+    const lines = [entry.partNum + ' \u2014 Conditions for Learning:'];
+    if(st.notes) lines.push('Notes: ' + st.notes);
+    else lines.push('(No notes recorded for this part.)');
+    return lines;
+  }
+  if(entry.kind==='summary'){
+    const s = buildSummaryEmailLines(w);
+    const lines = [entry.label + ':'];
+    if(s.strengths) lines.push('Strengths: ' + s.strengths);
+    if(s.growth) lines.push('Growth areas: ' + s.growth);
+    if(!s.strengths && !s.growth) lines.push('(No summary notes recorded yet.)');
+    return lines;
+  }
+  return [];
+}
+
+// includedKeys: array of PART_SEQUENCE keys to include, in any order.
+function generateEmailDraftFor(includedKeys){
+  const w = current;
+  const includedSet = new Set(includedKeys);
+  const gradeContent = [metaDisplay(w,'grade'), metaDisplay(w,'content')].filter(Boolean).join(' ');
+  const dateBit = w.meta.date ? ' on ' + w.meta.date : '';
+
+  let body = 'I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit';
+  body += (gradeContent ? ' in ' + gradeContent : '') + dateBit + '.\n';
+
+  let anyIncluded = false;
+  PART_SEQUENCE.forEach(entry=>{
+    if(!includedSet.has(entry.key)) return;
+    anyIncluded = true;
+    body += '\n' + partSectionText(entry, w).join('\n') + '\n';
+  });
+  if(!anyIncluded){
+    body += '\n(No sections were selected \u2014 check at least one part above, then update the draft.)\n';
+  }
+
+  body += '\nStop by whenever you can, as I would love to talk through this with you \u2014 thanks again for what you do in your classroom for our students.\n\n';
+  body += (w.meta.observer ? w.meta.observer : '[Your name]');
+
+  const includedLabels = PART_SEQUENCE.filter(e=>includedSet.has(e.key)).map(e=>e.label);
+  const subject = 'Quick note from today\u2019s walk-through' + (gradeContent ? ' \u2014 ' + gradeContent : '') +
+    (includedLabels.length ? ' (' + includedLabels.join(', ') + ')' : '');
+
+  return {subject, body};
+}
+
+// Renders one "Would you like to email the teacher..." prompt into `container`
+// for the given PART_SEQUENCE entry `cp`. Part 1 (the very first entry) gets a
+// simple Yes/No since there's nothing earlier to combine it with; every later
+// checkpoint gets a checkbox per part completed so far (cumulative).
+function renderEmailCheckpoint(cp, container){
+  if(!container) return;
+  container.innerHTML = '';
+  const cpIndex = PART_SEQUENCE.findIndex(e=>e.key===cp.key);
+  const wrap = document.createElement('div');
+  wrap.className = 'email-prompt';
+
+  // ---- cumulative checkboxes, covering every part up through this one ----
+  const state = current.email.checkpoints[cp.key];
+  const available = PART_SEQUENCE.slice(0, cpIndex+1);
+  const checkboxesHtml = available.map(e=>
+    '<label class="checkrow"><input type="checkbox" data-part="'+e.key+'"> '+e.label+'</label>'
+  ).join('');
+
+  wrap.innerHTML =
+    '<p class="email-q">Would you like to email the teacher about today\u2019s responses so far?</p>'+
+    '<div class="pillrow" style="margin-bottom:10px">'+checkboxesHtml+'</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:6px">'+
+      '<button class="btn btn-sm btn-primary e-draft">Draft email</button>'+
+      '<button class="btn btn-sm e-clear">Clear draft</button>'+
+    '</div>'+
+    '<div class="email-box-inner" style="display:none">'+
+      '<label style="margin-top:12px">To (teacher\u2019s email &mdash; optional)</label>'+
+      '<input type="text" class="e-to" placeholder="teacher@u46.org">'+
+      '<label style="margin-top:10px">Subject</label>'+
+      '<input type="text" class="e-subject">'+
+      '<label style="margin-top:10px">Message</label>'+
+      '<textarea class="e-body" style="min-height:220px"></textarea>'+
+      '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+        '<button class="btn btn-sm e-regen">Update draft from checked boxes</button>'+
+        '<button class="btn btn-sm e-copy">Copy text</button>'+
+        '<button class="btn btn-sm btn-primary e-open">Open in email app</button>'+
+      '</div>'+
+      '<p class="muted" style="font-size:11.5px;margin:8px 0 0">Editable &mdash; review and personalize before sending. Nothing is sent automatically.</p>'+
+    '</div>';
+  container.appendChild(wrap);
+
+  const checkboxes = Array.from(wrap.querySelectorAll('[data-part]'));
+  const box = wrap.querySelector('.email-box-inner');
+  const toInput = wrap.querySelector('.e-to');
+  const subjInput = wrap.querySelector('.e-subject');
+  const bodyInput = wrap.querySelector('.e-body');
+
+  checkboxes.forEach(cb=>{
+    const key = cb.dataset.part;
+    cb.checked = state.inc[key] === true;
+    cb.onchange = ()=>{ state.inc[key] = cb.checked; scheduleSave(); };
+  });
+
+  toInput.value = state.to || '';
+  subjInput.value = state.subject || '';
+  bodyInput.value = state.body || '';
+  toInput.oninput = ()=>{ state.to = toInput.value; scheduleSave(); };
+  subjInput.oninput = ()=>{ state.subject = subjInput.value; scheduleSave(); };
+  bodyInput.oninput = ()=>{ state.body = bodyInput.value; scheduleSave(); };
+
+  box.style.display = state.drafted ? 'block' : 'none';
+
+  function draftNow(){
+    const included = checkboxes.filter(cb=>cb.checked).map(cb=>cb.dataset.part);
+    const d = generateEmailDraftFor(included);
+    state.subject = d.subject; state.body = d.body; state.drafted = true;
+    subjInput.value = d.subject; bodyInput.value = d.body;
+    box.style.display = 'block';
+    scheduleSave();
+  }
+  wrap.querySelector('.e-draft').onclick = draftNow;
+  wrap.querySelector('.e-regen').onclick = draftNow;
+  wrap.querySelector('.e-clear').onclick = ()=>{
+    state.drafted = false; state.subject=''; state.body='';
+    subjInput.value=''; bodyInput.value=''; box.style.display='none';
+    scheduleSave();
+  };
+  wrap.querySelector('.e-copy').onclick = ()=>copyEmailText(subjInput, bodyInput, wrap.querySelector('.e-copy'));
+  wrap.querySelector('.e-open').onclick = ()=>openMailto(toInput, subjInput, bodyInput);
+}
+
+async function copyEmailText(subjInput, bodyInput, btn){
+  try{
+    await navigator.clipboard.writeText('Subject: ' + subjInput.value + '\n\n' + bodyInput.value);
+    const old = btn.textContent; btn.textContent = 'Copied!';
+    setTimeout(()=>{ btn.textContent = old; }, 1400);
+  }catch(e){ alert('Could not copy automatically \u2014 select and copy the text manually.'); }
+}
+
+function openMailto(toInput, subjInput, bodyInput){
+  const to = encodeURIComponent(toInput.value||'');
+  const subj = encodeURIComponent(subjInput.value||'');
+  const bod = encodeURIComponent(bodyInput.value||'');
+  window.location.href = 'mailto:'+to+'?subject='+subj+'&body='+bod;
+}
+
+function updatePrekKVisibility(){
+  const card = document.getElementById('prek-k-card');
+  if(!card) return;
+  const g = current.meta.grade;
+  card.style.display = (g==='PreK' || g==='K') ? 'block' : 'none';
+}
+
+const PERIOD_ELIGIBLE_GRADES = ['6','7','8','9','10','11','12'];
+
+function updatePeriodVisibility(){
+  const wrap = document.getElementById('meta-field-wrap-period');
+  if(!wrap) return;
+  const show = PERIOD_ELIGIBLE_GRADES.includes(current.meta.grade);
+  wrap.style.display = show ? '' : 'none';
+  if(!show && current.meta.period){
+    current.meta.period = '';
+    current.meta.period_other = '';
+    scheduleSave();
+  }
+}
+
+function renderPrekK(){
+  const container = document.getElementById('prek-k-items');
+  if(!container) return;
+  container.innerHTML = '';
+  PREK_K_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.prekK[item.id]==='yes');
+      noBtn.classList.toggle('active', current.prekK[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.prekK[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.prekK[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+
+  const notes = document.getElementById('prek-k-notes');
+  notes.value = current.prekK.notes || '';
+  notes.oninput = ()=>{ current.prekK.notes = notes.value; scheduleSave(); };
+
+  updatePrekKVisibility();
+}
+
+function updateDualLangVisibility(){
+  const card = document.getElementById('dual-lang-card');
+  if(!card) return;
+  card.style.display = (current.meta.classType==='Dual Language') ? 'block' : 'none';
+}
+
+function renderDualLang(){
+  const container = document.getElementById('dual-lang-items');
+  if(!container) return;
+  container.innerHTML = '';
+  DUAL_LANG_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    const linkHtml = item.link
+      ? '<br><a href="'+escapeHtml(item.link)+'" target="_blank" rel="noopener" style="color:var(--blue);font-size:12.5px">'+escapeHtml(item.linkText || 'Reference')+'</a>'
+      : '';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+linkHtml+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.dualLang[item.id]==='yes');
+      noBtn.classList.toggle('active', current.dualLang[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.dualLang[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.dualLang[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+
+  const notes = document.getElementById('dual-lang-notes');
+  notes.value = current.dualLang.notes || '';
+  notes.oninput = ()=>{ current.dualLang.notes = notes.value; scheduleSave(); };
+
+  updateDualLangVisibility();
+}
+
+function updateMacPrerVisibility(){
+  const card = document.getElementById('mac-prer-card');
+  if(!card) return;
+  const ct = current.meta.classType;
+  card.style.display = (ct==='MAC' || ct==='PREP') ? 'block' : 'none';
+}
+
+function renderMacPrer(){
+  const container = document.getElementById('mac-prer-items');
+  if(!container) return;
+  container.innerHTML = '';
+  if(MAC_PRER_ITEMS.length===0){
+    container.innerHTML = '<p class="acc-blurb" style="margin:0">No look-fors defined yet for this card &mdash; add items to MAC_PRER_ITEMS.</p>';
+  }
+  MAC_PRER_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.macPrer[item.id]==='yes');
+      noBtn.classList.toggle('active', current.macPrer[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.macPrer[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.macPrer[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+
+  const notes = document.getElementById('mac-prer-notes');
+  notes.value = current.macPrer.notes || '';
+  notes.oninput = ()=>{ current.macPrer.notes = notes.value; scheduleSave(); };
+
+  updateMacPrerVisibility();
+}
+
+function updateIgniteVisibility(){
+  const card = document.getElementById('ignite-card');
+  if(!card) return;
+  card.style.display = (current.meta.classType==='Ignite') ? 'block' : 'none';
+}
+
+function renderIgnite(){
+  const container = document.getElementById('ignite-items');
+  if(!container) return;
+  container.innerHTML = '';
+  if(IGNITE_ITEMS.length===0){
+    container.innerHTML = '<p class="acc-blurb" style="margin:0">No look-fors defined yet for this card &mdash; add items to IGNITE_ITEMS.</p>';
+  }
+  IGNITE_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.ignite[item.id]==='yes');
+      noBtn.classList.toggle('active', current.ignite[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.ignite[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.ignite[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+
+  const notes = document.getElementById('ignite-notes');
+  notes.value = current.ignite.notes || '';
+  notes.oninput = ()=>{ current.ignite.notes = notes.value; scheduleSave(); };
+
+  updateIgniteVisibility();
+}
+
+function updateAvidVisibility(){
+  const card = document.getElementById('avid-card');
+  if(!card) return;
+  card.style.display = (current.meta.classType==='AVID') ? 'block' : 'none';
+}
+
+function renderAvid(){
+  const container = document.getElementById('avid-items');
+  if(!container) return;
+  container.innerHTML = '';
+  if(AVID_ITEMS.length===0){
+    container.innerHTML = '<p class="acc-blurb" style="margin:0">No look-fors defined yet for this card &mdash; add items to AVID_ITEMS.</p>';
+  }
+  AVID_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.avid[item.id]==='yes');
+      noBtn.classList.toggle('active', current.avid[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.avid[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.avid[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+
+  const notes = document.getElementById('avid-notes');
+  notes.value = current.avid.notes || '';
+  notes.oninput = ()=>{ current.avid.notes = notes.value; scheduleSave(); };
+
+  updateAvidVisibility();
+}
+
+function updateEslVisibility(){
+  const card = document.getElementById('esl-card');
+  if(!card) return;
+  card.style.display = (current.meta.classType==='ESL') ? 'block' : 'none';
+}
+
+function updateContentAreaVisibility(){
+  const card = document.getElementById('contentarea-card');
+  if(!card) return;
+  const ca = current.meta.content;
+  const show = CONTENT_AREA_TRIGGERS.indexOf(ca) !== -1;
+  card.style.display = show ? 'block' : 'none';
+  if(show){
+    document.getElementById('contentarea-title').textContent = ca + ' Classroom';
+    document.getElementById('contentarea-sub').textContent =
+      'Shown automatically because the content area selected is ' + ca + '.';
+  }
+}
+
+function renderContentArea(){
+  const container = document.getElementById('contentarea-items');
+  if(!container) return;
+  container.innerHTML = '';
+  CONTENT_AREA_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.contentArea[item.id]==='yes');
+      noBtn.classList.toggle('active', current.contentArea[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.contentArea[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.contentArea[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+  const notes = document.getElementById('contentarea-notes');
+  notes.value = current.contentArea.notes || '';
+  notes.oninput = ()=>{ current.contentArea.notes = notes.value; scheduleSave(); };
+  updateContentAreaVisibility();
+}
+
+function renderEsl(){
+  const container = document.getElementById('esl-items');
+  if(!container) return;
+  container.innerHTML = '';
+  if(ESL_ITEMS.length===0){
+    container.innerHTML = '<p class="acc-blurb" style="margin:0">No look-fors defined yet for this card &mdash; add items to ESL_ITEMS.</p>';
+  }
+  ESL_ITEMS.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'yn-row';
+    const linkHtml = item.link
+      ? '<br><a href="'+escapeHtml(item.link)+'" target="_blank" rel="noopener" style="color:var(--blue);font-size:12.5px">'+escapeHtml(item.linkText || 'Reference')+'</a>'
+      : '';
+    row.innerHTML =
+      '<span class="yn-text">'+escapeHtml(item.text)+linkHtml+'</span>'+
+      '<div class="pillrow"><button type="button" class="pill" data-v="yes">Yes</button><button type="button" class="pill" data-v="no">No</button></div>';
+    const yesBtn = row.querySelector('[data-v="yes"]');
+    const noBtn = row.querySelector('[data-v="no"]');
+    function paint(){
+      yesBtn.classList.toggle('active', current.esl[item.id]==='yes');
+      noBtn.classList.toggle('active', current.esl[item.id]==='no');
+    }
+    yesBtn.onclick = ()=>{ current.esl[item.id]='yes'; paint(); scheduleSave(); };
+    noBtn.onclick = ()=>{ current.esl[item.id]='no'; paint(); scheduleSave(); };
+    paint();
+    container.appendChild(row);
+  });
+
+  const notes = document.getElementById('esl-notes');
+  notes.value = current.esl.notes || '';
+  notes.oninput = ()=>{ current.esl.notes = notes.value; scheduleSave(); };
+
+  updateEslVisibility();
+}
+
+function renderBelonging(){
+  const block = document.getElementById('belonging-block');
+  if(!block) return;
+  block.innerHTML = '';
+  const state = current.belonging;
+  BELONGING_QS.forEach((q, qi)=>{
+    const row = document.createElement('div');
+    row.className = 'q-block';
+    row.innerHTML = '<p class="q-text">'+(qi+1)+'. '+escapeHtml(q.text)+'</p><div class="pillrow"></div>';
+    const pillrow = row.querySelector('.pillrow');
+    ['1','2','3','4','5'].forEach(opt=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pill';
+      btn.textContent = opt;
+      if(state[q.id]===opt) btn.classList.add('active');
+      btn.addEventListener('click', ()=>{
+        state[q.id] = opt;
+        pillrow.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+        btn.classList.add('active');
+        scheduleSave();
+      });
+      pillrow.appendChild(btn);
+    });
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'defs-toggle';
+    toggle.textContent = 'What do these mean?';
+    const box = document.createElement('div');
+    box.className = 'defs-box';
+    box.innerHTML = ['1','2','3','4','5'].map(opt=>
+      '<div class="defs-row"><b>'+opt+':</b> '+escapeHtml(q.defs[opt])+'</div>'
+    ).join('');
+    toggle.addEventListener('click', ()=>{
+      const open = box.classList.toggle('open');
+      toggle.textContent = open ? 'Hide definitions' : 'What do these mean?';
+    });
+    row.appendChild(toggle);
+    row.appendChild(box);
+    block.appendChild(row);
+  });
+  const notes = document.getElementById('belonging-notes');
+  notes.value = state.notes || '';
+  notes.oninput = ()=>{ state.notes = notes.value; scheduleSave(); };
+}
+
+function renderAccordion(){
+  const acc = document.getElementById('accordion');
+  acc.innerHTML = '';
+  REMAINING_COMPONENTS.forEach(sec=>{
+    const compState = current.components[sec.id];
+    const partEntry = PART_SEQUENCE.find(e=>e.key==='comp_'+sec.id);
+    const card = document.createElement('div');
+    card.className = 'acc';
+
+    const head = document.createElement('div');
+    head.className = 'acc-head';
+    head.style.background = lightTint(sec.color, 0.85);
+    head.innerHTML =
+      '<i class="chev">&#8250;</i>'+
+      '<span class="acc-dot" style="background:'+sec.color+'"></span>'+
+      '<span class="acc-title">'+partEntry.partNum+' &middot; '+escapeHtml(sec.title)+'</span>'+
+      '<span class="acc-count" id="count-'+sec.id+'"></span>';
+
+    const body = document.createElement('div');
+    body.className = 'acc-body';
+    body.innerHTML = '';
+    const lookForToggle = document.createElement('button');
+    lookForToggle.type = 'button';
+    lookForToggle.className = 'btn btn-sm';
+    lookForToggle.style.marginBottom = '10px';
+    lookForToggle.textContent = 'Look Fors';
+    const lookForBox = document.createElement('div');
+    lookForBox.style.cssText = 'display:none;background:'+lightTint(sec.color, 0.88)+';border-radius:8px;padding:12px 14px;margin-bottom:14px';
+    lookForBox.innerHTML =
+      '<div style="font-weight:700;font-size:12.5px;color:var(--gray);margin-bottom:5px">Student Actions &mdash; look for</div>'+
+      '<ul style="margin:0 0 10px;padding-left:18px;font-size:13px">'+
+        sec.studentActions.map(a=>'<li style="margin-bottom:4px">'+escapeHtml(a)+'</li>').join('')+
+      '</ul>'+
+      '<div style="font-weight:700;font-size:12.5px;color:var(--gray);margin-bottom:5px">Teacher Actions &mdash; look for</div>'+
+      '<ul style="margin:0;padding-left:18px;font-size:13px">'+
+        sec.teacherActions.map(a=>'<li style="margin-bottom:4px">'+escapeHtml(a)+'</li>').join('')+
+      '</ul>';
+    lookForToggle.addEventListener('click', ()=>{
+      const open = lookForBox.style.display !== 'none';
+      lookForBox.style.display = open ? 'none' : 'block';
+      lookForToggle.textContent = open ? 'Look Fors' : 'Hide Look Fors';
+      lookForToggle.classList.toggle('btn-primary', !open);
+    });
+    body.appendChild(lookForToggle);
+    body.appendChild(lookForBox);
+
+    const qWrap = document.createElement('div');
+
+    function renderQuestions(){
+      qWrap.innerHTML = '';
+      sec.qs.forEach((q, qi)=>{
+        const row = document.createElement('div');
+        row.className = 'q-block';
+        row.innerHTML = '<p class="q-text">'+(qi+1)+'. '+escapeHtml(q.text)+'</p><div class="pillrow"></div>';
+        const pillrow = row.querySelector('.pillrow');
+        ['1','2','3','4','5'].forEach(opt=>{
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'pill';
+          btn.textContent = opt;
+          const val = opt;
+          if(compState.ratings[qi]===val) btn.classList.add('active');
+          btn.addEventListener('click', ()=>{
+            compState.ratings[qi] = val;
+            pillrow.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+            btn.classList.add('active');
+            refreshCompCount(sec, compState);
+            updateStats();
+            scheduleSave();
+          });
+          pillrow.appendChild(btn);
+        });
+
+        const defs = q.defs;
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'defs-toggle';
+        toggle.textContent = 'What do these mean?';
+        const box = document.createElement('div');
+        box.className = 'defs-box';
+        box.innerHTML = ['1','2','3','4','5'].map(opt=>
+          '<div class="defs-row"><b>'+opt+':</b> '+escapeHtml(defs[opt])+'</div>'
+        ).join('');
+        toggle.addEventListener('click', ()=>{
+          const open = box.classList.toggle('open');
+          toggle.textContent = open ? 'Hide definitions' : 'What do these mean?';
+        });
+        row.appendChild(toggle);
+        row.appendChild(box);
+
+        qWrap.appendChild(row);
+      });
+    }
+    renderQuestions();
+
+    if(sec.canBeSkipped){
+      const applicWrap = document.createElement('div');
+      applicWrap.style.marginBottom = '14px';
+      applicWrap.innerHTML =
+        '<p class="applic-q">Would this part of the Instructional Clarity Framework be present during the observation time?</p>'+
+        '<div class="pillrow"></div>';
+      const applicRow = applicWrap.querySelector('.pillrow');
+      const yesBtn = document.createElement('button');
+      yesBtn.type = 'button'; yesBtn.className = 'pill'; yesBtn.textContent = 'Yes';
+      const noBtn = document.createElement('button');
+      noBtn.type = 'button'; noBtn.className = 'pill'; noBtn.textContent = 'No';
+      const note = document.createElement('p');
+      note.className = 'muted';
+      note.style.cssText = 'font-size:13px;margin:8px 0 0;display:none';
+      note.textContent = 'At the time of the classroom observation, this would not have been a part of the class period or student experience. The items below are left blank.';
+
+      function paintApplic(){
+        yesBtn.classList.toggle('active', compState.applicable===true);
+        noBtn.classList.toggle('active', compState.applicable===false);
+        note.style.display = compState.applicable===false ? 'block' : 'none';
+        qWrap.style.display = compState.applicable===false ? 'none' : 'block';
+      }
+      yesBtn.onclick = ()=>{
+        compState.applicable = true;
+        paintApplic();
+        refreshCompCount(sec, compState);
+        scheduleSave();
+      };
+      noBtn.onclick = ()=>{
+        compState.applicable = false;
+        compState.ratings = compState.ratings.map(()=>'');
+        renderQuestions();
+        paintApplic();
+        refreshCompCount(sec, compState);
+        scheduleSave();
+      };
+      applicRow.appendChild(yesBtn);
+      applicRow.appendChild(noBtn);
+      applicWrap.appendChild(note);
+      body.appendChild(applicWrap);
+      paintApplic();
+    }
+
+    body.appendChild(qWrap);
+
+    const notesLabel = document.createElement('div');
+    notesLabel.className = 'notes-label';
+    notesLabel.style.marginTop = '14px';
+    notesLabel.textContent = 'Notes';
+    body.appendChild(notesLabel);
+    const notes = document.createElement('textarea');
+    notes.placeholder = 'Notes for this component...';
+    notes.value = compState.notes || '';
+    notes.oninput = ()=>{ compState.notes = notes.value; scheduleSave(); };
+    body.appendChild(notes);
+
+    head.addEventListener('click', ()=>{
+      const open = body.classList.contains('open');
+      body.classList.toggle('open', !open);
+      head.querySelector('.chev').classList.toggle('open', !open);
+    });
+
+    card.appendChild(head);
+    card.appendChild(body);
+    acc.appendChild(card);
+
+    refreshCompCount(sec, compState);
+  });
+}
+
+function refreshCompCount(sec, compState){
+  const el = document.getElementById('count-'+sec.id);
+  if(!el) return;
+  if(sec.canBeSkipped && compState.applicable===false){
+    el.textContent = 'Not part of this lesson';
+    return;
+  }
+  const rated = compState.ratings.filter(v=>v!=='').length;
+  el.textContent = rated+'/'+sec.qs.length+' rated';
+}
+
+function updateStats(){
+  COMPONENTS.forEach(sec=>{
+    const compState = current.components[sec.id];
+    refreshCompCount(sec, compState);
+  });
+}
+
+// ---------------- EXPORT ----------------
+
+function buildSummaryText(){
+  const w = current;
+  const lines = [];
+  lines.push('ICFWALK SUMMARY');
+  lines.push('================');
+  META_FIELDS.forEach(f=>{ const v = metaDisplay(w,f.id); if(v) lines.push(f.label+': '+v); });
+  if(w.meta.grade==='PreK' || w.meta.grade==='K'){
+    lines.push('');
+    lines.push('PREK\u2013K CLASSROOM');
+    PREK_K_ITEMS.forEach(item=>{
+      const v = w.prekK[item.id];
+      lines.push('- '+item.text+'  ['+(v===''?'not answered':v)+']');
+    });
+    if(w.prekK.notes) lines.push('Notes: '+w.prekK.notes);
+  }
+  if(w.meta.classType==='Dual Language'){
+    lines.push('');
+    lines.push('DUAL LANGUAGE CLASSROOM');
+    DUAL_LANG_ITEMS.forEach(item=>{
+      const v = w.dualLang[item.id];
+      lines.push('- '+item.text+'  ['+(v===''?'not answered':v)+']');
+    });
+    if(w.dualLang.notes) lines.push('Notes: '+w.dualLang.notes);
+  }
+  if(w.meta.classType==='MAC' || w.meta.classType==='PREP'){
+    lines.push('');
+    lines.push('MAC / PREP CLASSROOM');
+    MAC_PRER_ITEMS.forEach(item=>{
+      const v = w.macPrer[item.id];
+      lines.push('- '+item.text+'  ['+(v===''?'not answered':v)+']');
+    });
+    if(w.macPrer.notes) lines.push('Notes: '+w.macPrer.notes);
+  }
+  if(w.meta.classType==='Ignite'){
+    lines.push('');
+    lines.push('IGNITE CLASSROOM');
+    IGNITE_ITEMS.forEach(item=>{
+      const v = w.ignite[item.id];
+      lines.push('- '+item.text+'  ['+(v===''?'not answered':v)+']');
+    });
+    if(w.ignite.notes) lines.push('Notes: '+w.ignite.notes);
+  }
+  if(w.meta.classType==='AVID'){
+    lines.push('');
+    lines.push('AVID CLASSROOM');
+    AVID_ITEMS.forEach(item=>{
+      const v = w.avid[item.id];
+      lines.push('- '+item.text+'  ['+(v===''?'not answered':v)+']');
+    });
+    if(w.avid.notes) lines.push('Notes: '+w.avid.notes);
+  }
+  if(CONTENT_AREA_TRIGGERS.indexOf(w.meta.content) !== -1){
+    lines.push('');
+    lines.push((w.meta.content+' CLASSROOM').toUpperCase());
+    CONTENT_AREA_ITEMS.forEach(item=>{
+      const v = (w.contentArea||{})[item.id];
+      lines.push('- '+item.text+'  ['+(v===''||v===undefined?'not answered':v)+']');
+    });
+    if(w.contentArea && w.contentArea.notes) lines.push('Notes: '+w.contentArea.notes);
+  }
+  if(w.meta.classType==='ESL'){
+    lines.push('');
+    lines.push('ESL CLASSROOM');
+    ESL_ITEMS.forEach(item=>{
+      const v = w.esl[item.id];
+      lines.push('- '+item.text+'  ['+(v===''?'not answered':v)+']');
+    });
+    if(w.esl.notes) lines.push('Notes: '+w.esl.notes);
+  }
+  lines.push('');
+  lines.push('PART 1 \u2014 TARGET / TAXONOMY / PACING');
+  if(w.meta.topic) lines.push('Lesson Standard: '+w.meta.topic);
+  if(w.meta.tag) lines.push('Other disaggregation tag(s): '+w.meta.tag);
+  PART1.forEach(q=>{
+    const v = w.part1[q.id];
+    lines.push('- '+q.text+'  ['+(v===''?'not answered':(v==='na'?'N/A':v))+']');
+  });
+  if(w.part1Notes) lines.push('Notes: '+w.part1Notes);
+  PART1_SECTIONS.forEach(sec=>{
+    const st = (w.part1Sections && w.part1Sections[sec.id]) || {};
+    lines.push('');
+    lines.push(sec.title.toUpperCase());
+    if(sec.pacing){
+      const pv = st.pacing;
+      const match = sec.pacing.options.find(o=>o.value===pv);
+      lines.push('- '+sec.pacing.label+':  ['+(match ? match.label : 'not answered')+']');
+    }
+    sec.qs.forEach(q=>{
+      const v = st[q.id];
+      lines.push('- '+q.text+'  ['+(v===''||v===undefined?'not answered':v+'/5')+']');
+    });
+    if(st.notes) lines.push('Notes: '+st.notes);
+  });
+  lines.push('');
+  lines.push('PART 2 \u2014 INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS');
+  REMAINING_COMPONENTS.forEach((sec,i)=>{
+    const cs = w.components[sec.id];
+    lines.push('');
+    if(sec.canBeSkipped && cs.applicable===false){
+      lines.push('2.'+(i+1)+' '+sec.title.toUpperCase()+'  (not part of this lesson at the time of the visit)');
+      if(cs.notes) lines.push('Notes: '+cs.notes);
+      return;
+    }
+    const rated = cs.ratings.filter(v=>v!=='' && v!=='na').map(Number);
+    const avg = rated.length ? (rated.reduce((a,b)=>a+b,0)/rated.length).toFixed(1) : 'n/a';
+    lines.push('2.'+(i+1)+' '+sec.title.toUpperCase()+'  (avg: '+avg+')');
+    sec.qs.forEach((q,qi)=>{
+      const v = cs.ratings[qi];
+      lines.push('- '+q.text+'  ['+(v===''?'not answered':v+'/5')+']');
+    });
+    if(cs.notes) lines.push('Notes: '+cs.notes);
+  });
+  lines.push('');
+  lines.push('PART 3 \u2014 CONDITIONS FOR LEARNING');
+  BELONGING_QS.forEach(q=>{
+    const v = (w.belonging||{})[q.id];
+    lines.push('- '+q.text+'  ['+(v===''||v===undefined?'not answered':v+'/5')+']');
+  });
+  if(w.belonging && w.belonging.notes) lines.push('Notes: '+w.belonging.notes);
+  lines.push('');
+  lines.push('PART 4 \u2014 WALK SUMMARY');
+  lines.push('Strengths: '+(w.summaryStrengths||'(none noted)'));
+  lines.push('Growth areas: '+(w.summaryGrowth||'(none noted)'));
+  return lines.join('\n');
+}
+
+function exportWalk(){
+  const text = buildSummaryText();
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const label = [current.meta.grade, current.meta.content, current.meta.date].filter(Boolean).join('_') || current.id;
+  a.href = url;
+  a.download = 'ICFWalk_'+label.replace(/[^a-z0-9_-]+/gi,'_')+'.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------- WIRE UP ----------------
+
+document.getElementById('new-walk-btn').addEventListener('click', startNewWalk);
+document.getElementById('back-btn').addEventListener('click', ()=>{ showView('list'); renderList(); });
+document.getElementById('nav-list-btn').addEventListener('click', ()=>{ showView('list'); renderList(); });
+document.getElementById('save-btn').addEventListener('click', persistWalk);
+document.getElementById('save-btn-bottom').addEventListener('click', persistWalk);
+document.getElementById('export-btn').addEventListener('click', exportWalk);
+document.getElementById('summary-strengths').addEventListener('input', function(){ current.summaryStrengths = this.value; scheduleSave(); });
+document.getElementById('summary-growth').addEventListener('input', function(){ current.summaryGrowth = this.value; scheduleSave(); });
+
+(function(){
+  ['part1','part2','part3','part4'].forEach(prefix=>{
+    const head = document.getElementById(prefix+'-head');
+    const body = document.getElementById(prefix+'-body');
+    if(head && body){
+      head.addEventListener('click', ()=>{
+        const open = body.classList.contains('open');
+        body.classList.toggle('open', !open);
+        head.querySelector('.chev').classList.toggle('open', !open);
+      });
+    }
+  });
+})();
+
+(async function init(){
+  document.getElementById('global-status').textContent = 'Loading...';
+  await loadIndex();
+  document.getElementById('global-status').textContent = '';
+  renderList();
+  showView('list');
+})();
+
+})();
+</script>
+</body>
+</html>
