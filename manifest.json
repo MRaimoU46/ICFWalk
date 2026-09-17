@@ -1,0 +1,87 @@
+{
+  "package": "ICFWalk Claude Fable Handoff",
+  "version": "2026-09-17",
+  "generatedAt": "2026-09-17T00:00:00Z",
+  "files": [
+    {
+      "path": "CLAUDE_FABLE_MASTER_PROMPT.md",
+      "bytes": 11182,
+      "sha256": "2f68aa08fb4dbe9ae554aaa1056b1f3a66b8c494f4f4583d633ddc020302d225"
+    },
+    {
+      "path": "config/ICFWalk_Instrument_Configuration_Aligned.xlsx",
+      "bytes": 79320,
+      "sha256": "97f5e0e6def916ac4a4d646b38a15e029106c018a193954f87d4cb05e2d1efb9"
+    },
+    {
+      "path": "config/instrument-config.json",
+      "bytes": 296508,
+      "sha256": "fcbd124346936d4e0a8aa65f44845d2e26d8f1a6c806e2e4656b92e1ddbf2b7c"
+    },
+    {
+      "path": "database/001_schema.sql",
+      "bytes": 42434,
+      "sha256": "c6c16b6cdc1ae10760e43f0bcbf32a4fd84eed51166f1487fb6b7484532d1374"
+    },
+    {
+      "path": "database/002_alignment_patch.sql",
+      "bytes": 1175,
+      "sha256": "5b22195026b7fc52933cf74e88912a9931ab6a36226b02e82589b395031d5e18"
+    },
+    {
+      "path": "database/README.md",
+      "bytes": 1663,
+      "sha256": "67bdebf4b419f3b91f0b872fe4eb8441261877da8299e146a0718c388779418f"
+    },
+    {
+      "path": "docs/ACCEPTANCE_TESTS.md",
+      "bytes": 14740,
+      "sha256": "7a9b609d165c88d61f2c68645ba4a64bdc505f763102c6605ea07909f599d334"
+    },
+    {
+      "path": "docs/DATA_CONTRACT.md",
+      "bytes": 9155,
+      "sha256": "100030494e64a0209fe96c37875ae68e3e664d80b07d20b1469a646679d2380e"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_PLAN.md",
+      "bytes": 3698,
+      "sha256": "379453e5380da5312fda18f5b71b2a7922b033e4d671ef2ec5a8722e4f85f396"
+    },
+    {
+      "path": "docs/OPEN_DECISIONS.md",
+      "bytes": 1652,
+      "sha256": "f01b3c66cb9d6f05ced2bb54ee581560ea629db935af3f6e8017a43c5e321f29"
+    },
+    {
+      "path": "docs/PRODUCT_SPEC.md",
+      "bytes": 8189,
+      "sha256": "be563b8db4417943e27082c4b99b8c59227789c49104054edd8df7282c71e72e"
+    },
+    {
+      "path": "docs/SOURCE_ALIGNMENT.md",
+      "bytes": 4826,
+      "sha256": "d272f705752931d35ca3d5a6e5b495fb4b3f03d3b9522820932167e114049c67"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3903,
+      "sha256": "03138f3f8da3b35056f6c99725db69b5c8727d7ad379ed6dc89e3bedf81d934f"
+    },
+    {
+      "path": "reference/legacy-configuration-workbook.xlsx",
+      "bytes": 245555,
+      "sha256": "16212bdbafa9e2429940da89380ef818d9c54c80a5e36ae67b58f8502692407f"
+    },
+    {
+      "path": "scripts/validate-handoff.mjs",
+      "bytes": 11859,
+      "sha256": "5689ef8b9bd4d789161e6b97ae0f8fb327df62fe75f459064b8f8369bba7bd01"
+    },
+    {
+      "path": "source/current-prototype.html",
+      "bytes": 117648,
+      "sha256": "239531267fa1dfaedaf4e1a8842156bc90db425893781330470312e3c34a1361"
+    }
+  ]
+}
