@@ -50,10 +50,25 @@ component output="false" {
 		return variables.c.authorizationService.principalFor(variables.c.userRepository.findById(arguments.userId));
 	}
 
+	/** Deletes a walk and its child rows (responses, dimension values, revisions, mutations, audit). */
+	public void function deleteWalk(required string walkId) {
+		var db = variables.c.db;
+		var p = { "id": db.guid(arguments.walkId) };
+		db.run("DELETE FROM [icf].[walk_mutation] WHERE walk_id = :id", p);
+		db.run("DELETE FROM [icf].[walk_revision] WHERE walk_id = :id", p);
+		db.run("DELETE s FROM [icf].[walk_response_selection] s JOIN [icf].[walk_response] r ON r.response_id = s.response_id WHERE r.walk_id = :id", p);
+		db.run("DELETE FROM [icf].[walk_response] WHERE walk_id = :id", p);
+		db.run("DELETE FROM [icf].[walk_dimension_value] WHERE walk_id = :id", p);
+		db.run("DELETE FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id = :id", p);
+		db.run("DELETE FROM [icf].[walk] WHERE walk_id = :id", p);
+	}
+
 	public void function remove() {
 		var db = variables.c.db;
-		for (var id in variables.walkIds) db.run("DELETE FROM [icf].[walk] WHERE walk_id = :id", { "id": db.guid(id) });
+		for (var id in variables.walkIds) deleteWalk(id);
 		for (var id in variables.userIds) {
+			var owned = db.run("SELECT walk_id FROM [icf].[walk] WHERE owner_user_id = :id", { "id": db.guid(id) });
+			for (var r = 1; r <= owned.recordCount; r++) deleteWalk(owned.walk_id[r]);
 			variables.c.roleScopeRepository.deleteAssignmentsForUser(id);
 			db.run("DELETE FROM [icf].[audit_event] WHERE actor_user_id = :id OR entity_id = :id", { "id": db.guid(id) });
 			db.run("DELETE FROM [icf].[app_user] WHERE user_id = :id", { "id": db.guid(id) });

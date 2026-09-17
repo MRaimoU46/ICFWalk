@@ -164,3 +164,23 @@ textarea{resize:vertical;min-height:56px;background:#FFF9E7;border:3px solid var
 @media (prefers-reduced-motion:reduce){
   .chev{transition:none}
 }
+
+/* Phase 4: persistence states */
+.status-badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.4px;color:var(--navy);background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:1px 6px;vertical-align:middle;margin-left:4px}
+.void-reason{flex:1;min-width:160px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px}
+.walk-banner{background:var(--tint);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px;margin:0 0 14px;color:var(--ink)}
+.walk-banner:focus{outline:2px solid var(--blue);outline-offset:2px}
+.conflict-panel{background:#FFF4E5;border:1px solid #F1C58E;border-radius:8px;padding:14px 16px;margin:0 0 14px;color:#6B3A00}
+.conflict-title{font-size:15px;margin:0 0 6px;color:#6B3A00}
+.conflict-panel p{font-size:13px;margin:0 0 8px}
+.conflict-list{margin:0 0 6px;padding-left:18px;font-size:12.5px;line-height:1.5}
+.conflict-list li{margin-bottom:8px}
+.completion-errors{background:#FDECEC;border:1px solid #F0B4B4;border-radius:8px;padding:12px 16px;margin:0 0 14px;color:#7A1C1C}
+.completion-errors-title{font-weight:700;font-size:13.5px;margin:0 0 6px}
+.completion-errors ul{margin:0;padding-left:18px;font-size:13px}
+.completion-errors li{margin-bottom:4px}
+.link-btn{background:none;border:none;color:#7A1C1C;text-decoration:underline;font-size:13px;padding:0;text-align:left;cursor:pointer}
+.link-btn:hover{color:var(--navy)}
+.field-error{color:#7A1C1C;font-size:12.5px;font-weight:600;margin:6px 0 0}
+.has-error{box-shadow:inset 3px 0 0 #B32424;padding-left:8px}
+.pill[disabled],select[disabled],input[disabled],textarea[disabled]{opacity:.7;cursor:not-allowed}

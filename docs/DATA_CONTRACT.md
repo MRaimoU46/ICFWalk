@@ -157,3 +157,31 @@ This object is private walk content, not an aggregate-report source. Nothing in 
 - Increment/update the walk timestamp and return its new row version after the child updates commit.
 - Use bounded retry only for transient database failures, not for stale concurrency conflicts.
 
+
+## Build decisions recorded in Phase 4 (application policy under this contract)
+
+- **"Other" free text on a LIST dimension**: `selected_value_id` = the dimension's `other` value and
+  `text_value` = the typed text. The text is a qualifier of the selected value, not a second typed
+  value; it is accepted only when the Other value is selected (stale text from a previous Other
+  selection is dropped) and it never enters aggregate grouping (reports group by
+  `selected_value_id`). Value codes are compared exactly.
+- **Response rows**: one `walk_response` row exists for every response-capable item of the pinned
+  version (display items excluded) from creation, with `response_state = UNANSWERED` when empty, so
+  the four states are countable in reports. Values are cleared (option NULL) for `NOT_APPLICABLE`
+  and retained for `HIDDEN`. Dimension rows exist only while a value is present; a dimension's
+  HIDDEN state is derived by evaluating the walk's pinned rules (the table has no state column).
+- **`observed_at`** follows the visit-date dimension (the first DATE-typed placement with a value);
+  it defaults to the creation instant until a date is entered.
+- **Idempotency**: `icf.walk_mutation` (migration `003`) records each client mutation id with the
+  committed outcome in the same transaction; a retry replays it. Ids are bound to walk, actor, and
+  action.
+- **Revisions**: appended on completion (`COMPLETE`, the pre-completion snapshot) and on each edit of
+  a COMPLETED walk (`POST_COMPLETION_EDIT`, the snapshot before the edit); DRAFT autosaves append
+  none. `prior_snapshot_json` holds the walk header, dimension values, and responses with states.
+- **Void vs delete**: the My Walks delete action voids a DRAFT with the reason
+  "Deleted by owner from My Walks"; a COMPLETED walk requires an explicit reason; physical deletion
+  is never available (`DELETE` answers 409). Voided walks keep all rows and leave the list.
+- **List scope**: My Walks lists the owner's non-voided walks in units where the owner still holds
+  walk.edit_owned or walk.read; `scope=all` adds other users' non-voided walks in walk.read units.
+- **Email-draft JSON** is validated on save against the schema above (only those five keys,
+  `includedPartKeys` strings, `drafted` boolean) and stored as canonical JSON.

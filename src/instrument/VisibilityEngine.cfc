@@ -7,6 +7,9 @@
  *   { "dimensions": { code: { selectedValueCode?, otherText?, textValue?, dateValue? } },
  *     "responses":  { itemKey: { storedCode?, textValue? } } }
  *
+ * Codes are compared exactly with compare() (never ==, which coerces "yes"/"1" and "1"/"1.0" to
+ * equal values in CFML), matching the strict equality of the JavaScript twin (Phase 4 fix).
+ *
  * Semantics (all derived from the render model, nothing keyed to a specific section or item):
  *   - A target (section, item, dimension placement) with SHOW rules is visible when any active
  *     rule evaluates true; a target without rules is visible (a placement without rules follows
@@ -161,14 +164,14 @@ component output="false" {
 		var hit = false;
 		if (op == "EQUALS" || op == "NOT_EQUALS") {
 			var e = isSimpleValue(expected) ? toString(expected) : "";
-			for (var v in candidates) if (v == e) hit = true;
+			for (var v in candidates) if (compare(v, e) == 0) hit = true;
 			return op == "EQUALS" ? hit : !hit;
 		}
 		if (op == "IN" || op == "NOT_IN") {
 			var list = expected;
 			if (isSimpleValue(list)) list = isJSON(list) ? deserializeJSON(list) : [toString(list)];
 			if (!isArray(list)) list = [];
-			for (var v in candidates) for (var e in list) if (isSimpleValue(e) && v == toString(e)) hit = true;
+			for (var v in candidates) for (var e in list) if (isSimpleValue(e) && compare(v, toString(e)) == 0) hit = true;
 			return op == "IN" ? hit : !hit;
 		}
 		throw(type = "ICFWalk.Configuration", message = "Unsupported rule operator '" & arguments.c.operator & "'.", errorcode = "RULE_OPERATOR_UNSUPPORTED");
@@ -183,7 +186,7 @@ component output="false" {
 		if (len(sel)) {
 			arrayAppend(out, sel);
 			if (structKeyExists(arguments.model.dimensions, arguments.code)) {
-				for (var dv in arguments.model.dimensions[arguments.code].values) if (dv.valueCode == sel) arrayAppend(out, dv.label);
+				for (var dv in arguments.model.dimensions[arguments.code].values) if (compare(dv.valueCode, sel) == 0) arrayAppend(out, dv.label);
 			}
 			return out;
 		}
@@ -221,12 +224,12 @@ component output="false" {
 		var group = "";
 		var found = false;
 		for (var sv in arguments.model.dimensions[srcCode].values) {
-			if (sv.valueCode == sel) { found = true; group = isNull(sv[arguments.filter.matchField]) ? "" : toString(sv[arguments.filter.matchField]); }
+			if (compare(sv.valueCode, sel) == 0) { found = true; group = isNull(sv[arguments.filter.matchField]) ? "" : toString(sv[arguments.filter.matchField]); }
 		}
 		if (!found || !len(group)) return all;
 		var out = [];
 		for (var v in dim.values) {
-			if (!isNull(v[arguments.filter.matchField]) && toString(v[arguments.filter.matchField]) == group) arrayAppend(out, v.valueCode);
+			if (!isNull(v[arguments.filter.matchField]) && compare(toString(v[arguments.filter.matchField]), group) == 0) arrayAppend(out, v.valueCode);
 		}
 		return out;
 	}
@@ -239,7 +242,7 @@ component output="false" {
 		if (structKeyExists(arguments.it, "responseSet") && !isNull(arguments.it.responseSet) && isStruct(arguments.it.responseSet)) {
 			var code = valueOf(r, "storedCode");
 			if (!len(code)) return false;
-			for (var o in arguments.it.responseSet.options) if (o.storedCode == code) return true;
+			for (var o in arguments.it.responseSet.options) if (compare(o.storedCode, code) == 0) return true;
 			return false;
 		}
 		return len(trim(valueOf(r, "textValue"))) > 0;
@@ -251,7 +254,7 @@ component output="false" {
 		var sel = valueOf(v, "selectedValueCode");
 		if (len(sel)) {
 			if (!structKeyExists(arguments.model.dimensions, arguments.p.dimensionCode)) return false;
-			for (var dv in arguments.model.dimensions[arguments.p.dimensionCode].values) if (dv.valueCode == sel) return true;
+			for (var dv in arguments.model.dimensions[arguments.p.dimensionCode].values) if (compare(dv.valueCode, sel) == 0) return true;
 			return false;
 		}
 		return len(trim(valueOf(v, "textValue"))) > 0 || len(trim(valueOf(v, "dateValue"))) > 0;
@@ -276,10 +279,12 @@ component output="false" {
 		return st;
 	}
 
-	// ---- model index (cached per model instance) ---------------------------------------------
+	// ---- model index --------------------------------------------------------------------------
+	// Built per call (a pre-order walk of ~25 sections) and never stored on the model: the model is
+	// the shared, cached object that /api/instrument/current and the walk endpoints serialize, and
+	// an index holding a back-reference to it would make that serialization circular (Phase 4 fix).
 
 	private struct function index(required struct model) {
-		if (structKeyExists(arguments.model, "__index")) return arguments.model["__index"];
 		var idx = { "model": arguments.model, "sections": {}, "sectionOrder": [], "items": {}, "rulesByTarget": {} };
 		walk(arguments.model.root, idx);
 		for (var r in arguments.model.rules) {
@@ -287,7 +292,6 @@ component output="false" {
 			if (!structKeyExists(idx.rulesByTarget, tk)) idx.rulesByTarget[tk] = [];
 			arrayAppend(idx.rulesByTarget[tk], r);
 		}
-		arguments.model["__index"] = idx;
 		return idx;
 	}
 

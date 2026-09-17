@@ -55,14 +55,31 @@
       <button type="button" class="btn btn-ghost" id="back-btn">&larr; My walks</button>
       <div class="editor-top-actions">
         <span class="status" id="save-status" role="status" aria-live="polite"></span>
+        <button type="button" class="btn btn-sm" id="save-retry" hidden>Retry save</button>
         <button type="button" class="btn btn-sm" id="export-btn" hidden>Export summary</button>
         <button type="button" class="btn btn-sm btn-primary" id="save-btn">Save</button>
       </div>
     </div>
     <p class="version-note muted" id="version-note" hidden></p>
+    <p class="walk-banner" id="walk-banner" role="status" tabindex="-1" hidden></p>
+    <div class="conflict-panel" id="conflict-panel" role="alertdialog" aria-labelledby="conflict-title" aria-describedby="conflict-summary" hidden>
+      <h2 id="conflict-title" class="conflict-title">This walk was changed elsewhere</h2>
+      <p id="conflict-summary"></p>
+      <ul id="conflict-list" class="conflict-list"></ul>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="conflict-reload">Use the saved version</button>
+        <button type="button" class="btn" id="conflict-keep">Keep my edits and save</button>
+        <button type="button" class="btn" id="conflict-retry" hidden>Retry loading</button>
+      </div>
+    </div>
+    <div class="completion-errors" id="completion-errors" role="alert" hidden>
+      <p class="completion-errors-title" id="completion-errors-title"></p>
+      <ul id="completion-error-list"></ul>
+    </div>
     <div id="editor"></div>
     <div class="footer-actions editor-bottom">
       <span class="status" id="save-status-bottom" aria-hidden="true"></span>
+      <button type="button" class="btn" id="complete-btn">Complete walk</button>
       <button type="button" class="btn btn-primary" id="save-btn-bottom">Save</button>
     </div>
   </section>

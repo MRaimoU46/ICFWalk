@@ -49,10 +49,19 @@ component output="false" {
 
 		c["snapshotService"] = new icfwalk.instrument.SnapshotService(c.config, c.db, c.definitionRepository, c.renderModelBuilder, c.errors, c.logger);
 
+		// Walk persistence (Phase 4).
+		c["walkRepository"] = new icfwalk.walks.WalkRepository(c.db, c.canonicalJson, c.definitionRepository);
+		c["walkPayloadValidator"] = new icfwalk.walks.WalkPayloadValidator(c.errors, c.canonicalJson);
+		c["walkService"] = new icfwalk.walks.WalkService(
+			c.config, c.db, c.errors, c.logger, c.auditRepository, c.canonicalJson, c.authorizationService,
+			c.snapshotService, c.visibilityEngine, c.walkRepository, c.walkPayloadValidator
+		);
+
 		c["healthController"] = new icfwalk.controllers.HealthController(c.config, c.db, c.requestContext);
 		c["shellController"] = new icfwalk.controllers.ShellController(c);
 		c["instrumentController"] = new icfwalk.controllers.InstrumentController(c);
 		c["authController"] = new icfwalk.controllers.AuthController(c);
+		c["walkController"] = new icfwalk.controllers.WalkController(c);
 		c["adminInstrumentController"] = new icfwalk.controllers.AdminInstrumentController(c);
 		c["maintenanceController"] = new icfwalk.controllers.MaintenanceController(c);
 		c["router"] = new icfwalk.http.Router(c);

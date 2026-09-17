@@ -139,7 +139,14 @@ component output="false" {
 		var db = variables.c.db;
 		var like = { "value": b.tag & "-%", "cfsqltype": "cf_sql_nvarchar" };
 		var removed = db.transact(function() {
-			db.run("DELETE w FROM [icf].[walk] w JOIN [icf].[app_user] u ON u.user_id = w.owner_user_id WHERE u.identity_subject LIKE :like", { "like": like });
+			var owned = "SELECT w.walk_id FROM [icf].[walk] w JOIN [icf].[app_user] u ON u.user_id = w.owner_user_id WHERE u.identity_subject LIKE :like";
+			db.run("DELETE FROM [icf].[walk_mutation] WHERE walk_id IN (" & owned & ")", { "like": like });
+			db.run("DELETE FROM [icf].[walk_revision] WHERE walk_id IN (" & owned & ")", { "like": like });
+			db.run("DELETE s FROM [icf].[walk_response_selection] s JOIN [icf].[walk_response] r ON r.response_id = s.response_id WHERE r.walk_id IN (" & owned & ")", { "like": like });
+			db.run("DELETE FROM [icf].[walk_response] WHERE walk_id IN (" & owned & ")", { "like": like });
+			db.run("DELETE FROM [icf].[walk_dimension_value] WHERE walk_id IN (" & owned & ")", { "like": like });
+			db.run("DELETE FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id IN (" & owned & ")", { "like": like });
+			db.run("DELETE FROM [icf].[walk] WHERE walk_id IN (" & owned & ")", { "like": like });
 			db.run("DELETE s FROM [icf].[user_role_scope] s JOIN [icf].[app_user] u ON u.user_id = s.user_id WHERE u.identity_subject LIKE :like", { "like": like });
 			db.run("DELETE a FROM [icf].[audit_event] a JOIN [icf].[app_user] u ON u.user_id = a.actor_user_id OR u.user_id = a.entity_id WHERE u.identity_subject LIKE :like", { "like": like });
 			var users = db.run("DELETE FROM [icf].[app_user] WHERE identity_subject LIKE :like", { "like": like });

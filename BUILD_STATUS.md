@@ -1,12 +1,13 @@
 # ICFWalk build status
 
 Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation),
-Phase 2 (identity, roles, authorization, organizational scope), and Phase 3 (instrument engine and
-visual shell)** from `docs/IMPLEMENTATION_PLAN.md`. Phase 4 and later have not been started. Phase 3
-details are in the section "Phase 3" at the end; earlier records are kept as delivered.
+Phase 2 (identity, roles, authorization, organizational scope), Phase 3 (instrument engine and
+visual shell), and Phase 4 (walk persistence, autosave, completion, concurrency, audit)** from
+`docs/IMPLEMENTATION_PLAN.md`. Phase 5 and later have not been started. Phase 4 details are in the
+section "Phase 4" at the end; earlier records are kept as delivered.
 
-Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/sharp-faraday-szq937`
-(Phase 2 base commit `0b5d91a`).
+Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/admiring-wozniak-fsuayk`
+(Phase 3 base commit `9c03298`, itself on `claude/sharp-faraday-szq937`).
 
 ## Phase 0 baseline
 
@@ -508,3 +509,202 @@ for content owners: whether the content-area card should adopt the prototype's d
    `selected_value_id` = the Other value plus `text_value`), and record it in `docs/DATA_CONTRACT.md`.
 5. Extend `tests/node/browser.test.mjs` with SAVE-01..08 and WALK-02/03/08..11, and `AuthorizationTest`
    with AUTH-09 item/option/dimension tampering through the new endpoints.
+
+## Phase 4: walk persistence and autosave
+
+Base: commit `9c03298` (Phase 3). No Phase 0-3 behavior was reworked except two Phase 3 defects
+found by Phase 4 testing (below); every earlier test still passes.
+
+### Work completed
+
+1. **Database migration `database/003_walk_mutation.sql`** (additive, idempotent): `icf.walk_mutation`,
+   the append-only client-mutation log that makes create/save/complete/void idempotent. Wired into
+   `scripts/db/apply-schema.mjs`, `tests/node/db-scripts.test.mjs` (applied twice, 21 tables),
+   `tests/node/schema-contract.test.mjs` (walk tables and `src/walks` now under the contract), and
+   `database/README.md`. The supplied `001`/`002` scripts are unchanged.
+2. **Server walk aggregate** (`src/walks/`): `WalkRepository` (parameterized access to `walk`,
+   `walk_dimension_value`, `walk_response`, `walk_revision`, `walk_mutation`; rowversion exchanged as
+   a hex token; cached key→GUID index per version checksum; scoped list query), `WalkPayloadValidator`
+   (every dimension code, item key, option code, value code, and typed value checked against the
+   pinned version's render model and definition rows; all issues collected), `WalkService`
+   (list/open/instrument/create/save/complete/void/refuseDelete; one transaction per mutation with
+   `UPDLOCK` on the walk row, row-version compare, server-side `normalize` + `evaluateVisibility`,
+   diff-writes, revisions, mutation replay, audit), `controllers/WalkController`, and eight routes in
+   `Router` under the existing declarative policies (`walk.create` for the body's org unit; walk
+   capabilities for the rest; CSRF on every mutation). Record-level authorization stays in
+   `AuthorizationService.authorizeWalk`; the browser carries no authorization logic.
+3. **Browser** (`app/assets/js`): `ApiWalkStore` replaces `SessionWalkStore` behind the same
+   `WalkStore` interface; `app.js` adds the 700 ms debounced autosave (edits mid-flight coalesce into
+   the next save), client mutation ids kept across retries of the same payload, `Unsaved changes` /
+   `Saving...` / `All changes saved` / specific failure + Retry, the conflict panel (`alertdialog`
+   listing this session's unsent edits against the saved values; use saved version, or keep edits and
+   save with the new row version), explicit "Complete walk" with an `alert` summary of field-level
+   errors (links expand and focus the control; `aria-invalid` + description), read-only editor for
+   non-owners, completed banner, void-with-reason for completed walks, per-version render-model
+   cache for historical walks. `api.js` gains PUT/DELETE and a `NetworkError`; `shell.html` and
+   `icfwalk.css` gain the new elements/styles. `renderer.js`, `rules.js`, `walk-state.js` unchanged.
+4. **Fixture hygiene**: `MaintenanceController.cleanupFixtures` and `tests/cfml/support/Fixtures`
+   remove walk child rows (mutations, revisions, responses, dimension values, walk audit) before walks.
+5. **Tests**: `WalkServiceTest` (18 database-backed cases), `tests/node/walks.test.mjs` (9 HTTP cases),
+   `tests/node/browser-persistence.test.mjs` (7 Playwright cases), `browser.test.mjs` adjusted for the
+   asynchronous store (waits for the server round trip), three exact-comparison vectors added to
+   `tests/fixtures/visibility-vectors.json` (both engines), `db-scripts` and `schema-contract` extended.
+6. **Documentation**: `docs/ARCHITECTURE.md` (Phase 4 section, Phase 5 hand-off), `docs/ENDPOINTS.md`,
+   `docs/DATA_CONTRACT.md` (Phase 4 build decisions appendix), `docs/LOCAL_SETUP.md`,
+   `docs/ACCEPTANCE_TRACKING.md`, `database/README.md`, evidence `docs/evidence/phase4-npm-test.txt`
+   and screenshots `conflict-panel-desktop.png`, `completion-errors-desktop.png`.
+
+### Files created or changed (Phase 4)
+
+```
+Created: database/003_walk_mutation.sql
+         src/walks/{WalkRepository,WalkPayloadValidator,WalkService}.cfc  src/controllers/WalkController.cfc
+         tests/cfml/specs/WalkServiceTest.cfc  tests/node/{walks,browser-persistence}.test.mjs
+         docs/evidence/phase4-npm-test.txt  docs/evidence/screenshots/{conflict-panel,completion-errors}-desktop.png
+Changed: src/Bootstrap.cfc  src/http/Router.cfc  src/controllers/MaintenanceController.cfc (fixture cleanup)
+         src/instrument/VisibilityEngine.cfc (Phase 3 defects, below)
+         app/assets/js/{api,walk-store,app}.js  app/assets/css/icfwalk.css  src/views/shell.html
+         tests/cfml/support/Fixtures.cfc  tests/fixtures/visibility-vectors.json (+3 vectors)
+         tests/node/{browser,db-scripts,schema-contract}.test.mjs  package.json (test:walks, test:browser)
+         scripts/db/apply-schema.mjs  database/README.md (supplied file; manifest entry refreshed with scripts/refresh-manifest.mjs)
+         docs/{ARCHITECTURE,ENDPOINTS,DATA_CONTRACT,LOCAL_SETUP,ACCEPTANCE_TRACKING}.md  manifest.json  BUILD_STATUS.md
+```
+
+### Database and API changes
+
+- New table `icf.walk_mutation` (`003`); no change to supplied `001`/`002` objects. Walk rows now
+  carry `observed_at` = the visit-date dimension; response rows exist for every response-capable
+  item of the pinned version (`UNANSWERED` when empty); dimension rows exist only with a value.
+- New routes: `GET /api/walks[?scope=all]`, `POST /api/walks`, `GET /api/walks/{id}`,
+  `GET /api/walks/{id}/instrument`, `PUT /api/walks/{id}`, `POST /api/walks/{id}/complete`,
+  `POST /api/walks/{id}/void`, `DELETE /api/walks/{id}` (always 409). Contract in `docs/ENDPOINTS.md`.
+- Audit events added: `WALK_CREATED`, `WALK_COMPLETED`, `WALK_COMPLETION_REJECTED`,
+  `WALK_POST_COMPLETION_EDIT`, `WALK_VOIDED`, `WALK_DELETE_REFUSED`, `WALK_SAVE_CONFLICT`,
+  `WALK_SAVE_REJECTED`, `WALK_MUTATION_REPLAYED`, `WALK_MUTATION_ID_REUSED`.
+
+### Tests and results (Phase 4)
+
+Environment as before (Lucee 6.2.8 on Jetty, SQL Server 2022 Developer in Docker, Node 22.22,
+Playwright 1.56 with the pre-installed Chromium, axe-core 4). The Phase 3 baseline (51/51) was
+reproduced in this environment before any Phase 4 change.
+
+| Command | Result |
+| --- | --- |
+| `npm test` (full regression, once, `docs/evidence/phase4-npm-test.txt`) | 68/68 pass: Phase 1-3's 51 plus walks HTTP (9) and browser persistence (7); browser (11) re-run against the persistent store; DB scripts now include `003` |
+| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | 106 passed, 0 failed, 0 skipped (Phase 3's 88 + WalkServiceTest 18) |
+| Targeted runs during implementation | `?filter=WalkService` (x6), `?filter=VisibilityEngine`, `?filter=RenderModel`, `?filter=Authorization`, `?filter=SnapshotService`, `node --test tests/node/{walks,browser,browser-persistence,shell,schema-contract,visibility}.test.mjs` |
+| `node scripts/validate-handoff.mjs` | ok (supplied files unchanged except `database/README.md`, entry refreshed) |
+
+Concurrency and idempotency results: stale write → 409 `STALE_ROW_VERSION`, first write intact
+(service, HTTP, two browser sessions); same mutation id → replay with the committed row version, no
+duplicate response/dimension/revision rows, 2 mutation rows (CREATE + SAVE) for a created-then-saved
+walk; mutation id reused by another user/walk/action → 409 `MUTATION_ID_REUSED`; browser retry after
+an aborted request reuses the mutation id and lands once. Security/tampering results: 15 payload
+cases at the service and 10 over HTTP rejected with specific codes and `details.issues`, nothing
+written, row version unchanged, every rejection audited; cross-school 404, colleague 403 on edits,
+report-only/admin 403 everywhere, 401 without identity, 403 without CSRF. Browser results: 11/11
+Phase 3 cases plus 7/7 Phase 4 cases (debounce = exactly one PUT per burst; status transitions;
+network failure + retry; conflict panel and both resolutions; reload persistence; markup as text;
+completion errors and completion; void with reason; axe clean on the new states).
+
+### Acceptance IDs satisfied in Phase 4
+
+PASS: WALK-01, WALK-02, WALK-03, WALK-04, WALK-05, WALK-06, WALK-07, WALK-08, WALK-09, WALK-10,
+WALK-11 (pinned rendering; publishing is Phase 6); SAVE-01, SAVE-02, SAVE-03, SAVE-04, SAVE-05,
+SAVE-06, SAVE-07, SAVE-08; COND-05, COND-06, COND-10, COND-12, COND-13 now including persisted
+states; AUTH-05, AUTH-09 completed through the walk endpoints; SEC-01, SEC-02 (walk surfaces),
+SEC-05 (saves/conflicts/rejections), SEC-06 (idempotent retry; restart not automated); A11Y-01,
+A11Y-02, A11Y-03 for the new states. Details: `docs/ACCEPTANCE_TRACKING.md`.
+
+### Assumptions, decisions, and source conflicts (Phase 4)
+
+1. **Idempotency needs a table.** The supplied schema has no place to record a client mutation id,
+   so `003_walk_mutation.sql` adds one (append-only, same transaction as the change). Recording ids
+   inside `audit_event.details_json` was rejected: audit is not indexed for lookup and must stay a
+   log, not a control table.
+2. **Delete = void.** Nothing is ever physically deleted. The My Walks delete confirms with the
+   prototype's wording and voids the DRAFT with the reason "Deleted by owner from My Walks";
+   completed walks require a typed reason (new inline field). `DELETE` is refused with 409.
+3. **Completed walks stay editable by their owner**; each edit must keep the walk complete and
+   appends a `POST_COMPLETION_EDIT` revision. Drafts append no revisions (autosave would create
+   thousands); completion appends the `COMPLETE` revision. The data contract leaves revision policy
+   to the application; this is the recorded policy.
+4. **"Other" mapping**: `selected_value_id` = the Other value + `text_value` = the text, accepted only
+   with Other selected (stale text is dropped, not rejected, because the Phase 3 UI retains it in
+   memory when the user switches back to a listed value). Recorded in `docs/DATA_CONTRACT.md`.
+5. **My Walks scope**: the UI lists the owner's walks ("My walks" in the prototype); the API also
+   offers `scope=all` (readable walks in scope) for later views. Non-owners who may read a walk get a
+   read-only editor.
+6. **Whole-state saves**: the browser sends the full working state (the contract's payload) rather
+   than deltas, so the server's normalization is authoritative and a retry is trivially idempotent.
+7. **Conflict merge semantics**: "keep my edits" applies only the fields changed since this session
+   last loaded or saved (its unsent edits); a stale baseline is never re-applied over another
+   session's newer values (found while testing SAVE-05 and fixed before delivery).
+8. **`observed_at`** follows the visit-date dimension; until a date is entered it is the creation
+   instant. Reporting indexes on `observed_at` therefore reflect the walk date.
+9. **Phase 3 defect fixed (serialization)**: `VisibilityEngine.index` cached its index on the model
+   struct with a back-reference to the model; once the server engine ran against the shared cached
+   render model, serializing that model (`/api/walks/{id}/instrument`, `/api/instrument/current`)
+   recursed until a `StackOverflowError`. The index is now built per call and the model is never
+   mutated.
+10. **Phase 3 defect fixed (coerced comparison)**: the CFML engine compared codes with `==`, which
+    treats `"yes"`/`"1"` and `"1"`/`"1.0"` as equal; a foreign option code on a 1-5 item counted as
+    answered (and would have passed SAVE-07 validation). All code comparisons in the engine, the
+    validator, and the service now use `compare()`; three shared vectors pin the behavior in both
+    engines. The JavaScript twin was already strict.
+11. **Lucee runtime note**: Lucee compiles components once and does not watch sources; the local
+    helper documents the restart (`docs/LOCAL_SETUP.md`). Not relevant to Adobe ColdFusion.
+12. **Source conflict recorded (contract payload vs. persisted row)**: the contract's example
+    autosave payload carries a `state` per response; the server derives states itself and ignores
+    any client-sent state field (only `storedCode`/`textValue` are accepted). Client-asserted states
+    are never trusted.
+
+### CF2023 verification items (Phase 4 additions)
+
+- `CONVERT(varchar(18), CAST(row_version AS binary(8)), 1)` and the hex token round trip through
+  the Adobe SQL Server driver (`WalkRepository.findWalk`; `WalkServiceTest` asserts the token shape).
+- `WITH (UPDLOCK, ROWLOCK)` inside `transaction {}` with `queryExecute` on Adobe (lock held until
+  commit): `WalkServiceTest.testSave04...` and `walks.test.mjs` SAVE-04 exercise the path but a true
+  concurrent race is not automated; verify with two parallel PUTs on ColdFusion.
+- `cf_sql_date` parameters (`WalkRepository.dateParam`) and `date_value` reads formatted with
+  `dateFormat`; `cf_sql_decimal` for `number_value` (unused by the current instrument).
+- `compare()` semantics and `structKeyExists` on JSON-deserialized bodies with `null` values in the
+  validator (`isNull` guards); closures capturing `variables` inside `Db.transact` on Adobe.
+- `getHttpRequestData(true).content` for PUT/DELETE bodies under the IIS connector (`Router.buildRequest`).
+- Browser suites on the target: `npm run test:walks` and `npm run test:browser` against the ColdFusion
+  deployment in development mode.
+
+### Unresolved defects or blockers (Phase 4)
+
+None open. External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details,
+district org-unit codes, content-owner wording for the 17 placeholders, the content-area heading
+decision from Phase 3). Not automated here: an application-server restart in the middle of an
+autosave (SEC-06); the idempotent retry path that covers it is proven at every level.
+
+### Phase 4 completion gate
+
+| Gate item | Status |
+| --- | --- |
+| Autosave tests pass without data loss | Met: SAVE-01/02 (one PUT per 700 ms burst, committed row version), SAVE-03 (retry after a lost request lands once) |
+| Stale-write tests pass | Met: SAVE-04/05 at service, HTTP, and two-browser-session level; first write never overwritten; conflict UI keeps unsent edits |
+| Duplicate-retry tests pass | Met: WALK-03, SAVE-06 (replay, no duplicate rows, ids bound to walk/actor/action) |
+| Hidden-state tests pass | Met: COND-06/10 persisted `HIDDEN` with values retained and restored |
+| Component-clear tests pass | Met: COND-12/13 ratings cleared to `NOT_APPLICABLE` in the same transaction as the applicability answer, notes retained, ratings do not reappear |
+
+## Exact recommended starting point for Phase 5
+
+1. Read `docs/ARCHITECTURE.md` ("Walk persistence and autosave" and "What Phase 5 builds on"),
+   `docs/PRODUCT_SPEC.md` (summary export and email workflow), `source/current-prototype.html`
+   (summary text format, filename pattern `ICFWalk_<grade>_<content>_<date>.txt`, email template
+   wording and part list), and `config/instrument-config.json` `behavior.export` / `behavior.emailDraft`.
+2. Build one summary formatter twice from the same render model + walk state: `src/walks/WalkSummaryFormatter.cfc`
+   and `app/assets/js/summary.js`, proven equal by golden vectors (`tests/fixtures/summary-vectors.json`)
+   over representative states (fully answered, unanswered items, Workshop Model = No, hidden
+   conditional section, unsafe filename characters). Component averages: answered numeric scores only.
+3. Serve `GET /api/walks/{id}/summary` (`authorizeWalk(read)`, `text/plain; charset=utf-8`, safe
+   `Content-Disposition` filename) and wire `#export-btn` in `app.js` (hidden today).
+4. Recreate the Part 4 email-draft composer in the `email-draft` layout slot of `renderer.js`
+   (selectable parts from the item's `settings.selectableParts`, generate/regenerate/clear/copy/mailto,
+   editable to/subject/body) and persist it through the existing save path (`email_workflow` item,
+   validated by `WalkPayloadValidator.validateEmailDraft`); nothing sends mail.
+5. Extend `WalkServiceTest`/`walks.test.mjs`/Playwright with SUM-01..09 and keep `npm test` green.

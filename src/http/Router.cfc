@@ -22,6 +22,9 @@ component output="false" {
 
 	variables.MUTATING = ["POST", "PUT", "PATCH", "DELETE"];
 	variables.SHELL_PERMISSIONS = ["walk.create", "walk.read", "walk.edit_owned", "report.view", "instrument.manage"];
+	variables.WALK_LIST_PERMISSIONS = ["walk.create", "walk.read", "walk.edit_owned"];
+	variables.WALK_READ_PERMISSIONS = ["walk.read", "walk.edit_owned"];
+	variables.WALK_EDIT_PERMISSIONS = ["walk.edit_owned"];
 
 	public Router function init(required struct container) {
 		variables.c = arguments.container;
@@ -38,6 +41,18 @@ component output="false" {
 		add("POST", "^/api/auth/sign-out$", "authController", "signOut", { "authenticated": true });
 
 		add("GET", "^/api/admin/instrument/versions$", "adminInstrumentController", "listVersions", { "permission": "instrument.manage" });
+
+		// Walk persistence (Phase 4). Report-only and instrument-admin roles hold none of these
+		// capabilities and are refused before any controller runs; record-level scope/owner checks
+		// happen in WalkService through AuthorizationService.authorizeWalk.
+		add("GET", "^/api/walks$", "walkController", "list", { "anyPermission": variables.WALK_LIST_PERMISSIONS });
+		add("POST", "^/api/walks$", "walkController", "create", { "permission": "walk.create", "orgUnitBody": "orgUnitId" });
+		add("GET", "^/api/walks/([^/]+)$", "walkController", "open", { "anyPermission": variables.WALK_READ_PERMISSIONS });
+		add("GET", "^/api/walks/([^/]+)/instrument$", "walkController", "instrument", { "anyPermission": variables.WALK_READ_PERMISSIONS });
+		add("PUT", "^/api/walks/([^/]+)$", "walkController", "save", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
+		add("POST", "^/api/walks/([^/]+)/complete$", "walkController", "complete", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
+		add("POST", "^/api/walks/([^/]+)/void$", "walkController", "void", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
+		add("DELETE", "^/api/walks/([^/]+)$", "walkController", "remove", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
 
 		add("POST", "^/api/maintenance/instrument/import$", "maintenanceController", "importInstrument", "maintenance");
 		add("GET", "^/api/maintenance/instrument/versions$", "maintenanceController", "listVersions", "maintenance");

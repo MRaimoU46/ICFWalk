@@ -191,7 +191,7 @@ items. The 17 placeholder items are flagged (`isPlaceholder`) but displayed as t
 Unsupported rule effects, operators, option filters, and item types are refused at build time.
 
 **Visibility engine.** `VisibilityEngine.cfc` and `app/assets/js/rules.js` implement the same
-semantics and are proven equivalent by `tests/fixtures/visibility-vectors.json` (29 states,
+semantics and are proven equivalent by `tests/fixtures/visibility-vectors.json` (32 states,
 asserted by both `VisibilityEngineTest` and `tests/node/visibility.test.mjs`). A target with SHOW
 rules is visible when any rule is true; DIMENSION conditions compare the selected value's label or
 code, ITEM conditions the stored option code; operators EQUALS/NOT_EQUALS/IN/NOT_IN with AND/OR.
@@ -209,13 +209,96 @@ payload from `docs/DATA_CONTRACT.md` (`dimensions` by code, `responses` by item 
 **Browser shell.** `GET /` serves `src/views/shell.html` (no instrument content, no user data,
 strict CSP) and the ES modules in `app/assets/js`. `renderer.js` builds the editor DOM once from
 the model and keeps it in sync on every edit (visibility, filtered options, pressed pills, rating
-counts, live announcements). `walk-store.js` is the persistence boundary: Phase 3 ships the
-in-memory `SessionWalkStore`; Phase 4 replaces it with an API-backed store implementing the same
-interface (`list/create/open/save/remove`) plus the 700 ms debounced autosave. My Walks card
+counts, live announcements). `walk-store.js` is the persistence boundary: Phase 3 shipped an
+in-memory `SessionWalkStore`; Phase 4 replaced it with `ApiWalkStore` (same interface plus
+`instrument` and `complete`) and the 700 ms debounced autosave (see the Phase 4 section). My Walks card
 composition (title = grade · content, meta = school · date · relative time) is presentation
 configuration by dimension code in `app.js` (`LIST_CARD`), not instrument content.
 
-## What Phase 4 builds on
+## Walk persistence and autosave (Phase 4)
+
+```
+browser app.js (700 ms debounce, mutation ids, rowVersion)
+   -> ApiWalkStore (walk-store.js) -> /api/walks routes (Router policy: walk capability + CSRF)
+   -> WalkController -> WalkService
+        AuthorizationService.authorizeWalk (scope + owner + status re-read from the database)
+        WalkPayloadValidator (keys, codes, values against the pinned version's render model)
+        VisibilityEngine.normalize + evaluateVisibility (server clearing and states)
+        WalkRepository (one transaction: UPDLOCK on icf.walk, diff-writes, revision, mutation log)
+        AuditRepository (lifecycle and security facts only)
+```
+
+**Aggregate and transaction.** A walk is `icf.walk` plus one `walk_dimension_value` row per
+dimension with a value and one `walk_response` row per response-capable item of the pinned
+version (state `UNANSWERED` when empty, so state counts are reportable). `PUT /api/walks/{id}`
+carries the whole working state; the server validates it (`WalkPayloadValidator`), re-normalizes it
+with the same engine the browser uses, then, inside one transaction, locks the walk row, compares the
+client's `rowVersion` token with the row's `rowversion` (409 `STALE_ROW_VERSION`, nothing written,
+audited `WALK_SAVE_CONFLICT`), writes only the rows whose value or state changed, bumps
+`updated_at`/`rowversion`, and records the client mutation id with the committed outcome
+(`icf.walk_mutation`, migration `003`). A retry with the same id replays that outcome; the id is
+bound to its walk, actor, and action. Reads never trust request fields for scope: org unit, owner,
+version, and status always come from the row.
+
+**Validation (fail closed).** Dimension codes must be placements of the pinned version; list codes
+resolve to `dimension_value` GUIDs of that dimension, `otherText` is accepted only on `allowOther`
+dimensions and stored only with the Other value selected (documented mapping: `selected_value_id`
+= Other, `text_value` = the text); TEXT/DATE/NUMBER/BOOLEAN values must fit the data type
+(`YYYY-MM-DD` calendar dates, 1000-character texts). Item keys must be active items of the version;
+display items accept nothing; choice items accept only a `storedCode` of their own response set
+(resolved to the option GUID of that set, so an option that exists in another set or version is
+refused, SAVE-07); text items accept `textValue` only (20,000 characters); the email-draft item
+accepts only the application schema of `docs/DATA_CONTRACT.md` and is stored as canonical JSON.
+All comparisons of codes use exact string comparison (`compare`), never CFML `==`, which treats
+`"yes"` and `"1"` (and `"1"` and `"1.0"`) as equal; the shared vectors carry cases for this.
+
+**States and clearing.** The engine's `normalize` runs server-side on every save: a grade outside
+the selected school's band is cleared (`DIMENSION_CLEARED/OPTION_FILTER`), and setting a skippable
+component to No clears its ratings (`RESPONSE_CLEARED/NOT_APPLICABLE`) in the same transaction as
+the applicability answer; notes are never rated and are retained. Persisted response states follow
+`evaluateVisibility`: `HIDDEN` rows keep their value (conditional classroom sections reappear with
+their answers), `NOT_APPLICABLE` rows have no option, Period hidden outside grades 6–12 keeps its
+row (`RETAIN_HIDDEN`, configurable). `observed_at` follows the visit-date dimension.
+
+**Lifecycle.** `POST .../complete` validates every required, currently visible item and placement
+(400 `WALK_INCOMPLETE` with field-specific errors; the draft is untouched), appends revision
+`COMPLETE` (the pre-completion snapshot), sets `COMPLETED`/`completed_at`, audits `WALK_COMPLETED`.
+Owners may still edit a completed walk: each such save must leave it complete (400
+`WALK_COMPLETION_INVALID`) and appends revision `POST_COMPLETION_EDIT`; drafts append no revisions
+(autosave would create thousands). `POST .../void` sets `VOIDED` with a reason (required for
+completed walks; drafts use the default reason from the My Walks delete action) and keeps every row;
+`DELETE` is always refused (409 `WALK_DELETE_REFUSED`). Voided walks leave the list, stay readable
+by id, and reject edits. Audit events: `WALK_CREATED`, `WALK_COMPLETED`, `WALK_COMPLETION_REJECTED`,
+`WALK_POST_COMPLETION_EDIT`, `WALK_VOIDED`, `WALK_DELETE_REFUSED`, `WALK_SAVE_CONFLICT`,
+`WALK_SAVE_REJECTED` (tampering: code and paths), `WALK_MUTATION_REPLAYED`, `WALK_MUTATION_ID_REUSED`,
+plus `ACCESS_DENIED` from the authorization layer. No narrative value is ever written to the audit
+or mutation logs.
+
+**Browser.** `ApiWalkStore` implements the Phase 3 `WalkStore` interface over the routes. `app.js`
+debounces edits 700 ms, coalesces edits made mid-flight into the next save, keeps one
+`clientMutationId` for retries of the same payload (a new edit gets a new id), and shows `Unsaved
+changes` / `Saving...` / `All changes saved` / a specific failure with a Retry action (input stays on
+screen). On 409 `STALE_ROW_VERSION` it stops autosaving, loads the server record, and shows an
+`alertdialog` listing only the fields this session changed since it last loaded or saved (its unsent
+edits) against the saved values; "Use the saved version" discards them, "Keep my edits and save"
+applies them on top of the server record and saves with the new row version. Completion errors are
+rendered as an `alert` summary with links that expand the section and focus the control, and each
+field is marked `aria-invalid` with a description. Non-owners get a read-only editor; completed walks
+show a banner; a completed walk's delete action asks for a void reason. Walks pinned to an older
+version load their render model through `GET /api/walks/{id}/instrument` and cache it per version.
+
+## What Phase 5 builds on
+
+- `WalkService.open` returns the normalized state plus derived states; the summary/export
+  formatter can be built once in CFML and once in JavaScript over the same render model + state,
+  like the visibility engine, and proven equal by vectors.
+- The email-draft item (`EMAIL_DRAFT_JSON`) already persists the `docs/DATA_CONTRACT.md` document
+  through the ordinary save path (validated, canonical JSON in `text_value`, non-reportable).
+- `renderer.js` exposes the `email-draft` layout slot; `app.js` `#export-btn` is the hidden hook for
+  the text export, and `WalkService.completionIssues` is the required-field source for "complete
+  parts" selection.
+
+## What Phase 4 built on (Phase 3 hand-off)
 
 - `SnapshotService.renderModelFor(versionId)` and `snapshotFor(versionId)` render a walk against
   its pinned version; `currentVersion()` is the version new walks are created against.

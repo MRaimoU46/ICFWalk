@@ -52,6 +52,17 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     assert.equal(patchAgain.ok, true, patchAgain.error?.message);
     const cols = await pool.request().query("SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('icf.response_option') AND name = 'definition'");
     assert.equal(cols.recordset[0].n, 1);
+
+    // Phase 4 migration 003: walk mutation log, additive and idempotent.
+    const mutation = await applyScript(pool, readScript("003_walk_mutation.sql"));
+    assert.equal(mutation.ok, true, mutation.error?.message);
+    assert.equal(mutation.recordset[0].walk_mutation_available, 1);
+    const mutationAgain = await applyScript(pool, readScript("003_walk_mutation.sql"));
+    assert.equal(mutationAgain.ok, true, mutationAgain.error?.message);
+    const tables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
+    assert.equal(tables.recordset[0].n, 21);
+    const mutationCols = await pool.request().query("SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('icf.walk_mutation')");
+    assert.equal(mutationCols.recordset[0].n, 6);
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

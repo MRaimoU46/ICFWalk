@@ -4,9 +4,10 @@
 
 1. Apply `001_schema.sql` to an empty database.
 2. Apply `002_alignment_patch.sql`.
-3. Run the application's configuration importer against `../config/instrument-config.json`.
-4. Validate and preview the resulting DRAFT.
-5. Publish it through the application when content owners approve it.
+3. Apply `003_walk_mutation.sql` (Phase 4 build migration: the append-only walk mutation log that makes create/save/complete/void requests idempotent). Additive and safe to re-run.
+4. Run the application's configuration importer against `../config/instrument-config.json`.
+5. Validate and preview the resulting DRAFT.
+6. Publish it through the application when content owners approve it.
 
 `001_schema.sql` intentionally refuses to run when the `icf` schema already contains tables. For an existing installation, use reviewed migrations and backups rather than rerunning the creation script.
 

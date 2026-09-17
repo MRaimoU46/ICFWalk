@@ -38,7 +38,7 @@ cp .env.example .env                          # then set ICFWALK_DB_* from .runt
                                               # ICFWALK_MAINTENANCE_ENABLED=true / ICFWALK_TESTS_ENABLED=true,
                                               # and for local sign-in: ICFWALK_SSO_MODE=development,
                                               # ICFWALK_DEV_IDENTITY_ENABLED=true, ICFWALK_COOKIE_SECURE=false
-node scripts/db/apply-schema.mjs              # applies database/001_schema.sql then 002_alignment_patch.sql
+node scripts/db/apply-schema.mjs              # applies database/001_schema.sql, 002_alignment_patch.sql, 003_walk_mutation.sql
 
 tools/runtime/lucee-up.sh                     # or deploy app/ to ColdFusion 2023 (below)
 node scripts/seed-instrument.mjs              # imports config/instrument-config.json as a DRAFT version
@@ -60,8 +60,9 @@ npm test                                      # all Node tests + the CFML suite 
 3. Set `ICFWALK_ENVIRONMENT` explicitly (`production` is the default and fails closed).
 4. Provide environment variables to the ColdFusion service (system environment, or
    `ICFWALK_ENV_FILE` pointing at a file readable only by the service account).
-5. Apply `database/001_schema.sql` then `database/002_alignment_patch.sql` with SQL Server tooling
-   (`sqlcmd`, SSMS) or `node scripts/db/apply-schema.mjs`.
+5. Apply `database/001_schema.sql`, then `database/002_alignment_patch.sql`, then
+   `database/003_walk_mutation.sql` (Phase 4, idempotent) with SQL Server tooling (`sqlcmd`, SSMS)
+   or `node scripts/db/apply-schema.mjs`. Existing installations from before Phase 4 need only `003`.
 6. Seed the instrument: enable maintenance temporarily (`ICFWALK_MAINTENANCE_ENABLED=true`, a
    32+ character `ICFWALK_MAINTENANCE_TOKEN`), call the import endpoint from the server itself
    (`node scripts/seed-instrument.mjs` or `curl` against `http://127.0.0.1/index.cfm/api/maintenance/instrument/import`),
@@ -108,7 +109,13 @@ ColdFusion. Stop it with `tools/runtime/lucee-down.sh`. Logs: `.runtime/lucee.lo
 `.runtime/lucee-server/lucee-server/context/logs/icfwalk.log` (application log lines).
 
 This runtime exists to execute the CFML test suite where Adobe ColdFusion cannot be installed. It is
-not a supported production platform for ICFWalk.
+not a supported production platform for ICFWalk. Lucee compiles components once and does not watch
+the source files: after editing a `.cfc`, restart it (`lucee-down.sh` then `lucee-up.sh`); `?reinit=1`
+on any request only rebuilds the container from the already compiled classes.
+
+The seeded DRAFT can be re-imported (idempotently) only while no walk references it: the fixtures of
+every test remove their walks, but walks created by hand through the browser keep the DRAFT "in
+use" (`INSTRUMENT_VERSION_IN_USE`) until they are removed or the version is published.
 
 ## Tests
 
@@ -117,10 +124,11 @@ not a supported production platform for ICFWalk.
 | `npm run validate:handoff` | Supplied handoff validator (PKG-01). |
 | `npm run test:package` | PKG-02..05, canonical JSON vectors, reference snapshot golden, schema/DAO contract. No database needed. |
 | `npm run test:db` | DB-01..03 against a disposable SQL Server database (needs `ICFWALK_DB_*` admin credentials). |
-| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity and authorization specs), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. |
+| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity, authorization, and walk persistence specs), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. |
 | `npm run test:auth` | HTTP identity/authorization checks (AUTH-01, CSRF, cookies, admin route separation). Needs the app in development mode with `ICFWALK_SSO_MODE=development` and `ICFWALK_DEV_IDENTITY_ENABLED=true`. |
 | `npm run test:shell` | Phase 3: authorization and headers of the HTML shell and `/api/instrument/current`; browser rules engine against the shared visibility vectors and COND-01..15 (same prerequisites as `test:auth`). |
-| `npm run test:browser` | Phase 3: Playwright (Chromium) run of the real page: dynamic rendering from the served model, conditional behavior, My Walks flow, keyboard operation, axe-core WCAG checks, screenshots at 375/768/1280 px into `docs/evidence/screenshots/`. Needs `npm install` (Playwright and axe-core are dev dependencies) and a Chromium that Playwright can find (`npx playwright install chromium` where it is not pre-installed). |
+| `npm run test:walks` | Phase 4: HTTP checks of `/api/walks` (authentication, CSRF, role separation, cross-scope 404s, tampered keys/codes/identifiers, stale writes, idempotent retries, completion, void, delete refusal, pinned instrument). Same prerequisites as `test:auth`. |
+| `npm run test:browser` | Phase 3 + 4: Playwright (Chromium) runs of the real page against the persistent store: dynamic rendering from the served model, conditional behavior, My Walks flow (create, reload, open, void), 700 ms autosave coalescing, network-failure retry, two-session conflict resolution, completion errors and completion, keyboard operation, axe-core WCAG checks, screenshots at 375/768/1280 px into `docs/evidence/screenshots/`. Needs `npm install` (Playwright and axe-core are dev dependencies) and a Chromium that Playwright can find (`npx playwright install chromium` where it is not pre-installed). |
 | `npm test` | Everything above. |
 
 The CFML suite can also be triggered directly:

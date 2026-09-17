@@ -73,6 +73,8 @@ const itemVisible = (itemKey) => page.$eval(`[data-item-key="${itemKey}"]`, (e) 
 const selectDim = (code, value) => page.selectOption(`[data-dimension-code="${code}"] select`, value);
 const clickPill = (itemKey, code) => page.click(`[data-item-key="${itemKey}"] .pill[data-code="${code}"]`);
 const expand = (key) => page.click(`[data-section-key="${key}"] > h2 > .acc-head, [data-section-key="${key}"] > h3 > .acc-head`);
+// Phase 4: saves go to the server (700 ms debounce), so status assertions wait for the round trip.
+const waitSaved = () => page.waitForFunction(() => document.getElementById("save-status").textContent === "All changes saved", null, { timeout: 15000 });
 
 test("WALK-01 empty My Walks state with the prototype wording and a New walk action", { skip }, async () => {
   await page.goto(`${baseUrl(env)}/index.cfm/`, { waitUntil: "networkidle" });
@@ -143,6 +145,7 @@ test("COND-01..05 grade choices follow the school and an invalid grade is cleare
   await selectDim("school", "abbott_middle_school");
   assert.equal(await page.inputValue('[data-dimension-code="grade"] select'), "", "invalid grade cleared");
   assert.equal(await page.textContent("#save-status"), "Unsaved changes");
+  await waitSaved();
 });
 
 test("COND-06 Period shows for grades 6-12 only and its value is retained while hidden", { skip }, async () => {
@@ -285,7 +288,7 @@ test("A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the edi
 test("My Walks: card shows grade/content, school, date and relative time; open, delete with confirmation, cancel", { skip }, async () => {
   if (await page.isVisible("#view-walk")) { await page.click("#back-btn"); await page.waitForSelector("#view-list:not([hidden])"); }
   const cards = page.locator(".walk-card");
-  assert.equal(await cards.count(), 1);
+  assert.equal(await cards.count(), 1, `cards: ${JSON.stringify(await page.$$eval(".walk-card", (els) => els.map((e) => e.textContent.trim())))}`);
   assert.equal(await page.textContent(".walk-card .title"), "9 · Music");
   assert.match(await page.textContent(".walk-card .meta"), /^Unlisted Site · just now$/);
   assert.equal(await page.textContent("#save-status"), "All changes saved");
@@ -295,6 +298,7 @@ test("My Walks: card shows grade/content, school, date and relative time; open, 
   assert.equal(await page.inputValue('[data-dimension-code="grade"] select'), "9");
   await page.fill('[data-dimension-code="date"] input', "2026-09-17");
   await page.click("#save-btn");
+  await waitSaved();
   assert.equal(await page.textContent("#save-status"), "All changes saved");
   await page.click("#nav-list-btn");
   await page.waitForSelector("#view-list:not([hidden])");
@@ -313,6 +317,8 @@ test("My Walks: card shows grade/content, school, date and relative time; open, 
   assert.equal(await page.locator(".walk-card").count(), 2, "cancel keeps the walk");
   await page.locator(".walk-card").first().locator(".delete-btn").click();
   await page.click(".confirm-delete");
+  // Phase 4: deletion voids the walk on the server and re-renders the list afterwards.
+  await page.waitForFunction(() => document.querySelectorAll(".walk-card").length === 1, null, { timeout: 15000 });
   assert.equal(await page.locator(".walk-card").count(), 1);
   assert.equal(await page.textContent(".walk-card .title"), "9 · Music");
   await page.screenshot({ path: path.join(shotDir, "my-walks-desktop.png"), fullPage: true });

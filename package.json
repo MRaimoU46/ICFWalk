@@ -13,8 +13,9 @@
     "test:cfml": "node --test tests/node/cfml-suite.test.mjs",
     "test:auth": "node --test tests/node/auth.test.mjs",
     "test:shell": "node --test tests/node/shell.test.mjs tests/node/visibility.test.mjs",
-    "test:browser": "node --test tests/node/browser.test.mjs",
-    "db:apply": "node scripts/db/apply-schema.mjs"
+    "test:browser": "node --test tests/node/browser.test.mjs tests/node/browser-persistence.test.mjs",
+    "db:apply": "node scripts/db/apply-schema.mjs",
+    "test:walks": "node --test tests/node/walks.test.mjs"
   },
   "engines": {
     "node": ">=20"
