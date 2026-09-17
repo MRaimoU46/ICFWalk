@@ -1,4 +1,4 @@
-# Architecture notes (Phases 1 and 2)
+# Architecture notes (Phases 1 to 3)
 
 ## Shape
 
@@ -21,7 +21,8 @@ over HTTP: `Application.cfc` rejects every request except `index.cfm`.
 | Validation | `instrument/InstrumentConfigValidator` (document rules), `core/Db` typed parameters |
 | Data access | `instrument/DefinitionRepository`, `instrument/DefinitionMapper`, `audit/AuditRepository` |
 | Cross-cutting | `config/ConfigLoader`, `core/Errors`, `core/Logger`, `core/RequestContext`, `core/CanonicalJson` |
-| Views | none yet (Phase 3) |
+| Instrument engine (Phase 3) | `instrument/SnapshotService`, `instrument/RenderModelBuilder`, `instrument/VisibilityEngine` |
+| Views | `views/shell.html` served by `controllers/ShellController`; browser modules in `app/assets/js` (`renderer.js`, `rules.js`, `walk-state.js`, `walk-store.js`, `app.js`) |
 
 ## Configuration and environments
 
@@ -164,7 +165,67 @@ assignment, test runner, fixture cleanup) remain token-guarded and never use the
 provision the first administrator, assign `MASTER_INSTRUMENT_ADMIN`, then assign walk/report roles
 per district or school, all through the maintenance endpoints (documented in `docs/LOCAL_SETUP.md`).
 
-## What Phase 3 builds on
+## Instrument engine and visual shell (Phase 3)
+
+```
+instrument_version.compiled_snapshot_json
+   -> SnapshotService (current PUBLISHED, or DRAFT fallback outside production; cached by checksum)
+   -> RenderModelBuilder.build(snapshot)  -> render model (icfwalk-render-model/1)
+   -> GET /api/instrument/current          -> browser renderer.js (DOM) + rules.js (visibility)
+                                              VisibilityEngine.cfc = server twin of rules.js
+```
+
+**Render model.** `RenderModelBuilder` turns the flat snapshot into a section tree (children by
+`parentSectionKey` and `displayOrder`) whose nodes carry only derived facts, never named content:
+placements (dimension inputs with label, placeholder, data type, values, option filter), items
+with a `layout` derived from item type and response set (`display-heading`, `display-guidance`,
+`question` = choice with definitions, `choice-row` = choice without definitions such as yes/no,
+`applicability`, `notes`, `text`, `email-draft`), question numbers (scored questions are numbered;
+sections without scored questions number every question, which reproduces the prototype), and
+section presentation (`card` for top-level sections that hold placements or are conditional,
+`accordion` for the other top-level parts, `component` for nested sections with
+`settings.partNumber`, `block` otherwise; a block shows its heading only when it has look-fors
+or a color). Skippable components are recognised from the rules: the item that is the ITEM-typed
+source of SHOW rules on sibling items is the applicability item and the targets are the rated
+items. The 17 placeholder items are flagged (`isPlaceholder`) but displayed as the prototype does.
+Unsupported rule effects, operators, option filters, and item types are refused at build time.
+
+**Visibility engine.** `VisibilityEngine.cfc` and `app/assets/js/rules.js` implement the same
+semantics and are proven equivalent by `tests/fixtures/visibility-vectors.json` (29 states,
+asserted by both `VisibilityEngineTest` and `tests/node/visibility.test.mjs`). A target with SHOW
+rules is visible when any rule is true; DIMENSION conditions compare the selected value's label or
+code, ITEM conditions the stored option code; operators EQUALS/NOT_EQUALS/IN/NOT_IN with AND/OR.
+Response states: HIDDEN (section or dimension-driven rule), NOT_APPLICABLE (hidden by a
+sibling-item rule, i.e. the applicability answer), ANSWERED (valid option code or non-empty text),
+UNANSWERED; nothing is ever coerced to zero. Option filters come from placement settings
+(`schoolTypeToGradeBand` = grade values whose `valueGroup` equals the selected school's group; Other
+or no school = every grade). `normalize()` applies the prototype's clearing: a filtered selection
+that is no longer allowed is cleared; NOT_APPLICABLE responses are cleared (ratings when a
+component is set to No; notes are never rated and remain); dimension values hidden by rules are
+retained unless `ICFWALK_HIDDEN_PERIOD_POLICY=CLEAR` (docs/OPEN_DECISIONS.md, exposed to the
+browser as `policies.hiddenDimensionPolicy`). The working state shape is the Phase 4 autosave
+payload from `docs/DATA_CONTRACT.md` (`dimensions` by code, `responses` by item key).
+
+**Browser shell.** `GET /` serves `src/views/shell.html` (no instrument content, no user data,
+strict CSP) and the ES modules in `app/assets/js`. `renderer.js` builds the editor DOM once from
+the model and keeps it in sync on every edit (visibility, filtered options, pressed pills, rating
+counts, live announcements). `walk-store.js` is the persistence boundary: Phase 3 ships the
+in-memory `SessionWalkStore`; Phase 4 replaces it with an API-backed store implementing the same
+interface (`list/create/open/save/remove`) plus the 700 ms debounced autosave. My Walks card
+composition (title = grade · content, meta = school · date · relative time) is presentation
+configuration by dimension code in `app.js` (`LIST_CARD`), not instrument content.
+
+## What Phase 4 builds on
+
+- `SnapshotService.renderModelFor(versionId)` and `snapshotFor(versionId)` render a walk against
+  its pinned version; `currentVersion()` is the version new walks are created against.
+- `VisibilityEngine.evaluateVisibility(model, state)` and `normalize(model, state, policies)` give
+  the server the same HIDDEN / NOT_APPLICABLE / clearing decisions the browser makes, for the
+  autosave transaction, completion validation, and reports.
+- `WalkStore` (browser) is the seam for `/api/walks` endpoints; `app.js` already carries the
+  org-unit selection for creation (`walk.create` scope from `/api/me`) and the save-status states.
+
+## What Phase 3 built on (Phase 2 hand-off)
 
 - `AuthorizationService.visibleOrgUnitIds(principal, "walk.read")` and `authorizeWalk` are the
   scope primitives for My Walks and the walk editor; `req.principal` is available in every

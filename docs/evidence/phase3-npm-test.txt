@@ -1,0 +1,412 @@
+
+> icfwalk@0.1.0 test
+> node --test --test-concurrency=1 "tests/node/*.test.mjs"
+
+TAP version 13
+# Subtest: fixtures: org units, users, and roles through maintenance endpoints
+ok 1 - fixtures: org units, users, and roles through maintenance endpoints
+  ---
+  duration_ms: 148.196932
+  type: 'test'
+  ...
+# Subtest: AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+ok 2 - AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+  ---
+  duration_ms: 47.597938
+  type: 'test'
+  ...
+# Subtest: signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+ok 3 - signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+  ---
+  duration_ms: 84.907167
+  type: 'test'
+  ...
+# Subtest: AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+ok 4 - AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+  ---
+  duration_ms: 66.858102
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints stay token-guarded even for signed-in admins
+ok 5 - maintenance endpoints stay token-guarded even for signed-in admins
+  ---
+  duration_ms: 5.258464
+  type: 'test'
+  ...
+# Subtest: WALK-01 empty My Walks state with the prototype wording and a New walk action
+ok 6 - WALK-01 empty My Walks state with the prototype wording and a New walk action
+  ---
+  duration_ms: 1639.754985
+  type: 'test'
+  ...
+# Subtest: editor renders every section, item, and option from the served instrument model
+ok 7 - editor renders every section, item, and option from the served instrument model
+  ---
+  duration_ms: 295.828478
+  type: 'test'
+  ...
+# Subtest: COND-01..05 grade choices follow the school and an invalid grade is cleared
+ok 8 - COND-01..05 grade choices follow the school and an invalid grade is cleared
+  ---
+  duration_ms: 106.945149
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+ok 9 - COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+  ---
+  duration_ms: 56.149078
+  type: 'test'
+  ...
+# Subtest: COND-07..10 conditional classroom sections and retained hidden answers
+ok 10 - COND-07..10 conditional classroom sections and retained hidden answers
+  ---
+  duration_ms: 659.530875
+  type: 'test'
+  ...
+# Subtest: COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+ok 11 - COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+  ---
+  duration_ms: 425.757012
+  type: 'test'
+  ...
+# Subtest: COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+ok 12 - COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+  ---
+  duration_ms: 2238.309178
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+ok 13 - A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+  ---
+  duration_ms: 56.763087
+  type: 'test'
+  ...
+# Subtest: A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+ok 14 - A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+  ---
+  duration_ms: 1277.377677
+  type: 'test'
+  ...
+# Subtest: My Walks: card shows grade/content, school, date and relative time; open, delete with confirmation, cancel
+ok 15 - My Walks: card shows grade/content, school, date and relative time; open, delete with confirmation, cancel
+  ---
+  duration_ms: 465.411445
+  type: 'test'
+  ...
+# Subtest: A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ok 16 - A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+  ---
+  duration_ms: 1216.397037
+  type: 'test'
+  ...
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 17 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.784924
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 18 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.29019
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 19 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.147604
+  type: 'test'
+  ...
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 20 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 18.16137
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 21 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 11.584761
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 22 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 23.166478
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 23 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 20680.900797
+  type: 'test'
+  ...
+# SnapshotServiceTest.testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: passed
+# SnapshotServiceTest.testInvalidAndUnknownVersionsFailClosed: passed
+# SnapshotServiceTest.testProductionSemanticsRequireAPublishedVersion: passed
+# SnapshotServiceTest.testSnapshotIsParsedOnceAndCachedByChecksum: passed
+# CanonicalJsonTest.testBracketKeysPreserveCase: passed
+# CanonicalJsonTest.testDateFormatting: passed
+# CanonicalJsonTest.testDecimalsFromDatabaseStyleValuesFormatPlainly: passed
+# CanonicalJsonTest.testExplicitNullAssignmentSerializesAsNull: passed
+# CanonicalJsonTest.testNullValuedKeysAreRetainedFromJson: passed
+# CanonicalJsonTest.testSharedVectorsProduceIdenticalCanonicalText: passed
+# AuthorizationTest.testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools: passed
+# AuthorizationTest.testAuth04SchoolRoleCannotReachWalkInUnassignedSchool: passed
+# AuthorizationTest.testAuth05ReportOnlyRolesCannotOpenOrEditWalks: passed
+# AuthorizationTest.testAuth06InstrumentAdminHasNoWalkOrReportAccess: passed
+# AuthorizationTest.testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing: passed
+# AuthorizationTest.testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch: passed
+# AuthorizationTest.testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected: passed
+# AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens: passed
+# AuthorizationTest.testEndingAnAssignmentRevokesAccessImmediately: passed
+# AuthorizationTest.testInactiveOrgUnitAssignmentGrantsNothing: passed
+# AuthorizationTest.testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable: passed
+# AuthorizationTest.testSchoolWalkRoleWorksInsideItsOwnSchool: passed
+# ConfigLoaderTest.testDefaultsFailClosedToProduction: passed
+# ConfigLoaderTest.testDescribeOmitsSecrets: passed
+# ConfigLoaderTest.testDevIdentityStubCannotBeEnabledInProduction: passed
+# ConfigLoaderTest.testDevIdentityStubIsOnlyForDevelopmentOrTest: passed
+# ConfigLoaderTest.testEnvFileParsing: passed
+# ConfigLoaderTest.testInvalidEnvironmentAndLogLevelAreRejected: passed
+# ConfigLoaderTest.testMaintenanceRequiresLongToken: passed
+# ConfigLoaderTest.testTestRunnerIsNeverEnabledInProduction: passed
+# ConfigLoaderTest.testUnpublishedInstrumentRenderingIsRefusedInProduction: passed
+# VisibilityEngineTest.testAnsweredRequiresAValidOptionAndUnansweredIsNeverNumeric: passed
+# VisibilityEngineTest.testBlankStateAppliesConfiguredDefaults: passed
+# VisibilityEngineTest.testConditionalClassroomSectionsFollowGradeClassTypeAndContent: passed
+# VisibilityEngineTest.testGradeFilteringFollowsSchoolGroup: passed
+# VisibilityEngineTest.testHiddenConditionalAnswersAreRetainedAndReappear: passed
+# VisibilityEngineTest.testInvalidGradeIsClearedAndDependentVisibilityRecalculates: passed
+# VisibilityEngineTest.testMatchesTheSharedVectorsExactly: passed
+# VisibilityEngineTest.testPeriodVisibilityAndHiddenRetentionPolicy: passed
+# VisibilityEngineTest.testSkippableComponentClearsRatingsKeepsNotesAndReturnsUnanswered: passed
+# VisibilityEngineTest.testUnsupportedOperatorsAreRefused: passed
+# InstrumentConfigValidatorTest.testBadParentSectionIsReported: passed
+# InstrumentConfigValidatorTest.testChoiceItemWithoutResponseSetIsRejected: passed
+# InstrumentConfigValidatorTest.testConditionMismatchIsReported: passed
+# InstrumentConfigValidatorTest.testCorruptConditionsJsonIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateItemKeyIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateOptionOrderIsReported: passed
+# InstrumentConfigValidatorTest.testMissingResponseSetIsReportedWithSpecificReference: passed
+# InstrumentConfigValidatorTest.testNonDraftStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testRetiredSipContentIsRejected: passed
+# InstrumentConfigValidatorTest.testStructuralFailureStopsEarlyWithoutCrashing: passed
+# InstrumentConfigValidatorTest.testSuppliedConfigurationIsValidWithSeventeenPlaceholderWarnings: passed
+# InstrumentConfigValidatorTest.testUnsupportedRuleEffectIsReported: passed
+# IdentityTest.testAuthenticationProvisionsAndBuildsPrincipal: passed
+# IdentityTest.testConfigLoaderRejectsUnsafeIdentitySettings: passed
+# IdentityTest.testDevelopmentStubCannotBeConstructedWhenNotPermitted: passed
+# IdentityTest.testDevelopmentStubReadsOnlyItsOwnHeaders: passed
+# IdentityTest.testHeaderProviderRejectsMissingOrMalformedSubjects: passed
+# IdentityTest.testHeaderProviderRequiresSharedSecretWhenConfigured: passed
+# IdentityTest.testHeaderProviderTrustsOnlyListedProxies: passed
+# IdentityTest.testHeaderProviderWithNoProxyListTrustsNobody: passed
+# IdentityTest.testInactiveUserIsRejectedByAuthentication: passed
+# IdentityTest.testProvisioningIsKeyedBySubjectAndTolerantOfEmailCollisions: passed
+# SnapshotCompilerTest.testCompiledSnapshotMatchesReferenceGolden: passed
+# SnapshotCompilerTest.testRuleTargetsResolveToKeysNotLogicalIds: passed
+# SnapshotCompilerTest.testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior: passed
+# RenderModelTest.testLayoutsAndNumberingComeFromResponseSetsAndOrder: passed
+# RenderModelTest.testModelSerializesToCanonicalJsonWithoutGuids: passed
+# RenderModelTest.testPlacementsCarryDimensionMetadataInAuthoredOrder: passed
+# RenderModelTest.testPresentationIsDerivedFromStructureNotNames: passed
+# RenderModelTest.testPromptsAndPlaceholdersComeFromTheConfiguration: passed
+# RenderModelTest.testResponseOptionsAndDefinitionsMatchTheConfigurationExactly: passed
+# RenderModelTest.testRulesArePassedThroughAndUnsupportedEffectsAreRefused: passed
+# RenderModelTest.testSkippableComponentsDeriveApplicabilityFromRules: passed
+# RenderModelTest.testTreeFollowsAuthoredParentsAndDisplayOrder: passed
+# InstrumentImportServiceTest.testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot: passed
+# InstrumentImportServiceTest.testDb05ReimportIsIdempotentWithStableGuidsAndChecksum: passed
+# InstrumentImportServiceTest.testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges: passed
+# InstrumentImportServiceTest.testDb07MissingResponseSetRollsBackWithSpecificError: passed
+# InstrumentImportServiceTest.testDb08CorruptConditionsJsonRollsBack: passed
+# InstrumentImportServiceTest.testDb09ResponseOptionDefinitionsMatchTheJsonExactly: passed
+# InstrumentImportServiceTest.testDiscardDraftRemovesVersionAndChildren: passed
+# InstrumentImportServiceTest.testListVersionsIncludesImportedDraft: passed
+# InstrumentImportServiceTest.testReorderedReimportSucceedsAndReturnsToGolden: passed
+# InstrumentImportServiceTest.testTransactionRollsBackWhenDatabaseRejectsAWrite: passed
+# LoggerTest.testEntrySerializesAsSingleJsonLine: passed
+# LoggerTest.testLevelThresholds: passed
+# LoggerTest.testRedactsSensitiveKeysAndTruncatesLongText: passed
+# engine=Lucee 6.2.8.20 passed=88 failed=0 skipped=0 ms=20662
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 24 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 2773.055319
+  type: 'test'
+  ...
+# (node:5014) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 25 - DB-01..03 supplied scripts against an empty SQL Server database
+  ---
+  duration_ms: 658.868527
+  type: 'test'
+  ...
+# SQL Server 16.0.4295.3 Developer Edition (64-bit)
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 26 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 199.415276
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 27 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.213042
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 28 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.502357
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 29 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.775445
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 30 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 6.373355
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 31 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 2.353989
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 32 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.229028
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 33 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 0.991411
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 34 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.334638
+  type: 'test'
+  ...
+# Subtest: fixtures
+ok 35 - fixtures
+  ---
+  duration_ms: 109.824733
+  type: 'test'
+  ...
+# Subtest: AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+ok 36 - AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+  ---
+  duration_ms: 13.768366
+  type: 'test'
+  ...
+# Subtest: users without any capability are forbidden; walk, report, and admin roles may load the instrument
+ok 37 - users without any capability are forbidden; walk, report, and admin roles may load the instrument
+  ---
+  duration_ms: 628.741745
+  type: 'test'
+  ...
+# Subtest: shell page is served to signed-in users with a strict CSP and no embedded content
+ok 38 - shell page is served to signed-in users with a strict CSP and no embedded content
+  ---
+  duration_ms: 18.70562
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 39 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 23.432527
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 40 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 17.379337
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 41 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 13.137457
+  type: 'test'
+  ...
+# Subtest: JS engine reproduces every shared vector (parity contract with the CFML engine)
+ok 42 - JS engine reproduces every shared vector (parity contract with the CFML engine)
+  ---
+  duration_ms: 282.002478
+  type: 'test'
+  ...
+# Subtest: COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+ok 43 - COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+  ---
+  duration_ms: 1.327569
+  type: 'test'
+  ...
+# Subtest: COND-05 an invalid grade is cleared and dependent visibility recalculates
+ok 44 - COND-05 an invalid grade is cleared and dependent visibility recalculates
+  ---
+  duration_ms: 0.890798
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+ok 45 - COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+  ---
+  duration_ms: 2.566217
+  type: 'test'
+  ...
+# Subtest: COND-07..09 conditional classroom sections
+ok 46 - COND-07..09 conditional classroom sections
+  ---
+  duration_ms: 1.698701
+  type: 'test'
+  ...
+# Subtest: COND-10 hidden conditional answers are retained and reappear
+ok 47 - COND-10 hidden conditional answers are retained and reappear
+  ---
+  duration_ms: 0.892408
+  type: 'test'
+  ...
+# Subtest: COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+ok 48 - COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+  ---
+  duration_ms: 1.52914
+  type: 'test'
+  ...
+# Subtest: COND-15 answered requires a valid option; unanswered never becomes zero
+ok 49 - COND-15 answered requires a valid option; unanswered never becomes zero
+  ---
+  duration_ms: 0.482191
+  type: 'test'
+  ...
+# Subtest: engine rejects unsupported operators instead of guessing
+ok 50 - engine rejects unsupported operators instead of guessing
+  ---
+  duration_ms: 2.311267
+  type: 'test'
+  ...
+# Subtest: walk-state helpers: org-unit code preselects the matching School value; display text; rating summary
+ok 51 - walk-state helpers: org-unit code preselects the matching School value; display text; rating summary
+  ---
+  duration_ms: 0.928008
+  type: 'test'
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 51
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 35984.982089

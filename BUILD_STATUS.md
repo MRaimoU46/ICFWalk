@@ -1,11 +1,12 @@
 # ICFWalk build status
 
-Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation), and
-Phase 2 (identity, roles, authorization, organizational scope)** from `docs/IMPLEMENTATION_PLAN.md`.
-Phase 3 and later have not been started. Phase 2 details are in the section "Phase 2" near the end;
-Phase 0/1 records are kept as delivered.
+Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation),
+Phase 2 (identity, roles, authorization, organizational scope), and Phase 3 (instrument engine and
+visual shell)** from `docs/IMPLEMENTATION_PLAN.md`. Phase 4 and later have not been started. Phase 3
+details are in the section "Phase 3" at the end; earlier records are kept as delivered.
 
-Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/hopeful-keller-wwpeio`.
+Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/sharp-faraday-szq937`
+(Phase 2 base commit `0b5d91a`).
 
 ## Phase 0 baseline
 
@@ -290,7 +291,7 @@ None open. External items before production: identity gateway addresses and head
 | Every endpoint has explicit authorization | Met: `Router` requires a declared policy per route; maintenance routes token-guarded; user routes authenticated with permission checks |
 | Cross-scope tests fail closed | Met: AUTH-04/05/06/07/08/09 negative tests at service level and AUTH-01/06 at HTTP level, all denials audited |
 
-## Exact recommended starting point for Phase 3
+## Exact recommended starting point for Phase 3 (as recorded at the end of Phase 2)
 
 1. Read `docs/ARCHITECTURE.md` ("What Phase 3 builds on"), `src/http/Router.cfc`, and
    `src/authorization/AuthorizationService.cfc` (`visibleOrgUnitIds`, `authorizeWalk`).
@@ -308,3 +309,202 @@ None open. External items before production: identity gateway addresses and head
 6. Write fixture-driven renderer tests first (desktop/mobile snapshots of the editor states via
    Playwright, which is pre-installed) and extend `tests/node/` with an authenticated browser flow
    using the development identity header.
+
+## Phase 3: instrument engine and visual shell
+
+Base: commit `0b5d91a` (Phase 2). No Phase 0-2 behavior was reworked except one Phase 2 defect
+found by the Phase 3 regression run (below); all Phase 1/2 tests still pass.
+
+### Work completed
+
+1. **Snapshot service** (`src/instrument/SnapshotService.cfc`): resolves the version walks render
+   from (newest PUBLISHED; outside production the newest DRAFT snapshot when
+   `ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT` permits, marked `isFallbackDraft`), parses the stored
+   canonical snapshot once per checksum, and exposes `snapshotFor` / `renderModelFor(versionId)` for
+   pinned rendering. Publish semantics were not touched (Phase 6).
+2. **Render model builder** (`src/instrument/RenderModelBuilder.cfc`, format
+   `icfwalk-render-model/1`): compiles the flat snapshot into the section tree with derived
+   presentation facts only (see `docs/ARCHITECTURE.md`, "Instrument engine and visual shell").
+   Section presentation, item layouts, question numbering, look-for grouping, skippable-component
+   applicability items, placeholder flags, and option filters are all derived from keys, orders,
+   settings, response sets, rules, and placements. Unsupported rule effects/operators, option
+   filters, and item types are refused.
+3. **Visibility engine** in two implementations proven equivalent: `src/instrument/VisibilityEngine.cfc`
+   (`evaluateVisibility`, `normalize`, `blankState`) and `app/assets/js/rules.js`, checked against
+   `tests/fixtures/visibility-vectors.json` (29 states covering grade filtering, Period, every
+   conditional classroom section, skippable components, invalid codes, whitespace text, and both
+   hidden-value policies).
+4. **HTTP**: `GET /` (HTML shell, strict CSP, HTML error pages for browsers) and
+   `GET /api/instrument/current` (render model + policies), both behind the new declarative
+   `anyPermission` route policy (walk, report, or instrument capability; role-less users are 403
+   and audited). `core/HtmlEncoder` provides engine-independent HTML encoding.
+5. **Browser application** (`app/assets/`, plain ES modules, no build step): `renderer.js`
+   (dynamic editor: visit-information grid, conditional cards, Part 1-4 accordions, tinted
+   component accordions with `n/2 rated` / `Not part of this lesson`, Look Fors boxes from the
+   display items, pills with definitions on demand, notes and summary fields, Period and Other
+   handling), `walk-state.js` (working state + prototype clearing rules via the engine),
+   `walk-store.js` (`WalkStore` boundary with the Phase 3 in-memory `SessionWalkStore`), `app.js`
+   (My Walks list: empty state, cards, newest first, open, delete with inline confirmation/cancel,
+   school chooser for users who can create in several units), `icfwalk.css` (prototype palette and
+   layout plus focus rings, aria-driven states, phone/tablet breakpoints).
+6. **Tests**: `RenderModelTest` (9), `VisibilityEngineTest` (10), `SnapshotServiceTest` (4),
+   `ConfigLoaderTest` (+1); `tests/node/shell.test.mjs` (4: AUTH-01 on the new routes, 403 for
+   role-less users, walker/report-only/admin may read the instrument, CSP/headers/no embedded
+   content), `tests/node/visibility.test.mjs` (10: vectors parity against the served model,
+   COND-01..15 at engine level, walk-state helpers), `tests/node/browser.test.mjs` (11 Playwright
+   cases: dynamic rendering of all 23 sections / 144 items / 138 options from the served model,
+   COND-01..15 in the DOM, WALK-01/04/05/06/07 at UI level, keyboard operation, axe-core WCAG 2.1
+   AA, responsive overflow checks with screenshots).
+7. **Documentation**: `docs/ARCHITECTURE.md` (Phase 3 section and Phase 4 hand-off),
+   `docs/ENDPOINTS.md`, `docs/LOCAL_SETUP.md` (browser access, new test commands), `.env.example`,
+   `docs/ACCEPTANCE_TRACKING.md`, evidence in `docs/evidence/phase3-npm-test.txt` and
+   `docs/evidence/screenshots/`.
+
+### Files created or changed (Phase 3)
+
+```
+Created: src/instrument/{SnapshotService,RenderModelBuilder,VisibilityEngine}.cfc
+         src/controllers/{InstrumentController,ShellController}.cfc  src/core/HtmlEncoder.cfc  src/views/shell.html
+         app/assets/css/icfwalk.css  app/assets/js/{api,rules,walk-state,walk-store,renderer,app}.js
+         tests/cfml/specs/{RenderModelTest,VisibilityEngineTest,SnapshotServiceTest}.cfc
+         tests/fixtures/visibility-vectors.json  tests/node/{shell,visibility,browser}.test.mjs
+         docs/evidence/phase3-npm-test.txt  docs/evidence/screenshots/*.png
+Changed: src/Bootstrap.cfc (engine + controllers)  src/http/Router.cfc (anyPermission policy, two routes)
+         src/http/Responder.cfc (HTML error pages for page routes)  src/config/ConfigLoader.cfc (ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT)
+         src/authorization/RoleScopeRepository.cfc (Phase 2 timing defect, below)
+         tests/cfml/specs/ConfigLoaderTest.cfc  package.json (serial test files, test:shell, test:browser; playwright + axe-core dev deps)  package-lock.json
+         docs/{ARCHITECTURE,ENDPOINTS,LOCAL_SETUP,ACCEPTANCE_TRACKING}.md  .env.example  BUILD_STATUS.md
+```
+
+### Tests and validators executed (Phase 3)
+
+Environment as before (Lucee 6.2.8 on Jetty, SQL Server 2022 in Docker, Node 22) plus Playwright
+1.56 with the pre-installed Chromium and axe-core 4.
+
+| Command | Result |
+| --- | --- |
+| `npm test` (full regression, serial, `docs/evidence/phase3-npm-test.txt`) | 51/51 pass: Phase 1/2's 26 plus shell (4), visibility (10), browser (11) |
+| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | 88 passed, 0 failed, 0 skipped (Phase 2's 64 + RenderModelTest 9 + VisibilityEngineTest 10 + SnapshotServiceTest 4 + ConfigLoaderTest 1) |
+| `npm run test:browser` alone | 11/11; screenshots written to `docs/evidence/screenshots/` |
+| Targeted runs during implementation | `?filter=RenderModel`, `?filter=VisibilityEngine`, `?filter=SnapshotService`, `?filter=Authorization` (x6 after the timing fix), `node --test tests/node/{shell,visibility,browser}.test.mjs` |
+| `node scripts/validate-handoff.mjs` | ok, 51 checks (supplied files unchanged) |
+
+Test-harness change: `npm test` now runs the Node test files serially (`--test-concurrency=1`).
+The CFML import specs create, temporarily publish, and delete throwaway versions; run concurrently
+with a browser session they change the "current version" under it.
+
+### Acceptance IDs satisfied in Phase 3
+
+PASS: COND-01, COND-02, COND-03, COND-04, COND-05, COND-06, COND-07, COND-08, COND-09, COND-11,
+COND-13, COND-14, COND-15; A11Y-01 (editor), A11Y-03 and A11Y-04 (Phase 3 views), A11Y-05 (automated part).
+PASS at UI level against the session store (server persistence re-verifies them in Phase 4):
+WALK-01, WALK-04, WALK-05, WALK-06, WALK-07. PARTIAL: WALK-02, COND-10, COND-12, SEC-02, A11Y-02.
+Also covered on the new routes: AUTH-01 and AUTH-06 separation (report-only and admin roles may read
+the instrument definitions, never walk data). Details: `docs/ACCEPTANCE_TRACKING.md`.
+
+### Visual and browser items requiring later verification
+
+Automated: screenshots at 375, 768, and 1280 px (`docs/evidence/screenshots/`), overflow checks,
+axe-core. Not verified here and to be checked by a person against `source/current-prototype.html`:
+
+- Side-by-side visual comparison with the prototype (typography, spacing, colors) in a real
+  browser; the sandbox could not load Work Sans from Google Fonts or the U-46 logo from the
+  district host, so screenshots use the fallback font stack and hide the logo.
+- 200 % zoom (A11Y-05) and screen-reader announcements (A11Y-02) with NVDA/VoiceOver.
+- The sticky top bar and focus behavior on iOS/Android browsers.
+- The Part 4 email-draft composer (Phase 5) is an empty, hidden slot in Phase 3.
+
+### Assumptions and recorded decisions (Phase 3)
+
+1. **No persistence in Phase 3** (per the phase plan): `WalkStore` is the boundary; the shipped
+   `SessionWalkStore` keeps walks in page memory only, nothing is written to localStorage or the
+   server, and the My Walks subtitle says so. Save buttons and the status strings (`All changes
+   saved`, `Unsaved changes`, `Saving...`) work against that store; the 700 ms debounce, row
+   versions, conflicts, and idempotent mutation ids are Phase 4 with an API-backed store.
+2. **Walk org unit at creation**: a walk belongs to one org unit the user may create in
+   (`walk.create` scope from `/api/me`). One unit starts immediately; several show a school chooser.
+   When an org unit code equals a School dimension value code, the School field is preselected.
+3. **Source conflict recorded (prototype vs JSON, Content-Area section heading):** the prototype
+   retitles the content-area card "<Content> Classroom" / "Shown automatically because the content
+   area selected is <Content>." at run time; the JSON authors the static title "Content-Area
+   Look-Fors" and instructions "Shown automatically for Music, Art, or CTE." (also in the aligned
+   workbook and `docs/PRODUCT_SPEC.md`). The renderer shows the JSON text because the title lives in
+   the instrument contract. A dynamic heading needs a `titleTemplate` section setting in a future
+   DRAFT version (renderer support would be added with it).
+4. **Deviations from the prototype for WCAG 2.1 AA** (A11Y-04): muted text `#7C8A97` -> `#5A6875`,
+   REQUIRED badge `#D55300` -> `#B84600`, rating counts use `--gray` on the tinted headers, selected
+   pills carry a check mark, delete confirmation is an inline dialog with the prototype's wording
+   instead of `window.confirm`, and the Period value is retained while hidden (prototype clears it;
+   `docs/OPEN_DECISIONS.md` default RETAIN_HIDDEN, configurable).
+5. **Presentation rules are documented heuristics on data**, not names: top-level sections with
+   placements or SHOW rules are cards, other top-level sections accordions; nested sections with
+   `settings.partNumber` are component accordions; scored questions are numbered, and sections
+   without scored questions number every question. My Walks card fields are configured by dimension
+   code (`LIST_CARD` in `app.js`).
+6. **Report-only and instrument-admin users may load the instrument definitions** (they are not
+   walk data; reports need them for filters). Users without any role are refused (403, audited).
+7. **`evaluate` is a reserved function name in CFML**; the server method is `evaluateVisibility`
+   while the JavaScript twin keeps `evaluate`.
+8. **Phase 2 defect fixed**: `RoleScopeRepository.assign` set `effective_start = SYSUTCDATETIME()`
+   and `endAssignment` set `effective_end = SYSUTCDATETIME()`; datetime2(3) rounding could place a
+   new start a fraction of a millisecond in the future (assignment briefly ineffective) and ending
+   in the same millisecond violated `CK_user_role_scope_dates`. New assignments without an explicit
+   start are effective from one second before creation; ending uses the last completed millisecond
+   (or start + 1 ms). Reproduced 1 in ~4 runs before, 0 in 6 after.
+
+### CF2023 verification items (Phase 3 additions)
+
+- `encodeForHTML` is not available on Lucee light; the build uses `core/HtmlEncoder`. On Adobe
+  ColdFusion both exist; keep `HtmlEncoder` so behavior is identical on both engines.
+- Struct keys assigned `javaCast("null", "")` in the render model (`responseSet`, `partNumber`,
+  `questionNumber`, `defaultApplicable`) rely on the Phase 1 null handling; `RenderModelTest`
+  serializes the whole model and fails loudly if Adobe drops those keys.
+- `cgi.script_name` under the IIS/Apache connector for `ShellController.basePrefix` (the web-root
+  prefix in front of `/index.cfm`; verify `data-api-base` in the served page).
+- Static assets: `app/assets/` must be served by IIS/Apache directly (not through ColdFusion), and
+  `Application.cfc` keeps rejecting non-`index.cfm` CFML requests.
+- The Content-Security-Policy header set through `cfheader` in a `text` response (`Responder.send`)
+  and the `Accept`-based HTML error negotiation (`Responder.wantsHtml`).
+- Browser suite on the target: `npm run test:browser` against the ColdFusion deployment in
+  development mode; the same screenshots then show Work Sans and the district logo.
+
+### Unresolved defects or blockers (Phase 3)
+
+None open. External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details,
+district org-unit codes, content-owner wording for the 17 placeholders). Product decision to record
+for content owners: whether the content-area card should adopt the prototype's dynamic
+"<Content> Classroom" heading (decision 3 above).
+
+### Phase 3 completion gate
+
+| Gate item | Status |
+| --- | --- |
+| Fixture snapshot renders the current form accurately | Met: `browser.test.mjs` proves all 23 sections, 144 items (exact prompts), 138 options, and 10 placements come from the served model of the seeded snapshot (golden checksum); `RenderModelTest` proves structure, order, layouts, and definitions against `config/instrument-config.json` |
+| Desktop and mobile widths | Met (automated): 375/768/1280 px without horizontal overflow, screenshots captured; person-in-the-loop comparison listed above |
+| No hardcoded question content | Met: `shell.test.mjs` asserts the shell carries no instrument text; the renderer and engine reference only model facts; `grep` of `app/assets/js` finds no prompt text |
+| Grade filtering, conditional sections, skippable components, keyboard behavior, accessible status messaging | Met: COND-01..15 at engine, parity, and DOM level; A11Y-01/03 automated |
+
+## Exact recommended starting point for Phase 4
+
+1. Read `docs/ARCHITECTURE.md` ("Instrument engine and visual shell" and "What Phase 4 builds on"),
+   `docs/DATA_CONTRACT.md` (walk aggregate, autosave payload, response states, visibility and
+   clearing rules, concurrency), `app/assets/js/walk-store.js` (the interface to implement), and
+   `src/instrument/VisibilityEngine.cfc` (`normalize` returns the clearing decisions the autosave
+   transaction must apply server-side).
+2. Add `src/walks/WalkRepository.cfc` + `WalkService.cfc` and `controllers/WalkController.cfc` with
+   routes `GET /api/walks` (`visibleOrgUnitIds(principal, "walk.read")` plus owned drafts, newest
+   `updated_at` first, list DTO = the `LIST_CARD` dimensions only), `POST /api/walks`
+   (`{ "permission": "walk.create", "orgUnitBody": "orgUnitId" }`, pin `version_id` from
+   `SnapshotService.currentVersion()`, seed defaults from `VisibilityEngine.blankState`, idempotency
+   key), `GET /api/walks/{id}` (`authorizeWalk(read)`, render model via `renderModelFor(walk.versionId)`),
+   `PUT /api/walks/{id}` (`authorizeWalk(edit)`, `row_version` compare, resolve keys -> GUIDs through
+   `DefinitionRepository`, reject options/items/dimensions outside the pinned version, persist
+   states from `evaluateVisibility`, apply `normalize` changes in the same transaction, revisions,
+   audit), `POST /api/walks/{id}/void`, and completion validation on required items.
+3. Replace `SessionWalkStore` with `ApiWalkStore` (same interface) and add the 700 ms debounced
+   autosave, `Saving...` / `All changes saved` / conflict UI in `app.js`; keep `renderer.js`
+   unchanged (it already emits the change list per edit).
+4. Decide the column mapping for "Other" free text on a LIST dimension (proposal:
+   `selected_value_id` = the Other value plus `text_value`), and record it in `docs/DATA_CONTRACT.md`.
+5. Extend `tests/node/browser.test.mjs` with SAVE-01..08 and WALK-02/03/08..11, and `AuthorizationTest`
+   with AUTH-09 item/option/dimension tampering through the new endpoints.

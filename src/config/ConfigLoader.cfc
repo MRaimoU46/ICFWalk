@@ -102,6 +102,13 @@ component output="false" {
 		cfg["reportSuppressionThreshold"] = len(suppression) && isNumeric(suppression) ? int(suppression) : 0;
 		cfg["outboundEmailEnabled"] = false; // Not configurable: no automatic outbound mail without separate authorization.
 
+		// Phase 3 rendering seam: until Phase 6 publishes a version, non-production deployments may
+		// render the newest DRAFT snapshot. Production always requires a PUBLISHED version.
+		cfg["allowUnpublishedInstrument"] = boolValue("ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT", !cfg.isProduction);
+		if (cfg.allowUnpublishedInstrument && cfg.isProduction) {
+			arrayAppend(errors, "ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT cannot be true in the production environment.");
+		}
+
 		if (arrayLen(errors)) {
 			throw(
 				type = "ICFWalk.Configuration",
@@ -132,7 +139,8 @@ component output="false" {
 			"cookieSecure": arguments.cfg.cookieSecure,
 			"placeholderWarningsBlockPublish": arguments.cfg.placeholderWarningsBlockPublish,
 			"hiddenPeriodPolicy": arguments.cfg.hiddenPeriodPolicy,
-			"reportSuppressionThreshold": arguments.cfg.reportSuppressionThreshold
+			"reportSuppressionThreshold": arguments.cfg.reportSuppressionThreshold,
+			"allowUnpublishedInstrument": arguments.cfg.allowUnpublishedInstrument
 		};
 	}
 

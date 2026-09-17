@@ -1,0 +1,6243 @@
+{
+  "format": "icfwalk-visibility-vectors/1",
+  "source": "config/instrument-config.json compiled snapshot (golden checksum), render model icfwalk-render-model/1",
+  "vectors": [
+    {
+      "name": "blank walk (defaults applied)",
+      "state": {
+        "dimensions": {},
+        "responses": {
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "ANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "ANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s3_applicable": {
+                "storedCode": "no"
+              },
+              "comp_s4_applicable": {
+                "storedCode": "no"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s3_applicable": {
+                "storedCode": "no"
+              },
+              "comp_s4_applicable": {
+                "storedCode": "no"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "elementary school selected, no grade",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "bartlett_elementary_school"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "bartlett_elementary_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "bartlett_elementary_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "middle school selected",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "abbott_middle_school"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "6",
+            "7",
+            "8"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "abbott_middle_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "abbott_middle_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "high school selected",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "elgin_high_school"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "elgin_high_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "elgin_high_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "Dream Academy behaves as high school",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "dream_academy"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "dream_academy"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "dream_academy"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "Central School behaves as high school",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "central_school"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "central_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "central_school"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "Other school shows all grades",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "other",
+            "otherText": "Unlisted Site"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "other",
+                "otherText": "Unlisted Site"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "other",
+                "otherText": "Unlisted Site"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "grade 5 with a middle school (invalid selection, pre-normalize)",
+      "state": {
+        "dimensions": {
+          "school": {
+            "selectedValueCode": "abbott_middle_school"
+          },
+          "grade": {
+            "selectedValueCode": "5"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "6",
+            "7",
+            "8"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "ANSWERED",
+          "grade": "ANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "abbott_middle_school"
+              },
+              "grade": {}
+            },
+            "responses": {}
+          },
+          "changes": [
+            {
+              "kind": "DIMENSION_CLEARED",
+              "key": "grade",
+              "reason": "OPTION_FILTER"
+            }
+          ]
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "school": {
+                "selectedValueCode": "abbott_middle_school"
+              },
+              "grade": {}
+            },
+            "responses": {}
+          },
+          "changes": [
+            {
+              "kind": "DIMENSION_CLEARED",
+              "key": "grade",
+              "reason": "OPTION_FILTER"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "grade 7 shows Period",
+      "state": {
+        "dimensions": {
+          "grade": {
+            "selectedValueCode": "7"
+          },
+          "period": {
+            "selectedValueCode": "third"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": true,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "ANSWERED",
+          "content": "UNANSWERED",
+          "period": "ANSWERED",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "7"
+              },
+              "period": {
+                "selectedValueCode": "third"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "7"
+              },
+              "period": {
+                "selectedValueCode": "third"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "grade 3 hides Period but keeps its value",
+      "state": {
+        "dimensions": {
+          "grade": {
+            "selectedValueCode": "3"
+          },
+          "period": {
+            "selectedValueCode": "third"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "ANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "3"
+              },
+              "period": {
+                "selectedValueCode": "third"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "3"
+              },
+              "period": {}
+            },
+            "responses": {}
+          },
+          "changes": [
+            {
+              "kind": "DIMENSION_CLEARED",
+              "key": "period",
+              "reason": "HIDDEN_CLEAR"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "PreK shows the PreK-K section",
+      "state": {
+        "dimensions": {
+          "grade": {
+            "selectedValueCode": "prek"
+          }
+        },
+        "responses": {
+          "prek_k_q1": {
+            "storedCode": "yes"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": true,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "ANSWERED",
+          "prek_k_q2": "UNANSWERED",
+          "prek_k_q3": "UNANSWERED",
+          "prek_k_notes": "UNANSWERED",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "ANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "prek"
+              }
+            },
+            "responses": {
+              "prek_k_q1": {
+                "storedCode": "yes"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "prek"
+              }
+            },
+            "responses": {
+              "prek_k_q1": {
+                "storedCode": "yes"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "K shows the PreK-K section",
+      "state": {
+        "dimensions": {
+          "grade": {
+            "selectedValueCode": "k"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": true,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "UNANSWERED",
+          "prek_k_q2": "UNANSWERED",
+          "prek_k_q3": "UNANSWERED",
+          "prek_k_notes": "UNANSWERED",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "ANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "k"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "k"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "grade 1 hides the PreK-K section; its answer is retained as HIDDEN",
+      "state": {
+        "dimensions": {
+          "grade": {
+            "selectedValueCode": "1"
+          }
+        },
+        "responses": {
+          "prek_k_q1": {
+            "storedCode": "yes"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "ANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "1"
+              }
+            },
+            "responses": {
+              "prek_k_q1": {
+                "storedCode": "yes"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "grade": {
+                "selectedValueCode": "1"
+              }
+            },
+            "responses": {
+              "prek_k_q1": {
+                "storedCode": "yes"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type Dual Language",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "dual_language"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": true,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "UNANSWERED",
+          "dual_language_q2": "UNANSWERED",
+          "dual_language_q3": "UNANSWERED",
+          "dual_language_notes": "UNANSWERED",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "dual_language"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "dual_language"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type MAC",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "mac"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": true,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "UNANSWERED",
+          "mac_prep_q2": "UNANSWERED",
+          "mac_prep_q3": "UNANSWERED",
+          "mac_prep_notes": "UNANSWERED",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "mac"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "mac"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type PREP",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "prep"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": true,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "UNANSWERED",
+          "mac_prep_q2": "UNANSWERED",
+          "mac_prep_q3": "UNANSWERED",
+          "mac_prep_notes": "UNANSWERED",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "prep"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "prep"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type Ignite",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "ignite"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": true,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "UNANSWERED",
+          "ignite_q2": "UNANSWERED",
+          "ignite_q3": "UNANSWERED",
+          "ignite_notes": "UNANSWERED",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "ignite"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "ignite"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type AVID",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "avid"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": true,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "UNANSWERED",
+          "avid_q2": "UNANSWERED",
+          "avid_q3": "UNANSWERED",
+          "avid_notes": "UNANSWERED",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "avid"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "avid"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type ESL",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "esl"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": true,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "UNANSWERED",
+          "esl_q2": "UNANSWERED",
+          "esl_q3": "UNANSWERED",
+          "esl_notes": "UNANSWERED",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "esl"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "esl"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "class type General Education shows no classroom section",
+      "state": {
+        "dimensions": {
+          "classType": {
+            "selectedValueCode": "general_education"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "ANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "general_education"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "classType": {
+                "selectedValueCode": "general_education"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "content Music shows content-area look-fors",
+      "state": {
+        "dimensions": {
+          "content": {
+            "selectedValueCode": "music"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": true,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "UNANSWERED",
+          "content_area_q2": "UNANSWERED",
+          "content_area_q3": "UNANSWERED",
+          "content_area_q4": "UNANSWERED",
+          "content_area_q5": "UNANSWERED",
+          "content_area_notes": "UNANSWERED",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "ANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "music"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "music"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "content Art shows content-area look-fors",
+      "state": {
+        "dimensions": {
+          "content": {
+            "selectedValueCode": "art"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": true,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "UNANSWERED",
+          "content_area_q2": "UNANSWERED",
+          "content_area_q3": "UNANSWERED",
+          "content_area_q4": "UNANSWERED",
+          "content_area_q5": "UNANSWERED",
+          "content_area_notes": "UNANSWERED",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "ANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "art"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "art"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "content CTE shows content-area look-fors",
+      "state": {
+        "dimensions": {
+          "content": {
+            "selectedValueCode": "cte"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": true,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "UNANSWERED",
+          "content_area_q2": "UNANSWERED",
+          "content_area_q3": "UNANSWERED",
+          "content_area_q4": "UNANSWERED",
+          "content_area_q5": "UNANSWERED",
+          "content_area_notes": "UNANSWERED",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "ANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "cte"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "cte"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "content Math hides content-area look-fors",
+      "state": {
+        "dimensions": {
+          "content": {
+            "selectedValueCode": "math"
+          }
+        },
+        "responses": {}
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "ANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "math"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "content": {
+                "selectedValueCode": "math"
+              }
+            },
+            "responses": {}
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "Workshop Model applicable = yes exposes ratings",
+      "state": {
+        "dimensions": {},
+        "responses": {
+          "comp_s3_applicable": {
+            "storedCode": "yes"
+          },
+          "comp_s3_q1": {
+            "storedCode": "4"
+          },
+          "comp_s3_notes": {
+            "textValue": "kept"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "ANSWERED",
+          "comp_s3_q1": "ANSWERED",
+          "comp_s3_q2": "UNANSWERED",
+          "comp_s3_notes": "ANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s3_applicable": {
+                "storedCode": "yes"
+              },
+              "comp_s3_q1": {
+                "storedCode": "4"
+              },
+              "comp_s3_notes": {
+                "textValue": "kept"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s3_applicable": {
+                "storedCode": "yes"
+              },
+              "comp_s3_q1": {
+                "storedCode": "4"
+              },
+              "comp_s3_notes": {
+                "textValue": "kept"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "Workshop Model applicable = no with stale ratings (pre-normalize)",
+      "state": {
+        "dimensions": {},
+        "responses": {
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s3_q1": {
+            "storedCode": "4"
+          },
+          "comp_s3_q2": {
+            "storedCode": "2"
+          },
+          "comp_s3_notes": {
+            "textValue": "kept"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "ANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "ANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s3_applicable": {
+                "storedCode": "no"
+              },
+              "comp_s3_q1": {},
+              "comp_s3_q2": {},
+              "comp_s3_notes": {
+                "textValue": "kept"
+              }
+            }
+          },
+          "changes": [
+            {
+              "kind": "RESPONSE_CLEARED",
+              "key": "comp_s3_q1",
+              "reason": "NOT_APPLICABLE"
+            },
+            {
+              "kind": "RESPONSE_CLEARED",
+              "key": "comp_s3_q2",
+              "reason": "NOT_APPLICABLE"
+            }
+          ]
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s3_applicable": {
+                "storedCode": "no"
+              },
+              "comp_s3_q1": {},
+              "comp_s3_q2": {},
+              "comp_s3_notes": {
+                "textValue": "kept"
+              }
+            }
+          },
+          "changes": [
+            {
+              "kind": "RESPONSE_CLEARED",
+              "key": "comp_s3_q1",
+              "reason": "NOT_APPLICABLE"
+            },
+            {
+              "kind": "RESPONSE_CLEARED",
+              "key": "comp_s3_q2",
+              "reason": "NOT_APPLICABLE"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Academic Teaming applicable = no, Workshop yes",
+      "state": {
+        "dimensions": {},
+        "responses": {
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s3_applicable": {
+            "storedCode": "yes"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "ANSWERED",
+          "comp_s3_q1": "UNANSWERED",
+          "comp_s3_q2": "UNANSWERED",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "ANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s4_applicable": {
+                "storedCode": "no"
+              },
+              "comp_s3_applicable": {
+                "storedCode": "yes"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s4_applicable": {
+                "storedCode": "no"
+              },
+              "comp_s3_applicable": {
+                "storedCode": "yes"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "invalid option code is unanswered",
+      "state": {
+        "dimensions": {},
+        "responses": {
+          "comp_s1_q1": {
+            "storedCode": "9"
+          },
+          "comp_s1_q2": {
+            "storedCode": "5"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "ANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "UNANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s1_q1": {
+                "storedCode": "9"
+              },
+              "comp_s1_q2": {
+                "storedCode": "5"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {},
+            "responses": {
+              "comp_s1_q1": {
+                "storedCode": "9"
+              },
+              "comp_s1_q2": {
+                "storedCode": "5"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "whitespace text is unanswered",
+      "state": {
+        "dimensions": {
+          "observer": {
+            "textValue": "   "
+          }
+        },
+        "responses": {
+          "conditions_notes": {
+            "textValue": "  "
+          },
+          "summary_strengths": {
+            "textValue": "x"
+          }
+        }
+      },
+      "expected": {
+        "sections": {
+          "root": true,
+          "visit_information": true,
+          "prek_k_classroom": false,
+          "dual_language_classroom": false,
+          "mac_prep_classroom": false,
+          "ignite_classroom": false,
+          "avid_classroom": false,
+          "esl_classroom": false,
+          "content_area_look_fors": false,
+          "part1": true,
+          "target_taxonomy": true,
+          "part1_adopted": true,
+          "part1_targettask": true,
+          "part2": true,
+          "s1": true,
+          "s2": true,
+          "s3": true,
+          "s4": true,
+          "s5": true,
+          "s6": true,
+          "s7": true,
+          "part3": true,
+          "part4": true
+        },
+        "dimensions": {
+          "date": true,
+          "observer": true,
+          "school": true,
+          "grade": true,
+          "content": true,
+          "period": false,
+          "classType": true,
+          "visitTiming": true,
+          "topic": true,
+          "tag": true
+        },
+        "dimensionOptions": {
+          "grade": [
+            "prek",
+            "k",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        "responseStates": {
+          "prek_k_q1": "HIDDEN",
+          "prek_k_q2": "HIDDEN",
+          "prek_k_q3": "HIDDEN",
+          "prek_k_notes": "HIDDEN",
+          "dual_language_q1": "HIDDEN",
+          "dual_language_q2": "HIDDEN",
+          "dual_language_q3": "HIDDEN",
+          "dual_language_notes": "HIDDEN",
+          "mac_prep_q1": "HIDDEN",
+          "mac_prep_q2": "HIDDEN",
+          "mac_prep_q3": "HIDDEN",
+          "mac_prep_notes": "HIDDEN",
+          "ignite_q1": "HIDDEN",
+          "ignite_q2": "HIDDEN",
+          "ignite_q3": "HIDDEN",
+          "ignite_notes": "HIDDEN",
+          "avid_q1": "HIDDEN",
+          "avid_q2": "HIDDEN",
+          "avid_q3": "HIDDEN",
+          "avid_notes": "HIDDEN",
+          "esl_q1": "HIDDEN",
+          "esl_q2": "HIDDEN",
+          "esl_q3": "HIDDEN",
+          "esl_notes": "HIDDEN",
+          "content_area_q1": "HIDDEN",
+          "content_area_q2": "HIDDEN",
+          "content_area_q3": "HIDDEN",
+          "content_area_q4": "HIDDEN",
+          "content_area_q5": "HIDDEN",
+          "content_area_notes": "HIDDEN",
+          "p1q1": "UNANSWERED",
+          "p1q2": "UNANSWERED",
+          "p1q3": "UNANSWERED",
+          "part1_adopted_pacing": "UNANSWERED",
+          "part1_adopted_ac1": "UNANSWERED",
+          "part1_adopted_ac2": "UNANSWERED",
+          "part1_adopted_notes": "UNANSWERED",
+          "part1_targettask_tt1": "UNANSWERED",
+          "part1_targettask_tt2": "UNANSWERED",
+          "part1_targettask_notes": "UNANSWERED",
+          "comp_s1_q1": "UNANSWERED",
+          "comp_s1_q2": "UNANSWERED",
+          "comp_s1_notes": "UNANSWERED",
+          "comp_s2_q1": "UNANSWERED",
+          "comp_s2_q2": "UNANSWERED",
+          "comp_s2_notes": "UNANSWERED",
+          "comp_s3_applicable": "UNANSWERED",
+          "comp_s3_q1": "NOT_APPLICABLE",
+          "comp_s3_q2": "NOT_APPLICABLE",
+          "comp_s3_notes": "UNANSWERED",
+          "comp_s4_applicable": "UNANSWERED",
+          "comp_s4_q1": "NOT_APPLICABLE",
+          "comp_s4_q2": "NOT_APPLICABLE",
+          "comp_s4_notes": "UNANSWERED",
+          "comp_s5_q1": "UNANSWERED",
+          "comp_s5_q2": "UNANSWERED",
+          "comp_s5_notes": "UNANSWERED",
+          "comp_s6_q1": "UNANSWERED",
+          "comp_s6_q2": "UNANSWERED",
+          "comp_s6_notes": "UNANSWERED",
+          "comp_s7_q1": "UNANSWERED",
+          "comp_s7_q2": "UNANSWERED",
+          "comp_s7_notes": "UNANSWERED",
+          "conditions_b1": "UNANSWERED",
+          "conditions_b2": "UNANSWERED",
+          "conditions_b3": "UNANSWERED",
+          "conditions_b4": "UNANSWERED",
+          "conditions_b5": "UNANSWERED",
+          "conditions_b6": "UNANSWERED",
+          "conditions_notes": "UNANSWERED",
+          "summary_strengths": "ANSWERED",
+          "summary_growth": "UNANSWERED",
+          "email_workflow": "UNANSWERED"
+        },
+        "dimensionStates": {
+          "date": "UNANSWERED",
+          "observer": "UNANSWERED",
+          "school": "UNANSWERED",
+          "grade": "UNANSWERED",
+          "content": "UNANSWERED",
+          "period": "HIDDEN",
+          "classType": "UNANSWERED",
+          "visitTiming": "UNANSWERED",
+          "topic": "UNANSWERED",
+          "tag": "UNANSWERED"
+        },
+        "hiddenItems": [
+          "avid_notes",
+          "avid_q1",
+          "avid_q2",
+          "avid_q3",
+          "comp_s3_q1",
+          "comp_s3_q2",
+          "comp_s4_q1",
+          "comp_s4_q2",
+          "content_area_notes",
+          "content_area_q1",
+          "content_area_q2",
+          "content_area_q3",
+          "content_area_q4",
+          "content_area_q5",
+          "dual_language_notes",
+          "dual_language_q1",
+          "dual_language_q2",
+          "dual_language_q3",
+          "esl_notes",
+          "esl_q1",
+          "esl_q2",
+          "esl_q3",
+          "ignite_notes",
+          "ignite_q1",
+          "ignite_q2",
+          "ignite_q3",
+          "mac_prep_notes",
+          "mac_prep_q1",
+          "mac_prep_q2",
+          "mac_prep_q3",
+          "prek_k_notes",
+          "prek_k_q1",
+          "prek_k_q2",
+          "prek_k_q3"
+        ],
+        "normalizedRetain": {
+          "state": {
+            "dimensions": {
+              "observer": {
+                "textValue": "   "
+              }
+            },
+            "responses": {
+              "conditions_notes": {
+                "textValue": "  "
+              },
+              "summary_strengths": {
+                "textValue": "x"
+              }
+            }
+          },
+          "changes": []
+        },
+        "normalizedClear": {
+          "state": {
+            "dimensions": {
+              "observer": {
+                "textValue": "   "
+              }
+            },
+            "responses": {
+              "conditions_notes": {
+                "textValue": "  "
+              },
+              "summary_strengths": {
+                "textValue": "x"
+              }
+            }
+          },
+          "changes": []
+        }
+      }
+    }
+  ]
+}

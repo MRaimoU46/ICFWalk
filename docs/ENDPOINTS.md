@@ -1,7 +1,8 @@
-# HTTP endpoints (Phases 1 and 2)
+# HTTP endpoints (Phases 1 to 3)
 
 All routes are served through `index.cfm`; with the ColdFusion connector's default configuration the
-paths below are reached as `/index.cfm/api/...`. Responses are JSON (`application/json; charset=utf-8`)
+paths below are reached as `/index.cfm/api/...` (the HTML shell as `/index.cfm/`). Static assets
+(`app/assets/css`, `app/assets/js`) are served by the web server directly at `/assets/...`. Responses are JSON (`application/json; charset=utf-8`)
 serialized in canonical form. Every response carries `X-Correlation-Id`.
 
 Errors: `{ "error": { "code": "...", "message": "...", "correlationId": "...", "details": {...} } }`.
@@ -16,6 +17,7 @@ Every route declares one policy in `src/http/Router.cfc`:
 | `maintenance` | Operator token guard: `X-ICFWalk-Maintenance-Token`, explicit enable flag, loopback caller unless remote access is allowed. No session, no CSRF. Denials are 404. |
 | `{ authenticated }` | A signed-in user (identity asserted by the configured adapter), with or without roles. |
 | `{ permission }` | A signed-in user holding the permission (`instrument.manage` globally, or an org-scoped permission for the unit named by the route). Record-level checks (walk owner/scope) happen in controllers through `AuthorizationService.authorizeWalk`. |
+| `{ anyPermission }` | A signed-in user holding at least one of the listed permissions anywhere. Used for shared, non-record resources (the HTML shell and the instrument render model). Denials are audited `ACCESS_DENIED`. |
 
 Status codes on denial: 401 `UNAUTHENTICATED` (no identity), 403 `FORBIDDEN` (capability missing),
 403 `CSRF_TOKEN_INVALID`, 404 `NOT_FOUND` (record or unit outside the caller's scope, so existence
@@ -35,6 +37,8 @@ Identity headers by adapter (`ICFWALK_SSO_MODE`):
 
 | Method | Path | Policy | Purpose |
 | --- | --- | --- | --- |
+| GET | `/` (i.e. `/index.cfm/`) | anyPermission walk.create, walk.read, walk.edit_owned, report.view, instrument.manage | The single HTML page for My Walks and the walk editor (`src/views/shell.html`). Contains no instrument content or user data; the browser loads `/api/me` and `/api/instrument/current`. Strict `Content-Security-Policy` (scripts and styles from this origin; Google Fonts and the district logo host allowed), `X-Frame-Options: DENY`, `no-store`. Browsers (`Accept: text/html`) receive HTML error pages for 401/403/404 on this route; APIs always answer JSON. |
+| GET | `/api/instrument/current` | anyPermission (same list) | `{ version: { versionId, versionLabel, status, checksum, publishedAt, isFallbackDraft }, policies: { hiddenDimensionPolicy }, model, correlationId }`. `model` is the render model (`icfwalk-render-model/1`, see `docs/ARCHITECTURE.md`) of the newest PUBLISHED version, or of the newest DRAFT when `ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT` permits (never in production). 404 `INSTRUMENT_NOT_AVAILABLE` when no renderable version exists. Read-only; contains no walk data and no SQL identifiers. |
 | GET | `/api/health` | public | Liveness/readiness: `{ application, status, checks: { database, schema }, correlationId }`. 503 when the database is unreachable. Non-production adds `environment` and `engine`. |
 | GET | `/api/me` | authenticated | `{ user: { userId, displayName, email }, identityProvider, permissions, orgUnits, assignments, csrfToken, correlationId }`. `permissions` maps `walk.create`, `walk.read`, `walk.edit_owned`, `report.view` to arrays of covered org unit ids and `instrument.manage` to a boolean. |
 | GET | `/api/auth/csrf-token` | authenticated | `{ csrfToken }`. |

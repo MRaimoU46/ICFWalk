@@ -64,7 +64,10 @@ component output="false" {
 			? { "value": "", "cfsqltype": "cf_sql_timestamp", "null": true }
 			: variables.db.timestamp(arguments.effectiveStart);
 		var startIsNull = structKeyExists(startParam, "null") && startParam.null;
-		var startClause = startIsNull ? "SYSUTCDATETIME()" : ":start";
+		// An assignment created "now" is effective from one second before creation: datetime2(3) rounds
+		// SYSUTCDATETIME() to the millisecond, which could otherwise place effective_start a fraction
+		// of a millisecond in the future and make the new assignment ineffective for that instant.
+		var startClause = startIsNull ? "DATEADD(second, -1, SYSUTCDATETIME())" : ":start";
 		var params = {
 			"id": variables.db.guid(id), "userId": variables.db.guid(arguments.userId), "roleId": variables.db.guid(arguments.roleId),
 			"orgUnitId": variables.db.guid(arguments.orgUnitId), "desc": variables.db.bit(arguments.includeDescendants),
@@ -83,7 +86,15 @@ component output="false" {
 	}
 
 	public void function endAssignment(required string assignmentId) {
-		variables.db.run("UPDATE [icf].[user_role_scope] SET effective_end = SYSUTCDATETIME() WHERE user_role_scope_id = :id AND (effective_end IS NULL OR effective_end > SYSUTCDATETIME())",
+		// Ends at the last completed millisecond so the assignment is already ineffective for the
+		// current instant; CK_user_role_scope_dates requires effective_end > effective_start, so an
+		// assignment created in the same millisecond ends one millisecond after its start instead.
+		variables.db.run(
+			"UPDATE [icf].[user_role_scope]
+			 SET effective_end = CASE WHEN DATEADD(millisecond, -1, SYSUTCDATETIME()) > effective_start
+			                          THEN DATEADD(millisecond, -1, SYSUTCDATETIME())
+			                          ELSE DATEADD(millisecond, 1, effective_start) END
+			 WHERE user_role_scope_id = :id AND (effective_end IS NULL OR effective_end > SYSUTCDATETIME())",
 			{ "id": variables.db.guid(arguments.assignmentId) });
 	}
 

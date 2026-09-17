@@ -9,7 +9,8 @@ deployment-specific comes from environment variables (see `.env.example`).
 
 | Path | Purpose |
 | --- | --- |
-| `app/` | ColdFusion web root. `Application.cfc` and the single entry point `index.cfm`. |
+| `app/` | ColdFusion web root. `Application.cfc`, the single entry point `index.cfm`, and static browser assets in `app/assets/` (CSS and ES modules; no build step). |
+| `src/views/` | HTML shell template served by `ShellController` (no instrument content inside). |
 | `src/` | Application source outside the web root (mapped as `/icfwalk`). Controllers, HTTP, core services, instrument import, audit. |
 | `tests/cfml/` | CFML test runner and specs (mapped as `/icfwalktests`). |
 | `tests/node/` | Node test harness: package checks, reference snapshot, SQL script tests, and a driver for the CFML suite. |
@@ -118,6 +119,8 @@ not a supported production platform for ICFWalk.
 | `npm run test:db` | DB-01..03 against a disposable SQL Server database (needs `ICFWALK_DB_*` admin credentials). |
 | `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity and authorization specs), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. |
 | `npm run test:auth` | HTTP identity/authorization checks (AUTH-01, CSRF, cookies, admin route separation). Needs the app in development mode with `ICFWALK_SSO_MODE=development` and `ICFWALK_DEV_IDENTITY_ENABLED=true`. |
+| `npm run test:shell` | Phase 3: authorization and headers of the HTML shell and `/api/instrument/current`; browser rules engine against the shared visibility vectors and COND-01..15 (same prerequisites as `test:auth`). |
+| `npm run test:browser` | Phase 3: Playwright (Chromium) run of the real page: dynamic rendering from the served model, conditional behavior, My Walks flow, keyboard operation, axe-core WCAG checks, screenshots at 375/768/1280 px into `docs/evidence/screenshots/`. Needs `npm install` (Playwright and axe-core are dev dependencies) and a Chromium that Playwright can find (`npx playwright install chromium` where it is not pre-installed). |
 | `npm test` | Everything above. |
 
 The CFML suite can also be triggered directly:
@@ -126,6 +129,15 @@ The CFML suite can also be triggered directly:
 curl -sS -X POST -H "X-ICFWalk-Maintenance-Token: $ICFWALK_MAINTENANCE_TOKEN" \
   http://127.0.0.1:8888/index.cfm/api/maintenance/tests/run
 ```
+
+## Opening the application in a browser (development)
+
+The page lives at `http://127.0.0.1:8888/index.cfm/`. With `ICFWALK_SSO_MODE=development` the
+identity comes from the `X-ICFWalk-Dev-Subject` request header, which a normal browser does not
+send; use a header-injecting browser extension, a local reverse proxy that adds the header, or the
+Playwright harness (`npm run test:browser`, which also writes screenshots). In production the SSO
+gateway asserts the identity headers instead. The signed-in subject needs a walk, report, or
+instrument role (see the bootstrap commands above) or the shell answers 403.
 
 ## Backups and migrations
 

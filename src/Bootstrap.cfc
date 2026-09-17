@@ -32,6 +32,10 @@ component output="false" {
 			c.configNormalizer, c.configValidator, c.snapshotCompiler, c.requestContext
 		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
+
+		// Instrument engine (Phase 3): render model + visibility rules from the compiled snapshot.
+		c["renderModelBuilder"] = new icfwalk.instrument.RenderModelBuilder();
+		c["visibilityEngine"] = new icfwalk.instrument.VisibilityEngine();
 		c["maintenanceGuard"] = new icfwalk.http.MaintenanceGuard(c.config, c.logger, c.errors, c.auditRepository, c.requestContext);
 
 		// Identity, roles, and scope (Phase 2).
@@ -43,7 +47,11 @@ component output="false" {
 		c["identityProvider"] = new icfwalk.identity.IdentityProviderFactory(c.config, c.logger).build();
 		c["authenticationService"] = new icfwalk.identity.AuthenticationService(c.config, c.logger, c.identityProvider, c.userRepository, c.sessionService, c.authorizationService, c.auditRepository, c.errors);
 
+		c["snapshotService"] = new icfwalk.instrument.SnapshotService(c.config, c.db, c.definitionRepository, c.renderModelBuilder, c.errors, c.logger);
+
 		c["healthController"] = new icfwalk.controllers.HealthController(c.config, c.db, c.requestContext);
+		c["shellController"] = new icfwalk.controllers.ShellController(c);
+		c["instrumentController"] = new icfwalk.controllers.InstrumentController(c);
 		c["authController"] = new icfwalk.controllers.AuthController(c);
 		c["adminInstrumentController"] = new icfwalk.controllers.AdminInstrumentController(c);
 		c["maintenanceController"] = new icfwalk.controllers.MaintenanceController(c);

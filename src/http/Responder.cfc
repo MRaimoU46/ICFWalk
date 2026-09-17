@@ -11,6 +11,7 @@ component output="false" {
 		variables.json = arguments.canonicalJson;
 		variables.requestContext = arguments.requestContext;
 		variables.errors = new icfwalk.core.Errors();
+		variables.html = new icfwalk.core.HtmlEncoder();
 		return this;
 	}
 
@@ -64,7 +65,39 @@ component output="false" {
 			details = { "exceptionType": type, "exceptionMessage": structKeyExists(arguments.exception, "message") ? arguments.exception.message : "" };
 			if (structKeyExists(arguments.exception, "detail")) details["exceptionDetail"] = arguments.exception.detail;
 		}
+		if (wantsHtml()) {
+			sendHtmlError(status, code, message);
+			return;
+		}
 		sendError(status, code, message, details);
+	}
+
+	/**
+	 * Page routes (anything outside /api) answer browsers with a small HTML error page instead of
+	 * JSON. Every dynamic value is HTML-encoded; no exception details are included.
+	 */
+	public void function sendHtmlError(required numeric status, required string code, required string message) {
+		cfheader(statusCode = arguments.status);
+		cfheader(name = "Cache-Control", value = "no-store");
+		cfheader(name = "X-Content-Type-Options", value = "nosniff");
+		cfheader(name = "Content-Security-Policy", value = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'");
+		cfcontent(type = "text/html; charset=utf-8", reset = true);
+		var title = arguments.status == 401 ? "Sign-in required" : (arguments.status == 403 ? "Access denied" : (arguments.status == 404 ? "Not found" : "Something went wrong"));
+		writeOutput('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ICFWalk · ' & variables.html.encode(title) & '</title>'
+			& '<style>body{font-family:"Work Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:##EDF3F9;color:##142433;margin:0;padding:40px 20px}main{max-width:560px;margin:0 auto;background:##fff;border:1px solid ##D7E1EA;border-radius:10px;padding:24px}h1{color:##003466;font-size:20px;margin:0 0 8px}p{font-size:14px;line-height:1.5;margin:0 0 8px}code{font-size:12px;color:##4E5D6C}</style></head>'
+			& '<body><main role="main"><h1>' & variables.html.encode(title) & '</h1><p>' & variables.html.encode(arguments.message) & '</p><p><code>' & variables.html.encode(arguments.code) & ' · ' & variables.html.encode(variables.requestContext.correlationId()) & '</code></p></main></body></html>');
+	}
+
+	private boolean function wantsHtml() {
+		var path = variables.requestContext.pathInfo();
+		if (left(path, 5) == "/api/") return false;
+		var accept = "";
+		try {
+			var headers = getHttpRequestData(false).headers;
+			for (var name in structKeyArray(headers)) if (lCase(name) == "accept") accept = headers[name];
+		} catch (any e) { accept = ""; }
+		if (isNull(accept) || !isSimpleValue(accept)) accept = "";
+		return findNoCase("text/html", accept) > 0;
 	}
 
 	private void function writeJson(required numeric status, required any body) {

@@ -36,6 +36,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(cfg.devIdentityEnabled);
 	}
 
+	public void function testUnpublishedInstrumentRenderingIsRefusedInProduction() {
+		assertFalse(loader({}).load().allowUnpublishedInstrument, "Production never renders a DRAFT.");
+		assertTrue(loader({ "ICFWALK_ENVIRONMENT": "development" }).load().allowUnpublishedInstrument, "Development defaults to the DRAFT fallback.");
+		assertFalse(loader({ "ICFWALK_ENVIRONMENT": "development", "ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT": "false" }).load().allowUnpublishedInstrument);
+		var e = assertThrows(function() {
+			loader({ "ICFWALK_ENVIRONMENT": "production", "ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT": "true" }).load();
+		}, "ICFWalk.Configuration", "CONFIGURATION_INVALID");
+		assertContains("ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT", e.message);
+	}
+
 	public void function testMaintenanceRequiresLongToken() {
 		assertThrows(function() { loader({ "ICFWALK_MAINTENANCE_ENABLED": "true", "ICFWALK_MAINTENANCE_TOKEN": "short" }).load(); }, "ICFWalk.Configuration");
 		var cfg = loader({ "ICFWALK_MAINTENANCE_ENABLED": "true", "ICFWALK_MAINTENANCE_TOKEN": repeatString("x", 40) }).load();

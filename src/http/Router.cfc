@@ -10,6 +10,9 @@
  *                                   unit named by "orgUnitParam" (path capture index) / "orgUnitBody"
  *                                   (JSON body key). Record-level checks happen in controllers via
  *                                   AuthorizationService.authorizeWalk.
+ *   { "anyPermission": [..] }       a signed-in user holding at least one of the permissions
+ *                                   anywhere (used for shared, non-record resources such as the
+ *                                   instrument definitions and the HTML shell).
  *
  * State-changing requests (POST/PUT/PATCH/DELETE) on session-authenticated routes must carry the
  * session's CSRF token in X-ICFWalk-CSRF-Token. Controllers receive a request struct (path params,
@@ -18,11 +21,17 @@
 component output="false" {
 
 	variables.MUTATING = ["POST", "PUT", "PATCH", "DELETE"];
+	variables.SHELL_PERMISSIONS = ["walk.create", "walk.read", "walk.edit_owned", "report.view", "instrument.manage"];
 
 	public Router function init(required struct container) {
 		variables.c = arguments.container;
 		variables.routes = [];
 		add("GET", "^/api/health$", "healthController", "get", "public");
+
+		// HTML shell and instrument engine (Phase 3). The shell is the single page for My Walks and
+		// the walk editor; it needs a signed-in user with a walk, report, or instrument capability.
+		add("GET", "^/$", "shellController", "index", { "anyPermission": variables.SHELL_PERMISSIONS });
+		add("GET", "^/api/instrument/current$", "instrumentController", "current", { "anyPermission": variables.SHELL_PERMISSIONS });
 
 		add("GET", "^/api/me$", "authController", "me", { "authenticated": true });
 		add("GET", "^/api/auth/csrf-token$", "authController", "csrfToken", { "authenticated": true });
@@ -107,7 +116,15 @@ component output="false" {
 				variables.c.errors.forbidden("Missing or invalid CSRF token.", "CSRF_TOKEN_INVALID");
 			}
 		}
-		if (structKeyExists(policy, "permission")) {
+		if (structKeyExists(policy, "anyPermission")) {
+			var granted = false;
+			for (var perm in policy.anyPermission) if (variables.c.authorizationService.hasAnyCapability(principal, perm)) granted = true;
+			if (!granted) {
+				variables.c.logger.warn("authorization.denied", { "permission": arrayToList(policy.anyPermission), "kind": "forbidden", "path": arguments.req.path });
+				variables.c.auditRepository.record("ROUTE", "", "ACCESS_DENIED", principal.userId, { "permissions": policy.anyPermission, "kind": "forbidden", "path": arguments.req.path });
+				variables.c.errors.forbidden("You do not have permission to perform this action.", "FORBIDDEN");
+			}
+		} else if (structKeyExists(policy, "permission")) {
 			var orgUnitId = "";
 			if (structKeyExists(policy, "orgUnitParam") && arrayLen(arguments.req.params) >= policy.orgUnitParam) orgUnitId = arguments.req.params[policy.orgUnitParam];
 			if (structKeyExists(policy, "orgUnitBody") && structKeyExists(arguments.req.body, policy.orgUnitBody) && isSimpleValue(arguments.req.body[policy.orgUnitBody])) orgUnitId = arguments.req.body[policy.orgUnitBody];

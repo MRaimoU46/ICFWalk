@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICFWalk</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{assetBase}}/css/icfwalk.css">
+</head>
+<body data-api-base="{{apiBase}}" data-asset-base="{{assetBase}}" data-environment="{{environment}}">
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <img id="brand-logo" src="https://cmsv2-assets.apptegy.net/uploads/33857/logo/36903/U-46_Logo.png" alt="School District U-46 logo">
+      <div>School District U-46<small>ICFWalk &middot; Instructional Clarity Framework</small></div>
+    </div>
+    <div class="spacer"></div>
+    <span class="status" id="global-status" role="status" aria-live="polite"></span>
+    <span class="status" id="user-name"></span>
+    <button type="button" class="btn btn-ghost" id="nav-list-btn" hidden>My walks</button>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+  <div id="app-message" class="app-message" role="alert" hidden></div>
+
+  <!-- LIST VIEW -->
+  <section id="view-list" aria-labelledby="list-heading">
+    <div class="list-header">
+      <div>
+        <h1 id="list-heading">My walks</h1>
+        <p class="muted list-sub" id="list-sub"></p>
+      </div>
+      <div class="spacer"></div>
+      <button type="button" class="btn btn-primary" id="new-walk-btn">+ New walk</button>
+    </div>
+    <div id="new-walk-chooser" class="section-card" hidden>
+      <p class="section-title" id="chooser-title">Which school is this walk for?</p>
+      <p class="section-sub">Only schools where you may create walks are listed.</p>
+      <label for="chooser-unit">School</label>
+      <select id="chooser-unit"></select>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="chooser-start">Start walk</button>
+        <button type="button" class="btn" id="chooser-cancel">Cancel</button>
+      </div>
+    </div>
+    <div id="walk-list"></div>
+  </section>
+
+  <!-- WALK VIEW -->
+  <section id="view-walk" hidden aria-labelledby="walk-heading">
+    <h1 id="walk-heading" class="sr-only">Walk editor</h1>
+    <div class="footer-actions editor-top">
+      <button type="button" class="btn btn-ghost" id="back-btn">&larr; My walks</button>
+      <div class="editor-top-actions">
+        <span class="status" id="save-status" role="status" aria-live="polite"></span>
+        <button type="button" class="btn btn-sm" id="export-btn" hidden>Export summary</button>
+        <button type="button" class="btn btn-sm btn-primary" id="save-btn">Save</button>
+      </div>
+    </div>
+    <p class="version-note muted" id="version-note" hidden></p>
+    <div id="editor"></div>
+    <div class="footer-actions editor-bottom">
+      <span class="status" id="save-status-bottom" aria-hidden="true"></span>
+      <button type="button" class="btn btn-primary" id="save-btn-bottom">Save</button>
+    </div>
+  </section>
+</main>
+<div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<script type="module" src="{{assetBase}}/js/app.js"></script>
+</body>
+</html>

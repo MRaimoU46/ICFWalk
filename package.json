@@ -7,17 +7,21 @@
   "scripts": {
     "validate:handoff": "node scripts/validate-handoff.mjs",
     "snapshot:compile": "node scripts/compile-snapshot.mjs",
-    "test": "node --test \"tests/node/*.test.mjs\"",
+    "test": "node --test --test-concurrency=1 \"tests/node/*.test.mjs\"",
     "test:package": "node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs",
     "test:db": "node --test tests/node/db-scripts.test.mjs",
     "test:cfml": "node --test tests/node/cfml-suite.test.mjs",
     "test:auth": "node --test tests/node/auth.test.mjs",
+    "test:shell": "node --test tests/node/shell.test.mjs tests/node/visibility.test.mjs",
+    "test:browser": "node --test tests/node/browser.test.mjs",
     "db:apply": "node scripts/db/apply-schema.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "mssql": "^12.7.2"
+    "axe-core": "^4.13.0",
+    "mssql": "^12.7.2",
+    "playwright": "^1.56.1"
   }
 }
