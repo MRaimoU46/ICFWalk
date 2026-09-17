@@ -1,0 +1,48 @@
+{
+  "format": "icfwalk-canonical-json/1",
+  "description": "Shared vectors. `input` is parsed as JSON by each implementation; `expected` is the exact canonical text; `sha256` is over the UTF-8 bytes of `expected`. Object keys that differ only by letter case are forbidden by the contract because CFML struct keys are case-insensitive.",
+  "vectors": [
+    {
+      "name": "empty object",
+      "input": "{}",
+      "expected": "{}",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "name": "key ordering is UTF-16 code unit order, uppercase before lowercase",
+      "input": "{\"b\":1,\"a\":2,\"C\":3,\"aa\":4,\"_\":5,\"10\":6,\"9\":7}",
+      "expected": "{\"10\":6,\"9\":7,\"C\":3,\"_\":5,\"a\":2,\"aa\":4,\"b\":1}",
+      "sha256": "6df41a2174c6dd939837e5c7f6d5ff3186d492ff21ab40fbc33fc89c48a2b0e9"
+    },
+    {
+      "name": "nested structures with null, booleans and arrays keep array order",
+      "input": "{\"z\":[3,1,2,null,{\"y\":null,\"x\":[]}],\"a\":{\"c\":true,\"b\":false},\"n\":null}",
+      "expected": "{\"a\":{\"b\":false,\"c\":true},\"n\":null,\"z\":[3,1,2,null,{\"x\":[],\"y\":null}]}",
+      "sha256": "b8e26a3785e58030a3058111ffd87a4d08a3d7477cdd94c75c9ce2fb0b66c0b7"
+    },
+    {
+      "name": "string escaping and unicode passthrough",
+      "input": "{\"s\":\"quote \\\" backslash \\\\ slash / tab \\t newline \\n cr \\r bs \\b ff \\f ctrl \\u0001 \\u001f middot \\u00b7 dash \\u2013 emoji \\ud83d\\ude00\"}",
+      "expected": "{\"s\":\"quote \\\" backslash \\\\ slash / tab \\t newline \\n cr \\r bs \\b ff \\f ctrl \\u0001 \\u001f middot · dash – emoji 😀\"}",
+      "sha256": "3292c07ab4720581b19fe48ee9e47960e37587f4f8e1e6ee788e74c958630317"
+    },
+    {
+      "name": "numbers: integers plain, decimals shortest, negative zero not distinguished, large integers without exponent",
+      "input": "{\"i\":10,\"d\":2.5,\"neg\":-3,\"big\":123456789012345,\"small\":0.0001,\"z\":0,\"one\":1.0}",
+      "expected": "{\"big\":123456789012345,\"d\":2.5,\"i\":10,\"neg\":-3,\"one\":1,\"small\":0.0001,\"z\":0}",
+      "sha256": "d786fe5904ade6266758a17553a5a27bd551967785f7536e2b8e589120017c85"
+    },
+    {
+      "name": "numeric-looking strings stay strings",
+      "input": "{\"code\":\"4\",\"label\":\"12\",\"yes\":\"true\"}",
+      "expected": "{\"code\":\"4\",\"label\":\"12\",\"yes\":\"true\"}",
+      "sha256": "7f1ca484f4cc5d686da5bfea5603c4a2b7cd570dede74e5964837118aa50193a"
+    },
+    {
+      "name": "top-level array",
+      "input": "[{\"b\":1,\"a\":\"x\"},\"s\",null,false]",
+      "expected": "[{\"a\":\"x\",\"b\":1},\"s\",null,false]",
+      "sha256": "da8315fbd68fd9749a8f06669de4d9d5deff85f096e286228261c5d93159df02"
+    }
+  ]
+}

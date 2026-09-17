@@ -1,0 +1,17 @@
+{
+  "configPath": "config/instrument-config.json",
+  "checksum": "c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9",
+  "definitionsChecksum": "7df87ad01b10027fe19b8b559bc2c1cd10f33411dba0070aab35b8e4d6dfcb5f",
+  "canonicalBytes": 218124,
+  "counts": {
+    "sections": 23,
+    "items": 144,
+    "responseSets": 29,
+    "responseOptions": 138,
+    "rules": 12,
+    "dimensions": 10,
+    "dimensionValues": 95,
+    "instrumentDimensions": 10,
+    "placeholders": 17
+  }
+}

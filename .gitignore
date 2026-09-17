@@ -1,0 +1,13 @@
+# Local runtime (Docker SQL Server env, downloaded CFML engine jars, Jetty/Lucee work dirs)
+.runtime/
+app/WEB-INF/
+app/lucee-server/
+*.log
+node_modules/
+# Environment files with secrets (never commit)
+.env
+.env.*
+!.env.example
+# Editor/OS noise
+.DS_Store
+Thumbs.db

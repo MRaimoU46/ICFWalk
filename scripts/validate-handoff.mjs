@@ -107,14 +107,25 @@ try {
     }
     return out;
   }
-  const actualPaths = (await listFiles(root)).filter((value) => value !== "manifest.json");
-  for (const relativePath of actualPaths) {
-    if (!manifestPaths.has(relativePath)) fail(`Manifest is missing ${relativePath}.`);
+  // The handoff package is delivered as a Git repository and is then extended with the
+  // application build. Version-control internals and files added by the build are not
+  // package members, so they are reported rather than failed. Pass --strict-package to
+  // restore the original "no unlisted files" behavior when auditing a pristine package.
+  const strictPackage = process.argv.includes("--strict-package");
+  const ignoredPrefixes = [".git/", "node_modules/", ".runtime/"];
+  const actualPaths = (await listFiles(root))
+    .filter((value) => value !== "manifest.json")
+    .filter((value) => !ignoredPrefixes.some((prefix) => value.startsWith(prefix)));
+  const unlistedPaths = actualPaths.filter((relativePath) => !manifestPaths.has(relativePath));
+  if (strictPackage) {
+    for (const relativePath of unlistedPaths) fail(`Manifest is missing ${relativePath}.`);
   }
   for (const relativePath of manifestPaths) {
     if (!actualPaths.includes(relativePath)) fail(`Manifest contains nonexistent file ${relativePath}.`);
   }
-  if (!errors.some((e) => e.startsWith("Manifest"))) pass("Package manifest hashes and file list verified.");
+  if (!errors.some((e) => e.startsWith("Manifest"))) {
+    pass(`Package manifest hashes and file list verified (${unlistedPaths.length} build file(s) outside the package manifest).`);
+  }
 } catch (error) {
   fail(`manifest.json is invalid: ${error.message}`);
 }

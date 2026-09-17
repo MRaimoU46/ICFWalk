@@ -1,0 +1,29 @@
+version_label|status|checksum_sha256|snapshot_chars|effective_start|published_at
+-------------|------|---------------|--------------|---------------|------------
+2026-09-17 aligned prototype|DRAFT|c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9|217829|NULL|NULL
+sections|items|sets|options|rules|dims|dimvals|placements|walks|users
+--------|-----|----|-------|-----|----|-------|----------|-----|-----
+23|144|29|138|12|10|95|10|0|0
+event_type|n
+----------|-
+INSTRUMENT_VERSION_CREATED|29
+INSTRUMENT_VERSION_DISCARDED|4
+INSTRUMENT_VERSION_REIMPORTED|20
+MAINTENANCE_TASK_INVOKED|23
+response_set_key|option_key|numeric_score|definition
+----------------|----------|-------------|----------
+scale_comp_s1_q1|1|1.0000|The teacher delivers the meaning of the text/content; studen
+scale_comp_s1_q1|2|2.0000|Students are occasionally asked a recall question, but the t
+scale_comp_s1_q1|3|3.0000|Students do some meaning-making — answering text-based quest
+code|display_order|authored_order
+----|-------------|--------------
+date|10|10
+observer|20|20
+school|30|30
+grade|40|40
+content|50|50
+period|60|60
+classType|70|70
+visitTiming|80|80
+topic|90|10
+tag|100|20

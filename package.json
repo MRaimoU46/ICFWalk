@@ -1,0 +1,22 @@
+{
+  "name": "icfwalk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ICFWalk instructional walkthrough application (Adobe ColdFusion 2023 + SQL Server). Node is used only for handoff validation, reference snapshot tooling, and the test harness.",
+  "type": "module",
+  "scripts": {
+    "validate:handoff": "node scripts/validate-handoff.mjs",
+    "snapshot:compile": "node scripts/compile-snapshot.mjs",
+    "test": "node --test \"tests/node/*.test.mjs\"",
+    "test:package": "node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs",
+    "test:db": "node --test tests/node/db-scripts.test.mjs",
+    "test:cfml": "node --test tests/node/cfml-suite.test.mjs",
+    "db:apply": "node scripts/db/apply-schema.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "mssql": "^12.7.2"
+  }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Servlet descriptor used only by tools/runtime/lucee-up.sh (local Lucee verification runtime).
+     Adobe ColdFusion 2023 deployments use the connector configured by the ColdFusion installer. -->
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee" version="3.1">
+  <servlet>
+    <servlet-name>CFMLServlet</servlet-name>
+    <servlet-class>lucee.loader.servlet.CFMLServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet-mapping><servlet-name>CFMLServlet</servlet-name><url-pattern>*.cfm</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>CFMLServlet</servlet-name><url-pattern>*.cfc</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>CFMLServlet</servlet-name><url-pattern>/index.cfm/*</url-pattern></servlet-mapping>
+  <welcome-file-list><welcome-file>index.cfm</welcome-file></welcome-file-list>
+</web-app>

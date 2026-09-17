@@ -1,0 +1,184 @@
+
+> icfwalk@0.1.0 test
+> node --test "tests/node/*.test.mjs"
+
+TAP version 13
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 1 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.717593
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 2 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.266526
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 3 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.149331
+  type: 'test'
+  ...
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 4 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 42.213453
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 5 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 29.344164
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 6 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 66.1371
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 7 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 16401.334736
+  type: 'test'
+  ...
+# CanonicalJsonTest.testBracketKeysPreserveCase: passed
+# CanonicalJsonTest.testDateFormatting: passed
+# CanonicalJsonTest.testDecimalsFromDatabaseStyleValuesFormatPlainly: passed
+# CanonicalJsonTest.testExplicitNullAssignmentSerializesAsNull: passed
+# CanonicalJsonTest.testNullValuedKeysAreRetainedFromJson: passed
+# CanonicalJsonTest.testSharedVectorsProduceIdenticalCanonicalText: passed
+# ConfigLoaderTest.testDefaultsFailClosedToProduction: passed
+# ConfigLoaderTest.testDescribeOmitsSecrets: passed
+# ConfigLoaderTest.testDevIdentityStubCannotBeEnabledInProduction: passed
+# ConfigLoaderTest.testDevIdentityStubIsOnlyForDevelopmentOrTest: passed
+# ConfigLoaderTest.testEnvFileParsing: passed
+# ConfigLoaderTest.testInvalidEnvironmentAndLogLevelAreRejected: passed
+# ConfigLoaderTest.testMaintenanceRequiresLongToken: passed
+# ConfigLoaderTest.testTestRunnerIsNeverEnabledInProduction: passed
+# InstrumentConfigValidatorTest.testBadParentSectionIsReported: passed
+# InstrumentConfigValidatorTest.testChoiceItemWithoutResponseSetIsRejected: passed
+# InstrumentConfigValidatorTest.testConditionMismatchIsReported: passed
+# InstrumentConfigValidatorTest.testCorruptConditionsJsonIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateItemKeyIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateOptionOrderIsReported: passed
+# InstrumentConfigValidatorTest.testMissingResponseSetIsReportedWithSpecificReference: passed
+# InstrumentConfigValidatorTest.testNonDraftStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testRetiredSipContentIsRejected: passed
+# InstrumentConfigValidatorTest.testStructuralFailureStopsEarlyWithoutCrashing: passed
+# InstrumentConfigValidatorTest.testSuppliedConfigurationIsValidWithSeventeenPlaceholderWarnings: passed
+# InstrumentConfigValidatorTest.testUnsupportedRuleEffectIsReported: passed
+# SnapshotCompilerTest.testCompiledSnapshotMatchesReferenceGolden: passed
+# SnapshotCompilerTest.testRuleTargetsResolveToKeysNotLogicalIds: passed
+# SnapshotCompilerTest.testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior: passed
+# InstrumentImportServiceTest.testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot: passed
+# InstrumentImportServiceTest.testDb05ReimportIsIdempotentWithStableGuidsAndChecksum: passed
+# InstrumentImportServiceTest.testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges: passed
+# InstrumentImportServiceTest.testDb07MissingResponseSetRollsBackWithSpecificError: passed
+# InstrumentImportServiceTest.testDb08CorruptConditionsJsonRollsBack: passed
+# InstrumentImportServiceTest.testDb09ResponseOptionDefinitionsMatchTheJsonExactly: passed
+# InstrumentImportServiceTest.testDiscardDraftRemovesVersionAndChildren: passed
+# InstrumentImportServiceTest.testListVersionsIncludesImportedDraft: passed
+# InstrumentImportServiceTest.testReorderedReimportSucceedsAndReturnsToGolden: passed
+# InstrumentImportServiceTest.testTransactionRollsBackWhenDatabaseRejectsAWrite: passed
+# LoggerTest.testEntrySerializesAsSingleJsonLine: passed
+# LoggerTest.testLevelThresholds: passed
+# LoggerTest.testRedactsSensitiveKeysAndTruncatesLongText: passed
+# engine=Lucee 6.2.8.20 passed=42 failed=0 skipped=0 ms=16326
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 8 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 2495.991292
+  type: 'test'
+  ...
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 9 - DB-01..03 supplied scripts against an empty SQL Server database
+  ---
+  duration_ms: 810.119962
+  type: 'test'
+  ...
+# SQL Server 16.0.4295.3 Developer Edition (64-bit)
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 10 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 268.187348
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 11 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.124744
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 12 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.650732
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 13 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.780201
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 14 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 6.307886
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 15 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 2.319939
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 16 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 7.79031
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 17 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 2.274604
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 18 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.400463
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 19 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 30.730502
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 20 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 15.212887
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 21 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 17.409451
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 19212.759472

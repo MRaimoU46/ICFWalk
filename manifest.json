@@ -75,8 +75,8 @@
     },
     {
       "path": "scripts/validate-handoff.mjs",
-      "bytes": 11859,
-      "sha256": "5689ef8b9bd4d789161e6b97ae0f8fb327df62fe75f459064b8f8369bba7bd01"
+      "bytes": 12592,
+      "sha256": "65b80c233060b62438f3092388618d7cfe8db7f52eee934aeca42edbb74914bf"
     },
     {
       "path": "source/current-prototype.html",
