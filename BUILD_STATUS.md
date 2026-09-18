@@ -693,6 +693,11 @@ autosave (SEC-06); the idempotent retry path that covers it is proven at every l
 
 ## Exact recommended starting point for Phase 5
 
+**Read `docs/PHASE_5_IMPLEMENTATION_BRIEF.md` first.** It is the implementation-ready hand-off
+(scope, reuse, files, formatter architecture, golden vectors, route contract, composer behavior,
+security, exact tests, resolved source conflicts, ordered checklist, completion gate, and what not to
+reread). The list below is the short form it expands.
+
 1. Read `docs/ARCHITECTURE.md` ("Walk persistence and autosave" and "What Phase 5 builds on"),
    `docs/PRODUCT_SPEC.md` (summary export and email workflow), `source/current-prototype.html`
    (summary text format, filename pattern `ICFWalk_<grade>_<content>_<date>.txt`, email template
