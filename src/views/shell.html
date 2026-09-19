@@ -25,6 +25,18 @@
 <main class="wrap" id="main">
   <div id="app-message" class="app-message" role="alert" hidden></div>
 
+  <!--
+    Unfinished lifecycle operations. Rendered from the operation registry, not left behind in the
+    view that started one, so an ambiguous create, completion or void stays resolvable after the
+    list re-renders, after navigating into and out of a walk, and after the walk is reloaded from
+    the server into a state whose own control is gone (a committed completion hides Complete walk).
+    It sits outside both views because a pending operation is not owned by either one.
+  -->
+  <div id="pending-ops" class="app-message pending-ops" role="alert" hidden>
+    <p id="pending-ops-summary" class="pending-ops-summary"></p>
+    <ul id="pending-ops-list" class="pending-ops-list"></ul>
+  </div>
+
   <!-- LIST VIEW -->
   <section id="view-list" aria-labelledby="list-heading">
     <div class="list-header">

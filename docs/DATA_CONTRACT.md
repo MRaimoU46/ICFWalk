@@ -221,18 +221,40 @@ record** in the browser, created once and never rebuilt from later UI state:
 | `mutationId` | the `clientMutationId` the request was issued with |
 | `body` | the frozen semantic request (whole state for create and save, the reason for a void) |
 | `rowVersion` | the concurrency token the operation was issued against, where one applies |
-| `status` | `PENDING` until an answer arrives, `AMBIGUOUS` once one is lost |
+| `status` | `UNSENT`, `IN_FLIGHT`, or `AMBIGUOUS` (below) |
 
-- A retry after a transport failure or an HTTP 5xx reuses the record: the same id and the same body,
-  so the server either replays what it committed or commits it now.
+The status separates a record nothing has been sent for from one whose request is already on the
+wire, because only the first is the browser's alone to replace:
+
+| Status | Meaning | May a newer payload replace it? |
+| --- | --- | --- |
+| `UNSENT` | minted; no request carrying this id has left the browser | Yes -- nothing on the server can correspond to it |
+| `IN_FLIGHT` | its request was sent and no answer has come back | No |
+| `AMBIGUOUS` | its answer was lost, or was an HTTP 5xx | No |
+
+- A retry after a transport failure or an HTTP 5xx reuses the record: the same id, the same row
+  version, and the same body, so the server either replays what it committed or commits it now.
+- **An editor change never deletes a record whose request has been sent.** An edit made while a save
+  is in flight replaces nothing: the in-flight record keeps its id and its frozen body, the newer
+  state is queued, and if that save's answer is lost the browser retries the *original* request
+  first. Only once it resolves definitively does the queued newer state go out, under a new id and
+  against the row version the retry settled on.
 - A record is released only on a definitive outcome -- a success, or a non-retryable 4xx -- or on an
-  explicit decision by the user to abandon it.
+  explicit decision by the user to abandon it. Reloading the walk from the server releases an
+  `UNSENT` save record but keeps a sent one: a reload cannot tell whether the server committed it.
 - A `COMPLETE` record is keyed to its walk, so completing a different walk later never reuses it.
 - A `VOID` retry sends the reason and row version from its record, not the input field as it now
   stands.
 - A pending record is unsaved work: internal navigation and `beforeunload` both see it, including on
   the list view where no walk is open, so an ambiguous create, completion, or void cannot be silently
   abandoned by a reload, a closed tab, or a navigation.
+- **Every ambiguous operation stays reachable.** The control that started one is not a reliable home
+  for its retry: a void's confirmation row is destroyed by the next list render, and a completion's
+  button is hidden as soon as the walk is reloaded and turns out to have been completed. So the
+  browser renders an unfinished-operations bar from the registry itself, outside both views, giving
+  each unresolved operation a retry that re-sends its exact frozen request and an explicit "stop
+  trying". A record can therefore never outlive every way to resolve it, which would leave a
+  permanent unload guard with nothing left to click.
 - `MUTATION_REPLAY_SUPERSEDED` is definitive: the mutation committed, so the record is released and
   the browser reconciles (a save enters conflict review; a create, completion, or void reloads what
   the server holds).
@@ -296,17 +318,43 @@ walk's **pinned** instrument version:
   semantics, so none are assumed.
 
 Operators declare the mapping in one of two ways (both write the same validated rows, and both refuse
-a value the instrument does not define or another unit already holds):
+a value the instrument does not define, one another unit already holds, and one that identifies
+nothing — see below):
 
 - `POST /api/maintenance/org-units/import` with `schoolValueCode` on a SCHOOL unit (`EXPLICIT`);
-- `POST /api/maintenance/org-units/align-school-dimension`, which derives rows for active SCHOOL
-  units whose `org_unit_code` is exactly a School value code of the current renderable version
-  (`CODE_ALIGNED`) and reports every unit it could not map. This is the only place a code is ever
-  compared with a value code, it runs only when an operator asks, and what it produces is a stored
-  row. `{ "dryRun": true }` reports without writing.
+- `POST /api/maintenance/org-units/align-school-dimension`, which *reports* the rows an operator
+  could derive for active SCHOOL units whose `org_unit_code` is exactly a School value code of the
+  current renderable version, as `candidates[]`, and writes only the pairs that operator sends back
+  in `confirm[]` (`CODE_ALIGNED`). This is the only place a code is ever compared with a value code,
+  it runs only when an operator asks, code equality on its own persists nothing, and what a
+  confirmation produces is a stored row. `{ "dryRun": true }` is the report with confirmations
+  ignored.
 
-A deployment upgrading from before migration `005` runs the alignment endpoint once; until it does,
-walks at its schools carry no School value and refuse a submitted one.
+What is stored is the instrument's own spelling of the value code, never the org unit's. The walk
+path compares the stored code with the pinned version's values exactly (case-sensitively), so a unit
+code matching in everything but case must still store the instrument's form.
+
+### Values that identify nothing
+
+A controlled list can define a value that names no particular thing. The School dimension allows free
+text, so it carries a value coded `other` meaning "none of these, see the typed text". It is a value
+the instrument defines, but it is never an identity:
+
+- `schoolValueCode: "other"` is refused (400 `ORG_UNIT_SCHOOL_VALUE_NOT_IDENTIFYING`);
+- a SCHOOL unit whose `org_unit_code` is exactly `other` is reported by the alignment as
+  `NON_IDENTIFYING_VALUE_CODE`, is never a candidate, and cannot be confirmed into one;
+- `icf.org_unit_dimension_map` refuses the row outright
+  (`CK_org_unit_dimension_map_identifying`, migration `005`), so no application path, script, or
+  hand-written statement can create one.
+
+Such a unit stays unmapped, which the walk path already handles by failing closed: no School value is
+filled and none is accepted. That is strictly better than an identity that identifies nothing, which
+would label the unit's walks "Other" and — because the mapping is unique on (dimension, value) —
+take a value naming no school away from every other school.
+
+A deployment upgrading from before migration `005` runs the alignment endpoint once, reviews the
+candidates and confirms them; until it does, walks at its schools carry no School value and refuse a
+submitted one.
 
 ## Runtime instrument selection and snapshot integrity
 

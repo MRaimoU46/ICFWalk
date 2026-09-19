@@ -47,6 +47,13 @@ h2{font-size:15px;margin:0;color:var(--navy)}
 .app-message{background:#FFF4E5;border:1px solid #F1C58E;color:#6B3A00;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px}
 .app-message.error{background:#FDECEC;border-color:#F0B4B4;color:#7A1C1C}
 
+/* Unfinished lifecycle operations (see shell.html): one resolution surface for every create,
+   completion or void whose outcome the browser could not determine, on either view. */
+.pending-ops-summary{margin:0 0 8px;font-weight:600}
+.pending-ops-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pending-op{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pending-op-text{flex:1;min-width:200px}
+
 /* Focus visibility (WCAG 2.4.7): every interactive control gets a visible ring. */
 :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .topbar :focus-visible{outline-color:var(--gold)}

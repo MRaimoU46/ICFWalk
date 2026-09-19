@@ -75,6 +75,19 @@ let A, B, O, R, M, N, unitA, unitB;
 const SCHOOL_VALUE_A = "eastview_middle_school";
 const SCHOOL_VALUE_B = "ellis_middle_school";
 
+// The alignment checks need org units whose codes really are instrument School value codes, so
+// these two carry no run tag. NON_IDENTIFYING_UNIT is coded exactly like the School dimension's
+// free-text option; CANONICAL_CASE_UNIT differs from a real value code only in case, which the
+// candidate search matches but the walk path (an exact, case-sensitive comparison) would not, so
+// the alignment has to store the instrument's spelling rather than the unit's.
+const NON_IDENTIFYING_UNIT = "other";
+const CANONICAL_VALUE = "central_school";
+const CANONICAL_CASE_UNIT = "CENTRAL_SCHOOL";
+const UNTAGGED_UNIT_CODES = [NON_IDENTIFYING_UNIT, CANONICAL_CASE_UNIT];
+const mappedValueFor = (orgUnitCode) => scalar(
+  "SELECT m.value_code FROM icf.org_unit_dimension_map m JOIN icf.org_unit o ON o.org_unit_id = m.org_unit_id WHERE o.org_unit_code = @code AND m.dimension_code = N'school'",
+  { code: orgUnitCode });
+
 /**
  * A direct read-only connection, used only to prove database facts the API does not expose (mutation
  * rows, fingerprints, row versions) and to reproduce a pre-migration-004 mutation row.
@@ -128,10 +141,31 @@ before(async () => {
 
 after(async () => {
   if (skip) return;
+  // Two fixture units are deliberately untagged, because their codes have to be exactly an
+  // instrument School value code for the alignment checks to mean anything. The tag-based cleanup
+  // cannot see them, and they hang off the tagged district, so they go first.
+  await removeUntaggedFixtureUnits();
   const r = await api(env, "POST", "/api/maintenance/identity/cleanup-fixtures", { token, body: { tag } });
   if (r.status !== 200) console.error("fixture cleanup failed", r.status, r.text);
   if (pool) { await pool.close(); pool = null; }
 });
+
+async function removeUntaggedFixtureUnits() {
+  for (const code of UNTAGGED_UNIT_CODES) {
+    const walks = "SELECT w.walk_id FROM icf.walk w JOIN icf.org_unit o ON o.org_unit_id = w.org_unit_id WHERE o.org_unit_code = @code";
+    await run(`DELETE FROM icf.walk_mutation WHERE walk_id IN (${walks})`, { code });
+    await run(`DELETE FROM icf.walk_revision WHERE walk_id IN (${walks})`, { code });
+    await run(`DELETE s FROM icf.walk_response_selection s JOIN icf.walk_response r ON r.response_id = s.response_id WHERE r.walk_id IN (${walks})`, { code });
+    await run(`DELETE FROM icf.walk_response WHERE walk_id IN (${walks})`, { code });
+    await run(`DELETE FROM icf.walk_dimension_value WHERE walk_id IN (${walks})`, { code });
+    await run(`DELETE FROM icf.audit_event WHERE entity_type = N'WALK' AND entity_id IN (${walks})`, { code });
+    await run(`DELETE FROM icf.walk WHERE walk_id IN (${walks})`, { code });
+    await run("DELETE s FROM icf.user_role_scope s JOIN icf.org_unit o ON o.org_unit_id = s.org_unit_id WHERE o.org_unit_code = @code", { code });
+    await run("DELETE a FROM icf.audit_event a JOIN icf.org_unit o ON o.org_unit_id = a.entity_id WHERE o.org_unit_code = @code", { code });
+    await run("DELETE m FROM icf.org_unit_dimension_map m JOIN icf.org_unit o ON o.org_unit_id = m.org_unit_id WHERE o.org_unit_code = @code", { code });
+    await run("DELETE FROM icf.org_unit WHERE org_unit_code = @code", { code });
+  }
+}
 
 test("AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused", { skip }, async () => {
   for (const [method, path] of [["GET", "/api/walks"], ["POST", "/api/walks"], ["GET", `/api/walks/${uuid()}`], ["PUT", `/api/walks/${uuid()}`], ["POST", `/api/walks/${uuid()}/complete`], ["POST", `/api/walks/${uuid()}/void`], ["DELETE", `/api/walks/${uuid()}`]]) {
@@ -659,7 +693,7 @@ test("CORR2: the School dimension follows an explicit mapping and fails closed w
   assert.equal(crossLabelled.json.error.code, "SCHOOL_ORG_MISMATCH");
 });
 
-test("CORR2: the alignment endpoint derives mappings only from exact code matches", { skip }, async () => {
+test("CORR2: the alignment endpoint considers exact code matches only, and only as candidates", { skip }, async () => {
   const dry = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", { token, body: { dryRun: true } });
   assert.equal(dry.status, 200, dry.text);
   assert.equal(dry.json.dryRun, true);
@@ -671,6 +705,8 @@ test("CORR2: the alignment endpoint derives mappings only from exact code matche
   assert.ok(dry.json.unmapped.some((m) => m.orgUnitCode === `${tag}-school-u` && m.reason === "NO_MATCHING_VALUE_CODE"),
     "a unit whose code is not a School value code is reported, never guessed from its name");
   assert.ok(!dry.json.mapped.some((m) => m.orgUnitCode === `${tag}-school-u`));
+  assert.ok(!dry.json.candidates.some((m) => m.orgUnitCode === `${tag}-school-u`),
+    "and is not even a candidate for confirmation");
   // A dry run writes nothing.
   assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.org_unit_dimension_map m JOIN icf.org_unit o ON o.org_unit_id = m.org_unit_id WHERE o.org_unit_code = @code", { code: `${tag}-school-u` }), 0);
   // An unknown declared value is refused rather than stored unvalidated.
@@ -751,4 +787,110 @@ test("CORR2: an ambiguous outcome retries the exact same mutation id and body on
   const rebuiltVoid = await A.call("POST", `/api/walks/${w.id}/void`, { ...voidBody, reason: "Reason edited in the UI after the failure" });
   assert.equal(rebuiltVoid.status, 409);
   assert.equal(rebuiltVoid.json.error.code, "MUTATION_ID_REUSED");
+});
+
+test("CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation", { skip }, async () => {
+  // A SCHOOL unit whose code differs from a real School value code only in case. Code equality
+  // finds it; nothing is written until the operator confirms the exact pair the report gave them.
+  const seeded = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
+    { code: CANONICAL_CASE_UNIT, type: "SCHOOL", name: "HTTP fixture canonical-case school", parentCode: `${tag}-district` },
+  ] } });
+  assert.equal(seeded.status, 200, seeded.text);
+
+  const reported = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", { token, body: {} });
+  assert.equal(reported.status, 200, reported.text);
+  assert.equal(reported.json.dryRun, false, "this is not a dry run, and it still wrote nothing");
+  const candidate = reported.json.candidates.find((c) => c.orgUnitCode === CANONICAL_CASE_UNIT);
+  assert.ok(candidate, "the match is reported as a candidate");
+  assert.equal(candidate.valueCode, CANONICAL_VALUE, "reported as the instrument spells it");
+  assert.ok(!reported.json.mapped.some((m) => m.orgUnitCode === CANONICAL_CASE_UNIT), "and not mapped");
+  assert.equal(await mappedValueFor(CANONICAL_CASE_UNIT), null, "code equality alone persists nothing");
+
+  // A confirmation that names a different value than the candidate is refused, not reinterpreted.
+  const mismatched = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", {
+    token, body: { confirm: [{ orgUnitCode: CANONICAL_CASE_UNIT, valueCode: SCHOOL_VALUE_A }] } });
+  assert.equal(mismatched.status, 200, mismatched.text);
+  assert.ok(mismatched.json.refused.some((r) => r.orgUnitCode === CANONICAL_CASE_UNIT && r.reason === "CONFIRMATION_DOES_NOT_MATCH_CANDIDATE"));
+  assert.equal(await mappedValueFor(CANONICAL_CASE_UNIT), null, "a mismatched confirmation writes nothing");
+
+  // A confirmation naming a unit that is not a candidate is reported, never guessed at.
+  const stray = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", {
+    token, body: { confirm: [{ orgUnitCode: `${tag}-school-u`, valueCode: CANONICAL_VALUE }] } });
+  assert.equal(stray.status, 200, stray.text);
+  assert.ok(stray.json.refused.some((r) => r.orgUnitCode === `${tag}-school-u` && r.reason === "NOT_A_CANDIDATE"));
+
+  // The exact confirmed pair is stored, with the instrument's spelling of the code.
+  const confirmed = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", {
+    token, body: { confirm: [{ orgUnitCode: CANONICAL_CASE_UNIT, valueCode: CANONICAL_VALUE }] } });
+  assert.equal(confirmed.status, 200, confirmed.text);
+  assert.ok(confirmed.json.mapped.some((m) => m.orgUnitCode === CANONICAL_CASE_UNIT && m.valueCode === CANONICAL_VALUE && m.source === "CODE_ALIGNED"));
+  assert.equal(await mappedValueFor(CANONICAL_CASE_UNIT), CANONICAL_VALUE,
+    "the stored code is the instrument's, not the org unit's, or the walk path would never match it again");
+
+  // Idempotent: a second run reports it as already mapped and writes nothing new.
+  const again = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", {
+    token, body: { confirm: [{ orgUnitCode: CANONICAL_CASE_UNIT, valueCode: CANONICAL_VALUE }] } });
+  assert.equal(again.status, 200, again.text);
+  assert.ok(again.json.alreadyMapped.some((m) => m.valueCode === CANONICAL_VALUE && m.source === "CODE_ALIGNED"));
+  assert.ok(!again.json.mapped.some((m) => m.orgUnitCode === CANONICAL_CASE_UNIT));
+
+  // Maintenance authorization is unchanged: no token, no report and no write.
+  const unauthorized = await fetch(`${baseUrl(env)}/index.cfm/api/maintenance/org-units/align-school-dimension`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: [{ orgUnitCode: CANONICAL_CASE_UNIT, valueCode: CANONICAL_VALUE }] }) });
+  assert.ok(unauthorized.status === 401 || unauthorized.status === 403 || unauthorized.status === 404, `expected a refusal, got ${unauthorized.status}`);
+});
+
+test("CORR3: the School dimension's free-text value is never stored as a school's identity", { skip }, async () => {
+  const before = await scalar("SELECT COUNT(*) AS n FROM icf.org_unit_dimension_map");
+
+  // 1. Declaring it explicitly in the org-unit import is refused.
+  const declared = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
+    { code: `${tag}-school-u`, type: "SCHOOL", name: "HTTP fixture unmapped school", parentCode: `${tag}-district`, schoolValueCode: NON_IDENTIFYING_UNIT },
+  ] } });
+  assert.equal(declared.status, 400, declared.text);
+  assert.equal(declared.json.error.code, "ORG_UNIT_SCHOOL_VALUE_NOT_IDENTIFYING");
+  assert.equal(await mappedValueFor(`${tag}-school-u`), null, "the refused declaration stored nothing");
+
+  // 2. A SCHOOL org unit coded exactly "other" matches that value by pure string equality. The
+  //    alignment reports why it cannot be an identity and never offers it as a candidate.
+  const seeded = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
+    { code: NON_IDENTIFYING_UNIT, type: "SCHOOL", name: "HTTP fixture free-text lookalike", parentCode: `${tag}-district` },
+  ] } });
+  assert.equal(seeded.status, 200, seeded.text);
+  const reported = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", { token, body: {} });
+  assert.equal(reported.status, 200, reported.text);
+  assert.ok(reported.json.unmapped.some((u) => u.orgUnitCode === NON_IDENTIFYING_UNIT && u.reason === "NON_IDENTIFYING_VALUE_CODE"));
+  assert.ok(!reported.json.candidates.some((c) => c.orgUnitCode === NON_IDENTIFYING_UNIT), "never a candidate");
+  assert.ok(!reported.json.mapped.some((m) => m.orgUnitCode === NON_IDENTIFYING_UNIT));
+
+  // 3. Confirming it anyway cannot persist it: it was never a candidate.
+  const forced = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", {
+    token, body: { confirm: [{ orgUnitCode: NON_IDENTIFYING_UNIT, valueCode: NON_IDENTIFYING_UNIT }] } });
+  assert.equal(forced.status, 200, forced.text);
+  assert.ok(forced.json.refused.some((r) => r.orgUnitCode === NON_IDENTIFYING_UNIT && r.reason === "NOT_A_CANDIDATE"));
+  assert.ok(!forced.json.mapped.some((m) => m.orgUnitCode === NON_IDENTIFYING_UNIT));
+  assert.equal(await mappedValueFor(NON_IDENTIFYING_UNIT), null, "the unit coded 'other' is still unmapped");
+
+  // 4. None of the failed attempts changed a mapping or any walk. The unit fails closed, so a walk
+  //    there carries no School value and refuses one, exactly like any other unmapped unit.
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.org_unit_dimension_map"), before,
+    "no mapping row was added or removed by any refused attempt");
+  assert.equal(await mappedValueFor(`${tag}-school-a`), SCHOOL_VALUE_A, "the real mappings are untouched");
+  assert.equal(await mappedValueFor(`${tag}-school-b`), SCHOOL_VALUE_B);
+
+  const unitId = await scalar("SELECT org_unit_id FROM icf.org_unit WHERE org_unit_code = @code", { code: NON_IDENTIFYING_UNIT });
+  const assigned = await api(env, "POST", "/api/maintenance/identity/assign-role", { token, body: { subject: walker, roleCode: "SCHOOL_WALK_REPORT", orgUnitCode: NON_IDENTIFYING_UNIT } });
+  assert.equal(assigned.status, 201, assigned.text);
+  const W = await client(walker);
+  const walksBefore = (await W.call("GET", "/api/walks")).json.walks.length;
+  const created = await W.call("POST", "/api/walks", { orgUnitId: unitId.toUpperCase(), clientMutationId: uuid(), dimensions: {}, responses: {} });
+  assert.equal(created.status, 201, created.text);
+  assert.equal(created.json.walk.state.dimensions.school, undefined, "nothing is filled for an unmapped unit");
+  const labelled = await W.call("PUT", `/api/walks/${created.json.walk.id}`, {
+    rowVersion: created.json.walk.rowVersion, clientMutationId: uuid(),
+    dimensions: { school: { selectedValueCode: NON_IDENTIFYING_UNIT, otherText: "Somewhere" } }, responses: {} });
+  assert.equal(labelled.status, 409, labelled.text);
+  assert.equal(labelled.json.error.code, "SCHOOL_ORG_UNMAPPED");
+  assert.equal(await storedRowVersion(created.json.walk.id), created.json.walk.rowVersion, "the refusal wrote nothing");
+  assert.equal((await W.call("GET", "/api/walks")).json.walks.length, walksBefore + 1, "and created no extra walk");
 });

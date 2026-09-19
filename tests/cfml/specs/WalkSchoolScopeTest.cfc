@@ -32,6 +32,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	// An instrument School value that is also an existing org unit code in the example hierarchy,
 	// used to prove that equality alone maps nothing.
 	variables.VALUE_LOOKALIKE = "bartlett_high_school";
+	// The School dimension's free-text escape hatch. The instrument defines it; it names no school.
+	variables.NON_IDENTIFYING_VALUE = "other";
 
 	public string function skipReason() {
 		if (!schemaPresent()) return "icf schema is not present.";
@@ -55,12 +57,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.B = fx.orgUnit("school-b", "SCHOOL", variables.D);
 		// A third SCHOOL unit whose code IS an instrument School value, left unmapped on purpose.
 		variables.LOOKALIKE = fx.orgUnitExact(variables.VALUE_LOOKALIKE, "SCHOOL", variables.D);
+		// A fourth whose code is exactly the School dimension's free-text option. It matches a value
+		// the instrument really defines, so code equality alone would have mapped it -- to a value
+		// that names no school at all.
+		variables.OTHER_UNIT = fx.orgUnitExact(variables.NON_IDENTIFYING_VALUE, "SCHOOL", variables.D);
 		variables.OUTSIDE = fx.orgUnit("outside-district", "DISTRICT");
 
 		variables.atA = fx.user("walker-a");
 		fx.assign(variables.atA.userId, "SCHOOL_WALK_REPORT", variables.A, false);
 		variables.atLookalike = fx.user("walker-lookalike");
 		fx.assign(variables.atLookalike.userId, "SCHOOL_WALK_REPORT", variables.LOOKALIKE, false);
+		variables.atOther = fx.user("walker-other");
+		fx.assign(variables.atOther.userId, "SCHOOL_WALK_REPORT", variables.OTHER_UNIT, false);
 		variables.districtUser = fx.user("district-walker");
 		fx.assign(variables.districtUser.userId, "DISTRICT_WALK_REPORT", variables.D, true);
 	}
@@ -238,5 +246,79 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var unitB = variables.B;
 		assertThrows(function() { create(user, outside); }, "ICFWalk.NotFound");
 		assertThrows(function() { create(user, unitB, { "selectedValueCode": valueA }); }, "ICFWalk.Conflict", "SCHOOL_ORG_MISMATCH");
+	}
+
+	// ---- non-identifying values are never identities --------------------------------------------
+
+	/**
+	 * A controlled list can define a value that identifies nothing. The School dimension allows free
+	 * text, so it carries a value coded "other" meaning "none of these, see the typed text". The
+	 * instrument defines it, so every "is this a School value?" check said yes and it could be stored
+	 * as a school's identity -- labelling that school's walks "Other" and, because the mapping is
+	 * unique on (dimension, value), taking a value that names no school away from every other school.
+	 *
+	 * It is now refused at the one place mappings are written, so no route can store it.
+	 */
+	public void function testANonIdentifyingValueIsRefusedAsAnIdentityMapping() {
+		var repo = variables.orgUnits;
+		var unit = variables.OTHER_UNIT;
+		var schoolCode = variables.schoolCode;
+		var nonIdentifying = variables.NON_IDENTIFYING_VALUE;
+
+		assertFalse(repo.isIdentifyingValueCode(nonIdentifying), '"other" identifies nothing');
+		assertFalse(repo.isIdentifyingValueCode("Other"), "however it is spelled");
+		assertTrue(repo.isIdentifyingValueCode(variables.VALUE_A), "a named school does identify one");
+
+		assertThrows(function() { repo.upsertDimensionMapping(unit, schoolCode, nonIdentifying, "EXPLICIT"); },
+			"ICFWalk.Validation", "ORG_UNIT_DIMENSION_VALUE_NOT_IDENTIFYING");
+		assertThrows(function() { repo.upsertDimensionMapping(unit, schoolCode, "Other", "CODE_ALIGNED"); },
+			"ICFWalk.Validation", "ORG_UNIT_DIMENSION_VALUE_NOT_IDENTIFYING");
+		// A unit that already holds a real mapping cannot be moved onto it either.
+		var unitA = variables.A;
+		variables.fx.mapSchool(variables.A, variables.VALUE_A);
+		var mappings = mappingCount();
+		assertThrows(function() { repo.upsertDimensionMapping(unitA, schoolCode, nonIdentifying, "EXPLICIT"); },
+			"ICFWalk.Validation", "ORG_UNIT_DIMENSION_VALUE_NOT_IDENTIFYING");
+		assertEquals(variables.VALUE_A, repo.findDimensionMapping(variables.A, schoolCode).valueCode, "the real mapping is untouched");
+		assertEquals(mappings, mappingCount(), "and the refusals wrote nothing");
+		assertTrue(structIsEmpty(repo.findDimensionMapping(unit, schoolCode)), "the unit it was refused for is still unmapped");
+	}
+
+	/**
+	 * A SCHOOL org unit whose org_unit_code is exactly "other". Pure code equality matches it against
+	 * a value the instrument defines, so the alignment pass would once have mapped it. It stays
+	 * unmapped, and the walk path therefore fails closed for it exactly as for any other unmapped
+	 * unit -- no School value filled, none accepted, nothing written.
+	 */
+	public void function testASchoolUnitCodedOtherStaysUnmappedAndFailsClosed() {
+		var schoolCode = variables.schoolCode;
+		assertTrue(structIsEmpty(variables.orgUnits.findDimensionMapping(variables.OTHER_UNIT, schoolCode)),
+			"a unit coded 'other' carries no mapping");
+
+		var w = create(variables.atOther, variables.OTHER_UNIT);
+		assertEquals(0, schoolRow(w.id).recordCount, "nothing is filled");
+		assertFalse(structKeyExists(w.state.dimensions, schoolCode), "and nothing is returned");
+
+		var user = variables.atOther;
+		var walk = w;
+		var rv = storedRowVersion(w.id);
+		var mappings = mappingCount();
+		var nonIdentifying = variables.NON_IDENTIFYING_VALUE;
+		// Not even the value its own code matches.
+		assertThrows(function() { save(user, walk, { "#schoolCode#": { "selectedValueCode": nonIdentifying, "otherText": "Other" } }); },
+			"ICFWalk.Conflict", "SCHOOL_ORG_UNMAPPED");
+		var valueA = variables.VALUE_A;
+		assertThrows(function() { save(user, walk, { "#schoolCode#": { "selectedValueCode": valueA } }); },
+			"ICFWalk.Conflict", "SCHOOL_ORG_UNMAPPED");
+
+		assertEquals(0, schoolRow(w.id).recordCount, "the refusals wrote no School value");
+		assertEquals(rv, storedRowVersion(w.id), "and did not move the walk's row version");
+		assertEquals(mappings, mappingCount(), "and created no mapping");
+		assertTrue(structIsEmpty(variables.orgUnits.findDimensionMapping(variables.OTHER_UNIT, schoolCode)), "the unit is still unmapped");
+	}
+
+	private numeric function mappingCount() {
+		return variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[org_unit_dimension_map] WHERE dimension_code = :code",
+			{ "code": variables.db.nvarchar(variables.schoolCode, 100) });
 	}
 }

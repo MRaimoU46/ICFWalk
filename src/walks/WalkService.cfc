@@ -30,7 +30,9 @@
  *      updated_at/rowversion are bumped after the child writes; a save that changes nothing on a
  *      COMPLETED walk writes nothing at all (no revision, no new row version).
  *   3. The client mutation id is recorded with the committed result (icf.walk_mutation); a retry
- *      with the same id replays that outcome (no duplicate rows, no second revision).
+ *      with the same id replays that outcome (no duplicate rows, no second revision). The replay
+ *      itself runs under the same walk mutation lock, so its coherence check and the aggregate it
+ *      returns are one consistent snapshot (see replay).
  *
  * A walk conducted at a SCHOOL org unit carries the School dimension value naming that unit: the
  * authorized active unit is authoritative and the server fills and locks the value (see
@@ -681,7 +683,10 @@ component output="false" {
 	 *   4. The SHA-256 fingerprint of the canonical semantic request: a different request under the
 	 *      same id is 409 MUTATION_ID_REUSED.
 	 *   5. Coherence (see supersededReplayRefused). The recorded outcome is only returned while the
-	 *      aggregate still stands where that mutation left it.
+	 *      aggregate still stands where that mutation left it. This comparison and the aggregate's
+	 *      materialization are one atomic step under the walk mutation lock, so the DTO a replay
+	 *      returns always carries the row version the recorded mutation committed -- never a newer
+	 *      one a save slipped in between the two.
 	 *
 	 * Nothing here writes application state; the audit trail is the only side effect.
 	 */
@@ -697,14 +702,42 @@ component output="false" {
 		if (compare(arguments.recorded.fingerprint, lCase(arguments.fingerprint)) != 0) {
 			mutationIdReused(arguments.recorded, arguments.principal, arguments.action, true);
 		}
-		var row = variables.walks.findWalk(arguments.recorded.walkId);
-		if (structIsEmpty(row)) variables.errors.notFound();
 		var recordedRowVersion = recordedRowVersionOf(arguments.recorded);
-		if (!len(recordedRowVersion) || compare(recordedRowVersion, row.rowVersion) != 0) {
-			supersededReplayRefused(arguments.recorded, arguments.principal, arguments.action, recordedRowVersion, row);
+		var target = arguments.recorded.walkId;
+		var principal = arguments.principal;
+		var walks = variables.walks;
+		// Coherence and materialization are one atomic step. Comparing the recorded row version
+		// against an unlocked read and then building the DTO from later unlocked reads left a
+		// window in which a concurrent save could commit between the two, so a replay that had
+		// just been judged coherent returned the NEWER aggregate and the newer row version to a
+		// session still holding the state that went with the original mutation -- exactly the
+		// stale-state-with-a-live-token pairing the comparison exists to prevent. Both now happen
+		// inside one transaction that holds the walk mutation lock (findWalk(..., true)), which is
+		// the same lock every normal mutation path takes before it writes, so no save, completion
+		// or void can interleave between them.
+		var outcome = variables.db.transact(function() {
+			var locked = walks.findWalk(target, true);
+			if (structIsEmpty(locked)) return { "missing": true };
+			if (!len(recordedRowVersion) || compare(recordedRowVersion, locked.rowVersion) != 0) {
+				return { "superseded": { "row": locked } };
+			}
+			var materialized = loadDto(target, principal, locked);
+			// The aggregate is read under the lock, so this re-read cannot have moved; asserting it
+			// anyway makes the invariant the code's, not the lock's: the DTO that leaves here always
+			// carries the row version the recorded mutation committed, or nothing leaves at all.
+			var after = walks.findWalk(target, true);
+			if (structIsEmpty(after)) return { "missing": true };
+			if (compare(recordedRowVersion, after.rowVersion) != 0 || compare(recordedRowVersion, materialized.rowVersion) != 0) {
+				return { "superseded": { "row": after } };
+			}
+			return { "dto": materialized };
+		});
+		if (structKeyExists(outcome, "missing")) variables.errors.notFound();
+		if (structKeyExists(outcome, "superseded")) {
+			supersededReplayRefused(arguments.recorded, arguments.principal, arguments.action, recordedRowVersion, outcome.superseded.row);
 		}
 		variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_REPLAYED", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "action": arguments.action, "rowVersion": recordedRowVersion });
-		var dto = loadDto(arguments.recorded.walkId, arguments.principal);
+		var dto = outcome.dto;
 		dto["replayed"] = true;
 		dto["clientMutationId"] = arguments.recorded.mutationId;
 		dto["mutation"] = arguments.recorded.result;
@@ -743,6 +776,10 @@ component output="false" {
 	 * it must reload and reconcile like any other conflict. The details deliberately carry the
 	 * RECORDED row version, never the current one: a stale token cannot be used to overwrite
 	 * anything, and the current state is fetched by reading the walk.
+	 *
+	 * The caller reaches this only from inside the locked replay transaction's outcome, so "the
+	 * aggregate has moved on" is decided against the same locked row the DTO would have been built
+	 * from. There is no window between deciding and answering.
 	 */
 	private void function supersededReplayRefused(required struct recorded, required struct principal, required string action, required string recordedRowVersion, required struct row) {
 		variables.logger.warn("walk.mutation.superseded", { "walkId": arguments.recorded.walkId, "action": arguments.action, "recordedRowVersion": arguments.recordedRowVersion });
@@ -772,18 +809,24 @@ component output="false" {
 		);
 	}
 
-	/** Loads the walk aggregate for a response. Callers authorize the record before calling this. */
-	private struct function loadDto(required string walkId, required struct principal) {
-		var row = variables.walks.findWalk(arguments.walkId);
-		if (structIsEmpty(row)) variables.errors.notFound();
+	/**
+	 * Loads the walk aggregate for a response. Callers authorize the record before calling this.
+	 *
+	 * `row` lets a caller that already holds the walk header -- because it read it under the walk
+	 * mutation lock -- materialize the aggregate from that exact row instead of reading the header
+	 * again, so the DTO's row version is the one the caller compared and not a later one.
+	 */
+	private struct function loadDto(required string walkId, required struct principal, struct row = {}) {
+		var header = structIsEmpty(arguments.row) ? variables.walks.findWalk(arguments.walkId) : arguments.row;
+		if (structIsEmpty(header)) variables.errors.notFound();
 		var dims = variables.walks.loadDimensionValues(arguments.walkId);
 		var responses = variables.walks.loadResponses(arguments.walkId);
-		var model = variables.snapshots.renderModelFor(row.versionId);
+		var model = variables.snapshots.renderModelFor(header.versionId);
 		var state = stateOf(dims, responses);
 		var evaluation = variables.engine.evaluateVisibility(model, state);
 		var persistedStates = {};
 		for (var key in structKeyArray(responses)) persistedStates[key] = responses[key].state;
-		var dto = headerDto(row, arguments.principal);
+		var dto = headerDto(header, arguments.principal);
 		dto["state"] = state;
 		dto["states"] = { "responseStates": evaluation.responseStates, "dimensionStates": evaluation.dimensionStates, "persistedResponseStates": persistedStates };
 		dto["revisionCount"] = variables.walks.countRevisions(arguments.walkId);

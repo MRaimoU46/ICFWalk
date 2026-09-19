@@ -613,3 +613,187 @@ test("CORR2: a SAVE committed but lost, retried after another session saved, bec
   await contextB.close();
   assert.deepEqual(pageErrors, []);
 });
+
+// ---- third correction session: sent operations survive ambiguity -------------------------------
+
+/**
+ * Holds the first matching request open until `release()` is called, then lets it reach the server
+ * (so the mutation really commits) and throws the answer away. That is the interleaving the browser
+ * used to lose: the edit arrives while the request is on the wire, before any answer exists.
+ */
+function holdThenLoseFirst(p, { method, urlPattern, commit = "transport", seen }) {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let taken = false;
+  const routed = p.route(urlPattern, async (route) => {
+    const request = route.request();
+    if (request.method() !== method) return route.continue();
+    if (seen) seen.push(request.postDataJSON());
+    if (taken) return route.continue();
+    taken = true;
+    await gate;
+    const response = await route.fetch();          // the server commits here
+    if (commit === "transport") return route.abort("connectionreset");
+    return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "UPSTREAM_UNAVAILABLE", message: "lost", details: { committed: response.status() } } }) });
+  });
+  return routed.then(() => release);
+}
+
+/** The part of a save request the server fingerprints: the body without its wall-clock stamp. */
+const semanticBody = (put) => ({ walkId: put.walkId, versionId: put.versionId, dimensions: put.dimensions, responses: put.responses });
+const guarded = (p = page) => p.evaluate(() => { const ev = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; });
+const notes = '[data-item-key="comp_s1_notes"] textarea';
+
+/**
+ * The residual defect: an editor change during an in-flight save deleted the operation record whose
+ * request was already on the wire. When that request's answer was then lost, nothing was left to
+ * retry -- the committed save was never confirmed, and the queued newer state went out under a
+ * brand-new mutation id against a row version the server had already moved past.
+ *
+ * Both halves are asserted here: the original request is retried first, byte for byte, and only
+ * after it resolves definitively does the newer state go out under a new id.
+ */
+for (const [label, commit] of [["a lost response", "transport"], ["an HTTP 5xx", "5xx"]]) {
+  test(`CORR3: editing during an in-flight SAVE keeps that save's record; ${label} retries it first, then the queued edit under a new id`, { skip }, async () => {
+    await openHome();
+    const id = await startWalk();
+    await expand("part2");
+    await expand("s1");
+    await waitStatus("All changes saved");
+    const startedAt = (await apiWalk(id)).rowVersion;
+
+    const puts = [];
+    const release = await holdThenLoseFirst(page, { method: "PUT", urlPattern: "**/api/walks/*", commit, seen: puts });
+
+    // The first save goes out and is held on the wire.
+    await page.fill(notes, "in-flight text");
+    await page.waitForFunction(() => document.getElementById("save-status").textContent === "Saving...", null, { timeout: 15000 });
+
+    // The edit that used to delete the in-flight record. Nothing local may be dropped, and the
+    // request already on the wire must still be the browser's to resolve.
+    await page.fill(notes, "edited while in flight");
+    assert.equal(await guarded(), true, "an in-flight save plus a newer edit is unfinished work");
+
+    release();
+    // The held save committed, its answer was lost, and the retry goes out automatically because a
+    // newer edit is waiting behind it. Wait for either outcome so the wrong one is an assertion
+    // rather than a timeout: dropping the in-flight record sends the queued state under a new id
+    // against a row version its own committed save already moved past, which is a conflict.
+    await page.waitForFunction(() => document.getElementById("save-status").textContent === "All changes saved"
+      || !document.getElementById("conflict-panel").hidden, null, { timeout: 20000 });
+    assert.equal(await page.isVisible("#conflict-panel"), false,
+      "retrying the original request first settles it, so the queued edit never collides with the browser's own committed save");
+    await waitStatus("All changes saved");
+    await page.unroute("**/api/walks/*");
+
+    assert.equal(puts.length, 3, "the held save, its exact retry, then the queued edit");
+    assert.equal(puts[1].clientMutationId, puts[0].clientMutationId, "the retry reuses the original mutation id");
+    assert.equal(puts[1].rowVersion, puts[0].rowVersion, "and the row version it was issued against");
+    assert.deepEqual(semanticBody(puts[1]), semanticBody(puts[0]), "and the exact frozen semantic body");
+    assert.equal(puts[0].responses.comp_s1_notes.textValue, "in-flight text");
+    assert.equal(puts[0].rowVersion, startedAt);
+
+    assert.notEqual(puts[2].clientMutationId, puts[0].clientMutationId, "the queued newer state gets its own id");
+    assert.equal(puts[2].responses.comp_s1_notes.textValue, "edited while in flight", "and carries the newer state");
+    assert.notEqual(puts[2].rowVersion, puts[0].rowVersion, "issued against the row version the retry settled on");
+
+    // Both edits are accounted for: nothing was dropped and nothing was written twice.
+    const server = await apiWalk(id);
+    assert.equal(server.state.responses.comp_s1_notes.textValue, "edited while in flight");
+    assert.equal(await page.inputValue(notes), "edited while in flight");
+    assert.equal(await guarded(), false, "everything settled, so the unload guard is released");
+    assert.equal(await page.isVisible("#pending-ops"), false, "and nothing is left unresolved");
+    assert.deepEqual(pageErrors, []);
+  });
+}
+
+/**
+ * An ambiguous COMPLETE has to stay resolvable after the walk is reloaded from server state. The
+ * reload is the ordinary one: the completion committed, so this session's row version is stale, its
+ * next save conflicts, and reconciling reloads the walk -- which now reads COMPLETED, so the
+ * Complete walk button that started the operation is gone. The record must not be stranded behind
+ * it, blocking unload with nothing left to click.
+ */
+test("CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state", { skip }, async () => {
+  await openHome();
+  const id = await startWalk();
+  await answerEverythingRequired();
+
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks/*/complete", commit: "5xx", seen: posts });
+  await page.click("#complete-btn");
+  await page.waitForFunction(() => /did not finish/i.test(document.getElementById("app-message").textContent), null, { timeout: 15000 });
+  assert.equal((await apiWalk(id)).status, "COMPLETED", "the server did commit the completion");
+  assert.equal((await apiWalk(id)).revisionCount, 1);
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+
+  // This session still holds the pre-completion row version, so its next save conflicts, and
+  // reconciling reloads the walk as the server holds it.
+  await expand("part2");
+  await expand("s1");
+  await page.fill(notes, "after the ambiguous completion");
+  await page.waitForSelector("#conflict-panel:not([hidden])", { timeout: 15000 });
+  await page.click("#conflict-reload");
+  await page.waitForSelector("#conflict-panel", { state: "hidden", timeout: 15000 });
+
+  assert.equal(await page.isVisible("#complete-btn"), false, "the control that started it is gone: the walk reads COMPLETED");
+  assert.equal(await guarded(), true, "and the operation still blocks unload");
+  assert.equal(await page.isVisible("#pending-ops"), true, "so the retry has to live somewhere that survived the reload");
+  assert.equal(await page.getAttribute("#pending-ops .pending-op", "data-op-action"), "COMPLETE");
+
+  // The route stays installed so the retry is recorded; only the first answer was ever lost.
+  await page.click("#pending-ops .pending-op-retry");
+  await page.waitForSelector("#pending-ops", { state: "hidden", timeout: 15000 });
+  await page.unroute("**/api/walks/*/complete");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId, "the retry reuses the completion's mutation id");
+  assert.equal(posts[1].rowVersion, posts[0].rowVersion);
+  const done = await apiWalk(id);
+  assert.equal(done.status, "COMPLETED");
+  assert.equal(done.revisionCount, 1, "and the completion happened exactly once");
+  assert.equal(await guarded(), false, "the resolved operation releases the guard");
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * An ambiguous VOID is started from a confirmation row inside a list card. Navigating into a walk
+ * and back re-renders the list and destroys that row, which used to leave the record with no retry
+ * anywhere and a permanent unload guard -- on a view where the voided walk is not even listed.
+ */
+test("CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it", { skip }, async () => {
+  await openHome();
+  const other = await startWalk();
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+  const target = (await apiList()).find((w) => w.status === "DRAFT" && w.id !== other).id;
+
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks/*/void", commit: "transport", seen: posts });
+  await page.click(`.walk-card[data-walk-id="${target}"] .delete-btn`);
+  await page.click(".confirm-delete");
+  await page.waitForFunction(() => /could not be reached|did not finish/i.test(document.querySelector(".confirm-row .field-error")?.textContent ?? ""), null, { timeout: 15000 });
+  assert.equal((await apiWalk(target)).status, "VOIDED", "the server did commit the void");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+
+  // Navigate into another walk and back: the list re-renders and the confirmation row is gone.
+  await openCard(other);
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+  assert.equal(await page.locator(".confirm-row").count(), 0, "the row that held the retry is gone");
+  assert.equal(await page.locator(`.walk-card[data-walk-id="${target}"]`).count(), 0, "and the voided walk is not listed");
+  assert.equal(await guarded(), true, "the unresolved void still blocks unload");
+  assert.equal(await page.isVisible("#pending-ops"), true, "so it is still offered somewhere reachable");
+  assert.equal(await page.getAttribute("#pending-ops .pending-op", "data-op-action"), "VOID");
+
+  // The route stays installed so the retry is recorded; only the first answer was ever lost.
+  await page.click("#pending-ops .pending-op-retry");
+  await page.waitForSelector("#pending-ops", { state: "hidden", timeout: 15000 });
+  await page.unroute("**/api/walks/*/void");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId, "the retry reuses the void's mutation id");
+  assert.equal(posts[1].rowVersion, posts[0].rowVersion);
+  assert.equal((await apiWalk(target)).status, "VOIDED", "voided exactly once");
+  assert.equal(await page.isVisible("#view-list"), true, "and the user is left on a usable view");
+  assert.equal(await guarded(), false, "the resolved operation releases the guard");
+  assert.deepEqual(pageErrors, []);
+});

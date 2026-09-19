@@ -275,10 +275,16 @@ plus `ACCESS_DENIED` from the authorization layer. No narrative value is ever wr
 or mutation logs.
 
 **Browser.** `ApiWalkStore` implements the Phase 3 `WalkStore` interface over the routes. `app.js`
-debounces edits 700 ms, coalesces edits made mid-flight into the next save, keeps one
-`clientMutationId` for retries of the same payload (a new edit gets a new id), and shows `Unsaved
+debounces edits 700 ms, coalesces edits made mid-flight into the next save, and shows `Unsaved
 changes` / `Saving...` / `All changes saved` / a specific failure with a Retry action (input stays on
-screen). On 409 `STALE_ROW_VERSION` it stops autosaving, loads the server record, and shows an
+screen). Every ambiguity-capable mutation owns an immutable operation record (`docs/DATA_CONTRACT.md`,
+"Pending mutation operations in the browser") keyed by action and target, carrying its
+`clientMutationId`, its row version, and its frozen semantic body. A record whose request has been
+sent is never replaced by a newer payload: an edit made during an in-flight save queues behind it, and
+a lost answer retries the original request before the queued state goes out under a new id. Unresolved
+operations are rendered from that registry into an unfinished-operations bar that lives outside both
+views, so a retry is still reachable after the list re-renders or the walk is reloaded from the
+server. On 409 `STALE_ROW_VERSION` it stops autosaving, loads the server record, and shows an
 `alertdialog` listing only the fields this session changed since it last loaded or saved (its unsent
 edits) against the saved values; "Use the saved version" discards them, "Keep my edits and save"
 applies them on top of the server record and saves with the new row version. Completion errors are

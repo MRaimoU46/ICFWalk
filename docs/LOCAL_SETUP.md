@@ -95,18 +95,23 @@ npm test                                      # all Node tests + the CFML suite 
    Then map each SCHOOL org unit to the instrument School dimension value that names it, which the
    School-scope invariant depends on (`docs/DATA_CONTRACT.md`, "School and organizational scope").
    Either declare it in the import (`"schoolValueCode": "<instrument School value code>"` on each
-   SCHOOL unit) or, when the org-unit codes already are the instrument's School value codes, derive
-   it once:
+   SCHOOL unit) or, when the org-unit codes already are the instrument's School value codes, ask for
+   the candidates and confirm the ones that are right:
 
    ```bash
-   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"dryRun":true}' \
-     http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension   # review first
    curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{}' \
+     http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension   # candidates[] only
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' \
+     -d '{"confirm":[{"orgUnitCode":"<code>","valueCode":"<instrument School value code>"}]}' \
      http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension
    ```
 
-   The response's `unmapped[]` names every SCHOOL unit still without a mapping. Walks at an unmapped
-   unit carry no School value and refuse a submitted one, so resolve them before going live.
+   Code equality is a coincidence, not a decision, so the first call writes nothing however it is
+   phrased: only the pairs in `confirm[]` are stored, and each is re-derived and re-validated first
+   (`refused[]` says why any was not). The response's `unmapped[]` names every SCHOOL unit still
+   without a mapping and why, including `NON_IDENTIFYING_VALUE_CODE` for a unit coded `other`, which
+   is the School dimension's free-text option and never an identity. Walks at an unmapped unit carry
+   no School value and refuse a submitted one, so resolve them before going live.
 
    Walk and report roles (`DISTRICT_WALK_REPORT`, `DISTRICT_REPORT_ONLY`, `SCHOOL_WALK_REPORT`,
    `SCHOOL_REPORT_ONLY`) are assigned the same way with `orgUnitCode` of the district (with

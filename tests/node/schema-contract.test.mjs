@@ -89,9 +89,20 @@ test("005 patch adds icf.org_unit_dimension_map idempotently and additively", ()
   assert.match(mappingPatch, /CONSTRAINT \[UQ_org_unit_dimension_map_value\]\s+UNIQUE \(\[dimension_code\], \[value_code\]\)/);
   assert.match(mappingPatch, /CHECK \(\[source\] IN \(N'EXPLICIT', N'CODE_ALIGNED'\)\)/);
   assert.match(mappingPatch, /FOREIGN KEY \(\[org_unit_id\]\)/);
-  // Additive: it creates its own table and never touches existing objects or data.
+  // A value that names nothing is never an identity: the database itself refuses it, so no
+  // application path, script, or hand-written statement can store one.
+  assert.match(mappingPatch, /CONSTRAINT \[CK_org_unit_dimension_map_identifying\]\s+CHECK \(LOWER\(LTRIM\(RTRIM\(\[value_code\]\)\)\) <> N'other'\)/);
+  // The one thing it changes on an existing installation is adding that constraint, and only when
+  // it is absent, after removing exactly the rows that would violate it.
+  const alters = mappingPatch.match(/\bALTER TABLE\b/g) || [];
+  assert.equal(alters.length, 1, "005 alters nothing but the constraint it converges");
+  assert.match(mappingPatch, /IF NOT EXISTS \(\s*SELECT 1\s*FROM sys\.check_constraints[\s\S]*?ALTER TABLE \[icf\]\.\[org_unit_dimension_map\]\s+ADD CONSTRAINT \[CK_org_unit_dimension_map_identifying\]/);
+  const deletes = mappingPatch.match(/\bDELETE FROM\b/g) || [];
+  assert.equal(deletes.length, 1, "and deletes nothing else");
+  assert.match(mappingPatch, /DELETE FROM \[icf\]\.\[org_unit_dimension_map\]\s+WHERE LOWER\(LTRIM\(RTRIM\(\[value_code\]\)\)\) = N'other'/);
+  assert.match(mappingPatch, /@removed AS \[non_identifying_rows_removed\]/, "and reports what it removed");
+  // Otherwise additive: it creates its own table and never drops or rewrites existing data.
   assert.doesNotMatch(mappingPatch, /\bDROP\b/);
-  assert.doesNotMatch(mappingPatch, /\bALTER TABLE\b/);
   assert.doesNotMatch(mappingPatch, /\bUPDATE \[icf\]/);
   assert.doesNotMatch(mappingPatch, /CREATE TABLE \[icf\]\.\[(?!org_unit_dimension_map)/);
   // SQL Server 2016 compatible.

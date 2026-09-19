@@ -4,6 +4,24 @@
  */
 component output="false" {
 
+	/*
+	 * Not every value a controlled list defines identifies anything. A dimension that allows free
+	 * text carries a value coded "other" whose whole purpose is to mean "none of these, see the
+	 * typed text" (the convention WalkPayloadValidator reads to reveal that field). It names no
+	 * school, so it can never be a school's identity: mapping a unit to it would label that unit's
+	 * walks "Other", and because the mapping is unique on (dimension, value) the first unit to
+	 * claim it would lock every other unit out of a value that identifies none of them.
+	 *
+	 * A SCHOOL unit with no identifying value stays unmapped, which the walk path already handles
+	 * by failing closed. That is strictly better than an identity that identifies nothing.
+	 */
+	variables.NON_IDENTIFYING_VALUE_CODES = ["other"];
+
+	/** False for a controlled-list value that names no particular thing, such as "other". */
+	public boolean function isIdentifyingValueCode(required string valueCode) {
+		return !arrayFindNoCase(variables.NON_IDENTIFYING_VALUE_CODES, trim(arguments.valueCode));
+	}
+
 	public OrgUnitRepository function init(required any db) {
 		variables.db = arguments.db;
 		return this;
@@ -125,10 +143,18 @@ component output="false" {
 
 	/**
 	 * Writes one mapping. The caller validates the value against the instrument first; this method
-	 * only enforces the relational facts. A value already mapped to another unit is refused rather
-	 * than moved, so an import can never silently relabel a school.
+	 * enforces the facts that must hold however the mapping was declared. A value already mapped to
+	 * another unit is refused rather than moved, so an import can never silently relabel a school,
+	 * and a non-identifying value is refused outright, so no caller can store one by any route.
 	 */
 	public void function upsertDimensionMapping(required string orgUnitId, required string dimensionCode, required string valueCode, required string source) {
+		if (!isIdentifyingValueCode(arguments.valueCode)) {
+			throw(
+				type = "ICFWalk.Validation",
+				message = "Dimension value '" & arguments.valueCode & "' does not identify a particular org unit and cannot be stored as one's identity mapping.",
+				errorcode = "ORG_UNIT_DIMENSION_VALUE_NOT_IDENTIFYING"
+			);
+		}
 		var claimed = findUnitByDimensionValue(arguments.dimensionCode, arguments.valueCode);
 		if (!structIsEmpty(claimed) && claimed.orgUnitId != uCase(arguments.orgUnitId)) {
 			throw(

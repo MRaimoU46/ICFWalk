@@ -67,8 +67,29 @@ const app = {
  * (a success, or a non-retryable 4xx) or the user explicitly discards it. While it lives it is
  * unsaved work, so the navigation guard and beforeunload both see it.
  *
- *   { key, action, target, mutationId, body (frozen), rowVersion, status: "PENDING" | "AMBIGUOUS" }
+ *   { key, action, target, mutationId, body (frozen), rowVersion, status }
+ *
+ * The status distinguishes a record nothing has been sent for from one whose request is already on
+ * the wire:
+ *
+ *   UNSENT     minted, no request carrying this mutation id has left the browser. Nothing on the
+ *              server can correspond to it, so a newer payload may replace it outright.
+ *   IN_FLIGHT  its request has been sent and no answer has come back. The server may already have
+ *              committed it, so from here on the record is the only thing that can resolve it and
+ *              nothing but a definitive outcome or an explicit discard may drop it.
+ *   AMBIGUOUS  its answer was lost (transport failure) or was an HTTP 5xx. Same rule, plus it is
+ *              surfaced for retry.
+ *
+ * Collapsing the first two was the defect this distinction fixes: an editor change during an
+ * in-flight save deleted the record whose request was already on the wire, so when that request's
+ * answer was lost there was nothing left to retry, the committed save was never confirmed, and the
+ * queued newer state went out under a brand-new id against a row version the server had already
+ * moved past.
  */
+const OP_UNSENT = "UNSENT";
+const OP_IN_FLIGHT = "IN_FLIGHT";
+const OP_AMBIGUOUS = "AMBIGUOUS";
+
 function deepFreeze(value) {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -100,34 +121,48 @@ function beginOp(action, target, { body = {}, rowVersion = null } = {}) {
     mutationId: newId(),
     body: deepFreeze(structuredClone(body)),
     rowVersion,
-    status: "PENDING",
+    status: OP_UNSENT,
   };
   app.ops[record.key] = record;
   return record;
 }
 
+/**
+ * Called immediately before the request carrying this record's mutation id is dispatched. From this
+ * moment the server may hold the mutation, so the record stops being replaceable local intent and
+ * becomes the only thing that can resolve it.
+ */
+function markOpSent(op) {
+  if (op && app.ops[op.key] === op && op.status === OP_UNSENT) op.status = OP_IN_FLIGHT;
+}
+
 function markOpAmbiguous(op) {
-  if (op && app.ops[op.key] === op) op.status = "AMBIGUOUS";
+  if (op && app.ops[op.key] === op) op.status = OP_AMBIGUOUS;
+  renderPendingOps();
 }
 
 /** A definitive outcome (success or non-retryable 4xx): the operation id is spent. */
 function settleOp(op) {
   if (op && app.ops[op.key] === op) delete app.ops[op.key];
+  renderPendingOps();
 }
 
 /**
- * Drops a record that has not yet been sent into an unknown state. An AMBIGUOUS record is never
- * dropped this way: the server may hold it, so only a definitive outcome or an explicit discard
- * clears it.
+ * Drops a record nothing has been sent for, so a newer payload can take its place. A record whose
+ * request has already left the browser is never dropped this way -- in flight or answered
+ * ambiguously, the server may hold it, so only a definitive outcome or an explicit discard clears
+ * it. This is what keeps an edit made during an in-flight save from deleting the operation that
+ * save has to retry.
  */
 function discardPendingOp(action, target) {
   const op = currentOp(action, target);
-  if (op && op.status === "PENDING") delete app.ops[op.key];
+  if (op && op.status === OP_UNSENT) delete app.ops[op.key];
 }
 
 /** Every pending record for one target (used when the user explicitly discards). */
 function settleOpsFor(target) {
   for (const op of Object.values(app.ops)) if (op.target === target) delete app.ops[op.key];
+  renderPendingOps();
 }
 
 function pendingOps() {
@@ -135,14 +170,14 @@ function pendingOps() {
 }
 
 function ambiguousOps() {
-  return pendingOps().filter((op) => op.status === "AMBIGUOUS");
+  return pendingOps().filter((op) => op.status === OP_AMBIGUOUS);
 }
 
 /** The current walk's save record while its outcome is unknown, or null. */
 function ambiguousSave() {
   if (!app.current) return null;
   const op = currentOp("SAVE", app.current.id);
-  return op && op.status === "AMBIGUOUS" ? op : null;
+  return op && op.status === OP_AMBIGUOUS ? op : null;
 }
 
 /**
@@ -176,6 +211,138 @@ function hasUnsavedWork() {
 function hasUnfinishedWork() {
   if (app.current && app.current.canEdit && hasUnsavedWork()) return true;
   return pendingOps().length > 0;
+}
+
+// ---- resolving an ambiguous operation ----------------------------------------------------------
+
+/**
+ * An ambiguous operation has to stay resolvable wherever the user ends up, and the control that
+ * started it is not that place. A void is started from a confirmation row the next list render
+ * destroys; a completion is started from a button the editor hides as soon as the walk is reloaded
+ * and turns out to have been completed after all; a create is started from the list the user may
+ * have left. Each of those leaves a record that still blocks unload with nothing left to click.
+ *
+ * So the records themselves are the source of truth for what is offered: this bar is rebuilt from
+ * the registry on every change, lives outside both views, and gives every unresolved operation a
+ * retry that re-sends its exact frozen request and a discard that is the user's explicit decision.
+ */
+function opDescription(op) {
+  if (op.action === "CREATE") return "Starting a new walk did not finish. It may already have been created.";
+  if (op.action === "COMPLETE") return "Completing a walk did not finish. It may already be complete.";
+  if (op.action === "VOID") return "Removing a walk did not finish. It may already have been removed.";
+  return "A save did not finish. Your changes are still on this page.";
+}
+
+function renderPendingOps() {
+  const box = $("pending-ops");
+  if (!box) return;
+  const list = $("pending-ops-list");
+  const ops = ambiguousOps();
+  list.innerHTML = "";
+  if (!ops.length) { box.hidden = true; return; }
+  $("pending-ops-summary").textContent = ops.length === 1
+    ? "One action did not finish."
+    : `${ops.length} actions did not finish.`;
+  for (const op of ops) {
+    const li = document.createElement("li");
+    li.className = "pending-op";
+    li.dataset.opAction = op.action;
+    li.dataset.opTarget = op.target;
+    const text = document.createElement("span");
+    text.className = "pending-op-text";
+    text.textContent = `${opDescription(op)} Retrying sends the same request, so it cannot happen twice.`;
+    const retry = document.createElement("button");
+    retry.type = "button"; retry.className = "btn btn-sm btn-primary pending-op-retry";
+    retry.textContent = "Retry";
+    retry.addEventListener("click", () => resolveAmbiguousOp(op));
+    const drop = document.createElement("button");
+    drop.type = "button"; drop.className = "btn btn-sm pending-op-discard";
+    drop.textContent = "Stop trying";
+    drop.addEventListener("click", () => {
+      // An explicit decision, like the unsaved-changes panel: the browser stops tracking the
+      // operation and whatever the server holds stands.
+      settleOp(op);
+      announce("Stopped retrying the unfinished action");
+      renderList().catch(() => {});
+    });
+    li.append(text, retry, drop);
+    list.appendChild(li);
+  }
+  box.hidden = false;
+}
+
+/**
+ * Re-sends one record exactly as it was issued -- same mutation id, same row version, same frozen
+ * semantic body -- so the server replays what it already committed or commits it now. Never
+ * rebuilds the request from current UI state: a rebuilt request is a different request and is
+ * refused (409 MUTATION_ID_REUSED).
+ */
+async function resolveAmbiguousOp(op) {
+  if (app.ops[op.key] !== op) { renderPendingOps(); return; }
+  if (op.action === "SAVE") {
+    // A save belongs to its editor, which holds the local state it is still carrying.
+    if (!app.current || app.current.id !== op.target) await openWalk(op.target);
+    if (app.current && app.current.id === op.target) await saveCurrent();
+    renderPendingOps();
+    return;
+  }
+  // The record stays AMBIGUOUS while the retry is out: it is still the only thing that can resolve
+  // the operation, and it keeps its place in the bar until the answer is definitive.
+  try {
+    if (op.action === "CREATE") {
+      const walk = await store.create({ ...op.body, clientMutationId: op.mutationId });
+      settleOp(op);
+      showMessage("");
+      await openWalk(walk.id, walk);
+      return;
+    }
+    if (op.action === "COMPLETE") {
+      await store.complete({ id: op.target, rowVersion: op.rowVersion }, op.mutationId);
+      settleOp(op);
+      announce("Walk completed");
+      await refreshAfterResolvedOp(op.target, false);
+      return;
+    }
+    await store.remove(op.target, { reason: op.body.reason, rowVersion: op.rowVersion, clientMutationId: op.mutationId });
+    settleOp(op);
+    announce("Walk removed");
+    await refreshAfterResolvedOp(op.target, true);
+  } catch (e) {
+    if (isAmbiguousFailure(e)) {
+      markOpAmbiguous(op);
+      showMessage(e instanceof ApiError
+        ? `That still did not finish (${e.code}). Try again; it cannot happen twice.`
+        : "The server could not be reached. Try again; it cannot happen twice.", "error");
+      return;
+    }
+    settleOp(op);
+    if (e instanceof ApiError && e.code === "MUTATION_REPLAY_SUPERSEDED") {
+      // It did commit, and the walk has changed since: the server record is the truth.
+      const walkId = op.action === "CREATE" && e.details && e.details.walkId ? e.details.walkId : op.target;
+      showMessage("");
+      if (op.action === "VOID") await refreshAfterResolvedOp(op.target, true);
+      else await openWalk(walkId);
+      return;
+    }
+    showMessage(`That action could not be finished (${e instanceof ApiError ? e.code : "network error"}): ${e.message}`, "error");
+    await refreshAfterResolvedOp(op.target, false);
+  } finally {
+    renderPendingOps();
+  }
+}
+
+/** Puts the views back in step with the server after an operation finally resolved. */
+async function refreshAfterResolvedOp(walkId, leaveEditorView) {
+  const open = app.current && app.current.id === walkId;
+  if (open && leaveEditorView) {
+    app.current = null;
+    app.editor = null;
+    await renderList();
+    showView("list");
+    return;
+  }
+  if (open) { await openWalk(walkId); return; }
+  await renderList();
 }
 
 function announce(text) {
@@ -225,6 +392,8 @@ function showView(name) {
   $("view-list").hidden = name !== "list";
   $("view-walk").hidden = name !== "walk";
   $("nav-list-btn").hidden = name !== "walk";
+  // The unfinished-operations bar belongs to neither view, so it is re-asserted on every switch.
+  renderPendingOps();
   if (name === "list") $("list-heading").focus?.();
 }
 
@@ -320,6 +489,7 @@ function confirmDelete(card, walk, title) {
     });
     if (reason) reason.readOnly = true;   // the record owns the reason from here on
     try {
+      markOpSent(op);
       await store.remove(walk.id, { reason: op.body.reason, rowVersion: op.rowVersion, clientMutationId: op.mutationId });
       settleOp(op);
       announce(completed ? "Walk voided" : "Walk deleted");
@@ -371,6 +541,7 @@ async function startNewWalk(unit) {
   });
   $("new-walk-btn").disabled = true;
   try {
+    markOpSent(op);
     const walk = await store.create({ ...op.body, clientMutationId: op.mutationId });
     settleOp(op);
     await openWalk(walk.id, walk);
@@ -427,9 +598,13 @@ async function openWalk(id, preloaded = null) {
   app.current = walk;
   app.baseline = structuredClone(walk.state);
   app.dirty = false;
-  // This walk's own save record is settled: the aggregate just came from the server, so nothing
-  // local is waiting on it. Records for other walks and other actions are theirs to resolve.
-  settleOp(currentOp("SAVE", walk.id));
+  // This walk's own save record is settled when nothing was ever sent for it: the aggregate just
+  // came from the server, so an unsent local intent has nothing left to say. A record whose request
+  // did go out is kept -- reloading the walk cannot tell whether the server committed it, and
+  // dropping it here would be the same mistake as dropping it on an editor change. Records for
+  // other walks and other actions are theirs to resolve.
+  const openingSave = currentOp("SAVE", walk.id);
+  if (openingSave && openingSave.status === OP_UNSENT) settleOp(openingSave);
   app.failed = false;
   app.conflict = null;
   app.completionErrors = [];
@@ -535,6 +710,7 @@ function saveCurrent() {
   const payload = { ...walk, rowVersion: op.rowVersion, state: op.body.state };
   if (!resend) app.dirty = false;
   setSaveStatus(STATUS.saving);
+  markOpSent(op);
   app.inFlight = (async () => {
     try {
       const saved = await store.save(payload, op.mutationId);
@@ -744,6 +920,7 @@ async function completeCurrent() {
   const op = beginOp("COMPLETE", walk.id, { rowVersion: walk.rowVersion });
   $("complete-btn").disabled = true;
   try {
+    markOpSent(op);
     const done = await store.complete({ ...walk, rowVersion: op.rowVersion }, op.mutationId);
     settleOp(op);
     walk.status = done.status;
@@ -967,6 +1144,7 @@ async function init() {
   // failed, or conflicted save is unsaved work, and so is any create, completion, or void whose
   // outcome is still unknown -- including one started from the list, where no walk is open.
   window.addEventListener("beforeunload", (ev) => { if (hasUnfinishedWork()) { ev.preventDefault(); ev.returnValue = ""; } });
+  renderPendingOps();
   await renderList();
   showView("list");
   body.dataset.ready = "true";

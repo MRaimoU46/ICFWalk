@@ -224,6 +224,127 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(voided.rowVersion, storedRowVersion(w.id));
 	}
 
+	// ---- CORRECTION 1 (third session): the comparison and the DTO are one atomic step -----------
+
+	/**
+	 * The residual hole the comparison alone left open. replay() used to compare the recorded row
+	 * version against an UNLOCKED read and then build the DTO from further unlocked reads, so a
+	 * save committing between those two points made the replay return the newer aggregate and the
+	 * newer row version under the coherent verdict -- handing the retrying session's stale local
+	 * state a live token, which is exactly what the comparison exists to prevent.
+	 *
+	 * This forces that interleaving deterministically rather than hoping for it. A decorating
+	 * repository (support/InterceptingWalkRepository) fires a callback at the first aggregate read
+	 * the DTO materialization performs, which is the precise point that used to follow the
+	 * comparison. The callback starts a real second session that saves the same walk and waits for
+	 * it, bounded.
+	 *
+	 * The invariant: the walk mutation lock the replay holds makes that save WAIT. It cannot land
+	 * between the comparison and the DTO, so the replay returns the row version its mutation
+	 * committed, with the state that mutation committed; the second save lands afterwards. Before
+	 * the fix the interfering save completed inside the window and both assertions failed.
+	 */
+	public void function testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto() {
+		var w = newWalk();
+		var m1 = newMutationId();
+		var committed = save(w, { "observer": { "textValue": "M1" } }, m1);
+		assertEquals("M1", storedObserver(w.id));
+
+		var interceptor = createObject("component", "icfwalktests.support.InterceptingWalkRepository").init(variables.c.walkRepository);
+		var interceptingService = createObject("component", "icfwalk.walks.WalkService").init(
+			variables.c.config, variables.c.db, variables.c.errors, variables.c.logger, variables.c.auditRepository,
+			variables.c.canonicalJson, variables.c.authorizationService, variables.c.snapshotService,
+			variables.c.visibilityEngine, interceptor, variables.c.walkPayloadValidator, variables.c.orgUnitRepository
+		);
+
+		var realService = variables.svc;
+		var writer = p(variables.walker);
+		var walkId = w.id;
+		var tokenM1 = committed.rowVersion;
+		var interferenceId = newMutationId();
+		var joinedStatus = "";
+		// Armed at the DTO's first aggregate read: the former gap between comparison and DTO.
+		interceptor.arm("loadDimensionValues", function() {
+			thread name="replayInterference" svc=realService who=writer wid=walkId rv=tokenM1 mid=interferenceId {
+				try {
+					attributes.svc.save(attributes.who, attributes.wid, {
+						"rowVersion": attributes.rv, "clientMutationId": attributes.mid,
+						"dimensions": { "observer": { "textValue": "INTERFERENCE" } }, "responses": {}
+					});
+					thread.committed = true;
+					thread.failure = "";
+				} catch (any e) {
+					thread.committed = false;
+					thread.failure = e.message;
+				}
+			}
+			// Generous: an unobstructed save of this walk takes a small fraction of this. It can only
+			// still be running because something is making it wait.
+			threadJoin("replayInterference", 6000);
+			joinedStatus = cfthread.replayInterference.status;
+		});
+
+		var replayed = interceptingService.save(writer, walkId, {
+			"rowVersion": w.rowVersion, "clientMutationId": m1,
+			"dimensions": { "observer": { "textValue": "M1" } }, "responses": {}
+		});
+
+		assertTrue(interceptor.fired("loadDimensionValues"), "the interference really was forced at the DTO-loading point");
+		assertNotEquals("COMPLETED", joinedStatus, "the concurrent save could not commit inside the replay: the walk mutation lock held it");
+		assertTrue(replayed.replayed, "the replay is still the coherent recorded outcome");
+		assertEquals(committed.rowVersion, replayed.rowVersion, "and it carries the row version M1 committed, never a newer one");
+		assertEquals("M1", replayed.state.dimensions.observer.textValue, "with the aggregate as M1 left it");
+
+		// Once the replay commits, the waiting save proceeds: the interference was real, only deferred.
+		threadJoin("replayInterference", 30000);
+		assertEquals("COMPLETED", cfthread.replayInterference.status, "the deferred save ran to completion after the replay released the lock");
+		assertTrue(cfthread.replayInterference.committed, "and it committed: " & cfthread.replayInterference.failure);
+		assertEquals("INTERFERENCE", storedObserver(walkId));
+		assertNotEquals(committed.rowVersion, storedRowVersion(walkId), "the walk did move on -- after the replay, not inside it");
+
+		// And the token the replay handed back is now stale, so it cannot overwrite that save.
+		var stale = committed.rowVersion;
+		assertThrows(
+			function() { variables.svc.save(p(variables.walker), walkId, { "rowVersion": stale, "clientMutationId": newMutationId(), "dimensions": { "observer": { "textValue": "overwrite" } }, "responses": {} }); },
+			"ICFWalk.Conflict", "STALE_ROW_VERSION");
+		assertEquals("INTERFERENCE", storedObserver(walkId));
+	}
+
+	/**
+	 * The same seam, with the aggregate genuinely moved on before the replay starts: the answer is
+	 * the refusal, and it is reached without the DTO ever being materialized.
+	 */
+	public void function testASupersededReplayNeverMaterializesTheNewerAggregate() {
+		var w = newWalk();
+		var m1 = newMutationId();
+		var committed = save(w, { "observer": { "textValue": "M1" } }, m1);
+		save({ "id": w.id, "rowVersion": committed.rowVersion }, { "observer": { "textValue": "later" } });
+
+		var interceptor = createObject("component", "icfwalktests.support.InterceptingWalkRepository").init(variables.c.walkRepository);
+		var interceptingService = createObject("component", "icfwalk.walks.WalkService").init(
+			variables.c.config, variables.c.db, variables.c.errors, variables.c.logger, variables.c.auditRepository,
+			variables.c.canonicalJson, variables.c.authorizationService, variables.c.snapshotService,
+			variables.c.visibilityEngine, interceptor, variables.c.walkPayloadValidator, variables.c.orgUnitRepository
+		);
+		interceptor.arm("loadDimensionValues", function() { fail("a superseded replay must never load the aggregate it is refusing to return."); });
+
+		var walkId = w.id;
+		var writer = p(variables.walker);
+		var before = storedRowVersion(walkId);
+		var e = assertThrows(
+			function() {
+				interceptingService.save(writer, walkId, {
+					"rowVersion": w.rowVersion, "clientMutationId": m1,
+					"dimensions": { "observer": { "textValue": "M1" } }, "responses": {}
+				});
+			},
+			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
+		assertFalse(interceptor.fired("loadDimensionValues"), "nothing about the newer aggregate was read");
+		assertEquals(committed.rowVersion, detailsOf(e).recordedRowVersion, "the details carry the recorded token");
+		assertEquals("later", storedObserver(walkId), "and nothing was written");
+		assertEquals(before, storedRowVersion(walkId));
+	}
+
 	// ---- CORRECTION 4: legacy NULL fingerprints --------------------------------------------------
 
 	/**

@@ -44,9 +44,11 @@ component output="false" {
 	 * A SCHOOL unit may declare `schoolValueCode`: the instrument School dimension value that names
 	 * it. That declaration is the identity relationship walks rely on (icf.org_unit_dimension_map,
 	 * migration 005) and is validated against the School dimension of the current renderable
-	 * instrument version before it is stored. A value already mapped to another unit is refused. A
-	 * SCHOOL unit without one stays unmapped and its walks carry no School value; the alignment
-	 * endpoint below derives the mapping for deployments whose codes already match.
+	 * instrument version before it is stored. A value already mapped to another unit is refused, and
+	 * so is one that names no school at all -- the dimension's free-text "other" option is a value
+	 * the instrument defines but not an identity anything can have. A SCHOOL unit without a mapping
+	 * stays unmapped and its walks carry no School value; the alignment endpoint below reports the
+	 * mapping a deployment whose codes already match could confirm.
 	 */
 	public struct function importOrgUnits(required struct req) {
 		variables.c.maintenanceGuard.require(arguments.req, "orgUnits.import");
@@ -102,31 +104,54 @@ component output="false" {
 	}
 
 	/**
-	 * Derives the School dimension mapping for active SCHOOL org units whose `org_unit_code` is
-	 * exactly a School dimension value code of the current renderable instrument version, and
-	 * reports every unit it could not map.
+	 * Reports the School dimension mapping an operator could derive for active SCHOOL org units
+	 * whose `org_unit_code` is exactly a School dimension value code of the current renderable
+	 * instrument version, and writes only the pairs that operator explicitly confirms.
 	 *
-	 * This is the one place an org-unit code is compared with a dimension value code, it happens
-	 * only when an operator asks for it, and what it produces is a stored, validated mapping row
-	 * (source CODE_ALIGNED). The walk path never compares codes: it reads the row. An EXPLICIT row
-	 * is never overwritten, and a value another unit already holds is reported, not moved.
+	 * Code equality is a coincidence, not a decision. It is worth surfacing -- a deployment whose
+	 * codes already are the instrument's value codes should not have to retype every school -- but
+	 * it is not evidence that a code names the school it matches, so on its own it persists nothing.
+	 * The call therefore reports `candidates[]` and stops. To store them the operator sends them
+	 * back in `confirm[]` as explicit (orgUnitCode, valueCode) pairs, and each pair is re-derived
+	 * and re-validated before it is written: a pair that is no longer a candidate, that names a
+	 * different value than the one derived, or that the instrument no longer defines is refused and
+	 * reported rather than written.
 	 *
-	 * { "dryRun": true } reports what would be written without writing anything. Idempotent.
+	 * What is stored is the instrument's own spelling of the value code, not the org unit's: the
+	 * walk path compares the stored code with the pinned version's values exactly (case-sensitively),
+	 * so a unit code that matches in every way but case must still store the instrument's form or
+	 * the mapping it just wrote would never match again.
+	 *
+	 * A value that identifies nothing is never a candidate. The School dimension's free-text option
+	 * ("other") matches a unit coded "other" by pure string equality, but it names no school, so it
+	 * is reported as `NON_IDENTIFYING_VALUE_CODE` and that unit stays unmapped -- which the walk path
+	 * already handles by failing closed.
+	 *
+	 * An EXPLICIT row is never overwritten, and a value another unit already holds is reported, not
+	 * moved. { "dryRun": true } is the report with any confirmations ignored. Idempotent.
+	 *
+	 * Body: { "dryRun"?: true, "confirm"?: [ { "orgUnitCode": "...", "valueCode": "..." } ] }
 	 */
 	public struct function alignSchoolDimension(required struct req) {
 		variables.c.maintenanceGuard.require(arguments.req, "orgUnits.alignSchoolDimension");
 		var dryRun = structKeyExists(arguments.req.body, "dryRun") && isBoolean(arguments.req.body.dryRun) && arguments.req.body.dryRun;
+		var confirmed = confirmationsOf(arguments.req.body);
 		var dimensionCode = variables.c.config.schoolDimensionCode;
 		if (!len(dimensionCode)) variables.c.errors.validation("No School dimension code is configured (ICFWALK_SCHOOL_DIMENSION_CODE).", "SCHOOL_DIMENSION_NOT_CONFIGURED");
 		var current = variables.c.snapshotService.currentVersion();
 		if (structIsEmpty(current)) variables.c.errors.notFound("No renderable instrument version is available.", "INSTRUMENT_NOT_AVAILABLE");
 		var model = variables.c.snapshotService.renderModelFor(current.versionId);
 		if (!structKeyExists(model.dimensions, dimensionCode)) variables.c.errors.validation("The instrument has no '" & dimensionCode & "' dimension.", "SCHOOL_DIMENSION_NOT_DEFINED");
-		var valueCodes = {};
-		for (var v in model.dimensions[dimensionCode].values) valueCodes[v.valueCode] = true;
+		// Keyed by the instrument's own code, so a lookup answers with the canonical spelling.
+		var canonicalByCode = {};
+		for (var v in model.dimensions[dimensionCode].values) canonicalByCode[v.valueCode] = v.valueCode;
 		var repo = variables.c.orgUnitRepository;
 		var existing = repo.loadDimensionMappings(dimensionCode);
-		var report = { "versionId": current.versionId, "dimensionCode": dimensionCode, "dryRun": dryRun, "mapped": [], "alreadyMapped": [], "unmapped": [] };
+		var report = {
+			"versionId": current.versionId, "dimensionCode": dimensionCode, "dryRun": dryRun,
+			"confirmationsReceived": structCount(confirmed),
+			"candidates": [], "mapped": [], "alreadyMapped": [], "unmapped": [], "refused": []
+		};
 		for (var unit in repo.activeSchoolUnits()) {
 			var already = structKeyExists(existing, unit.id) ? existing[unit.id] : {};
 			if (!structIsEmpty(already)) {
@@ -135,22 +160,61 @@ component output="false" {
 			}
 			// An exact code match against this version's School values, nothing else. Display names
 			// are never consulted.
-			if (!structKeyExists(valueCodes, unit.code)) {
+			if (!structKeyExists(canonicalByCode, unit.code)) {
 				arrayAppend(report.unmapped, { "orgUnitCode": unit.code, "reason": "NO_MATCHING_VALUE_CODE" });
 				continue;
 			}
-			var claimed = repo.findUnitByDimensionValue(dimensionCode, unit.code);
+			var canonical = canonicalByCode[unit.code];
+			if (!repo.isIdentifyingValueCode(canonical)) {
+				arrayAppend(report.unmapped, { "orgUnitCode": unit.code, "reason": "NON_IDENTIFYING_VALUE_CODE" });
+				continue;
+			}
+			var claimed = repo.findUnitByDimensionValue(dimensionCode, canonical);
 			if (!structIsEmpty(claimed) && claimed.orgUnitId != unit.id) {
 				arrayAppend(report.unmapped, { "orgUnitCode": unit.code, "reason": "VALUE_MAPPED_TO_ANOTHER_UNIT" });
 				continue;
 			}
-			if (!dryRun) repo.upsertDimensionMapping(unit.id, dimensionCode, unit.code, "CODE_ALIGNED");
-			arrayAppend(report.mapped, { "orgUnitCode": unit.code, "valueCode": unit.code, "source": "CODE_ALIGNED" });
+			arrayAppend(report.candidates, { "orgUnitCode": unit.code, "valueCode": canonical, "source": "CODE_ALIGNED" });
+			if (dryRun || !structKeyExists(confirmed, unit.code)) continue;
+			if (compare(confirmed[unit.code], canonical) != 0) {
+				// The operator confirmed a different pairing than the one derived here. Writing either
+				// would be writing something nobody asked for.
+				arrayAppend(report.refused, { "orgUnitCode": unit.code, "valueCode": confirmed[unit.code], "reason": "CONFIRMATION_DOES_NOT_MATCH_CANDIDATE" });
+				continue;
+			}
+			repo.upsertDimensionMapping(unit.id, dimensionCode, canonical, "CODE_ALIGNED");
+			arrayAppend(report.mapped, { "orgUnitCode": unit.code, "valueCode": canonical, "source": "CODE_ALIGNED" });
 		}
-		if (!dryRun && arrayLen(report.mapped)) {
-			variables.c.auditRepository.record("ORG_UNIT", "", "ORG_UNIT_SCHOOL_DIMENSION_ALIGNED", "", { "dimensionCode": dimensionCode, "versionId": current.versionId, "mapped": arrayLen(report.mapped), "unmapped": arrayLen(report.unmapped) });
+		// A confirmation naming a unit that is not a candidate is never silently dropped.
+		var candidateCodes = {};
+		for (var c in report.candidates) candidateCodes[c.orgUnitCode] = true;
+		for (var code in confirmed) {
+			if (structKeyExists(candidateCodes, code)) continue;
+			arrayAppend(report.refused, { "orgUnitCode": code, "valueCode": confirmed[code], "reason": "NOT_A_CANDIDATE" });
+		}
+		if (arrayLen(report.mapped)) {
+			variables.c.auditRepository.record("ORG_UNIT", "", "ORG_UNIT_SCHOOL_DIMENSION_ALIGNED", "", { "dimensionCode": dimensionCode, "versionId": current.versionId, "mapped": arrayLen(report.mapped), "candidates": arrayLen(report.candidates), "refused": arrayLen(report.refused), "unmapped": arrayLen(report.unmapped) });
 		}
 		return { "status": 200, "body": report };
+	}
+
+	/**
+	 * The confirmed (orgUnitCode -> valueCode) pairs from an alignment request, as a struct keyed by
+	 * org unit code. Every entry must name both, so a confirmation can never be read as "map this
+	 * unit to whatever you derive".
+	 */
+	private struct function confirmationsOf(required struct body) {
+		if (!structKeyExists(arguments.body, "confirm")) return {};
+		if (!isArray(arguments.body.confirm)) variables.c.errors.validation("confirm must be an array of { orgUnitCode, valueCode } pairs.", "ALIGN_CONFIRM_INVALID");
+		var out = {};
+		for (var pair in arguments.body.confirm) {
+			if (!isStruct(pair) || !structKeyExists(pair, "orgUnitCode") || !isSimpleValue(pair.orgUnitCode) || !len(trim(pair.orgUnitCode))
+				|| !structKeyExists(pair, "valueCode") || !isSimpleValue(pair.valueCode) || !len(trim(pair.valueCode))) {
+				variables.c.errors.validation("Each confirm entry needs orgUnitCode and valueCode.", "ALIGN_CONFIRM_INVALID");
+			}
+			out[trim(pair.orgUnitCode)] = trim(pair.valueCode);
+		}
+		return out;
 	}
 
 	/**
@@ -158,6 +222,11 @@ component output="false" {
 	 * value exists in the School dimension of the current renderable instrument version. Without a
 	 * renderable version there is nothing to validate against, so the declaration is refused rather
 	 * than stored unvalidated.
+	 *
+	 * A value the instrument defines is not automatically an identity. The free-text escape hatch
+	 * ("other") names no school, so declaring it is refused here with the reason the operator needs
+	 * (400 ORG_UNIT_SCHOOL_VALUE_NOT_IDENTIFYING) rather than left to the repository's blanket
+	 * guard. What is stored is the instrument's own spelling of the code, never the caller's.
 	 */
 	private void function mapSchoolValue(required string orgUnitId, required string valueCode, required string source) {
 		var dimensionCode = variables.c.config.schoolDimensionCode;
@@ -166,12 +235,18 @@ component output="false" {
 		if (structIsEmpty(current)) variables.c.errors.validation("No renderable instrument version is available to validate schoolValueCode against.", "INSTRUMENT_NOT_AVAILABLE");
 		var model = variables.c.snapshotService.renderModelFor(current.versionId);
 		if (!structKeyExists(model.dimensions, dimensionCode)) variables.c.errors.validation("The instrument has no '" & dimensionCode & "' dimension.", "SCHOOL_DIMENSION_NOT_DEFINED");
-		var found = false;
+		var canonical = "";
 		for (var v in model.dimensions[dimensionCode].values) {
-			if (compare(v.valueCode, arguments.valueCode) == 0) { found = true; break; }
+			if (compare(v.valueCode, arguments.valueCode) == 0) { canonical = v.valueCode; break; }
 		}
-		if (!found) variables.c.errors.validation("schoolValueCode '" & arguments.valueCode & "' is not a School dimension value of the current instrument version.", "ORG_UNIT_SCHOOL_VALUE_UNKNOWN");
-		variables.c.orgUnitRepository.upsertDimensionMapping(arguments.orgUnitId, dimensionCode, arguments.valueCode, arguments.source);
+		if (!len(canonical)) variables.c.errors.validation("schoolValueCode '" & arguments.valueCode & "' is not a School dimension value of the current instrument version.", "ORG_UNIT_SCHOOL_VALUE_UNKNOWN");
+		if (!variables.c.orgUnitRepository.isIdentifyingValueCode(canonical)) {
+			variables.c.errors.validation(
+				"schoolValueCode '" & canonical & "' is the School dimension's free-text option, not a school. It names no school and cannot be a school's identity.",
+				"ORG_UNIT_SCHOOL_VALUE_NOT_IDENTIFYING"
+			);
+		}
+		variables.c.orgUnitRepository.upsertDimensionMapping(arguments.orgUnitId, dimensionCode, canonical, arguments.source);
 	}
 
 	/** Creates (or returns) the application account for an identity subject. */

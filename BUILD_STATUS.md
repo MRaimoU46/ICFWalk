@@ -1084,3 +1084,134 @@ Everything recorded for Phase 0-4 and the first correction session still applies
 - `o.org_unit_type` added to the walk `SELECT` under `WITH (UPDLOCK, ROWLOCK)` (`WalkRepository.findWalk`).
 - The read-only School placement, the operation-record lifecycle, and the navigation/`beforeunload`
   guard on the ColdFusion deployment (`npm run test:browser`).
+
+## Third Phase 0-4 correction session (residual defects)
+
+Correction-only session against three residual defects reported in commit `d4635b7`. Each was
+reproduced against the code before anything changed, and every regression added here was run against
+the unfixed code first and observed to fail, so none of them can pass vacuously. The
+controller/service/repository/snapshot/visibility architecture is unchanged, no broader refactoring
+was done, and Phase 5 was not started (`docs/PHASE_5_IMPLEMENTATION_BRIEF.md` was not read).
+
+### 1. Replay coherence is now atomic
+
+`WalkService.replay` compared the mutation's recorded row version against an **unlocked** read and
+then built the DTO from further unlocked reads. A save committing between the two made a replay that
+had just been judged coherent return the newer aggregate and the newer row version to a session still
+holding the state that went with the original mutation -- the exact stale-state-with-a-live-token
+pairing the comparison exists to prevent.
+
+- The comparison and the aggregate materialization now happen inside one transaction that holds the
+  walk mutation lock (`WalkRepository.findWalk(id, true)`, `WITH (UPDLOCK, ROWLOCK)`), which is the
+  lock every normal mutation path already takes before it writes, so no save, completion, or void can
+  interleave between them.
+- `loadDto` accepts the locked header row, so the DTO is built from the row that was compared rather
+  than from a later read of it.
+- The row version is re-asserted under the same lock after materialization. If either check fails the
+  answer is 409 `MUTATION_REPLAY_SUPERSEDED` and no DTO leaves: the returned aggregate always carries
+  the row version the recorded mutation committed.
+- The transaction stays read-only; the audit events (`WALK_MUTATION_REPLAYED`,
+  `WALK_MUTATION_SUPERSEDED`) are written outside it, as the existing conflict paths do, so a refusal
+  is not rolled back with the read.
+
+The regression (`WalkReplayCoherenceTest.testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto`)
+forces the interleaving rather than hoping for it. A decorating repository
+(`tests/cfml/support/InterceptingWalkRepository.cfc`) fires a callback at the DTO's first aggregate
+read -- the precise point that used to follow the comparison -- and that callback starts a real second
+session saving the same walk and waits for it, bounded. The test asserts the concurrent save is still
+running (held by the lock, not merely slow), that the replay returns the row version and the state its
+mutation committed, that the deferred save lands afterwards, and that the token the replay returned is
+then refused as stale. `testASupersededReplayNeverMaterializesTheNewerAggregate` proves a superseded
+replay refuses without reading the aggregate at all. Against the unfixed `replay`, the first test
+fails with the concurrent save observed `COMPLETED` inside the window.
+
+### 2. A value that identifies nothing is never an identity
+
+The School dimension allows free text, so it defines a value coded `other` meaning "none of these,
+see the typed text". Every "is this a School value?" check said yes, so it could be stored as a
+school's identity -- labelling that school's walks "Other" and, because `icf.org_unit_dimension_map`
+is unique on (dimension, value), taking a value that names no school away from every other school.
+
+- `OrgUnitRepository.upsertDimensionMapping` refuses a non-identifying value outright
+  (`ORG_UNIT_DIMENSION_VALUE_NOT_IDENTIFYING`). It is the only writer, so no route can store one.
+- Migration `005` adds `CK_org_unit_dimension_map_identifying`, so no script or hand-written statement
+  can either. The patch converges an existing installation: it removes any non-identifying row, reports
+  how many in `non_identifying_rows_removed`, and adds the constraint only when it is absent. It stays
+  idempotent and drops nothing else.
+- `schoolValueCode: "other"` in the org-unit import is 400 `ORG_UNIT_SCHOOL_VALUE_NOT_IDENTIFYING`,
+  raised with the operator-facing reason before the repository's blanket guard is reached.
+- `POST /api/maintenance/org-units/align-school-dimension` no longer persists from code equality.
+  It reports `candidates[]` and writes only the (orgUnitCode, valueCode) pairs an operator sends back
+  in `confirm[]`; each is re-derived and re-validated first, and `refused[]` says why any was not
+  written (`NOT_A_CANDIDATE`, `CONFIRMATION_DOES_NOT_MATCH_CANDIDATE`). A unit coded `other` is
+  reported `NON_IDENTIFYING_VALUE_CODE` and is never a candidate. Maintenance authorization is
+  unchanged (`maintenanceGuard.require` still runs first, before anything is read).
+- What is stored is the instrument's spelling of the value code, never the org unit's. The candidate
+  search matches codes case-insensitively but the walk path compares them case-sensitively, so storing
+  the unit's form would have written a mapping that could never match again.
+
+A SCHOOL unit left without an identifying value stays unmapped, which the walk path already handles by
+failing closed: nothing filled, nothing accepted, nothing written.
+
+### 3. A sent browser operation is never deleted by an editor change
+
+The operation registry had one `PENDING` status covering both "minted, nothing sent" and "request on
+the wire". An editor change during an in-flight save therefore deleted the record whose request had
+already been sent; when that answer was lost there was nothing left to retry, so the committed save was
+never confirmed and the queued newer state went out under a brand-new id against a row version the
+server had already moved past.
+
+- The status is now `UNSENT` / `IN_FLIGHT` / `AMBIGUOUS`. `markOpSent` is called immediately before
+  each request is dispatched, and only an `UNSENT` record may be replaced by a newer payload.
+- An edit during an in-flight save queues behind it. If that save's answer is lost, the browser retries
+  the **original** request first -- same `clientMutationId`, same `rowVersion`, same frozen semantic
+  body -- and only once it resolves definitively does the queued newer state go out under a new id,
+  against the row version the retry settled on.
+- Reloading a walk from the server releases an `UNSENT` save record but keeps a sent one: a reload
+  cannot tell whether the server committed it.
+- Ambiguous operations no longer depend on the control that started them. A void's confirmation row is
+  destroyed by the next list render and a completion's button is hidden as soon as the walk is reloaded
+  and turns out to have been completed, either of which used to strand the record behind a permanent
+  unload guard. The browser now renders an unfinished-operations bar from the registry itself, outside
+  both views (`#pending-ops`), giving every unresolved operation a retry that re-sends its exact frozen
+  request and an explicit "stop trying". A record can no longer outlive every way to resolve it.
+
+### Files changed (third correction session)
+
+- `src/walks/WalkService.cfc` -- atomic, locked replay coherence and materialization; `loadDto` takes a
+  pre-loaded header row.
+- `src/authorization/OrgUnitRepository.cfc` -- `isIdentifyingValueCode`, and the refusal in
+  `upsertDimensionMapping`.
+- `src/controllers/MaintenanceController.cfc` -- non-identifying refusal and canonical storage in
+  `mapSchoolValue`; candidate-reporting, per-pair-confirmed `alignSchoolDimension` plus
+  `confirmationsOf`.
+- `database/005_org_unit_dimension_map.sql` -- `CK_org_unit_dimension_map_identifying` and its
+  convergence block.
+- `app/assets/js/app.js` -- `UNSENT`/`IN_FLIGHT`/`AMBIGUOUS`, `markOpSent`, the narrowed
+  `discardPendingOp`, the preserved sent save in `openWalk`, `renderPendingOps`, `resolveAmbiguousOp`,
+  `refreshAfterResolvedOp`.
+- `src/views/shell.html`, `app/assets/css/icfwalk.css` -- the unfinished-operations bar.
+- `tests/cfml/support/InterceptingWalkRepository.cfc` (new), `tests/cfml/specs/WalkReplayCoherenceTest.cfc`,
+  `tests/cfml/specs/WalkSchoolScopeTest.cfc`, `tests/node/walks.test.mjs`,
+  `tests/node/browser-persistence.test.mjs`, `tests/node/schema-contract.test.mjs`.
+- `docs/DATA_CONTRACT.md`, `docs/ENDPOINTS.md`, `docs/LOCAL_SETUP.md`, `docs/ARCHITECTURE.md`,
+  `docs/ACCEPTANCE_TRACKING.md`, `manifest.json`.
+
+### Unresolved defects or blockers (third correction session)
+
+None open. External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details,
+district org-unit codes and their School dimension mappings, content-owner wording for the 17
+placeholders, the content-area heading decision from Phase 3).
+
+### CF2023 verification items (third correction session additions)
+
+Everything recorded earlier still applies. New items:
+
+- The nested read-only `transaction` in `WalkService.replay` under the Adobe SQL Server driver,
+  specifically that `WITH (UPDLOCK, ROWLOCK)` held for the whole block serializes a concurrent save
+  there as it does on Lucee: re-run `WalkReplayCoherenceTest` on ColdFusion.
+- `cfthread` inside a closure, used only by that spec to force the interleaving, on the Adobe engine.
+- `ALTER TABLE ... ADD CONSTRAINT` guarded by `sys.check_constraints` inside the single-batch
+  `BEGIN TRY` of `005_org_unit_dimension_map.sql` (the script is applied by tooling here, not CFML).
+- The unfinished-operations bar and the `UNSENT`/`IN_FLIGHT` record lifecycle on the ColdFusion
+  deployment (`npm run test:browser`).

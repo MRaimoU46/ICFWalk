@@ -23,18 +23,30 @@
 
     source records where a row came from:
       EXPLICIT      -- declared in the org-unit import payload (schoolValueCode)
-      CODE_ALIGNED  -- derived by POST /api/maintenance/org-units/align-school-dimension from an
-                       exact org_unit_code = value_code match, validated against the instrument's
-                       School dimension at the time it ran. Deriving it once and storing it is not
-                       the same as trusting code equality at runtime: the stored row is what the
-                       walk path reads, and it is re-validated against the walk's pinned version.
+      CODE_ALIGNED  -- an exact org_unit_code = value_code match that
+                       POST /api/maintenance/org-units/align-school-dimension reported as a
+                       candidate and an operator then confirmed pair by pair, validated against the
+                       instrument's School dimension at the time it ran. Deriving it once and
+                       storing it is not the same as trusting code equality at runtime: the stored
+                       row is what the walk path reads, and it is re-validated against the walk's
+                       pinned version.
 
     Nothing is ever derived from display names.
 
-    This patch is additive and idempotent: it creates one table and never modifies existing objects
-    or data. Deployments whose org-unit codes already equal the instrument's School value codes run
-    the align endpoint once after applying it (see docs/LOCAL_SETUP.md); until they do, walks at
-    those units carry no School value and refuse a submitted one.
+    Non-identifying values
+    ----------------------
+    A dimension that allows free text carries a value whose code is 'other' and whose meaning is
+    "none of these, see the typed text". It names no school. Storing it as a unit's identity would
+    label that unit's walks "Other" and, because of the unique constraint below, would take a value
+    that identifies no school away from every other school. CK_org_unit_dimension_map_identifying
+    refuses it in the database, so no application path, script, or hand-written statement can
+    create one. A unit with no identifying value stays unmapped, which the walk path handles by
+    failing closed.
+
+    This patch is idempotent. It creates the table when absent and, on an installation that already
+    has it, adds the identifying-value constraint (removing any non-identifying row first, and
+    reporting how many, so an existing deployment converges on the same guarantee rather than
+    failing to apply). It changes nothing else.
 */
 
 SET NOCOUNT ON;
@@ -77,8 +89,31 @@ BEGIN TRY
             CONSTRAINT [CK_org_unit_dimension_map_dimension_not_blank]
                 CHECK (LEN(LTRIM(RTRIM([dimension_code]))) > 0),
             CONSTRAINT [CK_org_unit_dimension_map_value_not_blank]
-                CHECK (LEN(LTRIM(RTRIM([value_code]))) > 0)
+                CHECK (LEN(LTRIM(RTRIM([value_code]))) > 0),
+            /* A value that names nothing is never an identity (see "Non-identifying values"). */
+            CONSTRAINT [CK_org_unit_dimension_map_identifying]
+                CHECK (LOWER(LTRIM(RTRIM([value_code]))) <> N'other')
         );
+    END;
+
+    DECLARE @removed int = 0;
+
+    /* An installation created before the constraint existed: converge it. */
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.check_constraints
+        WHERE [name] = N'CK_org_unit_dimension_map_identifying'
+          AND [parent_object_id] = OBJECT_ID(N'[icf].[org_unit_dimension_map]', N'U')
+    )
+    BEGIN
+        DELETE FROM [icf].[org_unit_dimension_map]
+        WHERE LOWER(LTRIM(RTRIM([value_code]))) = N'other';
+
+        SET @removed = @@ROWCOUNT;
+
+        ALTER TABLE [icf].[org_unit_dimension_map]
+            ADD CONSTRAINT [CK_org_unit_dimension_map_identifying]
+                CHECK (LOWER(LTRIM(RTRIM([value_code]))) <> N'other');
     END;
 
     COMMIT TRANSACTION;
@@ -89,6 +124,16 @@ BEGIN TRY
             WHEN OBJECT_ID(N'[icf].[org_unit_dimension_map]', N'U') IS NOT NULL THEN 1
             ELSE 0
         END AS [org_unit_dimension_map_available],
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM sys.check_constraints
+                WHERE [name] = N'CK_org_unit_dimension_map_identifying'
+                  AND [parent_object_id] = OBJECT_ID(N'[icf].[org_unit_dimension_map]', N'U')
+            ) THEN 1
+            ELSE 0
+        END AS [identifying_value_constraint_present],
+        @removed AS [non_identifying_rows_removed],
         (
             SELECT COUNT(*)
             FROM [icf].[org_unit_dimension_map]
