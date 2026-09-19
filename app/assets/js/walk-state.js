@@ -9,18 +9,13 @@ export function createBlankState(model) {
   return blankState(model);
 }
 
-/** Preselects any LIST dimension value whose code equals the org unit code (e.g. School). */
-export function applyOrgUnitDefaults(model, state, orgUnitCode) {
-  if (!orgUnitCode) return state;
-  for (const code of Object.keys(model.dimensions)) {
-    const dim = model.dimensions[code];
-    if (dim.dataType !== "LIST") continue;
-    if (dim.values.some((v) => v.valueCode === orgUnitCode) && !(state.dimensions[code] && state.dimensions[code].selectedValueCode)) {
-      state.dimensions[code] = { selectedValueCode: orgUnitCode };
-    }
-  }
-  return state;
-}
+/*
+ * There is deliberately no client-side org-unit default. Guessing a School value because its code
+ * equals the org unit's code is the same coincidence the server refuses to treat as identity: the
+ * School dimension is derived from the unit's validated mapping inside the mutation, and the create
+ * response carries the value the server assigned (docs/DATA_CONTRACT.md, "School and organizational
+ * scope"). Seeding it here would send a value the server may have to refuse.
+ */
 
 export function setDimension(state, code, patch) {
   const current = state.dimensions[code] || {};

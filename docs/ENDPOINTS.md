@@ -45,17 +45,18 @@ Identity headers by adapter (`ICFWALK_SSO_MODE`):
 | POST | `/api/auth/sign-out` | authenticated + CSRF | Invalidates the server session; audited. |
 | GET | `/api/admin/instrument/versions` | permission `instrument.manage` | Instrument versions with status, checksum, timestamps, walk counts. |
 | GET | `/api/walks` | anyPermission walk.create, walk.read, walk.edit_owned | My Walks: `{ walks: [WalkHeader + state.dimensions], scope }`. Default `scope=mine` (own non-voided walks in units where the caller holds walk.read or walk.edit_owned); `?scope=all` adds every non-voided walk in walk.read units (never drafts of other districts). Newest `updated_at` first, at most 500. Responses are not included in the list. |
-| POST | `/api/walks` + CSRF | permission `walk.create` for body `orgUnitId` | Creates a DRAFT pinned to the current instrument version and the signed-in owner. Body `{ orgUnitId, clientMutationId, versionId?, dimensions?, responses? }`. `clientMutationId` is required (400 `CLIENT_MUTATION_ID_REQUIRED` / `CLIENT_MUTATION_ID_INVALID`); `rowVersion` is not, because there is no prior row. `dimensions` and `responses` may both be omitted (the engine's blank state) but never just one (400 `STATE_CONTAINER_REQUIRED`). 201 `{ walk }`; 200 with `walk.replayed=true` when the mutation id was already committed (WALK-03) -- the replay re-authorizes the recorded walk first, so an id recorded before access changed answers 404 rather than disclosing it; 409 `MUTATION_ID_REUSED` when the id was committed for a different semantic request; 409 `INSTRUMENT_VERSION_CHANGED` when `versionId` is not the current version (a replay is not subject to this: a create committed against an earlier version still replays after a newer one is published); 409 `SCHOOL_ORG_MISMATCH` when the School dimension contradicts the walk's SCHOOL org unit; 404 for an out-of-scope or inactive unit. |
+| POST | `/api/walks` + CSRF | permission `walk.create` for body `orgUnitId` | Creates a DRAFT pinned to the current instrument version and the signed-in owner. Body `{ orgUnitId, clientMutationId, versionId?, dimensions?, responses? }`. `clientMutationId` is required (400 `CLIENT_MUTATION_ID_REQUIRED` / `CLIENT_MUTATION_ID_INVALID`); `rowVersion` is not, because there is no prior row. `dimensions` and `responses` may both be omitted (the engine's blank state) but never just one (400 `STATE_CONTAINER_REQUIRED`). 201 `{ walk }`; 200 with `walk.replayed=true` when the mutation id was already committed (WALK-03) -- the replay re-authorizes the recorded walk first, so an id recorded before access changed answers 404 rather than disclosing it; 409 `MUTATION_ID_REUSED` when the id was committed for a different semantic request; 409 `INSTRUMENT_VERSION_CHANGED` when `versionId` is not the current version (a replay is not subject to this: a create committed against an earlier version still replays after a newer one is published); 409 `SCHOOL_ORG_MISMATCH` when the School dimension contradicts the walk's mapped SCHOOL org unit, 409 `SCHOOL_ORG_UNMAPPED` when that unit has no validated School mapping; 409 `MUTATION_REPLAY_SUPERSEDED` when the recorded walk has changed since the mutation committed; 409 `MUTATION_LEGACY_UNVERIFIABLE` for a pre-migration-004 mutation row; 404 for an out-of-scope or inactive unit. |
 | GET | `/api/walks/{id}` | anyPermission walk.read, walk.edit_owned; then `authorizeWalk(read)` | The walk aggregate: header (`id, orgUnitId, orgUnitName, versionId, versionLabel, status, ownerUserId, ownerDisplayName, isOwner, canEdit, observedAt, createdAt, updatedAt, completedAt, voidedAt, rowVersion, revisionCount`), `state` (`dimensions` by code, `responses` by item key, docs/DATA_CONTRACT.md shape), `states` (`responseStates`, `dimensionStates` derived by the server engine, `persistedResponseStates` as stored). 404 outside scope (existence not disclosed), 403 without any walk capability, 400 for a malformed id. |
 | GET | `/api/walks/{id}/instrument` | same as open | `{ version: { versionId, versionLabel }, policies, model }`: the render model of the walk's pinned version (WALK-11), authorized through the walk, not by version id. |
-| PUT | `/api/walks/{id}` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(edit)` (owner in scope) | Autosave of the whole working state: `{ rowVersion, clientMutationId, dimensions, responses, walkId?, versionId?, changedAt? }`. `rowVersion`, `clientMutationId`, and both state containers are required (400 `ROW_VERSION_REQUIRED/INVALID`, `CLIENT_MUTATION_ID_REQUIRED/INVALID`, `STATE_CONTAINER_REQUIRED/INVALID`). Validated against the pinned version (400 `UNKNOWN_ITEM`, `UNKNOWN_DIMENSION`, `INVALID_OPTION`, `INVALID_DIMENSION_VALUE`, `INVALID_DATE`, `INVALID_RESPONSE_VALUE`, `INVALID_EMAIL_DRAFT`, `VALUE_TOO_LONG`, `VERSION_MISMATCH`, `WALK_ID_MISMATCH`, `CLIENT_STATE_NOT_ACCEPTED`; `details.issues[]` lists every problem). JSON primitive types are checked, never coerced: a code, text, or date must arrive as a JSON string, a number as a JSON number, a boolean as a JSON boolean. Response `state` is derived by the server and refused from a client. 409 `STALE_ROW_VERSION` with `details.serverRowVersion` (nothing written), 409 `WALK_VOIDED`, 409 `MUTATION_ID_REUSED`, 409 `SCHOOL_ORG_MISMATCH`, 400 `WALK_COMPLETION_INVALID` (a completed walk must stay complete). 200 `{ walk }` with the committed `rowVersion`, normalized `state`, `states`, `changes[]` (server clearing decisions), `savedAt`, `clientMutationId`, `replayed`. An identical save to a COMPLETED walk is a no-op: no revision, no new `rowVersion`. |
-| POST | `/api/walks/{id}/complete` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(edit)` | `{ rowVersion, clientMutationId }`, both required. Server validates every required, visible item/dimension: 400 `WALK_INCOMPLETE` with `details.errors[] = { kind, key, sectionKey, questionNumber, message }` (the draft stays saved); 409 `STALE_ROW_VERSION`, `WALK_ALREADY_COMPLETED`, `WALK_VOIDED`. Success appends revision `COMPLETE`, sets `COMPLETED`/`completed_at`, audits `WALK_COMPLETED`. |
-| POST | `/api/walks/{id}/void` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(void)` | `{ rowVersion, clientMutationId, reason? }`. `rowVersion` and `clientMutationId` are required (400 `ROW_VERSION_REQUIRED/INVALID`, `CLIENT_MUTATION_ID_REQUIRED/INVALID`); `reason` must be a JSON string (400 `INVALID_VOID_REASON`). Drafts void with the default reason (the My Walks delete action); a COMPLETED walk needs `reason` (400 `VOID_REASON_REQUIRED`). 409 `STALE_ROW_VERSION` (the walk is not voided and its row version does not move), `WALK_ALREADY_VOIDED`, `MUTATION_ID_REUSED`. Audits `WALK_VOIDED`; rows are retained. |
+| PUT | `/api/walks/{id}` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(edit)` (owner in scope) | Autosave of the whole working state: `{ rowVersion, clientMutationId, dimensions, responses, walkId?, versionId?, changedAt? }`. `rowVersion`, `clientMutationId`, and both state containers are required (400 `ROW_VERSION_REQUIRED/INVALID`, `CLIENT_MUTATION_ID_REQUIRED/INVALID`, `STATE_CONTAINER_REQUIRED/INVALID`). Validated against the pinned version (400 `UNKNOWN_ITEM`, `UNKNOWN_DIMENSION`, `INVALID_OPTION`, `INVALID_DIMENSION_VALUE`, `INVALID_DATE`, `INVALID_RESPONSE_VALUE`, `INVALID_EMAIL_DRAFT`, `VALUE_TOO_LONG`, `VERSION_MISMATCH`, `WALK_ID_MISMATCH`, `CLIENT_STATE_NOT_ACCEPTED`; `details.issues[]` lists every problem). JSON primitive types are checked, never coerced: a code, text, or date must arrive as a JSON string, a number as a JSON number, a boolean as a JSON boolean. Response `state` is derived by the server and refused from a client. 409 `STALE_ROW_VERSION` with `details.serverRowVersion` (nothing written), 409 `WALK_VOIDED`, 409 `MUTATION_ID_REUSED`, 409 `MUTATION_REPLAY_SUPERSEDED`, 409 `MUTATION_LEGACY_UNVERIFIABLE`, 409 `SCHOOL_ORG_MISMATCH`, 409 `SCHOOL_ORG_UNMAPPED`, 400 `WALK_COMPLETION_INVALID` (a completed walk must stay complete). 200 `{ walk }` with the committed `rowVersion`, normalized `state`, `states`, `changes[]` (server clearing decisions), `savedAt`, `clientMutationId`, `replayed`. An identical save to a COMPLETED walk is a no-op: no revision, no new `rowVersion`. |
+| POST | `/api/walks/{id}/complete` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(edit)` | `{ rowVersion, clientMutationId }`, both required. Server validates every required, visible item/dimension: 400 `WALK_INCOMPLETE` with `details.errors[] = { kind, key, sectionKey, questionNumber, message }` (the draft stays saved); 409 `STALE_ROW_VERSION`, `WALK_ALREADY_COMPLETED`, `WALK_VOIDED`, `MUTATION_REPLAY_SUPERSEDED`, `MUTATION_LEGACY_UNVERIFIABLE`. Success appends revision `COMPLETE`, sets `COMPLETED`/`completed_at`, audits `WALK_COMPLETED`. |
+| POST | `/api/walks/{id}/void` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(void)` | `{ rowVersion, clientMutationId, reason? }`. `rowVersion` and `clientMutationId` are required (400 `ROW_VERSION_REQUIRED/INVALID`, `CLIENT_MUTATION_ID_REQUIRED/INVALID`); `reason` must be a JSON string (400 `INVALID_VOID_REASON`). Drafts void with the default reason (the My Walks delete action); a COMPLETED walk needs `reason` (400 `VOID_REASON_REQUIRED`). 409 `STALE_ROW_VERSION` (the walk is not voided and its row version does not move), `WALK_ALREADY_VOIDED`, `MUTATION_ID_REUSED`, `MUTATION_REPLAY_SUPERSEDED`, `MUTATION_LEGACY_UNVERIFIABLE`. Audits `WALK_VOIDED`; rows are retained. |
 | DELETE | `/api/walks/{id}` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(void)` | Always 409 `WALK_DELETE_REFUSED` (WALK-08): walks are never physically deleted. Audited. |
 | POST | `/api/maintenance/instrument/import` | maintenance | Imports the instrument configuration as a DRAFT (`config/instrument-config.json` or `{ "configFile": "name.json" }`). 201 created / 200 updated; 422 `INSTRUMENT_CONFIG_INVALID`; 409 `INSTRUMENT_VERSION_IMMUTABLE` / `INSTRUMENT_VERSION_IN_USE`. |
 | GET | `/api/maintenance/instrument/versions` | maintenance | Same listing as the admin route, for operators without a session. |
 | POST | `/api/maintenance/instrument/discard-draft` | maintenance | `{ "versionLabel", "instrumentCode"? }` deletes a DRAFT no walk references. The lookup is scoped by instrument identity as well as by label (labels are unique only within an instrument); `instrumentCode` defaults to `ICFWALK_INSTRUMENT_CODE`. 404 `VERSION_NOT_FOUND` when that instrument has no such label, `INSTRUMENT_NOT_FOUND` for an unknown code. |
-| POST | `/api/maintenance/org-units/import` | maintenance | `{ "orgUnits": [ { code, type, name, parentCode, active? } ] }` or `{ "file": "org-units.example.json" }`. Idempotent upsert by code, parents resolved in a second pass. |
+| POST | `/api/maintenance/org-units/import` | maintenance | `{ "orgUnits": [ { code, type, name, parentCode, active?, schoolValueCode? } ] }` or `{ "file": "org-units.example.json" }`. Idempotent upsert by code, parents resolved in a second pass. `schoolValueCode` on a SCHOOL unit declares the instrument School dimension value that names it (`icf.org_unit_dimension_map`, migration `005`), validated against the School dimension of the current renderable version: 400 `ORG_UNIT_SCHOOL_VALUE_UNKNOWN` for a value the instrument does not define, 400 `ORG_UNIT_DIMENSION_VALUE_TAKEN` for one another unit already holds (it is never moved), 400 `ORG_UNIT_SCHOOL_VALUE_NOT_SCHOOL` on a non-SCHOOL unit. Answers `{ imported, created, updated, schoolValuesMapped }`. |
+| POST | `/api/maintenance/org-units/align-school-dimension` | maintenance | `{ "dryRun"?: true }`. Derives the School mapping for active SCHOOL units whose `org_unit_code` is exactly a School dimension value code of the current renderable version (`source` `CODE_ALIGNED`), never overwriting an `EXPLICIT` row and never moving a value another unit holds. Answers `{ versionId, dimensionCode, dryRun, mapped[], alreadyMapped[], unmapped[] }`; `unmapped[]` names every SCHOOL unit left without a mapping and why (`NO_MATCHING_VALUE_CODE`, `VALUE_MAPPED_TO_ANOTHER_UNIT`). Idempotent; a dry run writes nothing. This is the only place an org-unit code is compared with a dimension value code, and the walk path reads only the row it stores. 404 `INSTRUMENT_NOT_AVAILABLE` without a renderable version. |
 | POST | `/api/maintenance/identity/provision-user` | maintenance | `{ subject, displayName?, email? }` creates the application account (201) or returns the existing one (200). |
 | POST | `/api/maintenance/identity/assign-role` | maintenance | `{ subject, roleCode, orgUnitCode, includeDescendants?, effectiveStart?, effectiveEnd? }` (ISO-8601 instants). 201 with the assignment id. |
 | POST | `/api/maintenance/identity/cleanup-fixtures` | maintenance, tests enabled only | `{ tag }` removes test fixture users/units whose subject/code starts with `tag-`. Never available in production. |
@@ -77,23 +78,45 @@ create and save, the `reason` for a void. It deliberately excludes `rowVersion`,
 `changedAt`, and the requested `versionId`: those are not what the request means, and a create
 retried after a newer instrument version is published must still match what it committed.
 
-So a retry (network failure, HTTP 5xx, application restart mid-autosave) with the same id **and the
-same request** replays the committed result (`walk.replayed = true`, `walk.mutation` = the recorded
-result) and writes nothing, while the same id with a different actor, action, target, or semantic
-request is 409 `MUTATION_ID_REUSED`. Every replay **re-authorizes the recorded walk** against the
-current principal and the current authorization graph before anything about it is returned: a
-mutation id recorded before the caller's access changed answers 404, exactly as opening that walk
-would, and never discloses it.
+A replay is answered by five checks in a fixed order, each a precondition of the next:
+
+1. **Authorization.** Every replay re-authorizes the recorded walk against the current principal and
+   the current authorization graph before anything about it is returned: a mutation id recorded
+   before the caller's access changed answers 404, exactly as opening that walk would, and never
+   discloses it.
+2. **Actor, action, target.** A mismatch is 409 `MUTATION_ID_REUSED`.
+3. **Provenance.** A row written before migration `004` carries no fingerprint, so nothing recorded
+   can prove this request is the request it committed. It is never replayed as a success: 409
+   `MUTATION_LEGACY_UNVERIFIABLE` with `details { walkId, clientMutationId, recordedAt }`, no
+   application state written, and an exact-looking retry and an altered one get the same answer
+   because they are indistinguishable against a NULL fingerprint. Reload the walk and retry under a
+   new mutation id. Fingerprints are never fabricated or backfilled.
+4. **Semantic request.** A different fingerprint under the same id is 409 `MUTATION_ID_REUSED`.
+5. **Coherence.** A replay returns the recorded walk as it stands now, while the retrying client
+   still holds the state that went with the *original* mutation. The recorded outcome is replayed
+   (`walk.replayed = true`, `walk.mutation` = the recorded result, nothing written) only while the
+   row version that mutation committed is still the row version in the database. If the aggregate has
+   advanced since -- another session saved, completed, or voided the walk -- the replay is 409
+   `MUTATION_REPLAY_SUPERSEDED` with
+   `details { walkId, clientMutationId, recordedRowVersion, recordedAt, status }`: the mutation did
+   commit, and the client must reload and reconcile. The details carry the **recorded** row version,
+   never the current one, so a stale local state is never handed a token that would let it overwrite
+   newer work. An idempotent replay therefore never pairs stale client state with a row version
+   representing newer server state.
 
 Browsers must therefore treat a transport failure or any HTTP 5xx as **ambiguous** -- the mutation
 may already have committed -- and retry the same operation with the same `clientMutationId` and the
-same body. An operation id is spent only on a definitive success or a definitive, non-retryable 4xx.
+**same semantic body**, held in an immutable per-operation record rather than rebuilt from the UI as
+it now stands (docs/DATA_CONTRACT.md, "Pending mutation operations in the browser"). An operation id
+is spent only on a definitive success or a definitive, non-retryable 4xx --
+`MUTATION_REPLAY_SUPERSEDED` and `MUTATION_LEGACY_UNVERIFIABLE` among them, both of which mean
+reload and reconcile.
 
 `rowVersion` is the SQL Server rowversion of the walk row as a hex token (`0x` + 16 hex digits) and
 must match the current row inside the transaction; the walk row is locked (`UPDLOCK`) while the
 aggregate is written, so concurrent saves of one walk serialize and the later one is told it is
-stale. Rows recorded before migration 004 carry no fingerprint and keep their original
-actor/action/target binding.
+stale. Rows recorded before migration 004 carry no fingerprint and are never replayed as a success
+(check 3 above).
 
 ### Server-authoritative state on a whole-state save
 
@@ -108,9 +131,12 @@ A save carries the whole working state, and the server owns what that means:
 - a **visible** key the browser omits is a cleared value -- that is how CLEAR works;
 - a skippable component marked No clears its rating responses to `NOT_APPLICABLE` and keeps its
   notes, whatever the browser sends; switching back to Yes returns them as `UNANSWERED`;
-- a walk at a SCHOOL org unit carries the School dimension value naming that unit. The server fills
-  and locks it when the instrument defines a matching value, and refuses a School value (including
-  "Other") that contradicts the authorized unit with 409 `SCHOOL_ORG_MISMATCH`;
+- a walk at a SCHOOL org unit carries the School dimension value its unit is **mapped** to
+  (`icf.org_unit_dimension_map`, migration `005`; never a comparison of `org_unit_code` with a value
+  code). The server fills and locks that value and refuses any other, including "Other", with 409
+  `SCHOOL_ORG_MISMATCH`. A unit with no validated mapping for the walk's pinned version fails closed:
+  nothing is filled and any submitted School value is 409 `SCHOOL_ORG_UNMAPPED`. Both refusals write
+  nothing and leave the row version where it was;
 - `observed_at` follows the Visit Date dimension and falls back to the walk's immutable creation
   instant when no Visit Date is present -- including after one is cleared.
 

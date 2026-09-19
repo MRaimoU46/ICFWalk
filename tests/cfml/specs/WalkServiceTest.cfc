@@ -5,7 +5,9 @@
  * audit or mutation logs). Fixtures are synthetic and removed in afterAll (walks with all child
  * rows, users, org units).
  *
- * Fixture tree: D (district) -> S1, S2 (schools); X (district) -> SX (school).
+ * Fixture tree: D (district) -> S1, S2 (schools); X (district) -> SX (school). S1/S2/SX carry no
+ * School dimension mapping (icf.org_unit_dimension_map, migration 005), so walks there carry no
+ * School value; HS and MS are mapped units used where the School value drives a visibility rule.
  */
 component extends="icfwalktests.BaseSpec" output="false" {
 
@@ -27,6 +29,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.S2 = fx.orgUnit("s2", "SCHOOL", variables.D);
 		variables.X = fx.orgUnit("x", "DISTRICT");
 		variables.SX = fx.orgUnit("sx", "SCHOOL", variables.X);
+		// Two SCHOOL units with an explicit, validated School mapping: the School dimension a walk
+		// carries follows its unit, so a rule driven by the school group needs one unit per group.
+		variables.HS = fx.orgUnit("hs", "SCHOOL", variables.D);
+		variables.MS = fx.orgUnit("ms", "SCHOOL", variables.D);
+		fx.mapSchool(variables.HS, "elgin_high_school");
+		fx.mapSchool(variables.MS, "abbott_middle_school");
 
 		variables.walker = fx.user("school-walker");
 		fx.assign(variables.walker.userId, "SCHOOL_WALK_REPORT", variables.S1, false);
@@ -36,6 +44,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		fx.assign(variables.otherSchool.userId, "SCHOOL_WALK_REPORT", variables.S2, false);
 		variables.districtWalker = fx.user("district-walker");
 		fx.assign(variables.districtWalker.userId, "DISTRICT_WALK_REPORT", variables.D, true);
+		variables.schoolGroupWalker = fx.user("school-group-walker");
+		fx.assign(variables.schoolGroupWalker.userId, "DISTRICT_WALK_REPORT", variables.D, true);
 		variables.reportOnly = fx.user("school-report");
 		fx.assign(variables.reportOnly.userId, "SCHOOL_REPORT_ONLY", variables.S1, false);
 		variables.admin = fx.user("instrument-admin");
@@ -153,8 +163,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	public void function testSaveRoundTripPersistsTypedValuesAndSurvivesRetrieval() {
 		var w = newWalk();
+		// The School dimension is the authorized unit's (see WalkSchoolScopeTest); "other" free text on
+		// a CONTROLLED_LIST dimension is exercised here on Content area, which also allows it.
 		var saved = saveState(w,
-			{ "date": { "dateValue": "2026-09-03" }, "observer": { "textValue": "Fixture Observer" }, "school": { "selectedValueCode": "other", "otherText": "Unlisted <b>Site</b>" }, "grade": { "selectedValueCode": "9" }, "content": { "selectedValueCode": "music" }, "period": { "selectedValueCode": "third" } },
+			{ "date": { "dateValue": "2026-09-03" }, "observer": { "textValue": "Fixture Observer" }, "content": { "selectedValueCode": "other", "otherText": "Unlisted <b>Site</b>" }, "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "third" } },
 			{ "p1q1": { "storedCode": "Partial" }, "comp_s1_q1": { "storedCode": "4" }, "part1_adopted_notes": { "textValue": variables.NOTE }, "email_workflow": { "textValue": '{"includedPartKeys":["part1"],"drafted":true,"to":"","subject":"S","body":"B"}' } }
 		);
 		assertNotEquals(w.rowVersion, saved.rowVersion, "row version advances");
@@ -163,8 +175,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var again = variables.svc.open(p(variables.walker), w.id);
 		assertEquals("2026-09-03", again.state.dimensions.date.dateValue);
 		assertEquals("Fixture Observer", again.state.dimensions.observer.textValue);
-		assertEquals("other", again.state.dimensions.school.selectedValueCode);
-		assertEquals("Unlisted <b>Site</b>", again.state.dimensions.school.otherText);
+		assertEquals("other", again.state.dimensions.content.selectedValueCode);
+		assertEquals("Unlisted <b>Site</b>", again.state.dimensions.content.otherText);
+		assertFalse(structKeyExists(again.state.dimensions, "school"), "an unmapped SCHOOL unit carries no School value");
 		assertEquals("9", again.state.dimensions.grade.selectedValueCode);
 		assertEquals("third", again.state.dimensions.period.selectedValueCode);
 		assertEquals("Partial", again.state.responses.p1q1.storedCode);
@@ -173,9 +186,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals('{"body":"B","drafted":true,"includedPartKeys":["part1"],"subject":"S","to":""}', again.state.responses.email_workflow.textValue, "email draft stored as canonical JSON");
 		assertEquals(saved.rowVersion, again.rowVersion);
 		// Typed columns and the documented Other mapping (selected_value_id = Other, text_value = the text).
-		var school = dimensionRow(w.id, "school");
-		assertEquals("other", school.value_code[1]);
-		assertEquals("Unlisted <b>Site</b>", school.text_value[1]);
+		var contentArea = dimensionRow(w.id, "content");
+		assertEquals("other", contentArea.value_code[1]);
+		assertEquals("Unlisted <b>Site</b>", contentArea.text_value[1]);
 		var d = dimensionRow(w.id, "date");
 		assertEquals("2026-09-03", dateFormat(d.date_value[1], "yyyy-mm-dd"));
 		var obs = walkRow(w.id);
@@ -186,7 +199,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(1, count("SELECT COUNT(*) AS n FROM [icf].[walk_response] r JOIN [icf].[item_definition] i ON i.item_id = r.item_id WHERE r.walk_id = :id AND i.item_key = N'comp_s1_q1'", w.id), "one row per item");
 		// Removing a value deletes the dimension row and returns the response to UNANSWERED.
 		var cleared = saveState(again, { "date": { "dateValue": "2026-09-03" } }, { "part1_adopted_notes": { "textValue": variables.NOTE } });
-		assertEquals(0, dimensionRow(w.id, "school").recordCount);
+		assertEquals(0, dimensionRow(w.id, "content").recordCount);
 		assertEquals("UNANSWERED", responseRow(w.id, "comp_s1_q1").response_state[1]);
 		assertFalse(structKeyExists(cleared.state.responses, "comp_s1_q1"));
 	}
@@ -269,12 +282,21 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(1, count("SELECT COUNT(*) AS n FROM [icf].[walk_dimension_value] WHERE walk_id = :id", w.id));
 		assertEquals(0, count("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", w.id), "draft saves append no revision");
 		assertEquals(2, count("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", w.id), "one CREATE and one SAVE mutation recorded");
-		// A retry after another save still replays the first outcome rather than re-applying it.
+		// A retry after another save is refused rather than replayed: the retrying session still holds
+		// the state that went with this mutation, so handing it back a row version minted for the newer
+		// state would let its stale state overwrite that newer work with no conflict. It must reconcile.
 		var later = saveState(first, { "grade": { "selectedValueCode": "7" } }, {});
-		var replayAgain = saveState(w, { "grade": { "selectedValueCode": "6" } }, { "comp_s1_q1": { "storedCode": "3" }, "comp_s1_notes": { "textValue": "n1" } }, variables.walker, id);
-		assertTrue(replayAgain.replayed);
-		assertEquals("7", variables.svc.open(p(variables.walker), w.id).state.dimensions.grade.selectedValueCode);
-		assertEquals(later.rowVersion, variables.svc.open(p(variables.walker), w.id).rowVersion);
+		var walker = variables.walker;
+		var walk = w;
+		var mutationId = id;
+		assertThrows(
+			function() { saveState(walk, { "grade": { "selectedValueCode": "6" } }, { "comp_s1_q1": { "storedCode": "3" }, "comp_s1_notes": { "textValue": "n1" } }, walker, mutationId); },
+			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
+		// Nothing was re-applied and no second mutation row was written.
+		var after = variables.svc.open(p(variables.walker), w.id);
+		assertEquals("7", after.state.dimensions.grade.selectedValueCode);
+		assertEquals(later.rowVersion, after.rowVersion);
+		assertEquals(3, count("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", w.id), "one CREATE and two SAVE mutations; the refused retry recorded none");
 		// The mutation id belongs to this walk and actor only.
 		var other = newWalk();
 		assertThrows(function() { saveState(other, {}, {}, variables.walker, id); }, "ICFWalk.Conflict", "MUTATION_ID_REUSED");
@@ -323,20 +345,28 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	public void function testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained() {
-		var w = newWalk();
-		var hs = saveState(w, { "school": { "selectedValueCode": "elgin_high_school" }, "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "second" } }, {});
+		// The School value follows the authorized unit, so the school group is a property of the walk's
+		// unit: a high-school walk accepts grade 9, a middle-school walk does not.
+		var atHigh = newWalk(variables.schoolGroupWalker, variables.HS);
+		var hs = saveState(atHigh, { "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "second" } }, {}, variables.schoolGroupWalker);
+		assertEquals("elgin_high_school", hs.state.dimensions.school.selectedValueCode, "the School value is the unit's");
 		assertEquals("ANSWERED", hs.states.dimensionStates.period);
+
+		var atMiddle = newWalk(variables.schoolGroupWalker, variables.MS);
+		var valid = saveState(atMiddle, { "grade": { "selectedValueCode": "7" }, "period": { "selectedValueCode": "second" } }, {}, variables.schoolGroupWalker);
+		assertEquals("abbott_middle_school", valid.state.dimensions.school.selectedValueCode);
+		assertEquals("ANSWERED", valid.states.dimensionStates.period);
 		// COND-05: a middle school invalidates grade 9 on the server too.
-		var ms = saveState(hs, { "school": { "selectedValueCode": "abbott_middle_school" }, "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "second" } }, {});
+		var ms = saveState(valid, { "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "second" } }, {}, variables.schoolGroupWalker);
 		assertEquals(1, arrayLen(ms.changes));
 		assertEquals("DIMENSION_CLEARED", ms.changes[1].kind);
 		assertEquals("grade", ms.changes[1].key);
 		assertFalse(structKeyExists(ms.state.dimensions, "grade"));
-		assertEquals(0, dimensionRow(w.id, "grade").recordCount);
+		assertEquals(0, dimensionRow(atMiddle.id, "grade").recordCount);
 		// COND-06: without a 6-12 grade, Period is HIDDEN but retained (RETAIN_HIDDEN policy).
 		assertEquals("HIDDEN", ms.states.dimensionStates.period);
 		assertEquals("second", ms.state.dimensions.period.selectedValueCode);
-		assertEquals("second", dimensionRow(w.id, "period").value_code[1]);
+		assertEquals("second", dimensionRow(atMiddle.id, "period").value_code[1]);
 	}
 
 	// ---- WALK-09 / WALK-10: completion ----------------------------------------------------------

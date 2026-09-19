@@ -34,7 +34,7 @@ component output="false" {
 		var q = variables.db.run(
 			"SELECT w.walk_id, w.version_id, w.org_unit_id, w.owner_user_id, w.status, w.observed_at, w.created_at, w.updated_at,
 			        w.completed_at, w.voided_at, w.void_reason, CONVERT(varchar(18), CAST(w.row_version AS binary(8)), 1) AS row_version_hex,
-			        o.name AS org_unit_name, o.org_unit_code, u.display_name AS owner_display_name, v.version_label
+			        o.name AS org_unit_name, o.org_unit_code, o.org_unit_type, u.display_name AS owner_display_name, v.version_label
 			 FROM [icf].[walk] w" & hint & "
 			 JOIN [icf].[org_unit] o ON o.org_unit_id = w.org_unit_id
 			 JOIN [icf].[app_user] u ON u.user_id = w.owner_user_id
@@ -104,7 +104,7 @@ component output="false" {
 		var q = variables.db.run(
 			"SELECT TOP " & variables.LIST_LIMIT & " w.walk_id, w.version_id, w.org_unit_id, w.owner_user_id, w.status, w.observed_at, w.created_at, w.updated_at,
 			        w.completed_at, w.voided_at, w.void_reason, CONVERT(varchar(18), CAST(w.row_version AS binary(8)), 1) AS row_version_hex,
-			        o.name AS org_unit_name, o.org_unit_code, u.display_name AS owner_display_name, v.version_label
+			        o.name AS org_unit_name, o.org_unit_code, o.org_unit_type, u.display_name AS owner_display_name, v.version_label
 			 FROM [icf].[walk] w
 			 JOIN [icf].[org_unit] o ON o.org_unit_id = w.org_unit_id
 			 JOIN [icf].[app_user] u ON u.user_id = w.owner_user_id
@@ -319,6 +319,7 @@ component output="false" {
 			"orgUnitId": uCase(arguments.q.org_unit_id[arguments.r]),
 			"orgUnitName": arguments.q.org_unit_name[arguments.r],
 			"orgUnitCode": arguments.q.org_unit_code[arguments.r],
+			"orgUnitType": arguments.q.org_unit_type[arguments.r],
 			"ownerUserId": uCase(arguments.q.owner_user_id[arguments.r]),
 			"ownerDisplayName": arguments.q.owner_display_name[arguments.r],
 			"status": arguments.q.status[arguments.r],

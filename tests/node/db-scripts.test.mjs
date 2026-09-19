@@ -91,6 +91,36 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     const legacy = await applyScript(pool, `INSERT INTO icf.walk_mutation (mutation_id, walk_id, actor_user_id, action, result_json)
       VALUES ('88888888-8888-8888-8888-888888888888', '55555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222', 'SAVE', '{}');`);
     assert.equal(legacy.ok, true, "rows written before the patch stay valid");
+
+    // Correction migration 005: the org unit -> instrument dimension value mapping, additive and
+    // idempotent, and the relational facts the School invariant rests on.
+    const mapping = await applyScript(pool, readScript("005_org_unit_dimension_map.sql"));
+    assert.equal(mapping.ok, true, mapping.error?.message);
+    assert.equal(mapping.recordset[0].org_unit_dimension_map_available, 1);
+    assert.equal(mapping.recordset[0].mapping_rows, 0, "the patch derives nothing on its own");
+    const mappingAgain = await applyScript(pool, readScript("005_org_unit_dimension_map.sql"));
+    assert.equal(mappingAgain.ok, true, mappingAgain.error?.message);
+    const mappingTables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
+    assert.equal(mappingTables.recordset[0].n, 22, "005 adds exactly one table");
+
+    await pool.request().batch(`INSERT INTO icf.org_unit (org_unit_id, org_unit_code, org_unit_type, name) VALUES ('99999999-9999-9999-9999-999999999999', 'map-unit-b', 'SCHOOL', 'Mapping fixture B');`);
+    const firstMapping = await applyScript(pool, `INSERT INTO icf.org_unit_dimension_map (org_unit_id, dimension_code, value_code, source)
+      VALUES ('11111111-1111-1111-1111-111111111111', 'school', 'some_school', 'EXPLICIT');`);
+    assert.equal(firstMapping.ok, true, firstMapping.error?.message);
+    // One unit per (dimension, value): School B cannot claim School A's School value.
+    const stolen = await applyScript(pool, `INSERT INTO icf.org_unit_dimension_map (org_unit_id, dimension_code, value_code, source)
+      VALUES ('99999999-9999-9999-9999-999999999999', 'school', 'some_school', 'EXPLICIT');`);
+    assert.equal(stolen.ok, false, "one School dimension value belongs to at most one org unit");
+    // One value per (unit, dimension): a unit never carries two School values.
+    const second = await applyScript(pool, `INSERT INTO icf.org_unit_dimension_map (org_unit_id, dimension_code, value_code, source)
+      VALUES ('11111111-1111-1111-1111-111111111111', 'school', 'another_school', 'EXPLICIT');`);
+    assert.equal(second.ok, false, "one org unit carries at most one School value");
+    const unknownSource = await applyScript(pool, `INSERT INTO icf.org_unit_dimension_map (org_unit_id, dimension_code, value_code, source)
+      VALUES ('99999999-9999-9999-9999-999999999999', 'school', 'another_school', 'GUESSED_FROM_NAME');`);
+    assert.equal(unknownSource.ok, false, "only declared or code-aligned provenance is storable");
+    const orphan = await applyScript(pool, `INSERT INTO icf.org_unit_dimension_map (org_unit_id, dimension_code, value_code, source)
+      VALUES ('00000000-0000-0000-0000-0000000000ff', 'school', 'orphan_school', 'EXPLICIT');`);
+    assert.equal(orphan.ok, false, "a mapping always names a real org unit");
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

@@ -58,6 +58,7 @@ component output="false" {
 		add("GET", "^/api/maintenance/instrument/versions$", "maintenanceController", "listVersions", "maintenance");
 		add("POST", "^/api/maintenance/instrument/discard-draft$", "maintenanceController", "discardDraft", "maintenance");
 		add("POST", "^/api/maintenance/org-units/import$", "maintenanceController", "importOrgUnits", "maintenance");
+		add("POST", "^/api/maintenance/org-units/align-school-dimension$", "maintenanceController", "alignSchoolDimension", "maintenance");
 		add("POST", "^/api/maintenance/identity/provision-user$", "maintenanceController", "provisionUser", "maintenance");
 		add("POST", "^/api/maintenance/identity/assign-role$", "maintenanceController", "assignRole", "maintenance");
 		add("POST", "^/api/maintenance/identity/cleanup-fixtures$", "maintenanceController", "cleanupFixtures", "maintenance");

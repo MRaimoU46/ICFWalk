@@ -40,8 +40,9 @@
  * (reason COMPLETE, the pre-completion snapshot); an owner's material edit of a COMPLETED walk
  * appends one (reason POST_COMPLETION_EDIT) and must leave the walk complete. Audit events:
  * WALK_CREATED, WALK_COMPLETED, WALK_COMPLETION_REJECTED, WALK_VOIDED, WALK_SAVE_CONFLICT,
- * WALK_SAVE_REJECTED, WALK_MUTATION_REPLAYED, WALK_MUTATION_ID_REUSED, WALK_POST_COMPLETION_EDIT,
- * WALK_SCHOOL_SCOPE_REJECTED, WALK_DELETE_REFUSED. Audit details carry identifiers, counts, and
+ * WALK_SAVE_REJECTED, WALK_MUTATION_REPLAYED, WALK_MUTATION_ID_REUSED, WALK_MUTATION_SUPERSEDED,
+ * WALK_MUTATION_LEGACY_UNVERIFIABLE, WALK_POST_COMPLETION_EDIT, WALK_SCHOOL_SCOPE_REJECTED,
+ * WALK_SCHOOL_SCOPE_UNMAPPED, WALK_DELETE_REFUSED. Audit details carry identifiers, counts, and
  * codes only; never narrative values.
  */
 component output="false" {
@@ -550,20 +551,25 @@ component output="false" {
 	}
 
 	/**
-	 * A walk conducted at a SCHOOL org unit must carry the School dimension value that names that
-	 * unit. The authorized, active SCHOOL org unit is authoritative:
+	 * A walk conducted at a SCHOOL org unit must carry the School dimension value that its own
+	 * mapping row names. The identity relationship is the explicit, stored, validated mapping in
+	 * icf.org_unit_dimension_map (migration 005) -- never a comparison of an org_unit_code with a
+	 * dimension value code, which is a coincidence of two independently owned namespaces:
 	 *
-	 *   - when the pinned instrument defines a School value whose code equals the unit's
-	 *     org_unit_code, the server fills that value and refuses any other School value, including
-	 *     the free-text "other" (409 SCHOOL_ORG_MISMATCH);
-	 *   - when no School value matches the unit (a deployment whose org-unit codes are not aligned
-	 *     with the instrument's school list) the server cannot fill one, but still refuses a School
-	 *     value naming a different active SCHOOL org unit, so a walk authorized at School A can
-	 *     never be labelled School B.
+	 *   - a mapped unit whose mapped value exists in the walk's PINNED instrument: the server fills
+	 *     and locks that value and refuses any other School value, including the free-text "other"
+	 *     (409 SCHOOL_ORG_MISMATCH). Because the mapping is unique on (dimension, value), the value
+	 *     another school is mapped to is never available to this one;
+	 *   - an unmapped unit, or one whose mapped value the pinned version does not define: the
+	 *     School dimension fails closed. Nothing is filled (nothing trustworthy exists to fill) and
+	 *     any submitted School value is refused with 409 SCHOOL_ORG_UNMAPPED, because the server
+	 *     cannot establish that the value names this school and must not label the walk with a
+	 *     school it cannot verify. Operators declare the mapping through the org-unit import
+	 *     (schoolValueCode) or the alignment endpoint; nothing is ever inferred from a display name.
 	 *
 	 * A district-scoped user creating a walk at an authorized descendant SCHOOL unit is a normal
 	 * create: authorization is the org unit's (AuthorizationService.resolveScopedOrgUnit), and the
-	 * School dimension follows that unit.
+	 * School dimension follows that unit's mapping.
 	 *
 	 * Walks at a DISTRICT unit are left alone. The governing specification (docs/PRODUCT_SPEC.md)
 	 * defines no district-level walk semantics, so none are invented here.
@@ -576,24 +582,34 @@ component output="false" {
 		var st = arguments.state;
 		var submitted = structKeyExists(st.dimensions, code) ? st.dimensions[code] : {};
 		var selected = structKeyExists(submitted, "selectedValueCode") ? submitted.selectedValueCode : "";
-		var expected = "";
-		for (var v in arguments.model.dimensions[code].values) {
-			if (compare(v.valueCode, unit.code) == 0) { expected = v.valueCode; break; }
-		}
-		if (len(expected)) {
-			if ((len(selected) && compare(selected, expected) != 0) || (!len(selected) && !structIsEmpty(submitted))) {
-				schoolScopeRejected(arguments.principal, arguments.walkId, unit, expected, selected);
-			}
-			st.dimensions[code] = { "selectedValueCode": expected };
+		var expected = mappedSchoolValue(unit, arguments.model, code);
+		if (!len(expected)) {
+			// Fail closed: without a trustworthy mapping the server can neither fill the School
+			// dimension nor accept a value, because it cannot establish that the value names this
+			// school rather than another one.
+			if (!structIsEmpty(submitted)) schoolScopeUnmapped(arguments.principal, arguments.walkId, unit, code, selected);
+			structDelete(st.dimensions, code);
 			return st;
 		}
-		if (len(selected) && compare(selected, unit.code) != 0) {
-			var named = variables.orgUnits.findByCode(selected);
-			if (!structIsEmpty(named) && named.active && named.type == "SCHOOL" && named.id != unit.id) {
-				schoolScopeRejected(arguments.principal, arguments.walkId, unit, "", selected);
-			}
+		if ((len(selected) && compare(selected, expected) != 0) || (!len(selected) && !structIsEmpty(submitted))) {
+			schoolScopeRejected(arguments.principal, arguments.walkId, unit, expected, selected);
 		}
+		st.dimensions[code] = { "selectedValueCode": expected };
 		return st;
+	}
+
+	/**
+	 * The School dimension value this SCHOOL org unit is mapped to, validated against the walk's
+	 * pinned instrument, or "" when the unit is unmapped or its mapped value is not defined by that
+	 * version. Only the stored mapping is consulted; codes are never compared.
+	 */
+	private string function mappedSchoolValue(required struct unit, required struct model, required string dimensionCode) {
+		var mapping = variables.orgUnits.findDimensionMapping(arguments.unit.id, arguments.dimensionCode);
+		if (structIsEmpty(mapping) || !len(trim(mapping.valueCode))) return "";
+		for (var v in arguments.model.dimensions[arguments.dimensionCode].values) {
+			if (compare(v.valueCode, mapping.valueCode) == 0) return v.valueCode;
+		}
+		return "";
 	}
 
 	private void function schoolScopeRejected(required struct principal, required string walkId, required struct unit, required string expected, required string selected) {
@@ -603,6 +619,21 @@ component output="false" {
 			"The School selection must match the school this walk is authorized for.",
 			"SCHOOL_ORG_MISMATCH",
 			{ "orgUnitId": arguments.unit.id, "orgUnitCode": arguments.unit.code, "expectedSchoolValueCode": arguments.expected }
+		);
+	}
+
+	/**
+	 * A SCHOOL org unit with no validated School mapping. Nothing is written and no School value is
+	 * accepted: an operator must declare the mapping (docs/DATA_CONTRACT.md, "School and
+	 * organizational scope") before walks at this unit can carry a School value.
+	 */
+	private void function schoolScopeUnmapped(required struct principal, required string walkId, required struct unit, required string dimensionCode, required string selected) {
+		variables.logger.warn("walk.school.unmapped", { "walkId": arguments.walkId, "orgUnitId": arguments.unit.id, "selected": arguments.selected });
+		variables.audit.record("WALK", arguments.walkId, "WALK_SCHOOL_SCOPE_UNMAPPED", arguments.principal.userId, { "orgUnitId": arguments.unit.id, "dimensionCode": arguments.dimensionCode, "submittedSchool": left(arguments.selected, 100) });
+		variables.errors.conflict(
+			"This school is not mapped to a School value for this instrument version, so a School selection cannot be accepted. Ask an administrator to map it.",
+			"SCHOOL_ORG_UNMAPPED",
+			{ "orgUnitId": arguments.unit.id, "orgUnitCode": arguments.unit.code, "dimensionCode": arguments.dimensionCode }
 		);
 	}
 
@@ -635,29 +666,44 @@ component output="false" {
 	}
 
 	/**
-	 * Replays a committed mutation.
+	 * Replays a committed mutation. The checks run in a fixed order, each one a precondition of the
+	 * next, so nothing about the recorded walk is disclosed or returned before it has been earned:
 	 *
-	 * Authorization comes first: the recorded walk is re-authorized against the current principal
-	 * and the current authorization graph, so a mutation id recorded before access changed (or one
-	 * pointing at a walk the principal never had) answers 404 and discloses nothing. Only then is
-	 * the id checked against the request it committed: the actor, the action, the target walk (when
-	 * the route names one), and the SHA-256 fingerprint of the canonical semantic request must all
-	 * match, otherwise the id is being reused for a different request and the answer is 409
-	 * MUTATION_ID_REUSED. Rows recorded before migration 004 carry no fingerprint and keep their
-	 * original actor/action/target binding.
+	 *   1. Authorization. The recorded walk is re-authorized against the current principal and the
+	 *      current authorization graph, so a mutation id recorded before access changed (or one
+	 *      pointing at a walk the principal never had) answers 404 and discloses nothing -- before
+	 *      any comparison whose outcome could differ per walk.
+	 *   2. Actor, action, and target walk (when the route names one). A mismatch is the id being
+	 *      reused for a different request: 409 MUTATION_ID_REUSED.
+	 *   3. Provenance. A row written before migration 004 carries no fingerprint, so nothing about
+	 *      it can prove that this request is the request it committed. It is never replayed as a
+	 *      success: 409 MUTATION_LEGACY_UNVERIFIABLE (see legacyReplayRefused).
+	 *   4. The SHA-256 fingerprint of the canonical semantic request: a different request under the
+	 *      same id is 409 MUTATION_ID_REUSED.
+	 *   5. Coherence (see supersededReplayRefused). The recorded outcome is only returned while the
+	 *      aggregate still stands where that mutation left it.
+	 *
+	 * Nothing here writes application state; the audit trail is the only side effect.
 	 */
 	private struct function replay(required struct recorded, required struct principal, required string action, required string walkId, required string fingerprint) {
 		var recordAction = arguments.action == "VOID" ? "void" : (arguments.action == "CREATE" ? "read" : "edit");
 		variables.authz.authorizeWalk(arguments.principal, arguments.recorded.walkId, recordAction);
-		var fingerprintMismatch = len(arguments.recorded.fingerprint) && compare(arguments.recorded.fingerprint, lCase(arguments.fingerprint)) != 0;
 		if (arguments.recorded.actorUserId != arguments.principal.userId
 			|| arguments.recorded.action != arguments.action
-			|| (len(arguments.walkId) && arguments.recorded.walkId != arguments.walkId)
-			|| fingerprintMismatch) {
-			variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_ID_REUSED", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "recordedAction": arguments.recorded.action, "requestedAction": arguments.action, "contentMismatch": fingerprintMismatch });
-			variables.errors.conflict("The client mutation id was already used for a different request.", "MUTATION_ID_REUSED", { "clientMutationId": arguments.recorded.mutationId });
+			|| (len(arguments.walkId) && arguments.recorded.walkId != arguments.walkId)) {
+			mutationIdReused(arguments.recorded, arguments.principal, arguments.action, false);
 		}
-		variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_REPLAYED", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "action": arguments.action });
+		if (!len(arguments.recorded.fingerprint)) legacyReplayRefused(arguments.recorded, arguments.principal, arguments.action);
+		if (compare(arguments.recorded.fingerprint, lCase(arguments.fingerprint)) != 0) {
+			mutationIdReused(arguments.recorded, arguments.principal, arguments.action, true);
+		}
+		var row = variables.walks.findWalk(arguments.recorded.walkId);
+		if (structIsEmpty(row)) variables.errors.notFound();
+		var recordedRowVersion = recordedRowVersionOf(arguments.recorded);
+		if (!len(recordedRowVersion) || compare(recordedRowVersion, row.rowVersion) != 0) {
+			supersededReplayRefused(arguments.recorded, arguments.principal, arguments.action, recordedRowVersion, row);
+		}
+		variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_REPLAYED", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "action": arguments.action, "rowVersion": recordedRowVersion });
 		var dto = loadDto(arguments.recorded.walkId, arguments.principal);
 		dto["replayed"] = true;
 		dto["clientMutationId"] = arguments.recorded.mutationId;
@@ -665,6 +711,65 @@ component output="false" {
 		if (structKeyExists(arguments.recorded.result, "changes")) dto["changes"] = arguments.recorded.result.changes;
 		if (structKeyExists(arguments.recorded.result, "savedAt")) dto["savedAt"] = arguments.recorded.result.savedAt;
 		return dto;
+	}
+
+	private void function mutationIdReused(required struct recorded, required struct principal, required string action, required boolean contentMismatch) {
+		variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_ID_REUSED", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "recordedAction": arguments.recorded.action, "requestedAction": arguments.action, "contentMismatch": arguments.contentMismatch });
+		variables.errors.conflict("The client mutation id was already used for a different request.", "MUTATION_ID_REUSED", { "clientMutationId": arguments.recorded.mutationId });
+	}
+
+	/**
+	 * The row version the recorded mutation committed, as it was stored in the mutation's own
+	 * result. Every action records one; a row whose result carries none cannot be shown to be
+	 * coherent with anything, so the caller refuses it rather than guessing.
+	 */
+	private string function recordedRowVersionOf(required struct recorded) {
+		if (!isStruct(arguments.recorded.result) || !structKeyExists(arguments.recorded.result, "rowVersion")) return "";
+		var stored = arguments.recorded.result.rowVersion;
+		if (isNull(stored) || !isSimpleValue(stored) || !variables.walks.isRowVersion(stored)) return "";
+		return "0x" & uCase(mid(trim(stored), 3, 16));
+	}
+
+	/**
+	 * Replay coherence. A replay returns the recorded walk as it stands now, including its current
+	 * row version, and the retrying client still holds the local state that went with the ORIGINAL
+	 * mutation. If the aggregate has moved on since that mutation committed -- another session
+	 * saved, completed, or voided the walk in between -- handing the old request a token minted for
+	 * the newer state would pair stale client state with a live concurrency token, and the client's
+	 * next save would overwrite the newer work without ever seeing a conflict.
+	 *
+	 * So the replay is refused instead: 409 MUTATION_REPLAY_SUPERSEDED tells the client its mutation
+	 * did commit (nothing is retried, nothing is duplicated) and that the walk has since changed, so
+	 * it must reload and reconcile like any other conflict. The details deliberately carry the
+	 * RECORDED row version, never the current one: a stale token cannot be used to overwrite
+	 * anything, and the current state is fetched by reading the walk.
+	 */
+	private void function supersededReplayRefused(required struct recorded, required struct principal, required string action, required string recordedRowVersion, required struct row) {
+		variables.logger.warn("walk.mutation.superseded", { "walkId": arguments.recorded.walkId, "action": arguments.action, "recordedRowVersion": arguments.recordedRowVersion });
+		variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_SUPERSEDED", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "action": arguments.action, "recordedRowVersion": arguments.recordedRowVersion });
+		variables.errors.conflict(
+			"This change was saved, but the walk has been changed again since. Reload the latest version to continue.",
+			"MUTATION_REPLAY_SUPERSEDED",
+			{ "walkId": arguments.recorded.walkId, "clientMutationId": arguments.recorded.mutationId, "recordedRowVersion": arguments.recordedRowVersion, "recordedAt": arguments.recorded.createdAt, "status": arguments.row.status }
+		);
+	}
+
+	/**
+	 * A mutation row written before migration 004 carries no request fingerprint, so there is no
+	 * record of what request it committed. An identical-looking retry and a materially different
+	 * request are indistinguishable against it, and replaying either as a success would assert
+	 * something the data cannot support. The answer is a deterministic conflict that writes no
+	 * application state, and it is reached only after the authorization and actor/action/target
+	 * checks above, so it never discloses a walk the caller may not see.
+	 */
+	private void function legacyReplayRefused(required struct recorded, required struct principal, required string action) {
+		variables.logger.warn("walk.mutation.legacy", { "walkId": arguments.recorded.walkId, "action": arguments.action });
+		variables.audit.record("WALK", arguments.recorded.walkId, "WALK_MUTATION_LEGACY_UNVERIFIABLE", arguments.principal.userId, { "clientMutationId": arguments.recorded.mutationId, "action": arguments.action, "recordedAt": arguments.recorded.createdAt });
+		variables.errors.conflict(
+			"This client mutation id was recorded before the request fingerprint existed, so the server cannot confirm it is the same request. Reload the walk and retry with a new mutation id.",
+			"MUTATION_LEGACY_UNVERIFIABLE",
+			{ "walkId": arguments.recorded.walkId, "clientMutationId": arguments.recorded.mutationId, "recordedAt": arguments.recorded.createdAt }
+		);
 	}
 
 	/** Loads the walk aggregate for a response. Callers authorize the record before calling this. */
@@ -693,6 +798,11 @@ component output="false" {
 			"orgUnitId": arguments.row.orgUnitId,
 			"orgUnitName": arguments.row.orgUnitName,
 			"orgUnitCode": arguments.row.orgUnitCode,
+			// Dimensions the server owns for this walk: the browser renders them read-only instead of
+			// offering a choice it would refuse (docs/DATA_CONTRACT.md, "School and organizational
+			// scope"). A walk at a SCHOOL unit carries that unit's mapped School value or, when the
+			// unit is unmapped, none at all -- either way the value is not the client's to set.
+			"lockedDimensions": lockedDimensionsFor(arguments.row),
 			"versionId": arguments.row.versionId,
 			"versionLabel": arguments.row.versionLabel,
 			"status": arguments.row.status,
@@ -707,6 +817,14 @@ component output="false" {
 			"voidedAt": isDate(arguments.row.voidedAt) ? variables.json.formatDate(arguments.row.voidedAt) : javaCast("null", ""),
 			"rowVersion": arguments.row.rowVersion
 		};
+	}
+
+	/** The dimension codes the server owns for a walk, in the order the contract documents them. */
+	private array function lockedDimensionsFor(required struct row) {
+		var code = variables.config.schoolDimensionCode;
+		if (!len(code)) return [];
+		if (!structKeyExists(arguments.row, "orgUnitType") || arguments.row.orgUnitType != "SCHOOL") return [];
+		return [code];
 	}
 
 	private string function mutationIdOf(required struct body, required boolean required) {

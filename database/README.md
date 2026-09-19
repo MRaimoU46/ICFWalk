@@ -6,6 +6,7 @@
 2. Apply `002_alignment_patch.sql`.
 3. Apply `003_walk_mutation.sql` (Phase 4 build migration: the append-only walk mutation log that makes create/save/complete/void requests idempotent). Additive and safe to re-run.
 4. Apply `004_mutation_fingerprint.sql` (correction migration: `walk_mutation.request_fingerprint`, the SHA-256 of each mutation's canonical semantic request, so the same mutation id cannot replay a different request). Additive, nullable, and safe to re-run.
+5. Apply `005_org_unit_dimension_map.sql` (correction migration: `icf.org_unit_dimension_map`, the explicit validated mapping from a SCHOOL org unit to the instrument School dimension value that names it, so a walk at School A can never carry School B's School value). Additive and safe to re-run. It derives nothing on its own: after applying it, deployments whose org-unit codes already equal the instrument's School value codes run `POST /api/maintenance/org-units/align-school-dimension` once, and others declare `schoolValueCode` per SCHOOL unit in the org-unit import. Until a unit is mapped, walks there carry no School value and a submitted one is refused.
 4. Run the application's configuration importer against `../config/instrument-config.json`.
 5. Validate and preview the resulting DRAFT.
 6. Publish it through the application when content owners approve it.

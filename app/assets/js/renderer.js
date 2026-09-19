@@ -13,6 +13,7 @@ import { setDimension, setResponse, settle, isOtherValue, ratingSummary } from "
 
 const SELECT_PLACEHOLDER = "Select...";
 const OTHER_PLACEHOLDER = "Please specify...";
+const LOCKED_DIMENSION_NOTE = "Set from the school this walk is recorded at.";
 const DEFS_SHOW = "What do these mean?";
 const DEFS_HIDE = "Hide definitions";
 const LOOKFORS_SHOW = "Look Fors";
@@ -53,6 +54,9 @@ export function renderEditor(container, { model, walk, policies, onChange, annou
   container.innerHTML = "";
   const ctx = {
     model, policies, onChange: onChange || (() => {}), announce: announce || (() => {}),
+    // Dimensions the server owns for this walk (walk.lockedDimensions): rendered read-only, because
+    // the server derives the value and refuses a client's. See docs/DATA_CONTRACT.md.
+    locked: new Set(walk.lockedDimensions || []),
     state: walk.state,
     evaluation: null,
     sectionNodes: new Map(),   // sectionKey -> { node, section, countEl }
@@ -243,20 +247,27 @@ function renderPlacements(section, ctx, mode) {
 
 function renderPlacement(placement, ctx) {
   const id = nextId(`dim-${placement.dimensionCode}`);
-  const wrap = el("div", { class: "placement", "data-dimension-code": placement.dimensionCode });
-  const label = el("label", { for: id }, [placement.label, placement.required ? el("span", { class: "field-required", "aria-hidden": "true", text: "*" }) : null]);
+  const locked = ctx.locked && ctx.locked.has(placement.dimensionCode);
+  const wrap = el("div", { class: "placement", "data-dimension-code": placement.dimensionCode, "data-locked": locked ? "true" : null });
+  const label = el("label", { for: id }, [placement.label, placement.required && !locked ? el("span", { class: "field-required", "aria-hidden": "true", text: "*" }) : null]);
   wrap.appendChild(label);
   const entry = { node: wrap, placement, select: null, input: null, other: null, signature: null };
   if (placement.dataType === "LIST") {
-    const select = el("select", { id, "aria-required": placement.required ? "true" : null });
-    select.addEventListener("change", () => {
-      // The typed "Other" text is retained while another value is selected (prototype behavior).
-      setDimension(ctx.state, placement.dimensionCode, { selectedValueCode: select.value });
-      commit(ctx);
-    });
+    const select = el("select", { id, "aria-required": placement.required && !locked ? "true" : null, disabled: locked ? "" : null });
+    if (locked) {
+      // Read-only, and it stays read-only when the walk is editable (see applyEditability).
+      select.setAttribute("aria-describedby", `${id}-locked`);
+    } else {
+      select.addEventListener("change", () => {
+        // The typed "Other" text is retained while another value is selected (prototype behavior).
+        setDimension(ctx.state, placement.dimensionCode, { selectedValueCode: select.value });
+        commit(ctx);
+      });
+    }
     wrap.appendChild(select);
     entry.select = select;
-    if (placement.allowOther) {
+    if (locked) wrap.appendChild(el("p", { class: "field-note", id: `${id}-locked`, text: LOCKED_DIMENSION_NOTE }));
+    if (placement.allowOther && !locked) {
       const otherId = `${id}-other`;
       const other = el("input", { type: "text", id: otherId, class: "other-input", placeholder: OTHER_PLACEHOLDER, "aria-label": `${placement.label} (please specify)`, hidden: true });
       other.addEventListener("input", () => { setDimension(ctx.state, placement.dimensionCode, { otherText: other.value }); commit(ctx); });

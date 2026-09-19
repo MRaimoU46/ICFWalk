@@ -33,6 +33,19 @@ component output="false" {
 		return id;
 	}
 
+	/**
+	 * Declares the explicit SCHOOL org unit -> School dimension value mapping walks depend on
+	 * (icf.org_unit_dimension_map, migration 005). A unit without one is unmapped, and the walk path
+	 * fails closed for its School dimension. Removed with the rest of the fixtures.
+	 */
+	public void function mapSchool(required string orgUnitId, required string valueCode, string source = "EXPLICIT") {
+		variables.c.orgUnitRepository.upsertDimensionMapping(arguments.orgUnitId, variables.c.config.schoolDimensionCode, arguments.valueCode, arguments.source);
+	}
+
+	public void function unmapSchool(required string orgUnitId) {
+		variables.c.orgUnitRepository.deleteDimensionMappings(arguments.orgUnitId);
+	}
+
 	public struct function user(required string name, boolean active = true) {
 		var subject = variables.tag & "-" & arguments.name;
 		var u = variables.c.userRepository.provision(subject, "Fixture " & arguments.name, "");

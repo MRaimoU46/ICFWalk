@@ -9,6 +9,9 @@ section "Phase 4" at the end; earlier records are kept as delivered.
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/admiring-wozniak-fsuayk`
 (Phase 3 base commit `9c03298`, itself on `claude/sharp-faraday-szq937`).
 
+Two correction-only sessions followed Phase 4, each against an independent audit; their records are
+the last two sections of this file. The second one is the current state of the build.
+
 ## Phase 0 baseline
 
 Supplied artifacts verified on 2026-09-17 (commit `3f0eb8e` of the handoff):
@@ -885,3 +888,199 @@ decision from Phase 3).
   (`SnapshotService.loadEntry`): the digest must match the one the importer computed.
 - The browser navigation guard and `beforeunload` behaviour on the ColdFusion deployment
   (`npm run test:browser`).
+
+## Second Phase 0-4 correction session (independent verification audit)
+
+A correction-only session against commit `b862af9`. No Phase 5 work was started and
+`docs/PHASE_5_IMPLEMENTATION_BRIEF.md` was not read. The controller/service/repository/snapshot/
+visibility architecture is unchanged, and every behavior the first correction session established is
+preserved except where a finding below required it to change.
+
+A second independent verification audit confirmed most of the first correction set and raised four
+remaining mutation/data-integrity findings. Each was verified against the current code before
+anything was changed. **All four were confirmed; none was rejected.**
+
+### 1. Replay / rowversion coherence (confirmed)
+
+`WalkService.replay()` ended in `loadDto(recorded.walkId, principal)`, which reads the walk as it
+stands *now* -- including its current row version -- while the retrying session still held the local
+state that went with the *original* mutation. The browser adopted it (`walk.rowVersion = saved.rowVersion`
+with `app.baseline` set to its own replayed payload), so an old successful SAVE retried after a later
+successful save gave stale local state a live concurrency token, and that session's next save
+overwrote the newer work with no conflict at all.
+
+**Correction.** The replay now proves coherence before returning anything. Every action already
+records the row version it committed in its own mutation result, so `replay()` compares that recorded
+token with the walk's current row version:
+
+- **equal** -- the aggregate still stands where the mutation left it, so the recorded outcome is
+  coherent and is replayed exactly as before (the ambiguity-recovery path is unchanged);
+- **different** -- the aggregate has advanced, so the replay is refused with 409
+  `MUTATION_REPLAY_SUPERSEDED` (audited `WALK_MUTATION_SUPERSEDED`, nothing written). The client is
+  told its mutation did commit and that the walk has changed since, so it must reload and reconcile.
+  The details carry the **recorded** row version and never the current one, so nothing in the answer
+  can be used to overwrite newer work; a save with the recorded token is refused as
+  `STALE_ROW_VERSION`, as it should be.
+
+A recorded result with no usable row version is treated as incoherent rather than guessed. In the
+browser, `MUTATION_REPLAY_SUPERSEDED` is a definitive outcome: a save enters the existing conflict
+panel, and a create, completion, or void reloads what the server holds.
+
+**Invariant:** an idempotent replay never pairs stale client state with a row version representing
+newer server state.
+
+### 2. School dimension integrity with unaligned org codes (confirmed)
+
+The first correction bound the School dimension to the walk's org unit through code equality
+(`compare(v.valueCode, unit.code) == 0`). For a SCHOOL unit whose code matched no instrument School
+value, `expected` was empty and the only remaining refusal was a value that resolved through
+`findByCode` to a *different* active SCHOOL org unit. So in a deployment with two such units, any
+instrument School value -- including the free-text "Other" -- was accepted at either, and a walk
+authorized at School A could be stored carrying School B's School value. The prior spec
+`WalkSchoolScopeTest.testUnmappedSchoolUnitStillRefusesAnotherSchoolsLabel` asserted exactly that
+acceptance, so its expectation was corrected rather than preserved.
+
+**Correction.** Migration `005_org_unit_dimension_map.sql` adds `icf.org_unit_dimension_map`: an
+explicit, stored, validated mapping from a SCHOOL org unit to the instrument School dimension value
+that names it. Two constraints carry the invariant structurally rather than procedurally --
+`PRIMARY KEY (org_unit_id, dimension_code)` (one unit, at most one School value) and
+`UNIQUE (dimension_code, value_code)` (one School value, at most one unit, so School B's value is
+never available to School A). `source` records provenance: `EXPLICIT` or `CODE_ALIGNED`.
+
+At walk time `enforceSchoolScope` reads only the stored row and re-validates its `value_code` against
+the walk's **pinned** version. A mapped unit is filled and locked and any other value, "Other"
+included, is 409 `SCHOOL_ORG_MISMATCH`. An unmapped unit -- or one whose mapped value the pinned
+version does not define -- **fails closed**: nothing is filled and any submitted School value is 409
+`SCHOOL_ORG_UNMAPPED` (audited `WALK_SCHOOL_SCOPE_UNMAPPED`). Nothing is ever inferred from a display
+name, and code equality alone maps nothing: a unit whose `org_unit_code` *is* an instrument School
+value still fails closed until a row exists for it.
+
+Operators declare the mapping through `schoolValueCode` on a SCHOOL unit in the org-unit import
+(`EXPLICIT`), or derive it for an already-aligned deployment with the new
+`POST /api/maintenance/org-units/align-school-dimension` (`CODE_ALIGNED`), which reports every unit
+it could not map and supports `{"dryRun": true}`. That endpoint is the only place an org-unit code is
+ever compared with a dimension value code, it runs only when an operator asks, and what it produces
+is a stored row the walk path reads. A district-authorized user still creates at any authorized
+descendant SCHOOL; the School value follows that unit's mapping.
+
+Two consequences follow, and both were implemented rather than left to break:
+
+- The editor no longer offers the School dimension as a control at a SCHOOL org unit. The walk DTO
+  carries `lockedDimensions`, the renderer draws those placements read-only with the note "Set from
+  the school this walk is recorded at.", and `applyEditability` keeps them read-only however editable
+  the walk is. Offering a choice the server must refuse would be a trap.
+- `applyOrgUnitDefaults` -- the browser's own code-equality guess, which preselected a School value
+  whose code equalled the org unit code -- is removed. It is the same coincidence the server refuses
+  to treat as identity, and after this correction it would have made every create at an unmapped
+  lookalike unit fail. The create sends the engine's blank state and the server assigns the value.
+
+### 3. Ambiguous browser mutation operations (confirmed)
+
+Three separate defects: `app.completeMutationId` was a single scalar, not scoped per walk (and
+`openWalk` cleared it unconditionally), so an unresolved completion on walk X could be sent against
+walk Y; the void retry rebuilt its request from the live inputs (`reason.value`, `walk.rowVersion`)
+rather than from what it first sent, so a retry after an edited reason was a different request and was
+refused; and `hasUnsavedWork()`/`beforeunload` covered only editor save state, so an ambiguous create,
+completion, or void could be abandoned silently by navigation or reload.
+
+**Correction.** One registry of immutable operation records (`app.ops`, keyed `ACTION:target`), which
+`CREATE`, `SAVE`, `COMPLETE`, and `VOID` all use. A record holds the action, the target (the org unit
+for a create, the walk for everything else), the `clientMutationId`, the deep-frozen semantic body,
+the `rowVersion` it was issued against, and `PENDING`/`AMBIGUOUS` status. It is created once and never
+rebuilt from later UI state; a retry after a transport failure or an HTTP 5xx reuses it exactly. It is
+released only on a definitive outcome or an explicit decision by the user to abandon it. Because the
+key names the target, a `COMPLETE` id can never cross walks. The void reason field is made read-only
+while its record is unresolved and the retry sends the record's reason. Pending records are unsaved
+work: `pendingState().operations` counts those on the open walk, and `beforeunload` reads a guard that
+also covers the list view, so an ambiguous create or void started from My Walks cannot be lost to a
+reload. `app.ambiguous` and `app.pendingMutationId` are gone, replaced by the save's own record; the
+save lifecycle (debounce, coalescing, conflict handling, discard) is otherwise unchanged.
+
+### 4. Legacy NULL mutation fingerprints (confirmed)
+
+`replay()` computed `fingerprintMismatch = len(recorded.fingerprint) && ...`, so a row written before
+migration `004` -- whose `request_fingerprint` is NULL -- could never mismatch and replayed as an
+ordinary success, although nothing recorded about it can prove the new request is the request it
+committed.
+
+**Correction.** The replay checks now run in a fixed order, each a precondition of the next:
+authorization, then actor/action/target, then provenance, then the fingerprint, then coherence. A row
+with no fingerprint is never returned as a successful replay: it answers 409
+`MUTATION_LEGACY_UNVERIFIABLE` deterministically (audited `WALK_MUTATION_LEGACY_UNVERIFIABLE`, no
+application state written), and an exact-looking retry and an altered one get the same answer because
+they are genuinely indistinguishable against a NULL fingerprint. Nothing is fabricated or backfilled:
+the stored outcome cannot reconstruct the original semantic request. Because authorization runs first,
+a principal who may no longer see the walk gets 404 and never learns that the id, the walk, or a
+legacy row exists.
+
+### Files created or changed (second correction session)
+
+Created: `database/005_org_unit_dimension_map.sql`, `tests/cfml/specs/WalkReplayCoherenceTest.cfc`,
+`docs/evidence/correction2-npm-test.txt`.
+
+Changed: `src/walks/WalkService.cfc` (replay order, coherence and legacy checks, mapping-based school
+scope, `lockedDimensions`), `src/walks/WalkRepository.cfc` (`org_unit_type` on walk rows),
+`src/authorization/OrgUnitRepository.cfc` (mapping accessors), `src/controllers/MaintenanceController.cfc`
+(`schoolValueCode` on import, `alignSchoolDimension`, fixture cleanup), `src/http/Router.cfc`,
+`app/assets/js/app.js` (operation records, navigation/unload guard, superseded/legacy handling, no
+client-side school default), `app/assets/js/walk-store.js` (`lockedDimensions`),
+`app/assets/js/renderer.js` (read-only server-owned placements), `app/assets/js/walk-state.js`
+(`applyOrgUnitDefaults` removed), `app/assets/css/icfwalk.css`, `scripts/db/apply-schema.mjs`,
+`database/README.md`, `docs/DATA_CONTRACT.md`, `docs/ENDPOINTS.md`, `docs/LOCAL_SETUP.md`,
+`docs/ACCEPTANCE_TRACKING.md`, `manifest.json`, `tests/cfml/support/Fixtures.cfc`,
+`tests/cfml/specs/WalkSchoolScopeTest.cfc`, `tests/cfml/specs/WalkServiceTest.cfc`,
+`tests/node/walks.test.mjs`, `tests/node/browser.test.mjs`,
+`tests/node/browser-persistence.test.mjs`, `tests/node/visibility.test.mjs`,
+`tests/node/schema-contract.test.mjs`, `tests/node/db-scripts.test.mjs`.
+
+### Migration added (second correction session)
+
+`database/005_org_unit_dimension_map.sql` -- additive, idempotent, SQL Server 2016 compatible. Creates
+`icf.org_unit_dimension_map` and touches no existing object or row. It derives nothing on its own: a
+deployment declares `schoolValueCode` per SCHOOL unit in the org-unit import, or runs
+`POST /api/maintenance/org-units/align-school-dimension` once. Until a unit is mapped, walks there
+carry no School value and a submitted one is refused, which is the intended fail-closed state.
+
+### Tests and results (second correction session)
+
+Environment as before (Lucee 6.2.8 on Jetty, SQL Server 2022 Developer in Docker, Node 22.22,
+Playwright 1.56 with the pre-installed Chromium, axe-core 4). The first correction session's baseline
+was reproduced in this environment before any change: 75/75 Node tests and 131/131 CFML specs.
+
+| Command | Result |
+| --- | --- |
+| `npm test` (full regression, once, `docs/evidence/correction2-npm-test.txt`) | 86/86 pass, 0 skipped (75 before, plus 6 walk HTTP cases and 4 browser cases added here and one renamed) |
+| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | 139 passed, 0 failed, 0 skipped (131 before, plus `WalkReplayCoherenceTest` 6 and two more `WalkSchoolScopeTest` cases) |
+| Targeted runs during implementation | `?filter=Walk` (x4), `?filter=WalkService` (x2), `?filter=WalkReplay`, `node --test` on `walks`, `browser`, `browser-persistence`, `visibility`, `schema-contract`, `db-scripts` (several each) |
+| `node scripts/db/apply-schema.mjs --only 005`, then the whole set again | applied, then re-applied without error (idempotent); `db-scripts.test.mjs` applies every script twice against a throwaway database |
+| `node scripts/refresh-manifest.mjs` then `node scripts/validate-handoff.mjs` | manifest reconciled for `database/README.md` and `docs/DATA_CONTRACT.md` after documentation was final; validator ok, 51 checks, 0 errors |
+
+Every correction carries regression coverage at the levels the audit asked for: service
+(`WalkReplayCoherenceTest`, `WalkSchoolScopeTest`, `WalkServiceTest`), HTTP (`walks.test.mjs`), and
+browser/two-session (`browser-persistence.test.mjs`, `browser.test.mjs`). The tests assert database
+rows, mutation rows, row versions, audit events, browser DOM state, and operation ids directly rather
+than re-running the production algorithm. No existing test was weakened: two expectations changed
+because the behavior they described was the defect (`WalkSchoolScopeTest`'s acceptance of an arbitrary
+School value at an unmapped unit, and `WalkServiceTest`'s assertion that a superseded replay still
+returned a usable row version), and the browser cases that drove the School dimension from the UI now
+drive it from the walk's org unit, which is where it comes from.
+
+### Unresolved defects or blockers (second correction session)
+
+None open. External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details,
+district org-unit codes **and their School dimension mappings**, content-owner wording for the 17
+placeholders, the content-area heading decision from Phase 3).
+
+### CF2023 verification items (second correction session additions)
+
+Everything recorded for Phase 0-4 and the first correction session still applies. New items:
+
+- `CREATE TABLE` with a composite `PRIMARY KEY CLUSTERED` plus a second `UNIQUE` constraint inside the
+  single-batch `BEGIN TRY` of `005_org_unit_dimension_map.sql` through the Adobe SQL Server driver
+  (the script is applied by tooling here, not by CFML).
+- The `ICFWalk.Validation` raised from `OrgUnitRepository.upsertDimensionMapping` when a value is
+  already claimed, and the `UNIQUE` violation behind it, through the Adobe driver: re-run
+  `WalkSchoolScopeTest` and the org-unit import cases on ColdFusion.
+- `o.org_unit_type` added to the walk `SELECT` under `WITH (UPDLOCK, ROWLOCK)` (`WalkRepository.findWalk`).
+- The read-only School placement, the operation-record lifecycle, and the navigation/`beforeunload`
+  guard on the ColdFusion deployment (`npm run test:browser`).

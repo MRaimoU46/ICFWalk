@@ -84,6 +84,8 @@ function toWalk(dto) {
     orgUnitId: dto.orgUnitId,
     orgUnitName: dto.orgUnitName,
     orgUnitCode: dto.orgUnitCode,
+    // Dimension codes the server owns for this walk; the editor renders them read-only.
+    lockedDimensions: Array.isArray(dto.lockedDimensions) ? dto.lockedDimensions : [],
     versionId: dto.versionId,
     versionLabel: dto.versionLabel,
     status: dto.status,

@@ -11,9 +11,10 @@ const schema = fs.readFileSync(path.join(root, "database", "001_schema.sql"), "u
 const patch = fs.readFileSync(path.join(root, "database", "002_alignment_patch.sql"), "utf8");
 const mutationPatch = fs.readFileSync(path.join(root, "database", "003_walk_mutation.sql"), "utf8");
 const fingerprintPatch = fs.readFileSync(path.join(root, "database", "004_mutation_fingerprint.sql"), "utf8");
+const mappingPatch = fs.readFileSync(path.join(root, "database", "005_org_unit_dimension_map.sql"), "utf8");
 
 function columnsOf(table) {
-  const source = table === "walk_mutation" ? mutationPatch : schema;
+  const source = table === "walk_mutation" ? mutationPatch : table === "org_unit_dimension_map" ? mappingPatch : schema;
   const start = source.indexOf(`CREATE TABLE [icf].[${table}]`);
   assert.ok(start >= 0, `table ${table} present`);
   const end = source.indexOf(");", start);
@@ -43,6 +44,7 @@ const expected = {
   walk_revision: ["revision_id", "walk_id", "revision_number", "actor_user_id", "reason", "prior_snapshot_json", "created_at"],
   walk_mutation: ["mutation_id", "walk_id", "actor_user_id", "action", "request_fingerprint", "result_json", "created_at"],
   org_unit: ["org_unit_id", "parent_org_unit_id", "org_unit_code", "org_unit_type", "name", "active", "updated_at"],
+  org_unit_dimension_map: ["org_unit_id", "dimension_code", "value_code", "source", "created_at", "updated_at"],
   app_user: ["user_id", "identity_subject", "display_name", "email", "active", "last_sign_in_at", "updated_at"],
   app_role: ["role_id", "role_code", "scope_type", "can_create_walk", "can_open_walk_details", "can_edit_owned_walks", "can_view_aggregate_reports", "can_manage_instruments", "active"],
   user_role_scope: ["user_role_scope_id", "user_id", "role_id", "org_unit_id", "effective_start", "effective_end", "include_descendants", "created_by_user_id"],
@@ -79,12 +81,29 @@ test("004 patch adds walk_mutation.request_fingerprint idempotently and additive
   assert.doesNotMatch(fingerprintPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST/i);
 });
 
+test("005 patch adds icf.org_unit_dimension_map idempotently and additively", () => {
+  assert.match(mappingPatch, /IF OBJECT_ID\(N'\[icf\]\.\[org_unit_dimension_map\]', N'U'\) IS NULL/);
+  // One value per (unit, dimension) and one unit per (dimension, value): School B's value can never
+  // be handed to School A, structurally rather than procedurally.
+  assert.match(mappingPatch, /CONSTRAINT \[PK_org_unit_dimension_map\]\s+PRIMARY KEY CLUSTERED \(\[org_unit_id\], \[dimension_code\]\)/);
+  assert.match(mappingPatch, /CONSTRAINT \[UQ_org_unit_dimension_map_value\]\s+UNIQUE \(\[dimension_code\], \[value_code\]\)/);
+  assert.match(mappingPatch, /CHECK \(\[source\] IN \(N'EXPLICIT', N'CODE_ALIGNED'\)\)/);
+  assert.match(mappingPatch, /FOREIGN KEY \(\[org_unit_id\]\)/);
+  // Additive: it creates its own table and never touches existing objects or data.
+  assert.doesNotMatch(mappingPatch, /\bDROP\b/);
+  assert.doesNotMatch(mappingPatch, /\bALTER TABLE\b/);
+  assert.doesNotMatch(mappingPatch, /\bUPDATE \[icf\]/);
+  assert.doesNotMatch(mappingPatch, /CREATE TABLE \[icf\]\.\[(?!org_unit_dimension_map)/);
+  // SQL Server 2016 compatible.
+  assert.doesNotMatch(mappingPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST/i);
+});
+
 test("CFML SQL references only known icf tables", () => {
   const cfml = ["src/instrument/DefinitionRepository.cfc", "src/audit/AuditRepository.cfc", "src/controllers/HealthController.cfc", "src/instrument/InstrumentImportService.cfc",
     "src/identity/UserRepository.cfc", "src/authorization/OrgUnitRepository.cfc", "src/authorization/RoleScopeRepository.cfc", "src/authorization/AuthorizationService.cfc", "src/controllers/MaintenanceController.cfc",
     "src/walks/WalkRepository.cfc", "src/walks/WalkService.cfc", "src/instrument/SnapshotService.cfc"]
     .map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
-  const known = new Set([...(schema + mutationPatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
+  const known = new Set([...(schema + mutationPatch + mappingPatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
   for (const match of cfml.matchAll(/\[icf\]\.\[([a-z_]+)\]/g)) assert.ok(known.has(match[1]), `unknown table icf.${match[1]}`);
 });
 

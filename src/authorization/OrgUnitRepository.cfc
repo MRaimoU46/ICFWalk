@@ -82,8 +82,93 @@ component output="false" {
 		return id;
 	}
 
+	// ---- org unit -> instrument dimension value mapping (migration 005) ------------------------
+
+	/*
+	 * The identity relationship between a SCHOOL org unit and the instrument's School dimension
+	 * value is an explicit stored row, never a comparison of an org_unit_code with a value code.
+	 * icf.org_unit_dimension_map is unique on (dimension_code, value_code), so one School value
+	 * belongs to at most one org unit, and on (org_unit_id, dimension_code), so one unit carries at
+	 * most one School value. A unit with no row is unmapped and the walk path fails closed.
+	 */
+
+	/** { valueCode, source } for one (unit, dimension), or {} when the unit is unmapped. */
+	public struct function findDimensionMapping(required string orgUnitId, required string dimensionCode) {
+		var q = variables.db.run(
+			"SELECT value_code, source FROM [icf].[org_unit_dimension_map] WHERE org_unit_id = :id AND dimension_code = :code",
+			{ "id": variables.db.guid(arguments.orgUnitId), "code": variables.db.nvarchar(arguments.dimensionCode, 100) }
+		);
+		if (!q.recordCount) return {};
+		return { "valueCode": q.value_code[1], "source": q.source[1] };
+	}
+
+	/** The mapped org unit for one dimension value, or {} when no unit claims it. */
+	public struct function findUnitByDimensionValue(required string dimensionCode, required string valueCode) {
+		var q = variables.db.run(
+			"SELECT m.org_unit_id, m.source FROM [icf].[org_unit_dimension_map] m WHERE m.dimension_code = :code AND m.value_code = :value",
+			{ "code": variables.db.nvarchar(arguments.dimensionCode, 100), "value": variables.db.nvarchar(arguments.valueCode, 100) }
+		);
+		if (!q.recordCount) return {};
+		return { "orgUnitId": uCase(q.org_unit_id[1]), "source": q.source[1] };
+	}
+
+	/** Every mapping for one dimension, keyed by upper-case org unit id. */
+	public struct function loadDimensionMappings(required string dimensionCode) {
+		var q = variables.db.run(
+			"SELECT org_unit_id, value_code, source FROM [icf].[org_unit_dimension_map] WHERE dimension_code = :code",
+			{ "code": variables.db.nvarchar(arguments.dimensionCode, 100) }
+		);
+		var out = {};
+		for (var r = 1; r <= q.recordCount; r++) out[uCase(q.org_unit_id[r])] = { "valueCode": q.value_code[r], "source": q.source[r] };
+		return out;
+	}
+
+	/**
+	 * Writes one mapping. The caller validates the value against the instrument first; this method
+	 * only enforces the relational facts. A value already mapped to another unit is refused rather
+	 * than moved, so an import can never silently relabel a school.
+	 */
+	public void function upsertDimensionMapping(required string orgUnitId, required string dimensionCode, required string valueCode, required string source) {
+		var claimed = findUnitByDimensionValue(arguments.dimensionCode, arguments.valueCode);
+		if (!structIsEmpty(claimed) && claimed.orgUnitId != uCase(arguments.orgUnitId)) {
+			throw(
+				type = "ICFWalk.Validation",
+				message = "Dimension value '" & arguments.valueCode & "' is already mapped to another org unit.",
+				errorcode = "ORG_UNIT_DIMENSION_VALUE_TAKEN"
+			);
+		}
+		var params = {
+			"id": variables.db.guid(arguments.orgUnitId),
+			"code": variables.db.nvarchar(arguments.dimensionCode, 100),
+			"value": variables.db.nvarchar(arguments.valueCode, 100),
+			"source": variables.db.nvarchar(arguments.source, 30)
+		};
+		var existing = findDimensionMapping(arguments.orgUnitId, arguments.dimensionCode);
+		if (structIsEmpty(existing)) {
+			variables.db.run("INSERT INTO [icf].[org_unit_dimension_map] (org_unit_id, dimension_code, value_code, source) VALUES (:id, :code, :value, :source)", params);
+			return;
+		}
+		variables.db.run(
+			"UPDATE [icf].[org_unit_dimension_map] SET value_code = :value, source = :source, updated_at = SYSUTCDATETIME() WHERE org_unit_id = :id AND dimension_code = :code",
+			params
+		);
+	}
+
+	public void function deleteDimensionMappings(required string orgUnitId) {
+		variables.db.run("DELETE FROM [icf].[org_unit_dimension_map] WHERE org_unit_id = :id", { "id": variables.db.guid(arguments.orgUnitId) });
+	}
+
+	/** Active SCHOOL units, for the alignment pass and for operator reporting. */
+	public array function activeSchoolUnits() {
+		var q = variables.db.run("SELECT org_unit_id, org_unit_code, name FROM [icf].[org_unit] WHERE active = 1 AND org_unit_type = N'SCHOOL' ORDER BY org_unit_code");
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "id": uCase(q.org_unit_id[r]), "code": q.org_unit_code[r], "name": q.name[r] });
+		return out;
+	}
+
 	/** Test/maintenance helper: removes an org unit that nothing references. */
 	public void function deleteUnreferenced(required string orgUnitId) {
+		deleteDimensionMappings(arguments.orgUnitId);
 		variables.db.run("DELETE FROM [icf].[org_unit] WHERE org_unit_id = :id", { "id": variables.db.guid(arguments.orgUnitId) });
 	}
 }

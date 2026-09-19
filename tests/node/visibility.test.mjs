@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { evaluate, normalize, blankState } from "../../app/assets/js/rules.js";
-import { applyOrgUnitDefaults, dimensionDisplay, ratingSummary } from "../../app/assets/js/walk-state.js";
+import { dimensionDisplay, ratingSummary } from "../../app/assets/js/walk-state.js";
 import { baseUrl, loadRuntimeEnv, root } from "./helpers.mjs";
 
 const env = loadRuntimeEnv();
@@ -155,12 +155,14 @@ test("engine rejects unsupported operators instead of guessing", { skip }, () =>
   assert.throws(() => evaluate(broken, st()), /Unsupported rule operator/);
 });
 
-test("walk-state helpers: org-unit code preselects the matching School value; display text; rating summary", { skip }, () => {
-  const s = applyOrgUnitDefaults(model, blankState(model), "elgin_high_school");
-  assert.equal(s.dimensions.school.selectedValueCode, "elgin_high_school");
-  assert.equal(dimensionDisplay(model, s, "school"), "Elgin High School");
-  const none = applyOrgUnitDefaults(model, blankState(model), "not-a-school-code");
-  assert.equal(none.dimensions.school, undefined);
+test("walk-state helpers: a blank state presets no School value; display text; rating summary", { skip }, () => {
+  // The browser never guesses a School value from an org-unit code: the server derives it from the
+  // unit's validated mapping (docs/DATA_CONTRACT.md, "School and organizational scope").
+  const s = blankState(model);
+  assert.equal(s.dimensions.school, undefined);
+  assert.equal(dimensionDisplay(model, s, "school"), "");
+  const labelled = st({ school: { selectedValueCode: "elgin_high_school" } });
+  assert.equal(dimensionDisplay(model, labelled, "school"), "Elgin High School");
   const other = st({ school: { selectedValueCode: "other", otherText: "St. Somewhere" }, date: { dateValue: "2026-09-17" } });
   assert.equal(dimensionDisplay(model, other, "school"), "St. Somewhere");
   assert.equal(dimensionDisplay(model, other, "date"), "2026-09-17");

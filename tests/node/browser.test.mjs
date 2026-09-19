@@ -15,6 +15,7 @@ const env = loadRuntimeEnv();
 const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
 const tag = `browser-${Date.now().toString(36)}`;
 const subject = `${tag}-walker`;
+const groupSubject = `${tag}-group-walker`;
 const shotDir = path.join(root, "docs", "evidence", "screenshots");
 
 let chromium = null;
@@ -38,14 +39,27 @@ before(async () => {
   if (skip) return;
   const units = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
     { code: `${tag}-district`, type: "DISTRICT", name: "Browser fixture district", parentCode: null },
+    // The main fixture school carries no School dimension mapping, so the School value stays empty and
+    // the Grade options are unfiltered -- which is what the conditional-visibility cases below need.
     { code: `${tag}-school`, type: "SCHOOL", name: "Browser fixture school", parentCode: `${tag}-district` },
+    // A second district of mapped schools, one per school group, for the school-driven Grade filter.
+    { code: `${tag}-groups`, type: "DISTRICT", name: "Browser fixture group district", parentCode: null },
+    { code: `${tag}-elem`, type: "SCHOOL", name: "Browser fixture elementary", parentCode: `${tag}-groups`, schoolValueCode: "bartlett_elementary_school" },
+    { code: `${tag}-mid`, type: "SCHOOL", name: "Browser fixture middle", parentCode: `${tag}-groups`, schoolValueCode: "abbott_middle_school" },
+    { code: `${tag}-high`, type: "SCHOOL", name: "Browser fixture high", parentCode: `${tag}-groups`, schoolValueCode: "elgin_high_school" },
   ] } });
   assert.equal(units.status, 200, units.text);
+  assert.equal(units.json.schoolValuesMapped, 3, units.text);
   const u = await api(env, "POST", "/api/maintenance/identity/provision-user", { token, body: { subject, displayName: "Browser Walker" } });
   assert.ok(u.status === 201 || u.status === 200, u.text);
   // One creatable school so "New walk" starts immediately without the school chooser.
   const a = await api(env, "POST", "/api/maintenance/identity/assign-role", { token, body: { subject, roleCode: "SCHOOL_WALK_REPORT", orgUnitCode: `${tag}-school` } });
   assert.equal(a.status, 201, a.text);
+  // A separate identity for the mapped schools, so the main flow keeps its single creatable unit.
+  const gu = await api(env, "POST", "/api/maintenance/identity/provision-user", { token, body: { subject: groupSubject, displayName: "Browser Group Walker" } });
+  assert.ok(gu.status === 201 || gu.status === 200, gu.text);
+  const ga = await api(env, "POST", "/api/maintenance/identity/assign-role", { token, body: { subject: groupSubject, roleCode: "DISTRICT_WALK_REPORT", orgUnitCode: `${tag}-groups`, includeDescendants: true } });
+  assert.equal(ga.status, 201, ga.text);
   browser = await chromium.launch();
   context = await browser.newContext({ extraHTTPHeaders: { "X-ICFWalk-Dev-Subject": subject }, viewport: { width: 1280, height: 900 } });
   page = await context.newPage();
@@ -121,35 +135,60 @@ test("editor renders every section, item, and option from the served instrument 
   assert.equal(await page.textContent('[data-section-key="part3"] .acc-title'), "Part 3 · Conditions for Learning");
   assert.equal(await page.textContent('[data-section-key="s1"] .acc-title'), "2.1 · Daily Engagement with Complex Texts");
   assert.equal(await page.textContent('[data-section-key="part1"] .required-badge'), "REQUIRED");
-  // No School value matches the fixture org unit code, so nothing is preselected (see visibility.test.mjs for the code-match default).
+  // The School dimension is server-owned: this walk's SCHOOL org unit has no validated School mapping,
+  // so the value is empty, and the control is read-only either way (docs/DATA_CONTRACT.md).
   assert.equal(await page.inputValue('[data-dimension-code="school"] select'), "");
+  assert.equal(await page.getAttribute('[data-dimension-code="school"]', "data-locked"), "true");
+  assert.equal(await page.isDisabled('[data-dimension-code="school"] select'), true, "the School value is not the client's to set");
+  assert.equal(await page.textContent('[data-dimension-code="school"] .field-note'), "Set from the school this walk is recorded at.");
+  assert.equal(await page.$$eval('[data-dimension-code="school"] .other-input', (els) => els.length), 0, "no free-text escape hatch on a server-owned dimension");
 });
 
-test("COND-01..05 grade choices follow the school and an invalid grade is cleared", { skip }, async () => {
-  await selectDim("school", "bartlett_elementary_school");
-  assert.deepEqual(await gradeOptions(), ["prek", "k", "1", "2", "3", "4", "5"]);
-  await selectDim("school", "abbott_middle_school");
-  assert.deepEqual(await gradeOptions(), ["6", "7", "8"]);
-  for (const s of ["elgin_high_school", "dream_academy", "central_school"]) {
-    await selectDim("school", s);
-    assert.deepEqual(await gradeOptions(), ["9", "10", "11", "12"], s);
+test("COND-01..05 grade choices follow the school of the walk's org unit", { skip }, async () => {
+  // The School value is the walk's SCHOOL org unit's mapped value, not a control the user sets, so the
+  // grade filter is driven by opening a walk at each school group. One context per identity keeps the
+  // main flow's single creatable unit intact.
+  const groupContext = await browser.newContext({ extraHTTPHeaders: { "X-ICFWalk-Dev-Subject": groupSubject }, viewport: { width: 1280, height: 900 } });
+  const gp = await groupContext.newPage();
+  gp.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
+  const gradeOptionsOn = () => gp.$$eval(`[data-dimension-code="grade"] select option`, (os) => os.map((o) => o.value).filter(Boolean));
+  // The chooser lists units by name, so resolve each fixture code to its org unit id through /api/me.
+  const me = await (await fetch(`${baseUrl(env)}/index.cfm/api/me`, { headers: { "X-ICFWalk-Dev-Subject": groupSubject } })).json();
+  const unitIdOf = (code) => Object.entries(me.orgUnits).find(([, u]) => u.code === code)?.[0];
+  const startAt = async (unitCode, expectedSchoolValue) => {
+    await gp.goto(`${baseUrl(env)}/index.cfm/`, { waitUntil: "networkidle" });
+    await gp.waitForSelector("body[data-ready=true]", { timeout: 20000 });
+    await gp.click("#new-walk-btn");
+    await gp.waitForSelector("#new-walk-chooser:not([hidden])", { timeout: 15000 });
+    const value = unitIdOf(unitCode);
+    assert.ok(value, `the chooser offers ${unitCode}`);
+    await gp.selectOption("#chooser-unit", value);
+    await gp.click("#chooser-start");
+    await gp.waitForSelector("#view-walk:not([hidden])", { timeout: 15000 });
+    assert.equal(await gp.inputValue('[data-dimension-code="school"] select'), expectedSchoolValue, unitCode);
+    assert.equal(await gp.isDisabled('[data-dimension-code="school"] select'), true);
+  };
+  try {
+    await startAt(`${tag}-elem`, "bartlett_elementary_school");
+    assert.deepEqual(await gradeOptionsOn(), ["prek", "k", "1", "2", "3", "4", "5"]);
+    await startAt(`${tag}-mid`, "abbott_middle_school");
+    assert.deepEqual(await gradeOptionsOn(), ["6", "7", "8"]);
+    await startAt(`${tag}-high`, "elgin_high_school");
+    assert.deepEqual(await gradeOptionsOn(), ["9", "10", "11", "12"]);
+    // COND-05: a grade outside the school's band is not offered at all, and the server refuses one
+    // anyway (WalkServiceTest.testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained).
+    await gp.selectOption('[data-dimension-code="grade"] select', "10");
+    await gp.waitForFunction(() => document.getElementById("save-status").textContent === "All changes saved", null, { timeout: 15000 });
+    assert.equal(await gp.inputValue('[data-dimension-code="grade"] select'), "10");
+  } finally {
+    await gp.close();
+    await groupContext.close();
   }
-  await selectDim("school", "other");
+  // The unmapped fixture school leaves the filter unconstrained: every grade is offered.
   assert.equal((await gradeOptions()).length, 14);
-  assert.equal(await page.isVisible('[data-dimension-code="school"] .other-input'), true, "Other reveals a free-text field");
-  await page.fill('[data-dimension-code="school"] .other-input', "Unlisted Site");
-  // COND-05
-  await selectDim("school", "bartlett_elementary_school");
-  await selectDim("grade", "5");
-  assert.equal(await page.inputValue('[data-dimension-code="grade"] select'), "5");
-  await selectDim("school", "abbott_middle_school");
-  assert.equal(await page.inputValue('[data-dimension-code="grade"] select'), "", "invalid grade cleared");
-  assert.equal(await page.textContent("#save-status"), "Unsaved changes");
-  await waitSaved();
 });
 
 test("COND-06 Period shows for grades 6-12 only and its value is retained while hidden", { skip }, async () => {
-  await selectDim("school", "other");
   assert.equal(await dimVisible("period"), false);
   await selectDim("grade", "7");
   assert.equal(await dimVisible("period"), true);
@@ -285,12 +324,14 @@ test("A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the edi
   assert.deepEqual(list.filter((v) => v.impact === "serious" || v.impact === "critical"), [], `list violations: ${JSON.stringify(list)}`);
 });
 
-test("My Walks: card shows grade/content, school, date and relative time; open, delete with confirmation, cancel", { skip }, async () => {
+test("My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel", { skip }, async () => {
   if (await page.isVisible("#view-walk")) { await page.click("#back-btn"); await page.waitForSelector("#view-list:not([hidden])"); }
   const cards = page.locator(".walk-card");
   assert.equal(await cards.count(), 1, `cards: ${JSON.stringify(await page.$$eval(".walk-card", (els) => els.map((e) => e.textContent.trim())))}`);
   assert.equal(await page.textContent(".walk-card .title"), "9 · Music");
-  assert.match(await page.textContent(".walk-card .meta"), /^Unlisted Site · just now$/);
+  // The card's School slot is empty: this walk's SCHOOL org unit has no validated School mapping, so
+  // the server assigns no School value and the browser cannot invent one.
+  assert.match(await page.textContent(".walk-card .meta"), /^just now$/);
   assert.equal(await page.textContent("#save-status"), "All changes saved");
   // Open restores the working state.
   await page.click(".walk-card .open-btn");
@@ -302,7 +343,7 @@ test("My Walks: card shows grade/content, school, date and relative time; open, 
   assert.equal(await page.textContent("#save-status"), "All changes saved");
   await page.click("#nav-list-btn");
   await page.waitForSelector("#view-list:not([hidden])");
-  assert.match(await page.textContent(".walk-card .meta"), /^Unlisted Site · 2026-09-17 · just now$/);
+  assert.match(await page.textContent(".walk-card .meta"), /^2026-09-17 · just now$/);
   // Second walk sorts first (newest updated).
   await page.click("#new-walk-btn");
   await page.waitForSelector("#view-walk:not([hidden])");

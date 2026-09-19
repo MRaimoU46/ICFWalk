@@ -39,7 +39,8 @@ cp .env.example .env                          # then set ICFWALK_DB_* from .runt
                                               # and for local sign-in: ICFWALK_SSO_MODE=development,
                                               # ICFWALK_DEV_IDENTITY_ENABLED=true, ICFWALK_COOKIE_SECURE=false
 node scripts/db/apply-schema.mjs              # applies database/001_schema.sql, 002_alignment_patch.sql,
-                                              # 003_walk_mutation.sql, 004_mutation_fingerprint.sql
+                                              # 003_walk_mutation.sql, 004_mutation_fingerprint.sql,
+                                              # 005_org_unit_dimension_map.sql
 
 tools/runtime/lucee-up.sh                     # or deploy app/ to ColdFusion 2023 (below)
 node scripts/seed-instrument.mjs              # imports config/instrument-config.json as a DRAFT version
@@ -62,9 +63,10 @@ npm test                                      # all Node tests + the CFML suite 
 4. Provide environment variables to the ColdFusion service (system environment, or
    `ICFWALK_ENV_FILE` pointing at a file readable only by the service account).
 5. Apply `database/001_schema.sql`, then `database/002_alignment_patch.sql`, then
-   `database/003_walk_mutation.sql` and `database/004_mutation_fingerprint.sql` (both
-   idempotent) with SQL Server tooling (`sqlcmd`, SSMS)
-   or `node scripts/db/apply-schema.mjs`. Existing installations from before Phase 4 need only `003`.
+   `database/003_walk_mutation.sql`, `database/004_mutation_fingerprint.sql`, and
+   `database/005_org_unit_dimension_map.sql` (all idempotent) with SQL Server tooling
+   (`sqlcmd`, SSMS) or `node scripts/db/apply-schema.mjs`. Existing installations from before
+   Phase 4 need only `003`.
 6. Seed the instrument: enable maintenance temporarily (`ICFWALK_MAINTENANCE_ENABLED=true`, a
    32+ character `ICFWALK_MAINTENANCE_TOKEN`), call the import endpoint from the server itself
    (`node scripts/seed-instrument.mjs` or `curl` against `http://127.0.0.1/index.cfm/api/maintenance/instrument/import`),
@@ -89,6 +91,22 @@ npm test                                      # all Node tests + the CFML suite 
      -d '{"subject":"<sso subject>","roleCode":"MASTER_INSTRUMENT_ADMIN","orgUnitCode":"district"}' \
      http://127.0.0.1/index.cfm/api/maintenance/identity/assign-role
    ```
+
+   Then map each SCHOOL org unit to the instrument School dimension value that names it, which the
+   School-scope invariant depends on (`docs/DATA_CONTRACT.md`, "School and organizational scope").
+   Either declare it in the import (`"schoolValueCode": "<instrument School value code>"` on each
+   SCHOOL unit) or, when the org-unit codes already are the instrument's School value codes, derive
+   it once:
+
+   ```bash
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"dryRun":true}' \
+     http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension   # review first
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{}' \
+     http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension
+   ```
+
+   The response's `unmapped[]` names every SCHOOL unit still without a mapping. Walks at an unmapped
+   unit carry no School value and refuse a submitted one, so resolve them before going live.
 
    Walk and report roles (`DISTRICT_WALK_REPORT`, `DISTRICT_REPORT_ONLY`, `SCHOOL_WALK_REPORT`,
    `SCHOOL_REPORT_ONLY`) are assigned the same way with `orgUnitCode` of the district (with

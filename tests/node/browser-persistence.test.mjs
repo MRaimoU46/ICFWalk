@@ -435,3 +435,181 @@ test("CORR: beforeunload protects in-flight and queued saves, not only dirty sta
   assert.equal(await guarded(), false, "a committed save releases the guard");
   assert.deepEqual(pageErrors, []);
 });
+
+// ---- second correction session: ambiguous lifecycle operations ---------------------------------
+
+/**
+ * Lets the request reach the server and then throws the answer away, so the mutation is committed
+ * but the browser cannot know it. `commit` chooses how the answer is lost: "transport" drops the
+ * connection, "5xx" replaces the real answer with a server error.
+ */
+function loseAnswerOnce(p, { method, urlPattern, commit = "transport", seen }) {
+  let done = false;
+  return p.route(urlPattern, async (route) => {
+    const request = route.request();
+    if (request.method() !== method) return route.continue();
+    if (seen) seen.push(request.postDataJSON());
+    if (done) return route.continue();
+    done = true;
+    const response = await route.fetch();          // the server commits here
+    if (commit === "transport") return route.abort("connectionreset");
+    return route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ error: { code: "UPSTREAM_TIMEOUT", message: "lost", details: { committed: response.status() } } }) });
+  });
+}
+
+const walkCount = async () => (await apiList()).length;
+const answerEverythingRequired = async (p = page) => {
+  await ensureExpanded("part1", p);
+  for (const [key, code] of [["p1q1", "Partial"], ["p1q2", "Retrieval"], ["p1q3", "Analysis"], ["part1_adopted_pacing", "on"],
+    ["part1_adopted_ac1", "3"], ["part1_adopted_ac2", "4"], ["part1_targettask_tt1", "5"], ["part1_targettask_tt2", "2"]]) {
+    await clickPill(key, code, p);
+  }
+  await waitStatus("All changes saved", p);
+};
+
+test("CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk", { skip }, async () => {
+  await openHome();
+  const before = await walkCount();
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks", commit: "transport", seen: posts });
+  await page.click("#new-walk-btn");
+  await page.waitForFunction(() => /did not finish|could not be reached/i.test(document.getElementById("app-message").textContent), null, { timeout: 15000 });
+  assert.equal(await page.isVisible("#view-list"), true, "the list is retained; no walk was opened");
+  assert.equal(await walkCount(), before + 1, "the server did commit the create");
+
+  // The pending operation is unfinished work, so a reload is guarded.
+  assert.equal(await page.evaluate(() => { const ev = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; }),
+    true, "an ambiguous create cannot be silently abandoned by a reload");
+
+  // The retry reuses the operation record: same id, same body. It opens the committed walk.
+  await page.click("#new-walk-btn");
+  await page.waitForSelector("#view-walk:not([hidden])", { timeout: 15000 });
+  await page.unroute("**/api/walks");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId, "the retry reuses the mutation id");
+  assert.deepEqual(posts[1], posts[0], "and the exact same semantic body");
+  assert.equal(await walkCount(), before + 1, "exactly one walk exists");
+  assert.equal(await page.evaluate(() => { const ev = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; }),
+    false, "the settled operation releases the guard");
+});
+
+test("CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks", { skip }, async () => {
+  const completedId = (await apiList())[0].id;
+  await answerEverythingRequired();
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks/*/complete", commit: "5xx", seen: posts });
+  await page.click("#complete-btn");
+  await page.waitForFunction(() => /did not finish/i.test(document.getElementById("app-message").textContent), null, { timeout: 15000 });
+  assert.equal((await apiWalk(completedId)).status, "COMPLETED", "the server did commit the completion");
+  assert.equal((await apiWalk(completedId)).revisionCount, 1);
+
+  // Leaving the editor while the completion is unresolved demands an explicit decision.
+  await page.click("#back-btn");
+  await page.waitForSelector("#unsaved-panel:not([hidden])", { timeout: 15000 });
+  assert.match(await page.textContent("#unsaved-summary"), /did not finish/i);
+  await page.click("#unsaved-stay");
+  await page.waitForSelector("#unsaved-panel", { state: "hidden" });
+
+  // The retry reuses the same id and replays; exactly one revision exists.
+  await page.click("#complete-btn");
+  await page.waitForSelector("#walk-banner:not([hidden])", { timeout: 15000 });
+  await page.unroute("**/api/walks/*/complete");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId, "the completion retry reuses its mutation id");
+  assert.equal(posts[1].rowVersion, posts[0].rowVersion, "and the row version it was issued against");
+  const done = await apiWalk(completedId);
+  assert.equal(done.status, "COMPLETED");
+  assert.equal(done.revisionCount, 1, "exactly one completion revision");
+
+  // A different walk's completion gets its own operation id, never the one above.
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+  const second = await startWalk();
+  await answerEverythingRequired();
+  const secondPosts = [];
+  await page.route("**/api/walks/*/complete", (route) => { secondPosts.push(route.request().postDataJSON()); return route.continue(); });
+  await page.click("#complete-btn");
+  await page.waitForSelector("#walk-banner:not([hidden])", { timeout: 15000 });
+  await page.unroute("**/api/walks/*/complete");
+  assert.equal(secondPosts.length, 1);
+  assert.notEqual(secondPosts[0].clientMutationId, posts[0].clientMutationId, "a COMPLETE id is never reused across walks");
+  assert.equal((await apiWalk(second)).status, "COMPLETED");
+  assert.equal((await apiWalk(completedId)).status, "COMPLETED");
+});
+
+test("CORR2: a VOID committed but lost is retried from its record, not from the edited input", { skip }, async () => {
+  await page.click("#back-btn").catch(() => {});
+  await openHome();
+  const id = (await apiList()).find((w) => w.status === "COMPLETED").id;
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks/*/void", commit: "transport", seen: posts });
+  await page.click(`.walk-card[data-walk-id="${id}"] .delete-btn`);
+  await page.fill(".void-reason", "Recorded in error");
+  await page.click(".confirm-delete");
+  await page.waitForFunction(() => /could not be reached|did not finish/i.test(document.querySelector(".confirm-row .field-error")?.textContent ?? ""), null, { timeout: 15000 });
+  assert.equal((await apiWalk(id)).status, "VOIDED", "the server did commit the void");
+
+  // The reason is owned by the operation record now, so the field cannot be rewritten into the retry.
+  assert.equal(await page.getAttribute(".void-reason", "readonly"), "", "the reason field is frozen while the void is unresolved");
+  await page.evaluate(() => { const el = document.querySelector(".void-reason"); el.readOnly = false; el.value = "Reason edited after the failure"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+  assert.equal(await page.evaluate(() => { const ev = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; }),
+    true, "an ambiguous void cannot be silently abandoned by a reload");
+
+  await page.click(".confirm-delete");
+  await page.waitForFunction((walkId) => !document.querySelector(`.walk-card[data-walk-id="${walkId}"]`), id, { timeout: 15000 });
+  await page.unroute("**/api/walks/*/void");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId, "the void retry reuses its mutation id");
+  assert.equal(posts[1].reason, "Recorded in error", "and the reason it was issued with, not the edited field");
+  assert.equal(posts[1].rowVersion, posts[0].rowVersion);
+  assert.equal((await apiWalk(id)).status, "VOIDED");
+  assert.equal(await page.evaluate(() => { const ev = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; }),
+    false, "the settled void releases the guard");
+});
+
+test("CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite", { skip }, async () => {
+  await openHome();
+  const id = await startWalk();
+  await expand("part2");
+  await expand("s1");
+  await waitStatus("All changes saved");
+
+  // Session A's save commits; the answer is lost, so A keeps its record and its local text.
+  const puts = [];
+  await loseAnswerOnce(page, { method: "PUT", urlPattern: "**/api/walks/*", commit: "transport", seen: puts });
+  await page.fill('[data-item-key="comp_s1_notes"] textarea', "session A text");
+  await page.waitForFunction(() => /could not reach the server|did not finish/i.test(document.getElementById("save-status").textContent), null, { timeout: 15000 });
+  assert.equal((await apiWalk(id)).state.responses.comp_s1_notes.textValue, "session A text", "the server did commit A's save");
+  const afterA = (await apiWalk(id)).rowVersion;
+
+  // Session B saves a different change on top of it.
+  const contextB = await browser.newContext({ extraHTTPHeaders: { "X-ICFWalk-Dev-Subject": subject }, viewport: { width: 1280, height: 900 } });
+  const pageB = await newPage(contextB);
+  await openHome(pageB);
+  await openCard(id, pageB);
+  await expand("part2", pageB);
+  await expand("s1", pageB);
+  await pageB.fill('[data-item-key="comp_s1_notes"] textarea', "session B text");
+  await waitStatus("All changes saved", pageB);
+  const afterB = (await apiWalk(id)).rowVersion;
+  assert.notEqual(afterB, afterA);
+
+  // Session A retries. The server refuses to hand its stale state a newer token, so A reconciles.
+  await page.click("#save-retry");
+  await page.waitForSelector("#conflict-panel:not([hidden])", { timeout: 15000 });
+  await page.unroute("**/api/walks/*");
+  assert.equal(puts.length, 2);
+  assert.equal(puts[1].clientMutationId, puts[0].clientMutationId, "the retry was the same mutation");
+  assert.equal(puts[1].rowVersion, puts[0].rowVersion);
+  assert.equal((await apiWalk(id)).state.responses.comp_s1_notes.textValue, "session B text", "session B's change stands");
+  assert.equal((await apiWalk(id)).rowVersion, afterB, "and nothing advanced the row version");
+
+  // Reloading the saved version is a clean reconciliation; A never overwrote B.
+  await page.click("#conflict-reload");
+  await page.waitForSelector("#conflict-panel", { state: "hidden", timeout: 15000 });
+  assert.equal(await page.inputValue('[data-item-key="comp_s1_notes"] textarea'), "session B text");
+  assert.equal((await apiWalk(id)).rowVersion, afterB);
+  await pageB.close();
+  await contextB.close();
+  assert.deepEqual(pageErrors, []);
+});

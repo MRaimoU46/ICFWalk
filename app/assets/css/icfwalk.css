@@ -78,6 +78,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
 textarea{resize:vertical;min-height:56px;background:#FFF9E7;border:3px solid var(--navy)}
 .other-input{margin-top:6px}
+/* A dimension the server owns for this walk (see docs/DATA_CONTRACT.md): read-only with a reason. */
+.field-note{color:var(--muted,#5A6270);font-size:12.5px;margin:5px 0 0}
+.placement[data-locked=true] select{background:var(--surface-2,#F3F4F6);cursor:not-allowed}
 .field-required{color:var(--warn);font-weight:700;margin-left:3px}
 
 .section-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}

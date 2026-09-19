@@ -79,7 +79,7 @@ Every child row carries or resolves to the walk's pinned `version_id`. The serve
   "clientMutationId": "GUID",
   "changedAt": "ISO-8601 timestamp",
   "dimensions": {
-    "school": { "selectedValueCode": "elgin_high_school" },
+    "grade": { "selectedValueCode": "7" },
     "tag": { "textValue": "optional text" }
   },
   "responses": {
@@ -90,7 +90,9 @@ Every child row carries or resolves to the walk's pinned `version_id`. The serve
 ```
 
 `rowVersion` and `clientMutationId` are required on a save, and both `dimensions` and `responses`
-root objects must be present. Response `state` is derived data: the server owns it, and a payload
+root objects must be present. The School dimension is not a client field: the server derives it from
+the walk's org unit (see "School and organizational scope"), so a payload need not carry it and may
+not contradict it. Response `state` is derived data: the server owns it, and a payload
 that asserts one is rejected (`CLIENT_STATE_NOT_ACCEPTED`) rather than silently ignored. Values are
 checked against their JSON primitive type, never coerced.
 
@@ -170,16 +172,70 @@ the whole-state `dimensions`/`responses` for create and save, the `reason` for a
 part of what the request means, and a create retried after a newer version is published must still
 match what it committed.
 
-- An exact retry of a committed request replays its recorded outcome and writes nothing.
-- The same id with a different actor, action, target, or semantic request is refused
-  (`MUTATION_ID_REUSED`); it is never accepted as an equivalent retry.
-- **Every replay re-authorizes the recorded walk** against the current principal and the current
-  authorization graph before returning anything about it. An id recorded before access changed
-  answers "not found", exactly as opening that walk would.
+The checks run in a fixed order, each a precondition of the next, so nothing about the recorded
+walk is disclosed or returned before it has been earned:
+
+1. **Authorization.** Every replay re-authorizes the recorded walk against the current principal and
+   the current authorization graph. An id recorded before access changed answers "not found",
+   exactly as opening that walk would -- before any check whose answer could differ per walk.
+2. **Actor, action, and target.** A mismatch is the id being reused for a different request:
+   409 `MUTATION_ID_REUSED`.
+3. **Provenance.** A row written before migration `004` carries no fingerprint, so nothing recorded
+   can prove that this request is the request it committed -- an identical-looking retry and a
+   materially different request are indistinguishable against it. Such a row is **never replayed as
+   a success**: it answers 409 `MUTATION_LEGACY_UNVERIFIABLE` deterministically, writes no
+   application state, and tells the client to reload and retry under a new mutation id. Fingerprints
+   are never fabricated or backfilled, because the original semantic request cannot be reconstructed
+   from the stored outcome.
+4. **Semantic request.** A different fingerprint under the same id is 409 `MUTATION_ID_REUSED`; it is
+   never accepted as an equivalent retry.
+5. **Coherence.** A replay returns the recorded walk as it stands now, and the retrying client still
+   holds the local state that went with the *original* mutation. So the recorded outcome is replayed
+   only while the aggregate still stands where that mutation left it -- the row version the mutation
+   committed is still the row version in the database. If the aggregate has advanced (another session
+   saved, completed, or voided the walk in between), the replay is refused with 409
+   `MUTATION_REPLAY_SUPERSEDED`: the client is told its mutation did commit and that the walk has
+   changed since, so it must reload and reconcile like any other conflict. The response details carry
+   the **recorded** row version, never the current one, so no stale local state is ever paired with a
+   token that would let it overwrite newer work.
+
+An exact, coherent retry of a committed request replays its recorded outcome and writes nothing.
+
+**Invariant.** An idempotent replay never pairs stale client state with a row version representing
+newer server state.
 
 Network errors and HTTP 5xx are ambiguous -- the mutation may have committed before the answer was
 lost -- so a client retries them with the same `clientMutationId` and the same body. An operation id
 is spent only on a definitive success or a definitive, non-retryable 4xx.
+
+### Pending mutation operations in the browser
+
+Because the server recognises a retry by its id *and* its semantic request, a rebuilt request is a
+different request and is refused. So each ambiguous-capable mutation owns one **immutable operation
+record** in the browser, created once and never rebuilt from later UI state:
+
+| Field | Meaning |
+| --- | --- |
+| `action` | `CREATE`, `SAVE`, `COMPLETE`, or `VOID` |
+| `target` | the org unit for a create, the walk for everything else -- part of the record's key, so an operation is never shared between two walks |
+| `mutationId` | the `clientMutationId` the request was issued with |
+| `body` | the frozen semantic request (whole state for create and save, the reason for a void) |
+| `rowVersion` | the concurrency token the operation was issued against, where one applies |
+| `status` | `PENDING` until an answer arrives, `AMBIGUOUS` once one is lost |
+
+- A retry after a transport failure or an HTTP 5xx reuses the record: the same id and the same body,
+  so the server either replays what it committed or commits it now.
+- A record is released only on a definitive outcome -- a success, or a non-retryable 4xx -- or on an
+  explicit decision by the user to abandon it.
+- A `COMPLETE` record is keyed to its walk, so completing a different walk later never reuses it.
+- A `VOID` retry sends the reason and row version from its record, not the input field as it now
+  stands.
+- A pending record is unsaved work: internal navigation and `beforeunload` both see it, including on
+  the list view where no walk is open, so an ambiguous create, completion, or void cannot be silently
+  abandoned by a reload, a closed tab, or a navigation.
+- `MUTATION_REPLAY_SUPERSEDED` is definitive: the mutation committed, so the record is released and
+  the browser reconciles (a save enters conflict review; a create, completion, or void reloads what
+  the server holds).
 
 ## Visibility, retention, and clearing on a whole-state save
 
@@ -199,20 +255,58 @@ A crafted client therefore cannot alter, inject, or delete a value the instrumen
 
 ## School and organizational scope
 
-A walk conducted at a SCHOOL org unit must carry the School dimension value that names that unit;
-the authorized, active org unit is authoritative.
+**Invariant.** A walk authorized and stored at School A can never carry School B's School dimension
+value, whatever the two deployments' org-unit codes happen to be.
 
-- When the pinned instrument defines a School value whose code equals the unit's `org_unit_code`,
-  the server fills and locks that value, and refuses any other School value, including the
-  free-text "Other" (`SCHOOL_ORG_MISMATCH`).
-- When no School value matches the unit -- a deployment whose org-unit codes are not aligned with
-  the instrument's school list -- nothing is invented, but a School value naming a *different*
-  active SCHOOL org unit is still refused, so a walk authorized at School A can never be labelled
-  School B.
+The identity relationship between a SCHOOL org unit and an instrument School dimension value is an
+explicit, stored, validated mapping: `icf.org_unit_dimension_map` (migration
+`005_org_unit_dimension_map.sql`), one row per `(org_unit_id, dimension_code)` naming a `value_code`.
+It is **not** a comparison of `org_unit_code` with `valueCode`. Those are two independently owned
+namespaces, and equality between them is a coincidence of a particular deployment's naming, not an
+identity: a deployment whose codes are not the instrument's school value codes has no matching
+values at all, and then nothing could contradict any School value a client sent.
+
+Two relational facts carry the invariant rather than any procedure:
+
+| Constraint | What it guarantees |
+| --- | --- |
+| `PK (org_unit_id, dimension_code)` | one org unit carries at most one School value |
+| `UNIQUE (dimension_code, value_code)` | one School value belongs to at most one org unit, so School B's value is never available to School A |
+
+`source` records where a row came from: `EXPLICIT` (declared in the org-unit import) or
+`CODE_ALIGNED` (derived by the alignment endpoint from an exact code match, validated against the
+instrument at the time it ran). Nothing is ever derived from a display name.
+
+At walk time the server reads only the stored row, and re-validates its `value_code` against the
+walk's **pinned** instrument version:
+
+- **Mapped, and the mapped value exists in the pinned version**: the server fills and locks that
+  value, and refuses any other School value, including the free-text "Other"
+  (409 `SCHOOL_ORG_MISMATCH`, audited `WALK_SCHOOL_SCOPE_REJECTED`, nothing written).
+- **Unmapped, or the mapped value is not defined by the pinned version**: the School dimension
+  **fails closed**. Nothing is filled, because nothing trustworthy exists to fill, and any submitted
+  School value is refused with 409 `SCHOOL_ORG_UNMAPPED` (audited `WALK_SCHOOL_SCOPE_UNMAPPED`,
+  nothing written). The server will not label a walk with a school it cannot verify, so a deployment
+  must declare the mapping before walks there can carry a School value. Code equality alone maps
+  nothing: a SCHOOL unit whose `org_unit_code` *is* an instrument School value still fails closed
+  until a row exists for it.
 - A district-scoped user creating a walk at an authorized descendant SCHOOL is an ordinary create:
-  authorization is the org unit's, and the School dimension follows that unit.
+  authorization is the org unit's, and the School dimension follows that unit's mapping.
 - Walks at a DISTRICT unit are left alone. This specification defines no district-level walk
   semantics, so none are assumed.
+
+Operators declare the mapping in one of two ways (both write the same validated rows, and both refuse
+a value the instrument does not define or another unit already holds):
+
+- `POST /api/maintenance/org-units/import` with `schoolValueCode` on a SCHOOL unit (`EXPLICIT`);
+- `POST /api/maintenance/org-units/align-school-dimension`, which derives rows for active SCHOOL
+  units whose `org_unit_code` is exactly a School value code of the current renderable version
+  (`CODE_ALIGNED`) and reports every unit it could not map. This is the only place a code is ever
+  compared with a value code, it runs only when an operator asks, and what it produces is a stored
+  row. `{ "dryRun": true }` reports without writing.
+
+A deployment upgrading from before migration `005` runs the alignment endpoint once; until it does,
+walks at its schools carry no School value and refuse a submitted one.
 
 ## Runtime instrument selection and snapshot integrity
 

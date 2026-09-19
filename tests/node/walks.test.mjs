@@ -6,7 +6,8 @@
 // instrument route (WALK-11). Fixtures are created through the maintenance endpoints and removed.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { api, baseUrl, loadRuntimeEnv } from "./helpers.mjs";
+import { api, baseUrl, connectionConfig, hasDatabaseConfig, loadRuntimeEnv } from "./helpers.mjs";
+import sql from "mssql";
 
 const env = loadRuntimeEnv();
 const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
@@ -64,16 +65,55 @@ async function client(subject) {
 
 const uuid = () => crypto.randomUUID().toUpperCase();
 const walker = `${tag}-walker`, colleague = `${tag}-colleague`, other = `${tag}-other`, report = `${tag}-report`, admin = `${tag}-admin`, nobody = `${tag}-nobody`;
-let A, B, O, R, M, N, unitA;
+let A, B, O, R, M, N, unitA, unitB;
+
+// The School dimension values the two HTTP fixture schools are explicitly mapped to. They are
+// deliberately unrelated to the fixture org-unit codes: the stored mapping is the identity
+// relationship, not code equality (docs/DATA_CONTRACT.md, "School and organizational scope"). Both
+// are middle schools, because the School value now comes from the unit and the grade option filter
+// derives the valid grade band from it.
+const SCHOOL_VALUE_A = "eastview_middle_school";
+const SCHOOL_VALUE_B = "ellis_middle_school";
+
+/**
+ * A direct read-only connection, used only to prove database facts the API does not expose (mutation
+ * rows, fingerprints, row versions) and to reproduce a pre-migration-004 mutation row.
+ */
+let pool = null;
+async function db() {
+  if (!hasDatabaseConfig(env)) return null;
+  if (!pool) pool = await sql.connect(connectionConfig(env, env.ICFWALK_DB_NAME || "icfwalk_dev"));
+  return pool;
+}
+async function scalar(text, params = {}) {
+  const p = await db();
+  if (!p) return null;
+  const request = p.request();
+  for (const [k, v] of Object.entries(params)) request.input(k, v);
+  const r = await request.query(text);
+  return r.recordset.length ? Object.values(r.recordset[0])[0] : null;
+}
+async function run(text, params = {}) {
+  const p = await db();
+  if (!p) return null;
+  const request = p.request();
+  for (const [k, v] of Object.entries(params)) request.input(k, v);
+  return request.query(text);
+}
+const mutationCount = (walkId) => scalar("SELECT COUNT(*) AS n FROM icf.walk_mutation WHERE walk_id = @id", { id: walkId });
+const storedRowVersion = (walkId) => scalar("SELECT CONVERT(varchar(18), CAST(row_version AS binary(8)), 1) AS rv FROM icf.walk WHERE walk_id = @id", { id: walkId });
+const walkStatus = (walkId) => scalar("SELECT status FROM icf.walk WHERE walk_id = @id", { id: walkId });
 
 before(async () => {
   if (skip) return;
   const units = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
     { code: `${tag}-district`, type: "DISTRICT", name: "HTTP fixture district", parentCode: null },
-    { code: `${tag}-school-a`, type: "SCHOOL", name: "HTTP fixture school A", parentCode: `${tag}-district` },
-    { code: `${tag}-school-b`, type: "SCHOOL", name: "HTTP fixture school B", parentCode: `${tag}-district` },
+    { code: `${tag}-school-a`, type: "SCHOOL", name: "HTTP fixture school A", parentCode: `${tag}-district`, schoolValueCode: SCHOOL_VALUE_A },
+    { code: `${tag}-school-b`, type: "SCHOOL", name: "HTTP fixture school B", parentCode: `${tag}-district`, schoolValueCode: SCHOOL_VALUE_B },
+    { code: `${tag}-school-u`, type: "SCHOOL", name: "HTTP fixture unmapped school", parentCode: `${tag}-district` },
   ] } });
   assert.equal(units.status, 200, units.text);
+  assert.equal(units.json.schoolValuesMapped, 2, "both declared School mappings were stored");
   for (const [subject, roleCode, unit] of [[walker, "SCHOOL_WALK_REPORT", "a"], [colleague, "SCHOOL_WALK_REPORT", "a"], [other, "SCHOOL_WALK_REPORT", "b"], [report, "SCHOOL_REPORT_ONLY", "a"], [admin, "MASTER_INSTRUMENT_ADMIN", ""], [nobody, "", ""]]) {
     const u = await api(env, "POST", "/api/maintenance/identity/provision-user", { token, body: { subject, displayName: `Fixture ${subject}` } });
     assert.ok(u.status === 201 || u.status === 200, u.text);
@@ -83,12 +123,14 @@ before(async () => {
   }
   A = await client(walker); B = await client(colleague); O = await client(other); R = await client(report); M = await client(admin); N = await client(nobody);
   unitA = A.me.permissions["walk.create"][0];
+  unitB = O.me.permissions["walk.create"][0];
 });
 
 after(async () => {
   if (skip) return;
   const r = await api(env, "POST", "/api/maintenance/identity/cleanup-fixtures", { token, body: { tag } });
   if (r.status !== 200) console.error("fixture cleanup failed", r.status, r.text);
+  if (pool) { await pool.close(); pool = null; }
 });
 
 test("AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused", { skip }, async () => {
@@ -156,8 +198,10 @@ test("WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL
   const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
   const w = created.json.walk;
   const note = `<img src=x onerror="alert(1)"> & <script>alert('x')</script> '; DROP TABLE icf.walk; -- "quoted"`;
+  // The School value is the authorized unit's (see the School-scope cases below), so the "Other"
+  // free-text path carries the hostile string on Content area, which also allows Other.
   const saved = await A.call("PUT", `/api/walks/${w.id}`, { walkId: w.id, versionId: w.versionId, rowVersion: w.rowVersion, clientMutationId: uuid(),
-    dimensions: { school: { selectedValueCode: "other", otherText: note }, grade: { selectedValueCode: "7" }, date: { dateValue: "2026-09-17" }, period: { selectedValueCode: "first" } },
+    dimensions: { content: { selectedValueCode: "other", otherText: note }, grade: { selectedValueCode: "7" }, date: { dateValue: "2026-09-17" }, period: { selectedValueCode: "first" } },
     responses: { p1q1: { storedCode: "Yes" }, comp_s1_q1: { storedCode: "5" }, comp_s1_notes: { textValue: note } } });
   assert.equal(saved.status, 200, saved.text);
   assert.notEqual(saved.json.walk.rowVersion, w.rowVersion);
@@ -168,13 +212,14 @@ test("WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL
   assert.match(again.response.headers.get("content-type"), /^application\/json;\s*charset=utf-8$/i);
   assert.equal(again.response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(again.json.walk.state.responses.comp_s1_notes.textValue, note);
-  assert.equal(again.json.walk.state.dimensions.school.otherText, note);
+  assert.equal(again.json.walk.state.dimensions.content.otherText, note);
+  assert.equal(again.json.walk.state.dimensions.school.selectedValueCode, SCHOOL_VALUE_A, "the School value is the unit's mapped value");
   assert.equal(again.json.walk.state.dimensions.grade.selectedValueCode, "7");
   assert.equal(again.json.walk.state.dimensions.date.dateValue, "2026-09-17");
   assert.equal(again.json.walk.rowVersion, saved.json.walk.rowVersion);
   const list = await A.call("GET", "/api/walks");
   const card = list.json.walks.find((x) => x.id === w.id);
-  assert.equal(card.state.dimensions.school.otherText, note, "list carries the card dimensions");
+  assert.equal(card.state.dimensions.content.otherText, note, "list carries the card dimensions");
   assert.deepEqual(card.state.responses, {}, "list carries no responses");
 });
 
@@ -234,10 +279,10 @@ test("SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same muta
   const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
   const w = created.json.walk;
   const mutation = uuid();
-  const payload = { rowVersion: w.rowVersion, clientMutationId: mutation, dimensions: { grade: { selectedValueCode: "4" } }, responses: { comp_s2_q1: { storedCode: "2" } } };
+  const payload = { rowVersion: w.rowVersion, clientMutationId: mutation, dimensions: { grade: { selectedValueCode: "7" } }, responses: { comp_s2_q1: { storedCode: "2" } } };
   const first = await A.call("PUT", `/api/walks/${w.id}`, payload);
   assert.equal(first.status, 200, first.text);
-  const stale = await A.call("PUT", `/api/walks/${w.id}`, { ...payload, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: "1" } } });
+  const stale = await A.call("PUT", `/api/walks/${w.id}`, { ...payload, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: "8" } } });
   assert.equal(stale.status, 409);
   assert.equal(stale.json.error.code, "STALE_ROW_VERSION");
   assert.equal(stale.json.error.details.serverRowVersion, first.json.walk.rowVersion);
@@ -246,7 +291,7 @@ test("SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same muta
   assert.equal(replay.json.walk.replayed, true);
   assert.equal(replay.json.walk.rowVersion, first.json.walk.rowVersion);
   const current = await A.call("GET", `/api/walks/${w.id}`);
-  assert.equal(current.json.walk.state.dimensions.grade.selectedValueCode, "4", "the stale write did not overwrite");
+  assert.equal(current.json.walk.state.dimensions.grade.selectedValueCode, "7", "the stale write did not overwrite");
   assert.equal(current.json.walk.rowVersion, first.json.walk.rowVersion);
   assert.equal(current.json.walk.revisionCount, 0);
   // The colleague cannot replay someone else's mutation id, and cannot reuse it.
@@ -436,4 +481,274 @@ test("CORR: a create mutation id from a school the caller lost never discloses t
   const scoped = await A.call("POST", "/api/walks", { orgUnitId: foreignUnit, clientMutationId: foreignMutation, dimensions: {}, responses: {} });
   assert.equal(scoped.status, 404);
   assert.equal((await A.call("GET", `/api/walks/${foreign.json.walk.id}`)).status, 404, "the walk stays invisible");
+});
+
+// ---- second correction session -----------------------------------------------------------------
+
+test("CORR2: an idempotent SAVE replay never hands stale session state a newer row version", { skip }, async () => {
+  // Two sessions of the same owner, exactly as two browser tabs: A saves, loses the answer, B saves.
+  const A1 = await client(walker);
+  const A2 = await client(walker);
+  const created = await A1.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
+  assert.equal(created.status, 201, created.text);
+  const w = created.json.walk;
+
+  // 1. Session A's save commits. A never sees the answer, so it still holds this state and this token.
+  const m1 = uuid();
+  const bodyA = { rowVersion: w.rowVersion, clientMutationId: m1, dimensions: { observer: { textValue: "A1" } }, responses: {} };
+  const committedByA = await A1.call("PUT", `/api/walks/${w.id}`, bodyA);
+  assert.equal(committedByA.status, 200, committedByA.text);
+
+  // 2. Session B saves a different valid change on top of it.
+  const committedByB = await A2.call("PUT", `/api/walks/${w.id}`, { rowVersion: committedByA.json.walk.rowVersion, clientMutationId: uuid(), dimensions: { observer: { textValue: "B1" } }, responses: {} });
+  assert.equal(committedByB.status, 200, committedByB.text);
+  const afterB = await storedRowVersion(w.id);
+  assert.equal(afterB, committedByB.json.walk.rowVersion);
+  const mutationsAfterB = await mutationCount(w.id);
+
+  // 3. Session A retries M1 with exactly the request it sent.
+  const retry = await A1.call("PUT", `/api/walks/${w.id}`, bodyA);
+  assert.equal(retry.status, 409, retry.text);
+  assert.equal(retry.json.error.code, "MUTATION_REPLAY_SUPERSEDED");
+
+  // 4. It received no usable token, nothing was written, and no mutation row was added.
+  assert.equal(retry.json.error.details.recordedRowVersion, committedByA.json.walk.rowVersion);
+  assert.notEqual(retry.json.error.details.recordedRowVersion, afterB, "the details never carry the current row version");
+  assert.equal(await storedRowVersion(w.id), afterB, "the row version did not move");
+  assert.equal(await mutationCount(w.id), mutationsAfterB, "the refused replay recorded no mutation");
+  const current = await A2.call("GET", `/api/walks/${w.id}`);
+  assert.equal(current.json.walk.state.dimensions.observer.textValue, "B1", "session B's change stands");
+
+  // Session A cannot overwrite B with what it was given: the recorded token is stale.
+  const overwrite = await A1.call("PUT", `/api/walks/${w.id}`, { rowVersion: retry.json.error.details.recordedRowVersion, clientMutationId: uuid(), dimensions: { observer: { textValue: "A-overwrite" } }, responses: {} });
+  assert.equal(overwrite.status, 409);
+  assert.equal(overwrite.json.error.code, "STALE_ROW_VERSION");
+  assert.equal((await A2.call("GET", `/api/walks/${w.id}`)).json.walk.state.dimensions.observer.textValue, "B1");
+
+  // Reconciliation is the way forward: reload, then save against what the server holds.
+  const reloaded = await A1.call("GET", `/api/walks/${w.id}`);
+  const reconciled = await A1.call("PUT", `/api/walks/${w.id}`, { rowVersion: reloaded.json.walk.rowVersion, clientMutationId: uuid(), dimensions: { observer: { textValue: "A2" } }, responses: {} });
+  assert.equal(reconciled.status, 200, reconciled.text);
+  assert.equal((await A1.call("GET", `/api/walks/${w.id}`)).json.walk.state.dimensions.observer.textValue, "A2");
+});
+
+test("CORR2: CREATE and COMPLETE replays are refused once the walk has moved on", { skip }, async () => {
+  // CREATE: committed, then saved against, so the create can no longer be replayed coherently.
+  const createId = uuid();
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: createId, dimensions: {}, responses: {} });
+  assert.equal(created.status, 201, created.text);
+  const w = created.json.walk;
+  const advanced = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: { observer: { textValue: "since" } }, responses: {} });
+  assert.equal(advanced.status, 200, advanced.text);
+  const retry = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: createId, dimensions: {}, responses: {} });
+  assert.equal(retry.status, 409, retry.text);
+  assert.equal(retry.json.error.code, "MUTATION_REPLAY_SUPERSEDED");
+  assert.equal(retry.json.error.details.walkId, w.id, "the client can still find the walk it created");
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk_mutation WHERE mutation_id = @id", { id: createId }), 1, "exactly one create mutation row");
+  assert.equal(await storedRowVersion(w.id), advanced.json.walk.rowVersion, "nothing was written");
+
+  // COMPLETE: completed, then edited as a completed walk, so its replay is superseded too.
+  const answers = { p1q1: { storedCode: "Partial" }, p1q2: { storedCode: "Retrieval" }, p1q3: { storedCode: "Analysis" },
+    part1_adopted_pacing: { storedCode: "on" }, part1_adopted_ac1: { storedCode: "3" }, part1_adopted_ac2: { storedCode: "4" },
+    part1_targettask_tt1: { storedCode: "5" }, part1_targettask_tt2: { storedCode: "2" } };
+  const ready = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: advanced.json.walk.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: answers });
+  assert.equal(ready.status, 200, ready.text);
+  const completeId = uuid();
+  const done = await A.call("POST", `/api/walks/${w.id}/complete`, { rowVersion: ready.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(done.status, 200, done.text);
+  const edited = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: done.json.walk.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: { ...answers, comp_s1_notes: { textValue: "after" } } });
+  assert.equal(edited.status, 200, edited.text);
+  const revisions = await scalar("SELECT COUNT(*) AS n FROM icf.walk_revision WHERE walk_id = @id", { id: w.id });
+  const completeRetry = await A.call("POST", `/api/walks/${w.id}/complete`, { rowVersion: ready.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(completeRetry.status, 409, completeRetry.text);
+  assert.equal(completeRetry.json.error.code, "MUTATION_REPLAY_SUPERSEDED");
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk_revision WHERE walk_id = @id", { id: w.id }), revisions, "no second revision");
+  assert.equal(await storedRowVersion(w.id), edited.json.walk.rowVersion);
+});
+
+test("CORR2: a legacy mutation row with no request fingerprint is never replayed as a success", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
+  const w = created.json.walk;
+  const legacyId = uuid();
+  const body = { rowVersion: w.rowVersion, clientMutationId: legacyId, dimensions: { observer: { textValue: "legacy" } }, responses: {} };
+  const committed = await A.call("PUT", `/api/walks/${w.id}`, body);
+  assert.equal(committed.status, 200, committed.text);
+  // Reproduce a row written before migration 004.
+  await run("UPDATE icf.walk_mutation SET request_fingerprint = NULL WHERE mutation_id = @id", { id: legacyId });
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk_mutation WHERE mutation_id = @id AND request_fingerprint IS NULL", { id: legacyId }), 1);
+  const before = await storedRowVersion(w.id);
+  const mutations = await mutationCount(w.id);
+
+  // The exact-looking retry is a deterministic conflict, not a replay.
+  const exact = await A.call("PUT", `/api/walks/${w.id}`, body);
+  assert.equal(exact.status, 409, exact.text);
+  assert.equal(exact.json.error.code, "MUTATION_LEGACY_UNVERIFIABLE");
+  assert.equal(exact.json.error.details.walkId, w.id);
+  // An altered request gets the same answer: the two are indistinguishable against a NULL fingerprint.
+  const altered = await A.call("PUT", `/api/walks/${w.id}`, { ...body, dimensions: { observer: { textValue: "tampered" } } });
+  assert.equal(altered.status, 409);
+  assert.equal(altered.json.error.code, "MUTATION_LEGACY_UNVERIFIABLE");
+
+  // Neither wrote anything.
+  assert.equal(await storedRowVersion(w.id), before, "the row version did not move");
+  assert.equal(await mutationCount(w.id), mutations, "no mutation row was written");
+  assert.equal((await A.call("GET", `/api/walks/${w.id}`)).json.walk.state.dimensions.observer.textValue, "legacy");
+
+  // A caller who may not see the walk gets 404 first: authorization answers before provenance.
+  const foreign = await O.call("PUT", `/api/walks/${w.id}`, body);
+  assert.equal(foreign.status, 404, foreign.text);
+  assert.equal(foreign.json.error.code, "NOT_FOUND");
+  assert.equal(Object.keys(foreign.json).join(","), "error");
+  assert.equal(await storedRowVersion(w.id), before);
+});
+
+test("CORR2: the School dimension follows an explicit mapping and fails closed without one", { skip }, async () => {
+  // A mapped unit: the server fills and locks its mapped value and refuses any other, including Other.
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
+  const w = created.json.walk;
+  assert.equal(w.state.dimensions.school.selectedValueCode, SCHOOL_VALUE_A);
+  const before = await storedRowVersion(w.id);
+  for (const value of [{ selectedValueCode: SCHOOL_VALUE_B }, { selectedValueCode: "other", otherText: "Somewhere else" }]) {
+    const bad = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: { school: value }, responses: {} });
+    assert.equal(bad.status, 409, bad.text);
+    assert.equal(bad.json.error.code, "SCHOOL_ORG_MISMATCH");
+    assert.equal(bad.json.error.details.expectedSchoolValueCode, SCHOOL_VALUE_A);
+  }
+  assert.equal(await storedRowVersion(w.id), before, "a rejected save does not advance the row version");
+  const stillMine = await A.call("GET", `/api/walks/${w.id}`);
+  assert.equal(stillMine.json.walk.state.dimensions.school.selectedValueCode, SCHOOL_VALUE_A);
+
+  // School A's walk can never carry School B's value, which belongs to School B's unit.
+  const atB = await O.call("POST", "/api/walks", { orgUnitId: unitB, clientMutationId: uuid() });
+  assert.equal(atB.json.walk.state.dimensions.school.selectedValueCode, SCHOOL_VALUE_B);
+
+  // An unmapped SCHOOL unit: nothing is filled and no School value is accepted at all.
+  const unitU = await scalar("SELECT CONVERT(varchar(36), org_unit_id) AS id FROM icf.org_unit WHERE org_unit_code = @code", { code: `${tag}-school-u` });
+  const provisionU = await api(env, "POST", "/api/maintenance/identity/provision-user", { token, body: { subject: `${tag}-unmapped`, displayName: "Fixture unmapped walker" } });
+  assert.ok(provisionU.status === 201 || provisionU.status === 200, provisionU.text);
+  const assign = await api(env, "POST", "/api/maintenance/identity/assign-role", { token, body: { subject: `${tag}-unmapped`, roleCode: "SCHOOL_WALK_REPORT", orgUnitCode: `${tag}-school-u` } });
+  assert.ok(assign.status === 201 || assign.status === 200, assign.text);
+  const U = await client(`${tag}-unmapped`);
+  const blank = await U.call("POST", "/api/walks", { orgUnitId: U.me.permissions["walk.create"][0], clientMutationId: uuid() });
+  assert.equal(blank.status, 201, blank.text);
+  assert.equal(blank.json.walk.state.dimensions.school, undefined, "nothing is invented for an unmapped unit");
+  const walksBefore = await scalar("SELECT COUNT(*) AS n FROM icf.walk WHERE org_unit_id = @id", { id: unitU });
+  for (const value of [{ selectedValueCode: SCHOOL_VALUE_A }, { selectedValueCode: "other", otherText: "Unlisted site" }]) {
+    const refused = await U.call("PUT", `/api/walks/${blank.json.walk.id}`, { rowVersion: blank.json.walk.rowVersion, clientMutationId: uuid(), dimensions: { school: value }, responses: {} });
+    assert.equal(refused.status, 409, refused.text);
+    assert.equal(refused.json.error.code, "SCHOOL_ORG_UNMAPPED");
+  }
+  const refusedCreate = await U.call("POST", "/api/walks", { orgUnitId: U.me.permissions["walk.create"][0], clientMutationId: uuid(), dimensions: { school: { selectedValueCode: SCHOOL_VALUE_A } }, responses: {} });
+  assert.equal(refusedCreate.status, 409);
+  assert.equal(refusedCreate.json.error.code, "SCHOOL_ORG_UNMAPPED");
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk WHERE org_unit_id = @id", { id: unitU }), walksBefore, "a rejected create writes no walk");
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk_dimension_value x JOIN icf.dimension_definition d ON d.dimension_id = x.dimension_id WHERE x.walk_id = @id AND d.code = N'school'", { id: blank.json.walk.id }), 0);
+
+  // A district-authorized user still creates at an authorized descendant SCHOOL.
+  const provisionD = await api(env, "POST", "/api/maintenance/identity/provision-user", { token, body: { subject: `${tag}-district-walker`, displayName: "Fixture district walker" } });
+  assert.ok(provisionD.status === 201 || provisionD.status === 200, provisionD.text);
+  const district = await api(env, "POST", "/api/maintenance/identity/assign-role", { token, body: { subject: `${tag}-district-walker`, roleCode: "DISTRICT_WALK_REPORT", orgUnitCode: `${tag}-district`, includeDescendants: true } });
+  assert.ok(district.status === 201 || district.status === 200, district.text);
+  const D = await client(`${tag}-district-walker`);
+  const descendant = await D.call("POST", "/api/walks", { orgUnitId: unitB, clientMutationId: uuid(), dimensions: { school: { selectedValueCode: SCHOOL_VALUE_B } }, responses: {} });
+  assert.equal(descendant.status, 201, descendant.text);
+  assert.equal(descendant.json.walk.orgUnitId, unitB);
+  assert.equal(descendant.json.walk.state.dimensions.school.selectedValueCode, SCHOOL_VALUE_B);
+  const crossLabelled = await D.call("POST", "/api/walks", { orgUnitId: unitB, clientMutationId: uuid(), dimensions: { school: { selectedValueCode: SCHOOL_VALUE_A } }, responses: {} });
+  assert.equal(crossLabelled.status, 409);
+  assert.equal(crossLabelled.json.error.code, "SCHOOL_ORG_MISMATCH");
+});
+
+test("CORR2: the alignment endpoint derives mappings only from exact code matches", { skip }, async () => {
+  const dry = await api(env, "POST", "/api/maintenance/org-units/align-school-dimension", { token, body: { dryRun: true } });
+  assert.equal(dry.status, 200, dry.text);
+  assert.equal(dry.json.dryRun, true);
+  assert.equal(dry.json.dimensionCode, "school");
+  // The fixture units: A and B are already mapped explicitly, U matches no value code by name.
+  const already = dry.json.alreadyMapped.filter((m) => [SCHOOL_VALUE_A, SCHOOL_VALUE_B].includes(m.valueCode));
+  assert.equal(already.length, 2);
+  assert.ok(already.every((m) => m.source === "EXPLICIT"));
+  assert.ok(dry.json.unmapped.some((m) => m.orgUnitCode === `${tag}-school-u` && m.reason === "NO_MATCHING_VALUE_CODE"),
+    "a unit whose code is not a School value code is reported, never guessed from its name");
+  assert.ok(!dry.json.mapped.some((m) => m.orgUnitCode === `${tag}-school-u`));
+  // A dry run writes nothing.
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.org_unit_dimension_map m JOIN icf.org_unit o ON o.org_unit_id = m.org_unit_id WHERE o.org_unit_code = @code", { code: `${tag}-school-u` }), 0);
+  // An unknown declared value is refused rather than stored unvalidated.
+  const bogus = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
+    { code: `${tag}-school-u`, type: "SCHOOL", name: "HTTP fixture unmapped school", parentCode: `${tag}-district`, schoolValueCode: "no_such_school" },
+  ] } });
+  assert.equal(bogus.status, 400, bogus.text);
+  assert.equal(bogus.json.error.code, "ORG_UNIT_SCHOOL_VALUE_UNKNOWN");
+  // And a value another unit already holds is refused, never moved.
+  const taken = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
+    { code: `${tag}-school-u`, type: "SCHOOL", name: "HTTP fixture unmapped school", parentCode: `${tag}-district`, schoolValueCode: SCHOOL_VALUE_A },
+  ] } });
+  assert.equal(taken.status, 400, taken.text);
+  assert.equal(taken.json.error.code, "ORG_UNIT_DIMENSION_VALUE_TAKEN");
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.org_unit_dimension_map m JOIN icf.org_unit o ON o.org_unit_id = m.org_unit_id WHERE o.org_unit_code = @code", { code: `${tag}-school-u` }), 0);
+});
+
+test("CORR2: an ambiguous outcome retries the exact same mutation id and body on every route", { skip }, async () => {
+  // The browser's contract, proved at the HTTP layer: for each of the four routes, the same id with
+  // the same semantic body replays (one database effect), and the same id with a changed body is
+  // refused rather than accepted as an equivalent retry.
+  const createId = uuid();
+  const createBody = { orgUnitId: unitA, clientMutationId: createId, dimensions: { observer: { textValue: "ambiguous" } }, responses: {} };
+  const created = await A.call("POST", "/api/walks", createBody);
+  assert.equal(created.status, 201, created.text);
+  const w = created.json.walk;
+  const replayedCreate = await A.call("POST", "/api/walks", createBody);
+  assert.equal(replayedCreate.status, 200, replayedCreate.text);
+  assert.equal(replayedCreate.json.walk.replayed, true);
+  assert.equal(replayedCreate.json.walk.id, w.id);
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk WHERE org_unit_id = @id AND owner_user_id = (SELECT user_id FROM icf.app_user WHERE identity_subject = @who) AND created_at >= @since", { id: unitA, who: walker, since: new Date(Date.now() - 120000) }) >= 1, true);
+  const rebuiltCreate = await A.call("POST", "/api/walks", { ...createBody, dimensions: { observer: { textValue: "rebuilt from changed UI state" } } });
+  assert.equal(rebuiltCreate.status, 409);
+  assert.equal(rebuiltCreate.json.error.code, "MUTATION_ID_REUSED");
+
+  // SAVE
+  const saveId = uuid();
+  const saveBody = { rowVersion: w.rowVersion, clientMutationId: saveId, dimensions: { observer: { textValue: "ambiguous" }, grade: { selectedValueCode: "6" } }, responses: {} };
+  const saved = await A.call("PUT", `/api/walks/${w.id}`, saveBody);
+  assert.equal(saved.status, 200, saved.text);
+  const mutations = await mutationCount(w.id);
+  const replayedSave = await A.call("PUT", `/api/walks/${w.id}`, saveBody);
+  assert.equal(replayedSave.json.walk.replayed, true);
+  assert.equal(replayedSave.json.walk.rowVersion, saved.json.walk.rowVersion);
+  assert.equal(await mutationCount(w.id), mutations, "exactly one database effect");
+  const rebuiltSave = await A.call("PUT", `/api/walks/${w.id}`, { ...saveBody, dimensions: { observer: { textValue: "ambiguous" }, grade: { selectedValueCode: "7" } } });
+  assert.equal(rebuiltSave.status, 409);
+  assert.equal(rebuiltSave.json.error.code, "MUTATION_ID_REUSED");
+
+  // COMPLETE: the id belongs to this walk. The same id against another walk is refused.
+  const answers = { p1q1: { storedCode: "Partial" }, p1q2: { storedCode: "Retrieval" }, p1q3: { storedCode: "Analysis" },
+    part1_adopted_pacing: { storedCode: "on" }, part1_adopted_ac1: { storedCode: "3" }, part1_adopted_ac2: { storedCode: "4" },
+    part1_targettask_tt1: { storedCode: "5" }, part1_targettask_tt2: { storedCode: "2" } };
+  const ready = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: saved.json.walk.rowVersion, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: "6" } }, responses: answers });
+  assert.equal(ready.status, 200, ready.text);
+  const completeId = uuid();
+  const done = await A.call("POST", `/api/walks/${w.id}/complete`, { rowVersion: ready.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(done.status, 200, done.text);
+  const replayedComplete = await A.call("POST", `/api/walks/${w.id}/complete`, { rowVersion: ready.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(replayedComplete.json.walk.replayed, true);
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk_revision WHERE walk_id = @id", { id: w.id }), 1, "exactly one completion revision");
+
+  const otherWalk = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
+  const otherReady = await A.call("PUT", `/api/walks/${otherWalk.json.walk.id}`, { rowVersion: otherWalk.json.walk.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: answers });
+  const crossWalk = await A.call("POST", `/api/walks/${otherWalk.json.walk.id}/complete`, { rowVersion: otherReady.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(crossWalk.status, 409, crossWalk.text);
+  assert.equal(crossWalk.json.error.code, "MUTATION_ID_REUSED");
+  assert.equal(await walkStatus(otherWalk.json.walk.id), "DRAFT", "the other walk was not completed by a reused id");
+
+  // VOID: the id is bound to its reason, so a retry must carry the reason it was issued with.
+  const voidId = uuid();
+  const voidBody = { rowVersion: done.json.walk.rowVersion, clientMutationId: voidId, reason: "Recorded in error" };
+  const voided = await A.call("POST", `/api/walks/${w.id}/void`, voidBody);
+  assert.equal(voided.status, 200, voided.text);
+  const replayedVoid = await A.call("POST", `/api/walks/${w.id}/void`, voidBody);
+  assert.equal(replayedVoid.json.walk.replayed, true);
+  assert.equal(await scalar("SELECT COUNT(*) AS n FROM icf.walk_mutation WHERE walk_id = @id AND action = N'VOID'", { id: w.id }), 1, "exactly one void mutation");
+  const rebuiltVoid = await A.call("POST", `/api/walks/${w.id}/void`, { ...voidBody, reason: "Reason edited in the UI after the failure" });
+  assert.equal(rebuiltVoid.status, 409);
+  assert.equal(rebuiltVoid.json.error.code, "MUTATION_ID_REUSED");
 });
