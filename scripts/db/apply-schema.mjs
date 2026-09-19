@@ -1,4 +1,5 @@
-// Applies database/001_schema.sql, 002_alignment_patch.sql, and 003_walk_mutation.sql to a SQL Server database
+// Applies database/001_schema.sql, 002_alignment_patch.sql, 003_walk_mutation.sql, and
+// 004_mutation_fingerprint.sql to a SQL Server database
 // using the ICFWALK_DB_* environment (or <repo>/.env, or .runtime/mssql.env for the local
 // container). Prints each script's result set. Exit code 1 on any failure.
 //
@@ -16,7 +17,7 @@ const env = loadRuntimeEnv();
 const config = connectionConfig(env, database || env.ICFWALK_DB_NAME || "icfwalk_dev");
 const pool = await sql.connect(config);
 try {
-  for (const name of ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql"]) {
+  for (const name of ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql"]) {
     if (only && !name.startsWith(only)) continue;
     const result = await applyScript(pool, readScript(name));
     console.log(JSON.stringify({ script: name, database: config.database, ok: result.ok, resultSet: result.recordset, error: result.error?.message ?? null, errorNumber: result.error?.number ?? null }, null, 2));

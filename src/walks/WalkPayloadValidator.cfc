@@ -6,6 +6,15 @@
  * (SAVE-07), display items, and mistyped values are rejected with a specific code; all issues are
  * collected and returned in details.issues.
  *
+ * JSON primitive types are checked, never coerced: a field declared as text must arrive as a JSON
+ * string, a number as a JSON number, a boolean as a JSON boolean. CFML would happily read the JSON
+ * number 4 as the string "4" and match a stored option code, so every check goes through the
+ * underlying Java type (jsonString/jsonNumber/jsonBoolean) rather than isSimpleValue.
+ *
+ * Response state is derived data: the server owns it. A payload that carries a "state" field for a
+ * response is rejected with CLIENT_STATE_NOT_ACCEPTED rather than quietly ignored, so a client can
+ * never believe it set one.
+ *
  * Output is a clean state in the working-state shape (docs/DATA_CONTRACT.md) with resolved GUIDs
  * attached out of band (resolved.dimensions[code].valueId, resolved.responses[itemKey].optionId).
  */
@@ -49,8 +58,8 @@ component output="false" {
 			issue(issues, "INVALID_STATE", "state", "The walk state must be a JSON object.");
 			raise(issues);
 		}
-		var dims = structKeyExists(arguments.payload, "dimensions") ? arguments.payload.dimensions : {};
-		var responses = structKeyExists(arguments.payload, "responses") ? arguments.payload.responses : {};
+		var dims = (structKeyExists(arguments.payload, "dimensions") && !isNull(arguments.payload.dimensions)) ? arguments.payload.dimensions : {};
+		var responses = (structKeyExists(arguments.payload, "responses") && !isNull(arguments.payload.responses)) ? arguments.payload.responses : {};
 		if (!isStruct(dims)) { issue(issues, "INVALID_STATE", "dimensions", "dimensions must be an object keyed by dimension code."); dims = {}; }
 		if (!isStruct(responses)) { issue(issues, "INVALID_STATE", "responses", "responses must be an object keyed by item key."); responses = {}; }
 
@@ -69,11 +78,12 @@ component output="false" {
 			var ok = true;
 			for (var k in structKeyArray(raw)) {
 				var v = raw[k];
-				if (isNull(v) || (isSimpleValue(v) && !len(toString(v)))) continue;
-				if (!isSimpleValue(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & "." & safeKey(k), "Value must be a string, number, or boolean."); ok = false; continue; }
+				if (isNull(v) || (jsonString(v) && !len(v))) continue;
+				if (!isSimpleValue(v) || isInstanceOf(v, "java.util.Date")) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & "." & safeKey(k), "Value must be a string, number, or boolean."); ok = false; continue; }
 				switch (k) {
 					case "selectedValueCode":
 						if (dim.dataType != "LIST") { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".selectedValueCode", "Dimension does not accept a list value."); ok = false; break; }
+						if (!jsonString(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".selectedValueCode", "Value code must be a JSON string."); ok = false; break; }
 						var dimId = arguments.definitionIndex.dimensions[code];
 						var valueId = findValueId(dim, arguments.definitionIndex.values[dimId], toString(v));
 						if (!len(valueId)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".selectedValueCode", "Value code is not defined for this dimension."); ok = false; break; }
@@ -82,28 +92,31 @@ component output="false" {
 						break;
 					case "otherText":
 						if (dim.dataType != "LIST" || !dim.allowOther) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".otherText", "Dimension does not accept free text."); ok = false; break; }
+						if (!jsonString(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".otherText", "Text must be a JSON string."); ok = false; break; }
 						if (len(toString(v)) > variables.MAX_DIMENSION_TEXT) { issue(issues, "VALUE_TOO_LONG", "dimensions." & code & ".otherText", "Text exceeds " & variables.MAX_DIMENSION_TEXT & " characters."); ok = false; break; }
 						clean["otherText"] = toString(v);
 						break;
 					case "textValue":
 						if (dim.dataType != "TEXT") { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".textValue", "Dimension does not accept text."); ok = false; break; }
+						if (!jsonString(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".textValue", "Text must be a JSON string."); ok = false; break; }
 						if (len(toString(v)) > variables.MAX_DIMENSION_TEXT) { issue(issues, "VALUE_TOO_LONG", "dimensions." & code & ".textValue", "Text exceeds " & variables.MAX_DIMENSION_TEXT & " characters."); ok = false; break; }
 						clean["textValue"] = toString(v);
 						break;
 					case "dateValue":
 						if (dim.dataType != "DATE") { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".dateValue", "Dimension does not accept a date."); ok = false; break; }
-						var iso = normalizeIsoDate(toString(v));
+						if (!jsonString(v)) { issue(issues, "INVALID_DATE", "dimensions." & code & ".dateValue", "Date must be a JSON string in YYYY-MM-DD form."); ok = false; break; }
+						var iso = normalizeIsoDate(v);
 						if (!len(iso)) { issue(issues, "INVALID_DATE", "dimensions." & code & ".dateValue", "Date must be a valid calendar date in YYYY-MM-DD form."); ok = false; break; }
 						clean["dateValue"] = iso;
 						break;
 					case "numberValue":
 						if (dim.dataType != "NUMBER") { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".numberValue", "Dimension does not accept a number."); ok = false; break; }
-						if (!isNumeric(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".numberValue", "Value must be numeric."); ok = false; break; }
+						if (!jsonNumber(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".numberValue", "Value must be a JSON number."); ok = false; break; }
 						clean["numberValue"] = val(v);
 						break;
 					case "booleanValue":
 						if (dim.dataType != "BOOLEAN") { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".booleanValue", "Dimension does not accept a boolean."); ok = false; break; }
-						if (!isBoolean(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".booleanValue", "Value must be true or false."); ok = false; break; }
+						if (!jsonBoolean(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".booleanValue", "Value must be the JSON literal true or false."); ok = false; break; }
 						clean["booleanValue"] = v ? true : false;
 						break;
 					default:
@@ -140,8 +153,15 @@ component output="false" {
 			var ok = true;
 			for (var k in structKeyArray(raw)) {
 				var v = raw[k];
-				if (isNull(v) || (isSimpleValue(v) && !len(toString(v)))) continue;
-				if (!isSimpleValue(v)) { issue(issues, "INVALID_RESPONSE_VALUE", "responses." & key & "." & safeKey(k), "Value must be a string."); ok = false; continue; }
+				if (compare(k, "state") == 0) {
+					// Response state is derived server-side from the pinned instrument; a client may
+					// never assert it (docs/DATA_CONTRACT.md "Response states").
+					issue(issues, "CLIENT_STATE_NOT_ACCEPTED", "responses." & key & ".state", "Response state is derived by the server and is not accepted from a client.");
+					ok = false;
+					continue;
+				}
+				if (isNull(v) || (jsonString(v) && !len(v))) continue;
+				if (!jsonString(v)) { issue(issues, "INVALID_RESPONSE_VALUE", "responses." & key & "." & safeKey(k), "Value must be a JSON string."); ok = false; continue; }
 				switch (k) {
 					case "storedCode":
 						if (!hasSet) { issue(issues, "INVALID_RESPONSE_VALUE", "responses." & key & ".storedCode", "Item does not use a response set."); ok = false; break; }
@@ -228,6 +248,11 @@ component output="false" {
 	public string function indexKey(required struct definitionIndex) {
 		return (structKeyExists(arguments.definitionIndex, "versionId") ? arguments.definitionIndex.versionId : "") & ":" & (structKeyExists(arguments.definitionIndex, "checksum") ? arguments.definitionIndex.checksum : "");
 	}
+
+	/** JSON primitive type tests against the underlying Java type (no CFML coercion). */
+	private boolean function jsonString(required any value) { return isInstanceOf(arguments.value, "java.lang.String"); }
+	private boolean function jsonNumber(required any value) { return isInstanceOf(arguments.value, "java.lang.Number"); }
+	private boolean function jsonBoolean(required any value) { return isInstanceOf(arguments.value, "java.lang.Boolean"); }
 
 	private string function safeKey(required string key) {
 		return left(reReplace(arguments.key, "[^A-Za-z0-9_.-]", "?", "all"), 60);

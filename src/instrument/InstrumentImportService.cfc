@@ -152,26 +152,33 @@ component output="false" {
 	}
 
 	/**
-	 * Deletes a DRAFT version that no walk references. Published and retired versions are never
-	 * deleted.
+	 * Deletes a DRAFT version of this instrument that no walk references. Published and retired
+	 * versions are never deleted.
+	 *
+	 * The lookup is scoped by instrument identity as well as by label: version labels are unique
+	 * only within an instrument, so a label lookup alone could select -- and delete -- another
+	 * instrument's version that happens to carry the same label. An optional instrumentCode names
+	 * a different instrument explicitly; it defaults to the configured ICFWalk instrument.
 	 */
-	public struct function discardDraft(required string versionLabel, string actorUserId = "") {
+	public struct function discardDraft(required string versionLabel, string actorUserId = "", string instrumentCode = "") {
 		var label = arguments.versionLabel;
 		var actor = arguments.actorUserId;
+		var code = len(trim(arguments.instrumentCode)) ? trim(arguments.instrumentCode) : variables.config.instrumentCode;
 		return variables.db.transact(function() {
-			var instrument = variables.repo.findInstrumentByCode("ICFWALK");
+			var instrument = variables.repo.findInstrumentByCode(code);
+			if (structIsEmpty(instrument)) variables.errors.notFound("No instrument with code '" & code & "' exists.", "INSTRUMENT_NOT_FOUND");
 			var q = variables.db.run(
-				"SELECT v.version_id, v.status FROM [icf].[instrument_version] v WITH (UPDLOCK, HOLDLOCK) WHERE v.version_label = :label",
-				{ "label": variables.db.nvarchar(label, 100) }
+				"SELECT v.version_id, v.status FROM [icf].[instrument_version] v WITH (UPDLOCK, HOLDLOCK) WHERE v.instrument_id = :instrumentId AND v.version_label = :label",
+				{ "instrumentId": variables.db.guid(instrument.instrumentId), "label": variables.db.nvarchar(label, 100) }
 			);
-			if (!q.recordCount) variables.errors.notFound("No instrument version with that label exists.", "VERSION_NOT_FOUND");
+			if (!q.recordCount) variables.errors.notFound("No version of instrument '" & code & "' with that label exists.", "VERSION_NOT_FOUND");
 			var versionId = uCase(q.version_id[1]);
 			if (q.status[1] != "DRAFT") variables.errors.importPublishedVersion(label, q.status[1]);
 			var walkCount = variables.repo.countWalksForVersion(versionId);
 			if (walkCount > 0) variables.errors.importVersionInUse(label, walkCount);
 			variables.repo.deleteVersionCascadeUnchecked(versionId);
-			variables.audit.record("INSTRUMENT_VERSION", versionId, "INSTRUMENT_VERSION_DISCARDED", actor, { "versionLabel": label });
-			return { "versionId": versionId, "versionLabel": label, "discarded": true };
+			variables.audit.record("INSTRUMENT_VERSION", versionId, "INSTRUMENT_VERSION_DISCARDED", actor, { "versionLabel": label, "instrumentCode": code });
+			return { "versionId": versionId, "versionLabel": label, "instrumentCode": code, "discarded": true };
 		});
 	}
 

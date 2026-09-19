@@ -47,14 +47,14 @@ component output="false" {
 		c["identityProvider"] = new icfwalk.identity.IdentityProviderFactory(c.config, c.logger).build();
 		c["authenticationService"] = new icfwalk.identity.AuthenticationService(c.config, c.logger, c.identityProvider, c.userRepository, c.sessionService, c.authorizationService, c.auditRepository, c.errors);
 
-		c["snapshotService"] = new icfwalk.instrument.SnapshotService(c.config, c.db, c.definitionRepository, c.renderModelBuilder, c.errors, c.logger);
+		c["snapshotService"] = new icfwalk.instrument.SnapshotService(c.config, c.db, c.definitionRepository, c.renderModelBuilder, c.errors, c.logger, c.canonicalJson);
 
 		// Walk persistence (Phase 4).
 		c["walkRepository"] = new icfwalk.walks.WalkRepository(c.db, c.canonicalJson, c.definitionRepository);
 		c["walkPayloadValidator"] = new icfwalk.walks.WalkPayloadValidator(c.errors, c.canonicalJson);
 		c["walkService"] = new icfwalk.walks.WalkService(
 			c.config, c.db, c.errors, c.logger, c.auditRepository, c.canonicalJson, c.authorizationService,
-			c.snapshotService, c.visibilityEngine, c.walkRepository, c.walkPayloadValidator
+			c.snapshotService, c.visibilityEngine, c.walkRepository, c.walkPayloadValidator, c.orgUnitRepository
 		);
 
 		c["healthController"] = new icfwalk.controllers.HealthController(c.config, c.db, c.requestContext);

@@ -271,7 +271,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(2, count("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", w.id), "one CREATE and one SAVE mutation recorded");
 		// A retry after another save still replays the first outcome rather than re-applying it.
 		var later = saveState(first, { "grade": { "selectedValueCode": "7" } }, {});
-		var replayAgain = saveState(w, { "grade": { "selectedValueCode": "6" } }, {}, variables.walker, id);
+		var replayAgain = saveState(w, { "grade": { "selectedValueCode": "6" } }, { "comp_s1_q1": { "storedCode": "3" }, "comp_s1_notes": { "textValue": "n1" } }, variables.walker, id);
 		assertTrue(replayAgain.replayed);
 		assertEquals("7", variables.svc.open(p(variables.walker), w.id).state.dimensions.grade.selectedValueCode);
 		assertEquals(later.rowVersion, variables.svc.open(p(variables.walker), w.id).rowVersion);
@@ -415,7 +415,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { variables.svc.refuseDelete(p(variables.walker), w.id); }, "ICFWalk.Conflict", "WALK_DELETE_REFUSED");
 		assertEquals(1, auditEvents(w.id, "WALK_DELETE_REFUSED").recordCount);
 		assertEquals("DRAFT", walkRow(w.id).status[1]);
-		var voided = variables.svc.void(p(variables.walker), w.id, { "clientMutationId": newMutationId() });
+		var voided = variables.svc.void(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId() });
 		assertEquals("VOIDED", voided.status);
 		assertFalse(voided.canEdit);
 		var row = walkRow(w.id);
@@ -426,13 +426,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertContains('"priorStatus":"DRAFT"', auditEvents(w.id, "WALK_VOIDED").details_json[1]);
 		for (var item in variables.svc.list(p(variables.walker))) assertNotEquals(w.id, item.id, "voided walks leave the list");
 		assertThrows(function() { saveState(voided, {}, {}); }, "ICFWalk.Conflict", "WALK_VOIDED");
-		assertThrows(function() { variables.svc.void(p(variables.walker), w.id, {}); }, "ICFWalk.Conflict", "WALK_ALREADY_VOIDED");
+		assertThrows(function() { variables.svc.void(p(variables.walker), w.id, { "rowVersion": voided.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Conflict", "WALK_ALREADY_VOIDED");
 		// Completed walks need a reason and are retained (never physically deleted).
 		var c = newWalk();
 		var full = saveState(c, {}, requiredAnswers());
 		var done = variables.svc.complete(p(variables.walker), c.id, { "rowVersion": full.rowVersion, "clientMutationId": newMutationId() });
-		assertThrows(function() { variables.svc.void(p(variables.walker), c.id, { "clientMutationId": newMutationId() }); }, "ICFWalk.Validation", "VOID_REASON_REQUIRED");
-		assertThrows(function() { variables.svc.void(p(variables.walker), c.id, { "reason": "Duplicate entry", "rowVersion": full.rowVersion }); }, "ICFWalk.Conflict", "STALE_ROW_VERSION");
+		assertThrows(function() { variables.svc.void(p(variables.walker), c.id, { "rowVersion": done.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Validation", "VOID_REASON_REQUIRED");
+		assertThrows(function() { variables.svc.void(p(variables.walker), c.id, { "reason": "Duplicate entry", "rowVersion": full.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Conflict", "STALE_ROW_VERSION");
+		assertEquals("COMPLETED", walkRow(c.id).status[1], "a stale void changes nothing");
 		var v = variables.svc.void(p(variables.walker), c.id, { "reason": "Duplicate entry", "rowVersion": done.rowVersion, "clientMutationId": newMutationId() });
 		assertEquals("VOIDED", v.status);
 		var crow = walkRow(c.id);

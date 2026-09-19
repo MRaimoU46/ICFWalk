@@ -31,7 +31,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testProductionSemanticsRequireAPublishedVersion() {
 		var cfg = duplicate(variables.c.config);
 		cfg.allowUnpublishedInstrument = false;
-		var strict = new icfwalk.instrument.SnapshotService(cfg, variables.c.db, variables.c.definitionRepository, variables.c.renderModelBuilder, variables.c.errors, variables.c.logger);
+		var strict = new icfwalk.instrument.SnapshotService(cfg, variables.c.db, variables.c.definitionRepository, variables.c.renderModelBuilder, variables.c.errors, variables.c.logger, variables.c.canonicalJson);
 		var published = variables.c.db.scalar("SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE status = N'PUBLISHED'");
 		if (published > 0) return; // Phase 6 publishes; then this rule is covered by the published path.
 		assertTrue(structIsEmpty(strict.currentVersion()), "No DRAFT fallback when disallowed.");

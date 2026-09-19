@@ -61,13 +61,17 @@ component output="false" {
 		return id;
 	}
 
-	/** Bumps updated_at (and the rowversion) and records the observation timestamp. */
+	/**
+	 * Bumps updated_at (and the rowversion) and records the observation timestamp.
+	 * observedAt: a date sets observed_at; the empty string falls observed_at back to the walk's
+	 * immutable creation instant (the Visit Date dimension is absent or was cleared).
+	 */
 	public void function touchWalk(required string walkId, any observedAt) {
 		if (!isNull(arguments.observedAt) && isDate(arguments.observedAt)) {
 			variables.db.run("UPDATE [icf].[walk] SET updated_at = SYSUTCDATETIME(), observed_at = :observed WHERE walk_id = :id",
 				{ "id": variables.db.guid(arguments.walkId), "observed": variables.db.timestamp(arguments.observedAt) });
 		} else {
-			variables.db.run("UPDATE [icf].[walk] SET updated_at = SYSUTCDATETIME() WHERE walk_id = :id", { "id": variables.db.guid(arguments.walkId) });
+			variables.db.run("UPDATE [icf].[walk] SET updated_at = SYSUTCDATETIME(), observed_at = created_at WHERE walk_id = :id", { "id": variables.db.guid(arguments.walkId) });
 		}
 	}
 
@@ -242,19 +246,30 @@ component output="false" {
 		return out;
 	}
 
+	/**
+	 * Recorded mutation, or an empty struct. fingerprint is "" for rows written before migration
+	 * 004; the service treats an absent fingerprint as "not bound to content" rather than as a
+	 * match for any content.
+	 */
 	public struct function findMutation(required string mutationId) {
-		var q = variables.db.run("SELECT mutation_id, walk_id, actor_user_id, action, result_json, created_at FROM [icf].[walk_mutation] WHERE mutation_id = :id", { "id": variables.db.guid(arguments.mutationId) });
+		var q = variables.db.run("SELECT mutation_id, walk_id, actor_user_id, action, request_fingerprint, result_json, created_at FROM [icf].[walk_mutation] WHERE mutation_id = :id", { "id": variables.db.guid(arguments.mutationId) });
 		if (!q.recordCount) return {};
 		return {
 			"mutationId": uCase(q.mutation_id[1]), "walkId": uCase(q.walk_id[1]), "actorUserId": uCase(q.actor_user_id[1]), "action": q.action[1],
+			"fingerprint": isNull(q.request_fingerprint[1]) ? "" : lCase(trim(q.request_fingerprint[1])),
 			"result": isJSON(q.result_json[1]) ? deserializeJSON(q.result_json[1]) : {}, "createdAt": variables.json.formatDate(q.created_at[1])
 		};
 	}
 
-	public void function insertMutation(required string mutationId, required string walkId, required string actorUserId, required string action, required struct result) {
+	public void function insertMutation(required string mutationId, required string walkId, required string actorUserId, required string action, required struct result, string requestFingerprint = "") {
 		variables.db.run(
-			"INSERT INTO [icf].[walk_mutation] (mutation_id, walk_id, actor_user_id, action, result_json) VALUES (:id, :walk, :actor, :action, :result)",
-			{ "id": variables.db.guid(arguments.mutationId), "walk": variables.db.guid(arguments.walkId), "actor": variables.db.guid(arguments.actorUserId), "action": variables.db.nvarchar(arguments.action, 20), "result": variables.db.ntext(variables.json.serialize(arguments.result)) }
+			"INSERT INTO [icf].[walk_mutation] (mutation_id, walk_id, actor_user_id, action, request_fingerprint, result_json) VALUES (:id, :walk, :actor, :action, :fingerprint, :result)",
+			{
+				"id": variables.db.guid(arguments.mutationId), "walk": variables.db.guid(arguments.walkId), "actor": variables.db.guid(arguments.actorUserId),
+				"action": variables.db.nvarchar(arguments.action, 20),
+				"fingerprint": variables.db.nvarchar(len(arguments.requestFingerprint) ? lCase(arguments.requestFingerprint) : javaCast("null", ""), 64),
+				"result": variables.db.ntext(variables.json.serialize(arguments.result))
+			}
 		);
 	}
 

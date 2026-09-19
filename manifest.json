@@ -30,8 +30,8 @@
     },
     {
       "path": "database/README.md",
-      "bytes": 1844,
-      "sha256": "0d8dd6016e5a3ccf9c5786cd005ebc51717a839c45368b23aa5b78d72bce70cb"
+      "bytes": 2103,
+      "sha256": "3282ddf749edeb41245374241a76d2cbaf767abb030aaa34d1c9bf54258eda86"
     },
     {
       "path": "docs/ACCEPTANCE_TESTS.md",
@@ -40,8 +40,8 @@
     },
     {
       "path": "docs/DATA_CONTRACT.md",
-      "bytes": 9155,
-      "sha256": "100030494e64a0209fe96c37875ae68e3e664d80b07d20b1469a646679d2380e"
+      "bytes": 17206,
+      "sha256": "e67cae02955a3740a0437b9e340562a3aa222ad7940bd75795f86a66fec89267"
     },
     {
       "path": "docs/IMPLEMENTATION_PLAN.md",

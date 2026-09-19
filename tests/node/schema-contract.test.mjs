@@ -10,6 +10,7 @@ import { root } from "./helpers.mjs";
 const schema = fs.readFileSync(path.join(root, "database", "001_schema.sql"), "utf8");
 const patch = fs.readFileSync(path.join(root, "database", "002_alignment_patch.sql"), "utf8");
 const mutationPatch = fs.readFileSync(path.join(root, "database", "003_walk_mutation.sql"), "utf8");
+const fingerprintPatch = fs.readFileSync(path.join(root, "database", "004_mutation_fingerprint.sql"), "utf8");
 
 function columnsOf(table) {
   const source = table === "walk_mutation" ? mutationPatch : schema;
@@ -18,6 +19,10 @@ function columnsOf(table) {
   const end = source.indexOf(");", start);
   const body = source.slice(start, end);
   const columns = new Set([...body.matchAll(/^\s+\[([a-z0-9_]+)\]\s+(?:uniqueidentifier|nvarchar|int|bit|datetime2|rowversion|decimal|date|char|bigint)/gm)].map((m) => m[1]));
+  // Columns added by a later additive patch belong to the same logical table.
+  if (table === "walk_mutation") {
+    for (const m of fingerprintPatch.matchAll(/ADD \[([a-z0-9_]+)\] (?:char|nvarchar|int|bit|datetime2)/g)) columns.add(m[1]);
+  }
   return columns;
 }
 
@@ -36,7 +41,7 @@ const expected = {
   walk_dimension_value: ["walk_id", "version_id", "dimension_id", "selected_value_id", "text_value", "number_value", "date_value", "boolean_value", "updated_at"],
   walk_response: ["response_id", "walk_id", "version_id", "item_id", "response_state", "selected_option_id", "text_value", "number_value", "date_value", "boolean_value", "updated_at"],
   walk_revision: ["revision_id", "walk_id", "revision_number", "actor_user_id", "reason", "prior_snapshot_json", "created_at"],
-  walk_mutation: ["mutation_id", "walk_id", "actor_user_id", "action", "result_json", "created_at"],
+  walk_mutation: ["mutation_id", "walk_id", "actor_user_id", "action", "request_fingerprint", "result_json", "created_at"],
   org_unit: ["org_unit_id", "parent_org_unit_id", "org_unit_code", "org_unit_type", "name", "active", "updated_at"],
   app_user: ["user_id", "identity_subject", "display_name", "email", "active", "last_sign_in_at", "updated_at"],
   app_role: ["role_id", "role_code", "scope_type", "can_create_walk", "can_open_walk_details", "can_edit_owned_walks", "can_view_aggregate_reports", "can_manage_instruments", "active"],
@@ -59,6 +64,19 @@ test("002 patch adds response_option.definition idempotently", () => {
 test("003 patch adds icf.walk_mutation idempotently", () => {
   assert.match(mutationPatch, /IF OBJECT_ID\(N'\[icf\]\.\[walk_mutation\]', N'U'\) IS NULL/);
   assert.match(mutationPatch, /CHECK \(\[action\] IN \(N'CREATE', N'SAVE', N'COMPLETE', N'VOID'\)\)/);
+});
+
+test("004 patch adds walk_mutation.request_fingerprint idempotently and additively", () => {
+  assert.match(fingerprintPatch, /IF COL_LENGTH\(N'\[icf\]\.\[walk_mutation\]', N'request_fingerprint'\) IS NULL/);
+  assert.match(fingerprintPatch, /ADD \[request_fingerprint\] char\(64\) NULL/);
+  // Nullable, so rows written before the patch stay valid and replayable on their original binding.
+  assert.doesNotMatch(fingerprintPatch, /request_fingerprint\] char\(64\) NOT NULL/);
+  // No CREATE TABLE, no DROP, no UPDATE of existing rows: additive only.
+  assert.doesNotMatch(fingerprintPatch, /\bDROP\b/);
+  assert.doesNotMatch(fingerprintPatch, /\bCREATE TABLE\b/);
+  assert.doesNotMatch(fingerprintPatch, /\bUPDATE \[icf\]/);
+  // SQL Server 2016 compatible: no STRING_AGG, no JSON_OBJECT, no GENERATED ALWAYS.
+  assert.doesNotMatch(fingerprintPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST/i);
 });
 
 test("CFML SQL references only known icf tables", () => {

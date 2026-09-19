@@ -22,9 +22,12 @@ const STATUS = {
   saving: "Saving...",
   failed: "Could not save — changes kept on screen only",
   network: "Could not reach the server — your changes are kept on this page. Retry when you are back online.",
+  ambiguous: "The last save did not finish — your changes are kept on this page. Retry to finish it.",
   conflict: "This walk was changed elsewhere — resolve the conflict below to continue saving.",
   readOnly: "Read only",
 };
+const UNSAVED_LEAVE = "Your changes are still on this page and have not reached the server. Keep editing to try again, or discard them and leave.";
+const UNSAVED_CONFLICT = "Resolve the conflict above before leaving, or discard your unsent edits.";
 const EMPTY_STATE_LINES = ["No walks saved yet.", 'Start one with "New walk" above.'];
 const DELETE_CONFIRM = "Delete this walk? This cannot be undone.";
 const VOID_CONFIRM = "Void this completed walk? It stays in the audit history but leaves your list. A reason is required.";
@@ -40,8 +43,36 @@ const app = {
   current: null, editor: null, dirty: false,
   baseline: null,            // state as last loaded from / committed to the server (for conflict review)
   timer: null, inFlight: null, queued: false, pendingMutationId: null,
+  // ambiguous holds an attempt whose outcome is unknown (transport failure or HTTP 5xx): the server
+  // may already have committed it. Its clientMutationId and its exact payload are kept so the retry
+  // is the same request and the server either replays what it committed or commits it now.
+  ambiguous: null,
+  failed: false,             // a definitive failure; the edits are held on this page only
   conflict: null, completionErrors: [],
+  completeMutationId: null,  // kept until the completion outcome is definitive
+  createMutations: {},       // orgUnitId -> { id, state } kept until the create outcome is definitive
+  voidMutations: {},         // walkId -> id kept until the void outcome is definitive
 };
+
+/**
+ * The one pending/unsaved state the editor, the navigation guard, and beforeunload all read.
+ * Any true field means work exists that the server has not definitively accepted.
+ */
+function pendingState() {
+  return {
+    dirty: app.dirty,
+    queued: app.timer !== null,
+    inFlight: Boolean(app.inFlight),
+    ambiguous: Boolean(app.ambiguous),
+    failed: app.failed,
+    conflict: Boolean(app.conflict),
+  };
+}
+
+function hasUnsavedWork() {
+  const p = pendingState();
+  return p.dirty || p.queued || p.inFlight || p.ambiguous || p.failed || p.conflict;
+}
 
 function announce(text) {
   const a = $("announcer");
@@ -135,7 +166,7 @@ async function renderList() {
     const open = document.createElement("button");
     open.type = "button"; open.className = "btn btn-sm open-btn"; open.textContent = "Open";
     open.setAttribute("aria-label", `Open ${s.title}`);
-    open.addEventListener("click", () => openWalk(w.id));
+    open.addEventListener("click", () => openWalk(w.id));   // the list is only reachable through leaveEditor
     card.append(info, open);
     if (w.canEdit) {
       const del = document.createElement("button");
@@ -175,12 +206,18 @@ function confirmDelete(card, walk, title) {
   yes.addEventListener("click", async () => {
     if (completed && !reason.value.trim()) { err.textContent = "Enter a reason to void this walk."; err.hidden = false; reason.focus(); return; }
     yes.disabled = true;
+    // The void operation keeps its id until the outcome is definitive, so an ambiguous answer
+    // retries the same request rather than starting a second one.
+    const mutationId = app.voidMutations[walk.id] || newId();
+    app.voidMutations[walk.id] = mutationId;
     try {
-      await store.remove(walk.id, { reason: completed ? reason.value.trim() : "", rowVersion: walk.rowVersion });
+      await store.remove(walk.id, { reason: completed ? reason.value.trim() : "", rowVersion: walk.rowVersion, clientMutationId: mutationId });
+      delete app.voidMutations[walk.id];
       announce(completed ? "Walk voided" : "Walk deleted");
       await renderList();
     } catch (e) {
       yes.disabled = false;
+      if (!isAmbiguousFailure(e)) delete app.voidMutations[walk.id];
       err.textContent = e instanceof ApiError ? e.message : "The server could not be reached. Try again.";
       err.hidden = false;
     }
@@ -201,12 +238,25 @@ function creatableUnits() {
 
 async function startNewWalk(unit) {
   const state = applyOrgUnitDefaults(app.model, createBlankState(app.model), unit.code);
+  // The create operation keeps its id until the outcome is definitive: an ambiguous answer may
+  // already have created the walk, and retrying with the same id replays it instead of creating a
+  // second one. A definitive 4xx spends the id.
+  const pending = app.createMutations[unit.id] || { id: newId(), state };
+  app.createMutations[unit.id] = pending;
   $("new-walk-btn").disabled = true;
   try {
-    const walk = await store.create({ orgUnitId: unit.id, versionId: app.instrument.version.versionId, state, clientMutationId: newId() });
+    const walk = await store.create({ orgUnitId: unit.id, versionId: app.instrument.version.versionId, state: pending.state, clientMutationId: pending.id });
+    delete app.createMutations[unit.id];
     await openWalk(walk.id, walk);
   } catch (e) {
-    showMessage(e instanceof ApiError ? `Could not start a walk (${e.code}): ${e.message}` : "Could not start a walk: the server could not be reached.", "error");
+    if (isAmbiguousFailure(e)) {
+      showMessage(e instanceof ApiError
+        ? `Starting the walk did not finish (${e.code}). Try again; it will not create a second walk.`
+        : "Could not start a walk: the server could not be reached. Try again; it will not create a second walk.", "error");
+    } else {
+      delete app.createMutations[unit.id];
+      showMessage(`Could not start a walk (${e.code}): ${e.message}`, "error");
+    }
   } finally {
     $("new-walk-btn").disabled = !creatableUnits().length;
   }
@@ -241,14 +291,17 @@ async function openWalk(id, preloaded = null) {
   }
   if (!walk) { showMessage("Could not load that walk.", "error"); return; }
   try { await ensureModel(walk); } catch (e) { showMessage("Could not load the instrument version for that walk.", "error"); return; }
-  clearTimeout(app.timer);
+  cancelScheduledSave();
   app.current = walk;
   app.baseline = structuredClone(walk.state);
   app.dirty = false;
   app.pendingMutationId = null;
+  app.ambiguous = null;
+  app.failed = false;
   app.conflict = null;
   app.completionErrors = [];
   hideConflict();
+  hideUnsavedPanel();
   renderCompletionErrors([]);
   const entry = app.models[walk.versionId];
   const model = entry ? entry.model : app.model;
@@ -302,7 +355,11 @@ function onEditorChange(state) {
   if (!app.current || !app.current.canEdit) return;
   app.current.state = state;
   app.dirty = true;
-  app.pendingMutationId = null; // a new payload gets a new mutation id
+  app.failed = false;
+  // A new payload gets a new mutation id. An attempt whose outcome is still unknown keeps its own
+  // id and its own payload in app.ambiguous, so editing on never abandons it.
+  app.pendingMutationId = null;
+  hideUnsavedPanel();
   if (app.completionErrors.length) refreshCompletionErrors();
   if (app.conflict) return;     // hold saves until the conflict is resolved (edits are kept locally)
   setSaveStatus(STATUS.unsaved);
@@ -310,21 +367,37 @@ function onEditorChange(state) {
 }
 
 function scheduleSave() {
-  clearTimeout(app.timer);
-  app.timer = setTimeout(() => saveCurrent(), AUTOSAVE_DELAY_MS);
+  cancelScheduledSave();
+  app.timer = setTimeout(() => { app.timer = null; saveCurrent(); }, AUTOSAVE_DELAY_MS);
 }
 
-/** Saves the current working state; coalesces concurrent calls and re-runs when edits arrived mid-flight. */
+function cancelScheduledSave() {
+  if (app.timer !== null) clearTimeout(app.timer);
+  app.timer = null;
+}
+
+/**
+ * Saves the current working state; coalesces concurrent calls and re-runs when edits arrived
+ * mid-flight. An attempt whose outcome is unknown (transport failure or HTTP 5xx) is resolved
+ * first, with its original clientMutationId and its original payload, so the server either replays
+ * what it already committed or commits it now; only then does a newer payload go out under a new
+ * id. Nothing local is dropped on any path.
+ */
 function saveCurrent() {
   if (!app.current || !app.current.canEdit || app.conflict) return Promise.resolve();
-  clearTimeout(app.timer);
+  cancelScheduledSave();
   if (app.inFlight) { app.queued = true; return app.inFlight; }
-  if (!app.dirty) { setSaveStatus(STATUS.saved); return Promise.resolve(); }
   const walk = app.current;
-  const mutationId = app.pendingMutationId || newId();
-  app.pendingMutationId = mutationId;
-  const payload = { ...walk, state: structuredClone(walk.state) };
-  app.dirty = false;
+  const resend = app.ambiguous;
+  if (!resend && !app.dirty) { app.failed = false; setSaveStatus(STATUS.saved); return Promise.resolve(); }
+  const mutationId = resend ? resend.mutationId : (app.pendingMutationId || newId());
+  const payload = resend
+    ? { ...walk, rowVersion: resend.rowVersion, state: resend.state }
+    : { ...walk, state: structuredClone(walk.state) };
+  if (!resend) {
+    app.pendingMutationId = mutationId;
+    app.dirty = false;
+  }
   setSaveStatus(STATUS.saving);
   app.inFlight = (async () => {
     try {
@@ -335,33 +408,56 @@ function saveCurrent() {
       walk.status = saved.status;
       walk.revisionCount = saved.revisionCount;
       app.baseline = payload.state;
+      app.ambiguous = null;
+      app.failed = false;
       if (app.pendingMutationId === mutationId) app.pendingMutationId = null;
-      if (!app.dirty) setSaveStatus(STATUS.saved);
+      // A resend that carried exactly the current working state leaves nothing unsaved.
+      if (resend && JSON.stringify(walk.state) === JSON.stringify(payload.state)) app.dirty = false;
+      setSaveStatus(app.dirty ? STATUS.unsaved : STATUS.saved);
     } catch (e) {
       if (app.current !== walk) return;
-      app.dirty = true;
-      if (e instanceof ApiError && e.status === 409 && e.code === "STALE_ROW_VERSION") {
+      if (!resend) app.dirty = true;
+      if (isAmbiguousFailure(e)) {
+        // The server may have committed before the answer was lost: keep the same mutation id and
+        // the same payload so the retry replays rather than duplicating or dropping the change.
+        app.ambiguous = { mutationId, state: payload.state, rowVersion: payload.rowVersion };
         app.pendingMutationId = null;
+        setSaveStatus(e instanceof ApiError ? `${STATUS.ambiguous} (${e.code})` : STATUS.network, { retry: true });
+        announce(e instanceof ApiError ? "Save did not finish" : "Save failed: the server could not be reached");
+        return;
+      }
+      // Definitive outcomes below: the mutation id is spent and a new payload gets a new one.
+      app.ambiguous = null;
+      app.pendingMutationId = null;
+      if (resend) app.dirty = true;
+      if (e instanceof ApiError && e.status === 409 && e.code === "STALE_ROW_VERSION") {
         await beginConflict(e);
       } else if (e instanceof ApiError && e.code === "WALK_COMPLETION_INVALID") {
-        app.pendingMutationId = null;
-        setSaveStatus("Not saved: a completed walk must keep every required response.");
+        app.failed = true;
+        setSaveStatus("Not saved: a completed walk must keep every required response.", { retry: true });
         showCompletionErrors(e.details && e.details.errors ? e.details.errors : []);
-      } else if (e instanceof ApiError) {
-        app.pendingMutationId = null;
-        setSaveStatus(`${STATUS.failed} (${e.code}: ${e.message})`, { retry: true });
-        announce("Save failed");
       } else {
-        // Transport failure: keep the same mutation id so the retry is idempotent on the server.
-        setSaveStatus(STATUS.network, { retry: true });
-        announce("Save failed: the server could not be reached");
+        app.failed = true;
+        setSaveStatus(`${STATUS.failed} (${e instanceof ApiError ? `${e.code}: ${e.message}` : "unknown error"})`, { retry: true });
+        announce("Save failed");
       }
     } finally {
       app.inFlight = null;
-      if (app.queued) { app.queued = false; if (app.dirty && !app.conflict) scheduleSave(); }
+      if (app.queued) { app.queued = false; if ((app.dirty || app.ambiguous) && !app.conflict) scheduleSave(); }
+      else if (app.ambiguous === null && app.dirty && !app.conflict && resend) scheduleSave();
     }
   })();
   return app.inFlight;
+}
+
+/**
+ * A failure is ambiguous when the request may have been committed before the answer was lost:
+ * a transport failure (offline, reset, timeout) or any HTTP 5xx. Everything else -- a validation
+ * rejection, a conflict, an authorization refusal -- is definitive: nothing was committed.
+ */
+function isAmbiguousFailure(e) {
+  if (e instanceof ApiError) return e.status >= 500;
+  return true;
 }
 
 // ---- conflict resolution (SAVE-04 / SAVE-05) ---------------------------------------------------
@@ -464,6 +560,8 @@ function hideConflict() {
 async function resolveConflictReload() {
   const server = app.conflict && app.conflict.server;
   app.conflict = null;
+  app.ambiguous = null;
+  app.failed = false;
   hideConflict();
   if (!server) return;
   await openWalk(server.id, server);
@@ -483,6 +581,8 @@ async function resolveConflictKeep() {
     else { if (local.responses[d.key]) merged.responses[d.key] = local.responses[d.key]; else delete merged.responses[d.key]; }
   }
   app.conflict = null;
+  app.ambiguous = null;
+  app.failed = false;
   hideConflict();
   await openWalk(server.id, { ...server, state: merged });
   app.dirty = true;
@@ -496,12 +596,18 @@ async function resolveConflictKeep() {
 
 async function completeCurrent() {
   if (!app.current || !app.current.canEdit) return;
-  if (app.dirty || app.inFlight) await saveCurrent();
-  if (app.conflict || app.dirty) return;
+  if (app.dirty || app.inFlight || app.ambiguous) await saveCurrent();
+  if (app.inFlight) await app.inFlight;
+  if (app.conflict || app.dirty || app.ambiguous) return;
   const walk = app.current;
+  // The completion operation keeps its own id until the outcome is definitive, so an ambiguous
+  // answer retries the same request instead of starting a second one.
+  const mutationId = app.completeMutationId || newId();
+  app.completeMutationId = mutationId;
   $("complete-btn").disabled = true;
   try {
-    const done = await store.complete(walk, newId());
+    const done = await store.complete(walk, mutationId);
+    app.completeMutationId = null;
     walk.status = done.status;
     walk.completedAt = done.completedAt;
     walk.rowVersion = done.rowVersion;
@@ -515,12 +621,18 @@ async function completeCurrent() {
     $("walk-banner").focus?.();
   } catch (e) {
     if (e instanceof ApiError && e.code === "WALK_INCOMPLETE") {
+      app.completeMutationId = null;
       showCompletionErrors(e.details && e.details.errors ? e.details.errors : []);
     } else if (e instanceof ApiError && e.status === 409 && e.code === "STALE_ROW_VERSION") {
+      app.completeMutationId = null;
       app.dirty = true;
       await beginConflict(e);
+    } else if (isAmbiguousFailure(e)) {
+      // Keep the operation id: the completion may already have committed.
+      showMessage(e instanceof ApiError ? `The completion did not finish (${e.code}). Try again; it will not complete the walk twice.` : "Could not complete the walk: the server could not be reached. Try again; it will not complete the walk twice.", "error");
     } else {
-      showMessage(e instanceof ApiError ? `Could not complete the walk (${e.code}): ${e.message}` : "Could not complete the walk: the server could not be reached.", "error");
+      app.completeMutationId = null;
+      showMessage(`Could not complete the walk (${e.code}): ${e.message}`, "error");
     }
   } finally {
     $("complete-btn").disabled = false;
@@ -593,11 +705,74 @@ function focusErrorTarget(node) {
   node.scrollIntoView({ block: "center" });
 }
 
-async function backToList() {
-  if (app.dirty && !app.conflict) await saveCurrent();
+// ---- navigation guard --------------------------------------------------------------------------
+
+/**
+ * Internal navigation never abandons unsaved work. Leaving the editor does one of three things:
+ * the save completes successfully, the editor and the unsaved input are retained, or the user
+ * makes an explicit decision to discard. Nothing local disappears on its own.
+ */
+async function leaveEditor(go) {
+  if (app.current && app.current.canEdit && hasUnsavedWork()) {
+    const settled = await settleBeforeLeaving();
+    if (!settled) return false;
+  }
+  hideUnsavedPanel();
+  await go();
+  return true;
+}
+
+async function settleBeforeLeaving() {
+  if (!app.conflict && (app.dirty || app.ambiguous || app.timer !== null)) await saveCurrent();
   if (app.inFlight) await app.inFlight;
-  await renderList();
-  showView("list");
+  if (!hasUnsavedWork()) return true;
+  return askToDiscard(app.conflict ? UNSAVED_CONFLICT : UNSAVED_LEAVE);
+}
+
+/** Resolves true only when the user explicitly chooses to discard the unsaved work. */
+function askToDiscard(message) {
+  return new Promise((resolve) => {
+    const panel = $("unsaved-panel");
+    $("unsaved-summary").textContent = message;
+    panel.hidden = false;
+    const stay = $("unsaved-stay");
+    const discard = $("unsaved-discard");
+    const finish = (answer) => {
+      stay.removeEventListener("click", onStay);
+      discard.removeEventListener("click", onDiscard);
+      panel.hidden = true;
+      resolve(answer);
+    };
+    const onStay = () => { finish(false); (app.conflict ? $("conflict-reload") : $("save-retry")).focus?.(); };
+    const onDiscard = () => {
+      // An explicit decision: the local edits are dropped and the server record stands.
+      app.dirty = false;
+      app.queued = false;
+      app.ambiguous = null;
+      app.failed = false;
+      app.pendingMutationId = null;
+      app.conflict = null;
+      cancelScheduledSave();
+      hideConflict();
+      announce("Unsaved changes discarded");
+      finish(true);
+    };
+    stay.addEventListener("click", onStay);
+    discard.addEventListener("click", onDiscard);
+    stay.focus();
+  });
+}
+
+function hideUnsavedPanel() {
+  const panel = $("unsaved-panel");
+  if (panel) panel.hidden = true;
+}
+
+async function backToList() {
+  await leaveEditor(async () => {
+    await renderList();
+    showView("list");
+  });
 }
 
 // ---- bootstrap ---------------------------------------------------------------------------------
@@ -644,7 +819,9 @@ async function init() {
   $("conflict-reload").addEventListener("click", resolveConflictReload);
   $("conflict-keep").addEventListener("click", resolveConflictKeep);
   $("conflict-retry").addEventListener("click", () => beginConflict(app.conflict && app.conflict.error));
-  window.addEventListener("beforeunload", (ev) => { if (app.dirty && app.current && app.current.canEdit) { ev.preventDefault(); ev.returnValue = ""; } });
+  // Unload protection covers every pending state, not just dirty: a queued, in-flight, ambiguous,
+  // failed, or conflicted save is unsaved work too.
+  window.addEventListener("beforeunload", (ev) => { if (app.current && app.current.canEdit && hasUnsavedWork()) { ev.preventDefault(); ev.returnValue = ""; } });
   await renderList();
   showView("list");
   body.dataset.ready = "true";

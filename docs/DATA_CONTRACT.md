@@ -75,7 +75,7 @@ Every child row carries or resolves to the walk's pinned `version_id`. The serve
 {
   "walkId": "GUID",
   "versionId": "GUID",
-  "rowVersion": "base64-rowversion",
+  "rowVersion": "0x0000000000000000",
   "clientMutationId": "GUID",
   "changedAt": "ISO-8601 timestamp",
   "dimensions": {
@@ -83,11 +83,16 @@ Every child row carries or resolves to the walk's pinned `version_id`. The serve
     "tag": { "textValue": "optional text" }
   },
   "responses": {
-    "comp_s1_q1": { "state": "ANSWERED", "storedCode": "4" },
-    "comp_s1_notes": { "state": "ANSWERED", "textValue": "..." }
+    "comp_s1_q1": { "storedCode": "4" },
+    "comp_s1_notes": { "textValue": "..." }
   }
 }
 ```
+
+`rowVersion` and `clientMutationId` are required on a save, and both `dimensions` and `responses`
+root objects must be present. Response `state` is derived data: the server owns it, and a payload
+that asserts one is rejected (`CLIENT_STATE_NOT_ACCEPTED`) rather than silently ignored. Values are
+checked against their JSON primitive type, never coerced.
 
 The server response returns the committed `rowVersion`, normalized values, save timestamp, and mutation ID. A retry with the same mutation ID must not duplicate data. A stale row version returns a conflict, never a last-write-wins overwrite.
 
@@ -149,6 +154,82 @@ This object is private walk content, not an aggregate-report source. Nothing in 
 - Hidden, unanswered, and not-applicable values remain visible as separate data-quality/state counts when useful, but never enter numeric averages.
 - Narrative items, email workflow state, teacher fields, and classroom labels are excluded.
 
+## Mutation identity and idempotency
+
+Every state-changing walk request carries a `clientMutationId` (create, save, complete, void) and,
+except on create, the walk's `rowVersion`. Both are mandatory: a missing or malformed token is a
+validation error before any write.
+
+`icf.walk_mutation` records each committed mutation in the same transaction as the change. A record
+binds the id to its **actor**, **action**, **target**, and the SHA-256 **fingerprint of its
+canonical semantic request** (migration `004_mutation_fingerprint.sql`, additive and nullable so
+rows written earlier stay valid). The fingerprint is taken over canonical JSON of the action, the
+target (the walk, or the org unit for a create), and the fields that decide what the request means:
+the whole-state `dimensions`/`responses` for create and save, the `reason` for a void. It excludes
+`rowVersion`, `clientMutationId`, `changedAt`, and the requested `versionId` -- none of those is
+part of what the request means, and a create retried after a newer version is published must still
+match what it committed.
+
+- An exact retry of a committed request replays its recorded outcome and writes nothing.
+- The same id with a different actor, action, target, or semantic request is refused
+  (`MUTATION_ID_REUSED`); it is never accepted as an equivalent retry.
+- **Every replay re-authorizes the recorded walk** against the current principal and the current
+  authorization graph before returning anything about it. An id recorded before access changed
+  answers "not found", exactly as opening that walk would.
+
+Network errors and HTTP 5xx are ambiguous -- the mutation may have committed before the answer was
+lost -- so a client retries them with the same `clientMutationId` and the same body. An operation id
+is spent only on a definitive success or a definitive, non-retryable 4xx.
+
+## Visibility, retention, and clearing on a whole-state save
+
+The server, not the browser, owns visibility, applicability, and retention. Inside the locked
+mutation transaction it loads the persisted state, derives visibility from the walk's **pinned**
+instrument, and merges:
+
+| Case | Result |
+| --- | --- |
+| Hidden under the submitted state | The persisted value is kept. An omitted hidden value is RETAINED without the browser echoing it, and a value a client sends for a hidden target is ignored. |
+| Was hidden and the submission omits it | The persisted value reappears (the condition has returned). |
+| Visible and the submission omits it | CLEAR: the value is cleared. |
+| Visible and the submission carries it | A normal edit. |
+| `NOT_APPLICABLE` (skippable component marked No) | Ratings are cleared, notes are preserved. Switching back to Yes returns the ratings as `UNANSWERED`, never the cleared values. |
+
+A crafted client therefore cannot alter, inject, or delete a value the instrument currently hides.
+
+## School and organizational scope
+
+A walk conducted at a SCHOOL org unit must carry the School dimension value that names that unit;
+the authorized, active org unit is authoritative.
+
+- When the pinned instrument defines a School value whose code equals the unit's `org_unit_code`,
+  the server fills and locks that value, and refuses any other School value, including the
+  free-text "Other" (`SCHOOL_ORG_MISMATCH`).
+- When no School value matches the unit -- a deployment whose org-unit codes are not aligned with
+  the instrument's school list -- nothing is invented, but a School value naming a *different*
+  active SCHOOL org unit is still refused, so a walk authorized at School A can never be labelled
+  School B.
+- A district-scoped user creating a walk at an authorized descendant SCHOOL is an ordinary create:
+  authorization is the org unit's, and the School dimension follows that unit.
+- Walks at a DISTRICT unit are left alone. This specification defines no district-level walk
+  semantics, so none are assumed.
+
+## Runtime instrument selection and snapshot integrity
+
+- The current version is scoped to the ICFWalk instrument itself (`ICFWALK_INSTRUMENT_CODE`): the
+  newest PUBLISHED version whose `effective_start` is at or before the current UTC instant and
+  whose `effective_end` is absent or still in the future. A version scheduled for a future term, an
+  expired one, and a version of any other instrument that happens to share a label are all
+  excluded. The development-only DRAFT preview is scoped to the same instrument and has no
+  effective window.
+- Draft import and draft discard resolve a version by `(instrument_id, version_label)`. A version
+  label is unique only within an instrument, so another instrument's identically labelled draft can
+  neither be selected nor deleted.
+- Every uncached snapshot load re-computes SHA-256 over the exact stored canonical UTF-8 snapshot
+  and compares it with `checksum_sha256`. A mismatch, or a missing digest, fails closed: nothing is
+  parsed into a render model, nothing is cached, and the walk surfaces answer with a configuration
+  error rather than rendering or validating against an altered contract.
+
 ## Concurrency and transactions
 
 - Treat the walk plus changed dimensions/responses as one authorized aggregate mutation.
@@ -170,14 +251,18 @@ This object is private walk content, not an aggregate-report source. Nothing in 
   the four states are countable in reports. Values are cleared (option NULL) for `NOT_APPLICABLE`
   and retained for `HIDDEN`. Dimension rows exist only while a value is present; a dimension's
   HIDDEN state is derived by evaluating the walk's pinned rules (the table has no state column).
-- **`observed_at`** follows the visit-date dimension (the first DATE-typed placement with a value);
-  it defaults to the creation instant until a date is entered.
-- **Idempotency**: `icf.walk_mutation` (migration `003`) records each client mutation id with the
-  committed outcome in the same transaction; a retry replays it. Ids are bound to walk, actor, and
-  action.
-- **Revisions**: appended on completion (`COMPLETE`, the pre-completion snapshot) and on each edit of
-  a COMPLETED walk (`POST_COMPLETION_EDIT`, the snapshot before the edit); DRAFT autosaves append
-  none. `prior_snapshot_json` holds the walk header, dimension values, and responses with states.
+- **`observed_at`** follows the visit-date dimension (the first DATE-typed placement with a value).
+  When no visit date is present -- never entered, or entered and then cleared -- it falls back to the
+  walk's immutable `created_at`, so a cleared date never leaves a stale observation timestamp behind.
+- **Idempotency**: `icf.walk_mutation` (migrations `003` and `004`) records each client mutation id
+  with the committed outcome in the same transaction; an exact retry replays it. Ids are bound to
+  walk, actor, action, and the fingerprint of the canonical semantic request. See "Mutation identity
+  and idempotency" above.
+- **Revisions**: appended on completion (`COMPLETE`, the pre-completion snapshot) and on each
+  *material* edit of a COMPLETED walk (`POST_COMPLETION_EDIT`, the snapshot before the edit); DRAFT
+  autosaves append none. An identical save to a COMPLETED walk writes nothing at all: no revision, no
+  new row version. `prior_snapshot_json` holds the walk header, dimension values, and responses with
+  states.
 - **Void vs delete**: the My Walks delete action voids a DRAFT with the reason
   "Deleted by owner from My Walks"; a COMPLETED walk requires an explicit reason; physical deletion
   is never available (`DELETE` answers 409). Voided walks keep all rows and leave the list.

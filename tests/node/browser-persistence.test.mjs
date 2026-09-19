@@ -333,3 +333,105 @@ test("A11Y-03: axe-core finds no serious or critical violations in the conflict 
   await waitStatus("All changes saved");
   assert.deepEqual(pageErrors, []);
 });
+
+// ---- Phase 0-4 correction: no unsaved local edit may silently disappear -------------------------
+
+test("CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision", { skip }, async () => {
+  await openHome();
+  const id = await startWalk();
+  // A definitive server rejection: the edit is held on the page only.
+  await page.route("**/api/walks/*", (route) => route.request().method() === "PUT"
+    ? route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: { code: "TEST_REJECTED", message: "rejected" } }) })
+    : route.continue());
+  await expand("part2");
+  await expand("s1");
+  await page.fill('[data-item-key="comp_s1_notes"] textarea', "must not disappear");
+  await page.waitForFunction(() => /TEST_REJECTED/.test(document.getElementById("save-status").textContent), null, { timeout: 15000 });
+
+  // Back does not leave: the editor and the typed text stay, and a decision is demanded.
+  await page.click("#back-btn");
+  await page.waitForSelector("#unsaved-panel:not([hidden])", { timeout: 15000 });
+  assert.equal(await page.isVisible("#view-walk"), true, "the editor is retained");
+  assert.equal(await page.inputValue('[data-item-key="comp_s1_notes"] textarea'), "must not disappear");
+  assert.equal((await apiWalk(id)).state.responses.comp_s1_notes?.textValue ?? "", "", "nothing reached the server");
+
+  // Keep editing puts the user back in the editor with the input intact.
+  await page.click("#unsaved-stay");
+  await page.waitForSelector("#unsaved-panel", { state: "hidden" });
+  assert.equal(await page.isVisible("#view-walk"), true);
+  assert.equal(await page.inputValue('[data-item-key="comp_s1_notes"] textarea'), "must not disappear");
+
+  // Once the server accepts the save, Back leaves without asking anything.
+  await page.unroute("**/api/walks/*");
+  await page.click("#save-retry");
+  await waitStatus("All changes saved");
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+  assert.equal((await apiWalk(id)).state.responses.comp_s1_notes.textValue, "must not disappear");
+});
+
+test("CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving", { skip }, async () => {
+  const id = (await apiList())[0].id;
+  await openCard(id);
+  const server = await apiWalk(id);
+  await page.route("**/api/walks/*", (route) => route.request().method() === "PUT"
+    ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "STALE_ROW_VERSION", message: "stale", details: { walkId: id, serverRowVersion: server.rowVersion } } }) })
+    : route.continue());
+  await expand("part2");
+  await expand("s1");
+  await page.fill('[data-item-key="comp_s1_notes"] textarea', "unsent while conflicted");
+  await page.waitForSelector("#conflict-panel:not([hidden])", { timeout: 15000 });
+
+  // The My walks button in the header is the same navigation path.
+  await page.click("#nav-list-btn");
+  await page.waitForSelector("#unsaved-panel:not([hidden])", { timeout: 15000 });
+  assert.equal(await page.isVisible("#view-walk"), true, "the editor and the conflict panel are retained");
+  assert.equal(await page.inputValue('[data-item-key="comp_s1_notes"] textarea'), "unsent while conflicted");
+  await page.click("#unsaved-stay");
+  await page.waitForSelector("#unsaved-panel", { state: "hidden" });
+  assert.equal(await page.isVisible("#conflict-panel"), true);
+
+  // Discarding is explicit; only then does the list appear, with the server record unchanged.
+  await page.click("#nav-list-btn");
+  await page.waitForSelector("#unsaved-panel:not([hidden])", { timeout: 15000 });
+  await page.click("#unsaved-discard");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+  await page.unroute("**/api/walks/*");
+  assert.notEqual((await apiWalk(id)).state.responses.comp_s1_notes?.textValue ?? "", "unsent while conflicted", "the discarded edit never reached the server");
+});
+
+test("CORR: beforeunload protects in-flight and queued saves, not only dirty state", { skip }, async () => {
+  const id = (await apiList())[0].id;
+  await openCard(id);
+  await expand("part2");
+  await expand("s1");
+  const guarded = () => page.evaluate(() => {
+    const ev = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  });
+  assert.equal(await guarded(), false, "a settled editor does not block unload");
+
+  // Dirty and still inside the debounce window.
+  await page.fill('[data-item-key="comp_s1_notes"] textarea', "queued edit");
+  assert.equal(await guarded(), true, "a queued (debounced) edit blocks unload");
+  await waitStatus("All changes saved");
+  assert.equal(await guarded(), false);
+
+  // In flight: the request is held open, so app.dirty is already false while the save is pending.
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route("**/api/walks/*", async (route) => {
+    if (route.request().method() !== "PUT") return route.continue();
+    await held;
+    return route.continue();
+  });
+  await page.fill('[data-item-key="comp_s1_notes"] textarea', "in flight edit");
+  await page.waitForFunction(() => document.getElementById("save-status").textContent === "Saving...", null, { timeout: 15000 });
+  assert.equal(await guarded(), true, "an in-flight save blocks unload");
+  release();
+  await waitStatus("All changes saved");
+  await page.unroute("**/api/walks/*");
+  assert.equal(await guarded(), false, "a committed save releases the guard");
+  assert.deepEqual(pageErrors, []);
+});

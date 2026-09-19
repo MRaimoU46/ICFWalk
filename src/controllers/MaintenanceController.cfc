@@ -31,7 +31,8 @@ component output="false" {
 		if (!structKeyExists(arguments.req.body, "versionLabel") || !len(trim(arguments.req.body.versionLabel))) {
 			variables.c.errors.validation("versionLabel is required.", "VERSION_LABEL_REQUIRED");
 		}
-		var result = variables.c.instrumentImportService.discardDraft(arguments.req.body.versionLabel);
+		var instrumentCode = structKeyExists(arguments.req.body, "instrumentCode") && isSimpleValue(arguments.req.body.instrumentCode) ? trim(arguments.req.body.instrumentCode) : "";
+		var result = variables.c.instrumentImportService.discardDraft(arguments.req.body.versionLabel, "", instrumentCode);
 		return { "status": 200, "body": result };
 	}
 

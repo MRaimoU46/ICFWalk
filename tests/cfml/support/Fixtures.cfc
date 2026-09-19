@@ -22,6 +22,17 @@ component output="false" {
 		return id;
 	}
 
+	/**
+	 * An org unit whose code is exactly as given, with no per-run prefix. Used only where the code
+	 * must match instrument content (the School dimension's value codes name schools by code).
+	 * Removed with the rest of the fixtures.
+	 */
+	public string function orgUnitExact(required string code, required string type, string parentId = "", boolean active = true) {
+		var id = variables.c.orgUnitRepository.upsert(arguments.code, arguments.type, "Fixture " & arguments.code, arguments.parentId, arguments.active);
+		arrayAppend(variables.orgUnitIds, id);
+		return id;
+	}
+
 	public struct function user(required string name, boolean active = true) {
 		var subject = variables.tag & "-" & arguments.name;
 		var u = variables.c.userRepository.provision(subject, "Fixture " & arguments.name, "");

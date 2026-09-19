@@ -26,7 +26,7 @@ marked explicitly.
 | --- | --- | --- |
 | DB-01 | PASS | `tests/node/db-scripts.test.mjs` on SQL Server 2022 (16.0.4295): both scripts commit; 20 tables; 5 roles; instrument ICFWALK. |
 | DB-02 | PASS | Same test: rerun of 001 raises error 50001, table and role counts unchanged. |
-| DB-03 | PASS | Same test: 002 re-applied without error, one `definition` column. Phase 4 migration `003_walk_mutation.sql` applied and re-applied without error in the same test (21 tables). |
+| DB-03 | PASS | Same test: 002 re-applied without error, one `definition` column. Phase 4 migration `003_walk_mutation.sql` and correction migration `004_mutation_fingerprint.sql` applied and re-applied without error in the same test (21 tables, 7 `walk_mutation` columns, one `request_fingerprint` column, digest constraint accepts lower-case hex and refuses anything else, pre-patch rows stay valid). |
 | DB-04 | PASS | `InstrumentImportServiceTest.testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot` (GUID mapping, snapshot stored, counts 23/144/29/138/12/10, no orphans, audit event). |
 | DB-05 | PASS | `...testDb05ReimportIsIdempotentWithStableGuidsAndChecksum` (same version id, identical checksum, no duplicate rows, GUIDs reused) and `...testReorderedReimportSucceedsAndReturnsToGolden`. Seed endpoint idempotency in `tests/node/cfml-suite.test.mjs`. |
 | DB-06 | PASS | `...testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges` (409 `INSTRUMENT_VERSION_IMMUTABLE`; version and item row versions unchanged). |
@@ -130,3 +130,39 @@ Each COND row is proven three ways: `VisibilityEngineTest` (CFML engine), `tests
 | A11Y-03 | PASS (Phase 3 + 4 views) | axe-core 4 (WCAG 2.0/2.1 A+AA) on the editor, the list, the completion-error state, and the conflict panel: no serious/critical violations. Admin and reports: later phases. |
 | A11Y-04 | PASS (Phase 3 views) | Contrast: muted text and the REQUIRED badge darkened from the prototype values (see BUILD_STATUS); selected pills carry a check mark in addition to color; required fields carry a badge, not color alone. |
 | A11Y-05 | PASS (automated part) | 375/768/1280 px: no horizontal overflow (`scrollWidth` check) with Part 1, Part 2, and a component expanded; screenshots in `docs/evidence/screenshots/`. 200 % zoom and manual review: listed under browser checks in BUILD_STATUS. |
+
+## Phase 0-4 correction session (audit findings)
+
+Regression coverage added for the independent architecture/security/data-integrity audit.
+Correction IDs are local to this session; each maps to the acceptance IDs it strengthens.
+CFML evidence: `tests/cfml/specs/WalkCorrectionTest.cfc` (17 cases),
+`tests/cfml/specs/WalkSchoolScopeTest.cfc` (4), `tests/cfml/specs/InstrumentScopeTest.cfc` (4).
+HTTP evidence: `tests/node/walks.test.mjs` (3 added cases). Browser evidence:
+`tests/node/browser-persistence.test.mjs` (3 added cases). Migration evidence:
+`tests/node/db-scripts.test.mjs`, `tests/node/schema-contract.test.mjs`.
+
+| ID | Finding | Status | Method / evidence |
+| --- | --- | --- | --- |
+| CORR-01 | A create replay could return a walk the current principal can no longer access (`loadDto`'s `skipAuthorization` flag was never read, and create replay ran no record-level check). | CONFIRMED, FIXED | `WalkCorrectionTest.testCorr01CreateReplayIsReauthorizedAfterAccessIsRevoked`: create at School A, revoke A, keep School B, retry the A mutation -- refused, the walk stays invisible, and the exact retry replays once access is restored. `testCorr02ReplayOfARecordedMutationOutsideScopeIsNotFound` forges a mutation row pointing at an out-of-scope walk and gets 404. HTTP: `walks.test.mjs` "a create mutation id from a school the caller lost". Strengthens WALK-03, AUTH-04, AUTH-09, SEC-06. |
+| CORR-02 | Misleading `skipAuthorization` parameter. | CONFIRMED, REMOVED | `loadDto(walkId, principal)` no longer takes it; every caller authorizes the record first (`WalkService`). |
+| CORR-03 | Mutation ids were bound only to actor/action/walk, so the same id could replay a different semantic request. | CONFIRMED, FIXED | Migration `004_mutation_fingerprint.sql` + `WalkCorrectionTest.testCorr03SameMutationIdWithAnAlteredRequestIsRefused` (create, save, complete, void); HTTP: "a committed mutation whose answer was lost replays on retry". Strengthens SAVE-03, SAVE-06, SEC-06. |
+| CORR-04 | A create retry was refused with `INSTRUMENT_VERSION_CHANGED` once a newer version was published, stranding the committed walk. | CONFIRMED, FIXED | `WalkCorrectionTest.testCorr04CreateReplaySurvivesANewerPublishedVersion`. |
+| CORR-05 | Whole-state saves relied on the browser resubmitting hidden retained values; an omitted hidden value was deleted. | CONFIRMED, FIXED | `testCorr05OmittedHiddenValueIsRetained` (Period and a conditional classroom section, asserted on `icf.walk_dimension_value` / `icf.walk_response`). Strengthens COND-06, COND-10. |
+| CORR-06 | A crafted client could inject or change a currently hidden value. | CONFIRMED, FIXED | `testCorr06HiddenValueInjectionIsIgnored`: crafted hidden values are ignored and the stored values stand. Strengthens SEC-01, SAVE-07. |
+| CORR-07 | Hide-then-show lost the retained value when the browser did not echo it. | CONFIRMED, FIXED | `testCorr07HideThenShowRestoresTheStoredValue`. Strengthens COND-06. |
+| CORR-08 | CLEAR had to keep working under server-side retention. | VERIFIED | `testCorr08OmittingAVisibleValueClearsIt`. |
+| CORR-09 | N/A clearing and note preservation had to keep working under server-side retention. | VERIFIED | `testCorr09NotApplicableClearsRatingsAndKeepsNotes`. Strengthens COND-12, COND-13. |
+| CORR-10 | `clientMutationId` was optional on create and void. | CONFIRMED, FIXED | `testCorr10EveryMutationRequiresAClientMutationId`; HTTP envelope table in `walks.test.mjs`. |
+| CORR-11 | `rowVersion` was optional on void. | CONFIRMED, FIXED | `testCorr11SaveCompleteAndVoidRequireARowVersionButCreateDoesNot`. |
+| CORR-12 | A stale void had to refuse without changing state. | VERIFIED | `testCorr12AStaleVoidIsARefusalThatChangesNothing` (status and row version unchanged). Strengthens SAVE-04. |
+| CORR-13 | An identical save to a COMPLETED walk appended a revision and advanced the row version. | CONFIRMED, FIXED | `testCorr13IdenticalCompletedSaveIsANoOpAndAMaterialOneAppendsOneRevision`; HTTP equivalent asserts `revisionCount` and `rowVersion`. Strengthens WALK-10. |
+| CORR-14 | `observed_at` kept a stale date after the Visit Date was cleared. | CONFIRMED, FIXED | `testCorr14VisitDateSetThenClearedFallsBackToTheCreationInstant` (asserted against `icf.walk.observed_at` and `created_at`). |
+| CORR-15 | A whole-state save accepted a missing `dimensions` or `responses` root object. | CONFIRMED, FIXED | `testCorr15WholeStateSaveRequiresBothRootContainers`; HTTP envelope table. |
+| CORR-16 | CFML coercion let a JSON number or boolean stand in for a string code. | CONFIRMED, FIXED | `testCorr16JsonPrimitiveTypesAreCheckedNotCoerced` (JSON `4` is not the option code `"4"`). Strengthens SAVE-07, SEC-01. |
+| CORR-17 | Browser-provided response `state` is derived data. | VERIFIED, MADE EXPLICIT | `testCorr17ClientAssertedResponseStateCannotControlPersistedState` (400 `CLIENT_STATE_NOT_ACCEPTED`, nothing written, the server's own state stands). |
+| CORR-18 | `walk.org_unit_id` and the School dimension could contradict each other. | CONFIRMED, FIXED | `WalkSchoolScopeTest`: server fill and lock, School A vs School B and "Other" refused with 409 `SCHOOL_ORG_MISMATCH` and nothing written, district-authorized selection of an allowed child SCHOOL accepted, unaligned deployments still refused another school's label. Strengthens AUTH-04, RPT scope work in Phase 7. |
+| CORR-19 | Current-version selection was not scoped to ICFWALK and ignored the effective window. | CONFIRMED, FIXED | `InstrumentScopeTest.testASecondInstrumentNeverSuppliesTheCurrentVersion`, `testFutureAndExpiredIcfwalkVersionsAreNotSelected`. Strengthens WALK-01, WALK-11. |
+| CORR-20 | Draft discard resolved a version by label alone, across instruments. | CONFIRMED, FIXED | `InstrumentScopeTest.testDiscardDraftCannotReachAnotherInstrumentsSameLabelDraft`. Strengthens DB-06. |
+| CORR-21 | The runtime snapshot was parsed and cached without checking its stored checksum. | CONFIRMED, FIXED | `InstrumentScopeTest.testACorruptedSnapshotFailsClosedOnAnUncachedLoad` (mismatch and missing digest both fail closed; the intact copy still loads). Strengthens DB-05, SEC-01. |
+| CORR-22 | Failed, conflicted, or in-flight saves could be abandoned by Back/List or reload. | CONFIRMED, FIXED | `browser-persistence.test.mjs`: "a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision", "an unresolved conflict plus Back/List demands an explicit discard", "beforeunload protects in-flight and queued saves". Strengthens SAVE-03, SAVE-04, SAVE-05, A11Y-02. |
+| CORR-23 | Ambiguous failures abandoned the pending operation id. | CONFIRMED, FIXED | Transport failures and HTTP 5xx now retain the `clientMutationId` and the exact payload for create, save, complete, and void (`app/assets/js/app.js`); `browser-persistence.test.mjs` SAVE-03 asserts the reused id on both the transport-failure and the 5xx path. |

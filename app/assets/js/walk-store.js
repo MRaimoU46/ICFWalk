@@ -14,7 +14,8 @@
  *                                           server clearing changes; throws ApiError 409
  *                                           STALE_ROW_VERSION on a stale write
  *   complete(walk, clientMutationId)     -> Promise<Walk>; throws ApiError 400 WALK_INCOMPLETE
- *   remove(id, {reason, rowVersion, clientMutationId}) -> Promise<Walk>  voids (never deletes)
+ *   remove(id, {reason, rowVersion, clientMutationId}) -> Promise<Walk>  voids (never deletes);
+ *                                           rowVersion and clientMutationId are required
  *
  * Walk: { id, orgUnitId, orgUnitName, versionId, versionLabel, status, ownerDisplayName, isOwner,
  *         canEdit, createdAt, updatedAt (epoch ms), completedAt, rowVersion, state, states?, changes? }
@@ -58,9 +59,10 @@ export class ApiWalkStore {
     return toWalk(res.walk);
   }
   async remove(id, { reason, rowVersion, clientMutationId } = {}) {
-    const body = { clientMutationId: clientMutationId || newId() };
+    // rowVersion and clientMutationId are required by the void contract (docs/ENDPOINTS.md); they
+    // are always sent so the server can refuse a stale or duplicated void.
+    const body = { clientMutationId: clientMutationId || newId(), rowVersion };
     if (reason) body.reason = reason;
-    if (rowVersion) body.rowVersion = rowVersion;
     const res = await this.api.post(`/walks/${encodeURIComponent(id)}/void`, body);
     return toWalk(res.walk);
   }

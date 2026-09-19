@@ -713,3 +713,175 @@ reread). The list below is the short form it expands.
    editable to/subject/body) and persist it through the existing save path (`email_workflow` item,
    validated by `WalkPayloadValidator.validateEmailDraft`); nothing sends mail.
 5. Extend `WalkServiceTest`/`walks.test.mjs`/Playwright with SUM-01..09 and keep `npm test` green.
+
+## Phase 0-4 correction session (audit findings)
+
+A correction-only session against commit `4b0bb3f`. No Phase 5 work was started and
+`docs/PHASE_5_IMPLEMENTATION_BRIEF.md` was not read. The existing
+controller/service/repository/snapshot/visibility architecture is unchanged; every change is a
+targeted correction inside it.
+
+### Audit findings confirmed and corrected
+
+1. **Create replay authorization.** `WalkService.loadDto` took a `skipAuthorization` argument it
+   never read, and the create path replayed a recorded mutation with no record-level check at all
+   (`replay(recorded, principal, "CREATE", "")` passed an empty walk id, so even the
+   actor/action/target comparison could not bind it to a walk). A mutation id recorded at School A
+   could therefore be replayed by a principal who had since lost School A but kept School B, and the
+   School A walk was returned. `replay()` now re-authorizes the recorded walk through
+   `AuthorizationService.authorizeWalk` **before** anything is compared or returned (a stale or
+   forged id answers 404, exactly as opening that walk would), and only then checks actor, action,
+   target, and content. The `skipAuthorization` parameter is gone.
+2. **Server-authoritative hidden value retention.** The save path validated and normalized only what
+   the browser submitted, then wrote the difference against the persisted rows, so a hidden value the
+   browser did not resubmit was deleted and a hidden value a crafted client did submit was written.
+   The merge now happens inside the locked transaction against the persisted state
+   (`mergeRetainedHidden`): visibility is derived from the pinned instrument, a value hidden under the
+   submission is taken from the database, a value that was hidden and is omitted reappears from the
+   database, and visible keys stay whole-state so CLEAR still clears. `NOT_APPLICABLE` is unchanged
+   (ratings cleared, notes kept, Yes returns them as `UNANSWERED`). No test was changed to echo
+   hidden data.
+3. **Mandatory mutation/concurrency envelope.** `clientMutationId` was optional on create and void,
+   and `rowVersion` was optional on void. All four routes now require `clientMutationId`; save,
+   complete, and void require `rowVersion`; create does not. Malformed tokens (including a JSON
+   number where a string belongs) are 400 before any write, and a stale void is 409 with the walk's
+   status and row version unchanged. `docs/ENDPOINTS.md` and `app/assets/js/walk-store.js` follow the
+   corrected contract.
+4. **Complete idempotency.** Mutation ids were bound to actor, action, and walk but not to content,
+   so the same id could replay a materially different request; and a create retried after a newer
+   version was published was refused with `INSTRUMENT_VERSION_CHANGED` before the replay lookup ran,
+   stranding the committed walk. Migration `004_mutation_fingerprint.sql` adds
+   `walk_mutation.request_fingerprint` (SHA-256 over canonical JSON of the action, the target, and the
+   semantic body -- never the concurrency token, the mutation id, the client clock, or the requested
+   version id). The recorded-mutation lookup now runs before the version check on create. In the
+   browser, transport failures and HTTP 5xx are treated as ambiguous: create, save, complete, and
+   void keep their operation id and their exact payload until a definitive success or a definitive,
+   non-retryable 4xx. Transaction atomicity is unchanged -- the mutation row is still written in the
+   same transaction as the change.
+5. **Autosave/navigation data loss.** `backToList()` saved, awaited the in-flight promise, and then
+   navigated regardless of the outcome, so a failed, conflicted, or ambiguous save was abandoned; and
+   `beforeunload` guarded `app.dirty` only, which is already false while a save is in flight. The
+   editor now tracks one pending state (dirty, debounce queued, in-flight, ambiguous failure, failed
+   save, unresolved conflict). Internal navigation either completes the save, retains the editor with
+   the unsaved input, or requires an explicit discard through an `alertdialog`; `beforeunload` reads
+   the same state. Nothing is written to `localStorage`.
+6. **School/org consistency.** Nothing bound `walk.org_unit_id` to the School dimension, so a walk
+   authorized at School A could be labelled School B or "Other". The authorized active SCHOOL org
+   unit is now authoritative: where the pinned instrument defines a School value whose code equals the
+   unit's `org_unit_code` the server fills and locks it and refuses any other value (409
+   `SCHOOL_ORG_MISMATCH`, audited, nothing written); where no value matches the unit nothing is
+   invented, but a value naming a different active SCHOOL org unit is still refused. District-scoped
+   users create at authorized descendant SCHOOL units as before. No district-level walk semantics were
+   invented, because `docs/PRODUCT_SPEC.md` defines none.
+7. **ICFWALK instrument scoping.** `currentVersion()` selected the newest PUBLISHED version of *any*
+   active instrument with no effective window, and `discardDraft()` resolved a version by label alone
+   (it looked the ICFWalk instrument up and then never used it). Selection is now scoped to
+   `ICFWALK_INSTRUMENT_CODE` with `effective_start <= SYSUTCDATETIME()` and
+   `effective_end IS NULL OR effective_end > SYSUTCDATETIME()`; the development-only DRAFT preview is
+   scoped to the same instrument. Draft discard resolves `(instrument_id, version_label)` and accepts
+   an explicit `instrumentCode`.
+8. **Related integrity fixes.**
+   - **Runtime snapshot checksum**: every uncached load re-computes SHA-256 over the stored canonical
+     UTF-8 snapshot and compares it with `checksum_sha256`; a mismatch or a missing digest fails
+     closed (nothing parsed, nothing cached, `INSTRUMENT_SNAPSHOT_CHECKSUM_MISMATCH` /
+     `INSTRUMENT_SNAPSHOT_CHECKSUM_MISSING`).
+   - **Completed-walk no-op saves**: `persistState` was split into `planState` (a dry run) and
+     `applyPlan`, so an identical save to a COMPLETED walk appends no revision and does not advance
+     the row version, while a material change still appends exactly one `POST_COMPLETION_EDIT`
+     revision and one aggregate update.
+   - **Visit Date clearing**: `observed_at` follows the Visit Date dimension and falls back to the
+     walk's immutable `created_at` when it is absent or cleared (`WalkRepository.touchWalk`).
+   - **Strict whole-state payload**: both root containers are required on a save (a create may omit
+     both but never one), JSON primitive types are checked against the underlying Java type rather
+     than coerced by CFML, and a client-asserted response `state` is refused with
+     `CLIENT_STATE_NOT_ACCEPTED`.
+
+### Findings recorded rather than changed
+
+- **Client-asserted response state** was already impossible to honour: the Phase 4 validator rejected
+  any unknown value field, so `state` never reached persistence. The audit's concern is real as a
+  contract question, not as a defect, so the rejection was given its own code and message
+  (`CLIENT_STATE_NOT_ACCEPTED`) and the documented payload example in `docs/DATA_CONTRACT.md` was
+  corrected to drop `state` (it had shown a field the server has never accepted). This resolves the
+  source conflict recorded as Phase 4 decision 12.
+- **District-level walk semantics** were not invented. The audit asked for School/org consistency;
+  `docs/PRODUCT_SPEC.md` defines walks at schools and says nothing about walks recorded against a
+  DISTRICT org unit, so those are left exactly as they were: no School value is filled, and none is
+  refused.
+- **Deployments whose org-unit codes are not aligned with the instrument's school list** cannot have
+  a School value filled for them, because there is nothing to fill. Rather than refuse every such
+  walk (which would break any deployment that has not aligned its codes), the server refuses only a
+  School value that names a *different* active SCHOOL org unit. `config/org-units.example.json`
+  generates aligned codes, so an aligned deployment gets the full fill-and-lock behaviour.
+
+### Files created or changed (correction session)
+
+Created: `database/004_mutation_fingerprint.sql`, `tests/cfml/specs/WalkCorrectionTest.cfc`,
+`tests/cfml/specs/WalkSchoolScopeTest.cfc`, `tests/cfml/specs/InstrumentScopeTest.cfc`.
+
+Changed: `src/walks/WalkService.cfc` (replay authorization and content binding, in-transaction merge,
+plan/apply split, school scope, envelope, `observed_at`), `src/walks/WalkRepository.cfc` (fingerprint
+column, `observed_at` fallback), `src/walks/WalkPayloadValidator.cfc` (JSON primitive types, root
+containers, client state), `src/instrument/SnapshotService.cfc` (instrument scope, effective window,
+checksum verification), `src/instrument/InstrumentImportService.cfc` (draft discard scope),
+`src/controllers/MaintenanceController.cfc`, `src/config/ConfigLoader.cfc` (`ICFWALK_INSTRUMENT_CODE`,
+`ICFWALK_SCHOOL_DIMENSION_CODE`), `src/Bootstrap.cfc`, `src/views/shell.html` (unsaved-work dialog),
+`app/assets/js/app.js` (pending state, navigation guard, ambiguous-failure handling, operation-id
+retention), `app/assets/js/walk-store.js`, `scripts/db/apply-schema.mjs`, `.env.example`,
+`database/README.md`, `docs/ENDPOINTS.md`, `docs/DATA_CONTRACT.md`, `docs/LOCAL_SETUP.md`,
+`docs/ACCEPTANCE_TRACKING.md`, `manifest.json`, `tests/cfml/support/Fixtures.cfc`,
+`tests/cfml/specs/WalkServiceTest.cfc`, `tests/cfml/specs/SnapshotServiceTest.cfc`,
+`tests/node/walks.test.mjs`, `tests/node/browser-persistence.test.mjs`,
+`tests/node/db-scripts.test.mjs`, `tests/node/schema-contract.test.mjs`.
+
+### Migration added
+
+`database/004_mutation_fingerprint.sql` -- additive, idempotent, SQL Server 2016 compatible. Adds
+nullable `icf.walk_mutation.request_fingerprint char(64)`, a check constraint restricting it to a
+lower-case 64-character hexadecimal digest (or NULL), and
+`IX_walk_mutation_actor_action`. Rows written before the patch keep their original
+actor/action/target binding. The statements that reference the new column run through `sp_executesql`
+because the supplied scripts contain no `GO` separators and deferred name resolution does not cover a
+column added earlier in the same batch.
+
+### Tests and results (correction session)
+
+Environment as before (Lucee 6.2.8 on Jetty, SQL Server 2022 Developer in Docker, Node 22.22,
+Playwright 1.56 with the pre-installed Chromium, axe-core 4). The Phase 4 baseline was reproduced in
+this environment before any change: 68/68 Node tests with the one known
+`docs/DATA_CONTRACT.md` manifest mismatch failing PKG-01, and 106/106 CFML specs.
+
+| Command | Result |
+| --- | --- |
+| `npm test` (full regression, once, `docs/evidence/correction-npm-test.txt`) | 75/75 pass, 0 skipped: the Phase 1-4 suites plus 3 walk HTTP cases and 3 browser cases added here |
+| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | 131 passed, 0 failed, 0 skipped (Phase 4's 106 plus `WalkCorrectionTest` 17, `WalkSchoolScopeTest` 4, `InstrumentScopeTest` 4) |
+| Targeted runs during implementation | `?filter=WalkService` (x4), `?filter=WalkCorrection` (x3), `?filter=WalkSchoolScope` (x2), `?filter=InstrumentScope` (x2), `?filter=Walk`, `node --test tests/node/{walks,browser,browser-persistence,db-scripts,schema-contract}.test.mjs` |
+| `node scripts/db/apply-schema.mjs --only 004` | applied, then re-applied without error (idempotent) |
+| `node scripts/refresh-manifest.mjs` then `node scripts/validate-handoff.mjs` | manifest reconciled for `database/README.md` and `docs/DATA_CONTRACT.md` after documentation was final; validator ok, 51 checks, 0 errors |
+
+Every correction carries at least one regression test that fails against the prior behaviour. The
+DATA_CONTRACT/manifest mismatch carried since Phase 4 is resolved: the two supplied documents that
+this session deliberately corrected were re-hashed through `scripts/refresh-manifest.mjs`, which only
+updates entries that already exist, so the manifest still describes exactly the supplied package.
+
+### Unresolved defects or blockers (correction session)
+
+None open. External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details,
+district org-unit codes, content-owner wording for the 17 placeholders, the content-area heading
+decision from Phase 3).
+
+### CF2023 verification items (correction session additions)
+
+- `isInstanceOf(value, "java.lang.String" | "java.lang.Number" | "java.lang.Boolean")` against values
+  from Adobe's `deserializeJSON` (`WalkPayloadValidator.jsonString/jsonNumber/jsonBoolean`,
+  `WalkService.isJsonString`). Lucee and Adobe both box JSON primitives as Java types, but the strict
+  checks are the one place where a difference would change behaviour: re-run `WalkCorrectionTest` on
+  ColdFusion.
+- `EXEC sp_executesql` inside the `BEGIN TRY` block of `004_mutation_fingerprint.sql` through the
+  Adobe SQL Server driver (the script is applied by tooling here, not by CFML).
+- `UPDATE ... SET observed_at = created_at` in the same statement as `updated_at = SYSUTCDATETIME()`
+  (`WalkRepository.touchWalk`).
+- `hash(text, "SHA-256", "UTF-8")` over a `nvarchar(max)` snapshot read through the Adobe driver
+  (`SnapshotService.loadEntry`): the digest must match the one the importer computed.
+- The browser navigation guard and `beforeunload` behaviour on the ColdFusion deployment
+  (`npm run test:browser`).

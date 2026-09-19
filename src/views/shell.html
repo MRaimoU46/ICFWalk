@@ -72,6 +72,14 @@
         <button type="button" class="btn" id="conflict-retry" hidden>Retry loading</button>
       </div>
     </div>
+    <div class="conflict-panel" id="unsaved-panel" role="alertdialog" aria-labelledby="unsaved-title" aria-describedby="unsaved-summary" hidden>
+      <h2 id="unsaved-title" class="conflict-title">You have unsaved changes</h2>
+      <p id="unsaved-summary"></p>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="unsaved-stay">Keep editing</button>
+        <button type="button" class="btn btn-danger" id="unsaved-discard">Discard changes and leave</button>
+      </div>
+    </div>
     <div class="completion-errors" id="completion-errors" role="alert" hidden>
       <p class="completion-errors-title" id="completion-errors-title"></p>
       <ul id="completion-error-list"></ul>

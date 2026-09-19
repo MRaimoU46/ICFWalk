@@ -98,6 +98,16 @@ component output="false" {
 		if (cfg.hiddenPeriodPolicy != "RETAIN_HIDDEN" && cfg.hiddenPeriodPolicy != "CLEAR") {
 			arrayAppend(errors, "ICFWALK_HIDDEN_PERIOD_POLICY must be RETAIN_HIDDEN or CLEAR.");
 		}
+		// The instrument every walk is conducted against. Version selection, draft import, and draft
+		// discard are all scoped to it so a second instrument sharing a version label can never be
+		// selected or deleted in its place.
+		cfg["instrumentCode"] = value("ICFWALK_INSTRUMENT_CODE", "ICFWALK");
+		if (!len(trim(cfg.instrumentCode))) arrayAppend(errors, "ICFWALK_INSTRUMENT_CODE must not be blank.");
+
+		// The dimension code whose value identifies the school a walk was conducted at. The current
+		// instrument names it "school" (config/instrument-config.json); the seam lets a deployment
+		// that renames it keep the org-unit consistency rule working.
+		cfg["schoolDimensionCode"] = value("ICFWALK_SCHOOL_DIMENSION_CODE", "school");
 		var suppression = value("ICFWALK_REPORT_SUPPRESSION_THRESHOLD", "");
 		cfg["reportSuppressionThreshold"] = len(suppression) && isNumeric(suppression) ? int(suppression) : 0;
 		cfg["outboundEmailEnabled"] = false; // Not configurable: no automatic outbound mail without separate authorization.
@@ -139,6 +149,8 @@ component output="false" {
 			"cookieSecure": arguments.cfg.cookieSecure,
 			"placeholderWarningsBlockPublish": arguments.cfg.placeholderWarningsBlockPublish,
 			"hiddenPeriodPolicy": arguments.cfg.hiddenPeriodPolicy,
+			"instrumentCode": arguments.cfg.instrumentCode,
+			"schoolDimensionCode": arguments.cfg.schoolDimensionCode,
 			"reportSuppressionThreshold": arguments.cfg.reportSuppressionThreshold,
 			"allowUnpublishedInstrument": arguments.cfg.allowUnpublishedInstrument
 		};

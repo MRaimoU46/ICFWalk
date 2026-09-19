@@ -308,7 +308,7 @@ test("WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, 
   assert.equal((await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: voided.json.walk.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: {} })).json.error.code, "WALK_VOIDED");
   // A draft voids without a reason (the My Walks delete action).
   const draft = (await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() })).json.walk;
-  const dv = await A.call("POST", `/api/walks/${draft.id}/void`, { clientMutationId: uuid() });
+  const dv = await A.call("POST", `/api/walks/${draft.id}/void`, { rowVersion: draft.rowVersion, clientMutationId: uuid() });
   assert.equal(dv.status, 200, dv.text);
   assert.equal(dv.json.walk.status, "VOIDED");
 });
@@ -324,4 +324,116 @@ test("WALK-11: the walk instrument route serves the walk's pinned version render
   assert.equal(typeof inst.json.policies.hiddenDimensionPolicy, "string");
   const current = await A.call("GET", "/api/instrument/current");
   assert.equal(JSON.stringify(inst.json.model), JSON.stringify(current.json.model), "same version, identical model");
+});
+
+// ---- Phase 0-4 corrections over HTTP -------------------------------------------------------------
+
+test("CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid() });
+  const w = created.json.walk;
+  const cases = [
+    ["POST", "/api/walks", { orgUnitId: unitA }, "CLIENT_MUTATION_ID_REQUIRED"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, dimensions: {}, responses: {} }, "CLIENT_MUTATION_ID_REQUIRED"],
+    ["POST", `/api/walks/${w.id}/complete`, { rowVersion: w.rowVersion }, "CLIENT_MUTATION_ID_REQUIRED"],
+    ["POST", `/api/walks/${w.id}/void`, { rowVersion: w.rowVersion }, "CLIENT_MUTATION_ID_REQUIRED"],
+    ["PUT", `/api/walks/${w.id}`, { clientMutationId: uuid(), dimensions: {}, responses: {} }, "ROW_VERSION_REQUIRED"],
+    ["POST", `/api/walks/${w.id}/complete`, { clientMutationId: uuid() }, "ROW_VERSION_REQUIRED"],
+    ["POST", `/api/walks/${w.id}/void`, { clientMutationId: uuid() }, "ROW_VERSION_REQUIRED"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: "0xNOPE", clientMutationId: uuid(), dimensions: {}, responses: {} }, "ROW_VERSION_INVALID"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: "nope", dimensions: {}, responses: {} }, "CLIENT_MUTATION_ID_INVALID"],
+    // A whole-state save needs both root containers, as JSON objects.
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), responses: {} }, "STATE_CONTAINER_REQUIRED"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: {} }, "STATE_CONTAINER_REQUIRED"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: [], responses: {} }, "STATE_CONTAINER_INVALID"],
+    // JSON primitive types are checked, not coerced, and client-asserted state is refused.
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: { part1_adopted_ac1: { storedCode: 4 } } }, "INVALID_RESPONSE_VALUE"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: 7 } }, responses: {} }, "INVALID_DIMENSION_VALUE"],
+    ["PUT", `/api/walks/${w.id}`, { rowVersion: w.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: { comp_s1_q1: { state: "ANSWERED", storedCode: "4" } } }, "CLIENT_STATE_NOT_ACCEPTED"],
+  ];
+  for (const [method, path, payload, code] of cases) {
+    const r = await A.call(method, path, payload);
+    assert.equal(r.status, 400, `${method} ${path} ${code}: ${r.text}`);
+    assert.equal(r.json.error.code, code, r.text);
+  }
+  const after = await A.call("GET", `/api/walks/${w.id}`);
+  assert.equal(after.json.walk.rowVersion, w.rowVersion, "no rejected request wrote anything");
+  assert.equal(after.json.walk.status, "DRAFT");
+});
+
+test("CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused", { skip }, async () => {
+  // CREATE: the answer is lost, the client retries with the same id and the same body.
+  const createId = uuid();
+  const createBody = { orgUnitId: unitA, clientMutationId: createId, dimensions: { observer: { textValue: "Fixture Observer" } }, responses: {} };
+  const first = await A.call("POST", "/api/walks", createBody);
+  assert.equal(first.status, 201, first.text);
+  const retry = await A.call("POST", "/api/walks", createBody);
+  assert.equal(retry.status, 200);
+  assert.equal(retry.json.walk.replayed, true);
+  assert.equal(retry.json.walk.id, first.json.walk.id, "the retry replays, it does not create a second walk");
+  const changed = await A.call("POST", "/api/walks", { ...createBody, dimensions: { observer: { textValue: "Someone else" } } });
+  assert.equal(changed.status, 409, changed.text);
+  assert.equal(changed.json.error.code, "MUTATION_ID_REUSED");
+
+  // SAVE
+  const w = first.json.walk;
+  const saveId = uuid();
+  const saveBody = { rowVersion: w.rowVersion, clientMutationId: saveId, dimensions: { grade: { selectedValueCode: "6" } }, responses: { comp_s1_notes: { textValue: "committed once" } } };
+  const saved = await A.call("PUT", `/api/walks/${w.id}`, saveBody);
+  assert.equal(saved.status, 200, saved.text);
+  const savedAgain = await A.call("PUT", `/api/walks/${w.id}`, saveBody);
+  assert.equal(savedAgain.json.walk.replayed, true);
+  assert.equal(savedAgain.json.walk.rowVersion, saved.json.walk.rowVersion);
+  const savedChanged = await A.call("PUT", `/api/walks/${w.id}`, { ...saveBody, responses: { comp_s1_notes: { textValue: "something else" } } });
+  assert.equal(savedChanged.status, 409);
+  assert.equal(savedChanged.json.error.code, "MUTATION_ID_REUSED");
+  assert.equal((await A.call("GET", `/api/walks/${w.id}`)).json.walk.state.responses.comp_s1_notes.textValue, "committed once");
+
+  // COMPLETE
+  const answers = { p1q1: { storedCode: "Partial" }, p1q2: { storedCode: "Retrieval" }, p1q3: { storedCode: "Analysis" }, part1_adopted_pacing: { storedCode: "on" },
+    part1_adopted_ac1: { storedCode: "3" }, part1_adopted_ac2: { storedCode: "4" }, part1_targettask_tt1: { storedCode: "5" }, part1_targettask_tt2: { storedCode: "2" } };
+  const full = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: saved.json.walk.rowVersion, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: "6" } }, responses: answers });
+  assert.equal(full.status, 200, full.text);
+  const completeId = uuid();
+  const done = await A.call("POST", `/api/walks/${w.id}/complete`, { rowVersion: full.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(done.status, 200, done.text);
+  const doneAgain = await A.call("POST", `/api/walks/${w.id}/complete`, { rowVersion: full.json.walk.rowVersion, clientMutationId: completeId });
+  assert.equal(doneAgain.json.walk.replayed, true);
+  assert.equal(doneAgain.json.walk.revisionCount, 1, "a completion replay appends no second revision");
+
+  // An identical save to the completed walk is a no-op: no revision, no new row version.
+  const settled = done.json.walk;
+  const noop = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: settled.rowVersion, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: "6" } }, responses: answers });
+  assert.equal(noop.status, 200, noop.text);
+  assert.equal(noop.json.walk.rowVersion, settled.rowVersion, "an identical completed save does not advance the row version");
+  assert.equal(noop.json.walk.revisionCount, 1);
+  const material = await A.call("PUT", `/api/walks/${w.id}`, { rowVersion: settled.rowVersion, clientMutationId: uuid(), dimensions: { grade: { selectedValueCode: "6" } }, responses: { ...answers, comp_s1_notes: { textValue: "edited after completion" } } });
+  assert.equal(material.status, 200, material.text);
+  assert.notEqual(material.json.walk.rowVersion, settled.rowVersion);
+  assert.equal(material.json.walk.revisionCount, 2, "exactly one pre-edit revision for the material change");
+
+  // VOID
+  const voidId = uuid();
+  const voided = await A.call("POST", `/api/walks/${w.id}/void`, { rowVersion: material.json.walk.rowVersion, clientMutationId: voidId, reason: "Entered twice" });
+  assert.equal(voided.status, 200, voided.text);
+  const voidedAgain = await A.call("POST", `/api/walks/${w.id}/void`, { rowVersion: material.json.walk.rowVersion, clientMutationId: voidId, reason: "Entered twice" });
+  assert.equal(voidedAgain.json.walk.replayed, true);
+  const voidChanged = await A.call("POST", `/api/walks/${w.id}/void`, { rowVersion: material.json.walk.rowVersion, clientMutationId: voidId, reason: "A different reason" });
+  assert.equal(voidChanged.status, 409);
+  assert.equal(voidChanged.json.error.code, "MUTATION_ID_REUSED");
+});
+
+test("CORR: a create mutation id from a school the caller lost never discloses that walk", { skip }, async () => {
+  // The other school's walker creates a walk and hands its mutation id to this caller.
+  const foreignUnit = O.me.permissions["walk.create"][0];
+  const foreignMutation = uuid();
+  const foreign = await O.call("POST", "/api/walks", { orgUnitId: foreignUnit, clientMutationId: foreignMutation, dimensions: {}, responses: {} });
+  assert.equal(foreign.status, 201, foreign.text);
+  // Replaying it while naming a unit this caller may use must not return the other school's walk.
+  const replay = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: foreignMutation, dimensions: {}, responses: {} });
+  assert.ok(replay.status === 404 || replay.status === 409, `expected a refusal, got ${replay.status}: ${replay.text}`);
+  assert.notEqual(replay.json.walk?.id, foreign.json.walk.id);
+  // And naming the other school's unit is refused by org scope before any replay.
+  const scoped = await A.call("POST", "/api/walks", { orgUnitId: foreignUnit, clientMutationId: foreignMutation, dimensions: {}, responses: {} });
+  assert.equal(scoped.status, 404);
+  assert.equal((await A.call("GET", `/api/walks/${foreign.json.walk.id}`)).status, 404, "the walk stays invisible");
 });

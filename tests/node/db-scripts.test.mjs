@@ -63,6 +63,34 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     assert.equal(tables.recordset[0].n, 21);
     const mutationCols = await pool.request().query("SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('icf.walk_mutation')");
     assert.equal(mutationCols.recordset[0].n, 6);
+
+    // Correction migration 004: the request fingerprint column, additive and idempotent.
+    const fingerprint = await applyScript(pool, readScript("004_mutation_fingerprint.sql"));
+    assert.equal(fingerprint.ok, true, fingerprint.error?.message);
+    assert.equal(fingerprint.recordset[0].request_fingerprint_available, 1);
+    const fingerprintAgain = await applyScript(pool, readScript("004_mutation_fingerprint.sql"));
+    assert.equal(fingerprintAgain.ok, true, fingerprintAgain.error?.message);
+    const fingerprintCol = await pool.request().query("SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('icf.walk_mutation') AND name = 'request_fingerprint'");
+    assert.equal(fingerprintCol.recordset[0].n, 1, "one fingerprint column after two applications");
+    const mutationColsAfter = await pool.request().query("SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('icf.walk_mutation')");
+    assert.equal(mutationColsAfter.recordset[0].n, 7);
+    const tablesAfter = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
+    assert.equal(tablesAfter.recordset[0].n, 21, "004 adds no table");
+    // The digest constraint accepts a lower-case hexadecimal SHA-256 and refuses anything else.
+    await pool.request().batch(`INSERT INTO icf.org_unit (org_unit_id, org_unit_code, org_unit_type, name) VALUES ('11111111-1111-1111-1111-111111111111', 'fp-unit', 'SCHOOL', 'Fingerprint fixture');
+      INSERT INTO icf.app_user (user_id, identity_subject, display_name) VALUES ('22222222-2222-2222-2222-222222222222', 'fp-user', 'Fingerprint fixture');
+      INSERT INTO icf.instrument (instrument_id, code, name) VALUES ('33333333-3333-3333-3333-333333333333', 'FPTEST', 'Fingerprint fixture');
+      INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status) VALUES ('44444444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333', 'fp', 'DRAFT');
+      INSERT INTO icf.walk (walk_id, version_id, org_unit_id, owner_user_id) VALUES ('55555555-5555-5555-5555-555555555555', '44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');`);
+    const good = await applyScript(pool, `INSERT INTO icf.walk_mutation (mutation_id, walk_id, actor_user_id, action, request_fingerprint, result_json)
+      VALUES ('66666666-6666-6666-6666-666666666666', '55555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222', 'SAVE', '${"a".repeat(64)}', '{}');`);
+    assert.equal(good.ok, true, good.error?.message);
+    const bad = await applyScript(pool, `INSERT INTO icf.walk_mutation (mutation_id, walk_id, actor_user_id, action, request_fingerprint, result_json)
+      VALUES ('77777777-7777-7777-7777-777777777777', '55555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222', 'SAVE', '${"Z".repeat(64)}', '{}');`);
+    assert.equal(bad.ok, false, "a non-hexadecimal digest is refused");
+    const legacy = await applyScript(pool, `INSERT INTO icf.walk_mutation (mutation_id, walk_id, actor_user_id, action, result_json)
+      VALUES ('88888888-8888-8888-8888-888888888888', '55555555-5555-5555-5555-555555555555', '22222222-2222-2222-2222-222222222222', 'SAVE', '{}');`);
+    assert.equal(legacy.ok, true, "rows written before the patch stay valid");
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

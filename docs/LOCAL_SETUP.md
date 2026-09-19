@@ -38,7 +38,8 @@ cp .env.example .env                          # then set ICFWALK_DB_* from .runt
                                               # ICFWALK_MAINTENANCE_ENABLED=true / ICFWALK_TESTS_ENABLED=true,
                                               # and for local sign-in: ICFWALK_SSO_MODE=development,
                                               # ICFWALK_DEV_IDENTITY_ENABLED=true, ICFWALK_COOKIE_SECURE=false
-node scripts/db/apply-schema.mjs              # applies database/001_schema.sql, 002_alignment_patch.sql, 003_walk_mutation.sql
+node scripts/db/apply-schema.mjs              # applies database/001_schema.sql, 002_alignment_patch.sql,
+                                              # 003_walk_mutation.sql, 004_mutation_fingerprint.sql
 
 tools/runtime/lucee-up.sh                     # or deploy app/ to ColdFusion 2023 (below)
 node scripts/seed-instrument.mjs              # imports config/instrument-config.json as a DRAFT version
@@ -61,7 +62,8 @@ npm test                                      # all Node tests + the CFML suite 
 4. Provide environment variables to the ColdFusion service (system environment, or
    `ICFWALK_ENV_FILE` pointing at a file readable only by the service account).
 5. Apply `database/001_schema.sql`, then `database/002_alignment_patch.sql`, then
-   `database/003_walk_mutation.sql` (Phase 4, idempotent) with SQL Server tooling (`sqlcmd`, SSMS)
+   `database/003_walk_mutation.sql` and `database/004_mutation_fingerprint.sql` (both
+   idempotent) with SQL Server tooling (`sqlcmd`, SSMS)
    or `node scripts/db/apply-schema.mjs`. Existing installations from before Phase 4 need only `003`.
 6. Seed the instrument: enable maintenance temporarily (`ICFWALK_MAINTENANCE_ENABLED=true`, a
    32+ character `ICFWALK_MAINTENANCE_TOKEN`), call the import endpoint from the server itself

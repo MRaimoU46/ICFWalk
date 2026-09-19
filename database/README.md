@@ -5,6 +5,7 @@
 1. Apply `001_schema.sql` to an empty database.
 2. Apply `002_alignment_patch.sql`.
 3. Apply `003_walk_mutation.sql` (Phase 4 build migration: the append-only walk mutation log that makes create/save/complete/void requests idempotent). Additive and safe to re-run.
+4. Apply `004_mutation_fingerprint.sql` (correction migration: `walk_mutation.request_fingerprint`, the SHA-256 of each mutation's canonical semantic request, so the same mutation id cannot replay a different request). Additive, nullable, and safe to re-run.
 4. Run the application's configuration importer against `../config/instrument-config.json`.
 5. Validate and preview the resulting DRAFT.
 6. Publish it through the application when content owners approve it.
