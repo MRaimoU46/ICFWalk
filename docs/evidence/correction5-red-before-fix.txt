@@ -1,0 +1,68 @@
+Fifth correction session -- deterministic red-before-fix / green-after-fix evidence
+=================================================================================
+
+Defect: WalkService.save() and complete() materialized their response DTO with loadDto()
+AFTER the mutation transaction had committed and the walk mutation lock had been released,
+so another session could commit in between and the response then described THAT state.
+
+Both runs below are the same five regressions, the same database, the same Lucee runtime,
+against the real WalkService and the real WalkRepository. The only difference between them
+is src/walks/WalkService.cfc: the RED run is the file as commit fa59b16 left it, restored
+verbatim (git stash of the correction, Lucee restarted to recompile); the GREEN run is the
+same file with the correction applied and Lucee restarted again.
+
+The interleaving is forced deterministically, never by sleeping or racing:
+  tests/cfml/support/InterceptingDb.cfc decorates Db.transact and runs a callback at the
+  exact instant the mutation transaction commits, before the service method resumes. The
+  callback is a real second session committing a real second mutation through the real
+  service. tests/cfml/support/InterceptingWalkRepository.cfc fires at countRevisions --
+  reached only while the response is being materialized -- and starts a real concurrent
+  writer there, joined with a bounded 6000 ms wait.
+
+
+RED -- against the uncorrected fa59b16 behaviour
+------------------------------------------------
+POST /index.cfm/api/maintenance/tests/run?filter=WalkMutationResponse
+engine: Lucee 6.2.8.20   elapsedMs: 1598   ok: False
+totals: passed=0 failed=5 skipped=0
+
+  failed   testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary
+           COMPLETE answers with the rowversion the completion produced Expected [0x0000000000005480] but got [0x0000000000005482].
+           @ /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+  failed   testANoopSaveOnACompletedWalkIsAlsoCoherent
+           so the response carries the rowversion it did not move Expected [0x00000000000054DA] but got [0x00000000000054DC].
+           @ /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+  failed   testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary
+           A's response carries the rowversion its own mutation produced Expected [0x000000000000552C] but got [0x000000000000552E].
+           @ /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+  failed   testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt
+           it could not commit there: the walk mutation lock held it Expected values to differ but both were [COMPLETED].
+           @ /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+  failed   testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete
+           SAVE: the response carries the rowversion its own mutation produced Expected [0x00000000000055D6] but got [0x00000000000055D8].
+           @ /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+
+Reading the failures: the expected value is the rowversion the mutation itself recorded in
+icf.walk_mutation; the actual value is two rowversions later -- the state the OTHER session
+committed at the boundary. That is the reported defect exactly: the response describes a
+state the mutation did not produce, and the client adopts that live token while keeping its
+own stale editor state. The fourth failure is the lock itself: the concurrent writer was
+observed COMPLETED inside the window, so nothing was holding it back.
+
+
+GREEN -- with the correction applied
+------------------------------------
+POST /index.cfm/api/maintenance/tests/run?filter=WalkMutationResponse
+engine: Lucee 6.2.8.20   elapsedMs: 7949   ok: True
+totals: passed=5 failed=0 skipped=0
+
+  passed   testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary  (634 ms)
+  passed   testANoopSaveOnACompletedWalkIsAlsoCoherent  (331 ms)
+  passed   testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary  (214 ms)
+  passed   testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt  (6171 ms)
+  passed   testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete  (463 ms)
+
+testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt takes ~6.1 s because the bounded
+6000 ms join expires with the concurrent writer still blocked on the walk mutation lock.
+That elapsed time IS the assertion: the writer then runs to completion the moment the
+mutation commits, and earns the STALE_ROW_VERSION its now-old token deserves.

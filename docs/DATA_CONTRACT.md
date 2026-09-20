@@ -400,6 +400,18 @@ submitted one.
   with the committed outcome in the same transaction; an exact retry replays it. Ids are bound to
   walk, actor, action, and the fingerprint of the canonical semantic request. See "Mutation identity
   and idempotency" above.
+- **Mutation response coherence**: a successful SAVE or COMPLETE response is materialized inside the
+  same transaction that performs the mutation, while the walk mutation lock is still held, and the
+  finished document is returned through the transaction outcome. The rowversion, header, dimensions,
+  responses, evaluation states and revision count it carries therefore all describe one serialized
+  database state -- the state that mutation produced -- and its rowversion always equals the one the
+  mutation recorded in `icf.walk_mutation`. No other SAVE, COMPLETE or VOID can commit between a
+  mutation and the construction of the document it returns. This includes the successful no-op save
+  of an already completed walk, which answers from the state it observed rather than a later one.
+  Reading the walk again after the commit instead would hand a client that still holds its own
+  submitted state a rowversion minted for someone else's, and that client's next whole-state save
+  would overwrite the newer work without ever seeing 409 `STALE_ROW_VERSION`. A replay is materialized
+  under the same lock by the same rule (see "Mutation identity and idempotency").
 - **Revisions**: appended on completion (`COMPLETE`, the pre-completion snapshot) and on each
   *material* edit of a COMPLETED walk (`POST_COMPLETION_EDIT`, the snapshot before the edit); DRAFT
   autosaves append none. An identical save to a COMPLETED walk writes nothing at all: no revision, no

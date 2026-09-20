@@ -9,8 +9,8 @@ section "Phase 4" at the end; earlier records are kept as delivered.
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/admiring-wozniak-fsuayk`
 (Phase 3 base commit `9c03298`, itself on `claude/sharp-faraday-szq937`).
 
-Two correction-only sessions followed Phase 4, each against an independent audit; their records are
-the last two sections of this file. The second one is the current state of the build.
+Five correction-only sessions followed Phase 4, each against an independent audit; their records
+are the last five sections of this file. The fifth one is the current state of the build.
 
 ## Phase 0 baseline
 
@@ -1285,3 +1285,121 @@ placeholders, the content-area heading decision from Phase 3).
 Everything recorded earlier still applies. The changes are browser-side only, so nothing new depends
 on the CFML engine; re-run `npm run test:browser` against the ColdFusion 2023 deployment to confirm
 the recovery lifecycle behaves identically there.
+
+
+## Fifth correction session (mutation response coherence)
+
+Correction-only session against the single remaining Phase 0-4 freeze blocker reported against
+commit `fa59b16`. The defect was reproduced against the code before anything changed: all five
+regressions added here were run against the unfixed `src/walks/WalkService.cfc` first and observed
+to fail (5 of 5), then against the corrected file and observed to pass (5 of 5). Raw evidence:
+`docs/evidence/correction5-red-before-fix.txt`. No schema migration was needed, no browser code was
+touched, and Phase 5 was not started.
+
+### A successful SAVE or COMPLETE did not materialize its response atomically with its mutation (CORR5-01)
+
+`save()` and `complete()` locked the walk, applied the mutation, recorded the resulting rowversion
+and committed -- and only then called `loadDto()` to build the response, with the transaction over
+and the walk mutation lock released. That leaves a window with no lock in it:
+
+1. Session A saves M1 against R0.
+2. A commits M1 and produces R1.
+3. Before A constructs its response DTO, session B saves M2 against R1 and commits R2.
+4. A's later `loadDto()` returns B's aggregate and R2.
+5. The browser adopts the returned metadata but does not replace the editor state with
+   `saved.state` (`app/assets/js/app.js::saveCurrent`), so A still holds what it sent as M1.
+6. A now holds stale local state paired with the live R2 token, and its next whole-state save
+   overwrites B without ever being told `STALE_ROW_VERSION`.
+
+The correction is server-side and keeps the API response contract valid; adopting `saved.state` in
+the browser was rejected as a fix because it would destroy newer editor work and would leave the
+response itself incoherent.
+
+- `mutationDto()` is the one place a successful, non-replay mutation response is built. It takes the
+  walk header row the mutation's own result was minted from -- read after the write, under the same
+  `findWalk(..., true)` lock -- so the rowversion, header, dimensions, responses, evaluation states
+  and revision count all describe one serialized database state.
+- `save()` and `complete()` call it **inside** their transaction and return the finished DTO through
+  the transaction outcome (`outcome.dto`). Neither calls `loadDto()` after the commit any more.
+- The successful no-op SAVE on an already completed walk takes the same path: "nothing changed" is a
+  claim about a specific serialized state, so it is answered from that state.
+- The DTO rowversion is re-asserted against the rowversion the mutation recorded rather than assumed.
+  A mismatch throws and rolls the transaction back, so an incoherent response can never be served.
+- The atomic replay implementation and `MUTATION_REPLAY_SUPERSEDED` are unchanged; `replay()` already
+  materialized under the same lock (CORR3-01) and is a different code path.
+- `create()` and `void()` were deliberately left alone: the work was scoped to SAVE and COMPLETE, and
+  the shared helper did not require changing them. See the limitations note below.
+
+### Files changed (fifth correction session)
+
+- `src/walks/WalkService.cfc` -- new private `mutationDto()`; `save()` and `complete()` materialize
+  inside the transaction and return `outcome.dto`; a `principal` local for the transaction closures;
+  the save-semantics docblock gained point 4.
+- `tests/cfml/support/InterceptingDb.cfc` (new) -- a test-only `Db` decorator whose
+  `armAfterCommit(fn)` runs a one-shot callback at the exact instant a committed top-level
+  transaction hands back to its caller.
+- `tests/cfml/support/InterceptingWalkRepository.cfc` -- `countRevisions` promoted from a
+  pass-through to a hooked seam (only response materialization reaches it).
+- `tests/cfml/specs/WalkMutationResponseTest.cfc` (new) -- the five CORR5 regressions.
+- `docs/DATA_CONTRACT.md` (the mutation response coherence rule, under "Build decisions recorded in
+  Phase 4") and `manifest.json` refreshed for it; `docs/ACCEPTANCE_TRACKING.md`,
+  `docs/LOCAL_SETUP.md`, `BUILD_STATUS.md`, `docs/evidence/correction5-red-before-fix.txt`,
+  `docs/evidence/correction5-cfml-suite.txt`, `docs/evidence/correction5-npm-test.txt`.
+- `docs/evidence/screenshots/*.png` -- regenerated by `npm run test:browser`, which rewrites them on
+  every run.
+
+No production test hook was added: both decorators live under `tests/` and are wired only by
+constructing a `WalkService` with them in a spec.
+
+### Tests and results (fifth correction session)
+
+Runtime actually used: **Lucee 6.2.8.20 under Jetty, Microsoft SQL Server 2022 (Developer, Linux
+container), Node 22.22.2, Playwright 1.56 with the pre-installed Chromium, axe-core 4.13.** Every
+row below was executed in this session.
+
+| Command | Result |
+| --- | --- |
+| JavaScript syntax checks (`node --check` over all 25 `.js`/`.mjs` files) | 25/25 parse |
+| `npm run validate:handoff` | `{"ok": true, "checks": 51, "errors": 0}` |
+| `npm run test:package` | 18/18 pass |
+| `npm run test:db` | 1/1 pass |
+| `npm run test:cfml` | 5/5 Node cases pass; CFML suite `passed=148 failed=0 skipped=0` (143 before, plus the 5 CORR5 specs) |
+| `npm run test:auth` | 5/5 pass |
+| `npm run test:shell` | 14/14 pass |
+| `npm run test:walks` | 20/20 pass |
+| `npm run test:browser` | 38/38 pass |
+| `npm test` (full regression, `docs/evidence/correction5-npm-test.txt`) | 101/101 pass, 0 skipped; CFML suite `passed=148 failed=0 skipped=0` |
+| Migration apply and reapply | `002`-`005` reapply cleanly (idempotent); `001_schema.sql` refuses a populated schema with "The icf schema already contains tables. No changes were made." — its documented guard, unchanged here |
+| `node scripts/refresh-manifest.mjs` | Refreshed the one supplied package file this session edited (`docs/DATA_CONTRACT.md`, 27198 -> 28372 bytes); `npm run validate:handoff` and `npm run test:package` re-run green against the refreshed manifest |
+
+The CFML suite total moved from 143 to 148: the five new specs, with no spec removed or weakened.
+
+### Unresolved defects or blockers (fifth correction session)
+
+None blocking the Phase 0-4 freeze. Deliberately out of scope and still open:
+
+- The separately documented indefinitely hung `IN_FLIGHT` request behaviour remains a non-blocking
+  deferred hardening item; it was not addressed here, as instructed.
+- `create()` and `void()` still materialize their response after their transaction. Neither is the
+  reported blocker and neither carries the same exposure — a `CREATE` returns a walk whose id no
+  other session can yet know, and a `VOID` is terminal, so the next save is refused with
+  `WALK_VOIDED` rather than being handed a usable token. They are candidates for the same treatment
+  if that scope is ever opened.
+
+External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details, district
+org-unit codes and their School dimension mappings, content-owner wording for the 17 placeholders,
+the content-area heading decision from Phase 3).
+
+### CF2023 verification items (fifth correction session additions)
+
+Everything recorded earlier still applies. **Adobe ColdFusion 2023 and SQL Server 2016 were not used
+in this session**; the verification above ran on Lucee 6.2.8.20 and SQL Server 2022. New items:
+
+- `loadDto()` called from inside the mutation `transaction` block under the Adobe SQL Server driver:
+  specifically that the reads it performs join the open transaction and see the uncommitted write,
+  and that holding `WITH (UPDLOCK, ROWLOCK)` across them serializes a concurrent save as it does on
+  Lucee. Re-run `WalkMutationResponseTest` on ColdFusion.
+- The longer lock hold this introduces (the aggregate read now happens inside the write transaction)
+  against production-sized walks on SQL Server 2016.
+- `tests/cfml/support/InterceptingDb.cfc` calling a closure immediately after the decorated
+  `transaction` block exits, on the Adobe engine.

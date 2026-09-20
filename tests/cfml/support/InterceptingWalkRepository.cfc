@@ -50,6 +50,17 @@ component output="false" {
 		return variables.inner.findWalk(arguments.walkId, arguments.lock);
 	}
 
+	/**
+	 * Reached only while a response DTO is being materialized (WalkService.loadDto). A save or a
+	 * completion performs no other revision count, so this seam is an unambiguous "the write is
+	 * done and its response is being built" -- the exact point a concurrent writer must not be able
+	 * to commit at.
+	 */
+	public numeric function countRevisions(required string walkId) {
+		trigger("countRevisions");
+		return variables.inner.countRevisions(arguments.walkId);
+	}
+
 	// ---- pass-through --------------------------------------------------------------------------
 	//
 	// Every signature mirrors WalkRepository exactly so the decorated object is substitutable.
@@ -66,7 +77,6 @@ component output="false" {
 	public void function upsertResponse(required string walkId, required string versionId, required string itemId, required string state, string optionId = "", any textValue, required boolean exists) { variables.inner.upsertResponse(argumentCollection = arguments); }
 	public struct function responseCounts(required string walkId) { return variables.inner.responseCounts(argumentCollection = arguments); }
 	public numeric function insertRevision(required string walkId, required string actorUserId, required string reason, required string priorSnapshotJson) { return variables.inner.insertRevision(argumentCollection = arguments); }
-	public numeric function countRevisions(required string walkId) { return variables.inner.countRevisions(argumentCollection = arguments); }
 	public array function listRevisions(required string walkId) { return variables.inner.listRevisions(argumentCollection = arguments); }
 	public struct function findMutation(required string mutationId) { return variables.inner.findMutation(argumentCollection = arguments); }
 	public void function insertMutation(required string mutationId, required string walkId, required string actorUserId, required string action, required struct result, string requestFingerprint = "") { variables.inner.insertMutation(argumentCollection = arguments); }

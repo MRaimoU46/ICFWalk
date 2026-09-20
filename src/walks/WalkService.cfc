@@ -33,6 +33,11 @@
  *      with the same id replays that outcome (no duplicate rows, no second revision). The replay
  *      itself runs under the same walk mutation lock, so its coherence check and the aggregate it
  *      returns are one consistent snapshot (see replay).
+ *   4. The response DTO is materialized inside that same transaction, under the same lock, and
+ *      returned through the transaction outcome (see mutationDto). A successful SAVE or COMPLETE
+ *      therefore answers with the exact serialized state its own mutation produced -- row version,
+ *      header, dimensions, responses, evaluation states, and revision count all one snapshot --
+ *      and never with a state some other session committed a moment later.
  *
  * A walk conducted at a SCHOOL org unit carries the School dimension value naming that unit: the
  * authorized active unit is authoritative and the server fills and locks the value (see
@@ -199,6 +204,7 @@ component output="false" {
 		// refusal writes nothing, and its audit event is not rolled back with the mutation.
 		validated.state = enforceSchoolScope(access.orgUnitId, model, validated.state, arguments.principal, id);
 		var me = arguments.principal.userId;
+		var principal = arguments.principal;
 		var walks = variables.walks;
 		var errors = variables.errors;
 		var audit = variables.audit;
@@ -237,7 +243,9 @@ component output="false" {
 				if (!material) {
 					var unchanged = { "walkId": id, "rowVersion": row.rowVersion, "savedAt": json.formatDate(row.updatedAt), "status": row.status, "changes": normalized.changes, "written": plan.written, "noop": true };
 					walks.insertMutation(mutationId, id, me, "SAVE", unchanged, fingerprint);
-					return { "result": unchanged, "changes": normalized.changes };
+					// "Nothing changed" is a claim about one specific serialized state, so the DTO that
+					// carries it is built here, under the lock, exactly like a material save's.
+					return { "result": unchanged, "changes": normalized.changes, "dto": mutationDto(id, principal, row, unchanged) };
 				}
 				revisionNumber = walks.insertRevision(id, me, "POST_COMPLETION_EDIT", snapshotJson(row, priorDims, priorResponses));
 			}
@@ -247,7 +255,7 @@ component output="false" {
 			var result = { "walkId": id, "rowVersion": after.rowVersion, "savedAt": json.formatDate(after.updatedAt), "status": after.status, "changes": normalized.changes, "written": plan.written, "retained": arrayLen(merged.retained) };
 			walks.insertMutation(mutationId, id, me, "SAVE", result, fingerprint);
 			if (revisionNumber > 0) audit.record("WALK", id, "WALK_POST_COMPLETION_EDIT", me, { "revisionNumber": revisionNumber, "clientMutationId": mutationId, "written": plan.written });
-			return { "result": result, "changes": normalized.changes };
+			return { "result": result, "changes": normalized.changes, "dto": mutationDto(id, principal, after, result) };
 		});
 		if (structKeyExists(outcome, "replay")) return replay(outcome.replay, arguments.principal, "SAVE", id, fingerprint);
 		if (structKeyExists(outcome, "conflict")) {
@@ -259,7 +267,7 @@ component output="false" {
 			variables.audit.record("WALK", id, "WALK_COMPLETION_REJECTED", me, { "issueCount": arrayLen(outcome.incomplete), "during": "POST_COMPLETION_EDIT" });
 			variables.errors.validation("A completed walk must keep every required response.", "WALK_COMPLETION_INVALID", { "errors": outcome.incomplete });
 		}
-		var dto = loadDto(id, arguments.principal);
+		var dto = outcome.dto;
 		dto["changes"] = outcome.changes;
 		dto["replayed"] = false;
 		dto["clientMutationId"] = mutationId;
@@ -277,6 +285,7 @@ component output="false" {
 		var fingerprint = fingerprintFor("COMPLETE", id, {});
 		var model = variables.snapshots.renderModelFor(access.versionId);
 		var me = arguments.principal.userId;
+		var principal = arguments.principal;
 		var walks = variables.walks;
 		var errors = variables.errors;
 		var engine = variables.engine;
@@ -302,7 +311,7 @@ component output="false" {
 			var result = { "walkId": id, "rowVersion": after.rowVersion, "savedAt": json.formatDate(after.updatedAt), "status": after.status, "completedAt": json.formatDate(after.completedAt), "revisionNumber": revisionNumber };
 			walks.insertMutation(mutationId, id, me, "COMPLETE", result, fingerprint);
 			variables.audit.record("WALK", id, "WALK_COMPLETED", me, { "revisionNumber": revisionNumber, "clientMutationId": mutationId, "answered": countState(evaluation, "ANSWERED"), "hidden": countState(evaluation, "HIDDEN"), "notApplicable": countState(evaluation, "NOT_APPLICABLE") });
-			return { "result": result };
+			return { "result": result, "dto": mutationDto(id, principal, after, result) };
 		});
 		if (structKeyExists(outcome, "replay")) return replay(outcome.replay, arguments.principal, "COMPLETE", id, fingerprint);
 		if (structKeyExists(outcome, "conflict")) {
@@ -314,7 +323,7 @@ component output="false" {
 			variables.errors.validation("The walk cannot be completed until every required response is answered.", "WALK_INCOMPLETE", { "errors": outcome.incomplete });
 		}
 		variables.logger.info("walk.completed", { "walkId": id });
-		var dto = loadDto(id, arguments.principal);
+		var dto = outcome.dto;
 		dto["replayed"] = false;
 		dto["clientMutationId"] = mutationId;
 		return dto;
@@ -807,6 +816,40 @@ component output="false" {
 			"MUTATION_LEGACY_UNVERIFIABLE",
 			{ "walkId": arguments.recorded.walkId, "clientMutationId": arguments.recorded.mutationId, "recordedAt": arguments.recorded.createdAt }
 		);
+	}
+
+	/**
+	 * The response DTO for a successful, non-replay mutation, materialized inside that mutation's
+	 * own transaction while the walk mutation lock (findWalk(..., true)) is still held.
+	 *
+	 * `row` is the walk header the mutation's recorded result was minted from -- read after the
+	 * write, under that lock -- so the row version, header, dimensions, responses, evaluation
+	 * states, and revision count the DTO carries all describe one serialized database state: the
+	 * state this mutation produced.
+	 *
+	 * Materializing the response after the transaction had committed instead left a window with no
+	 * lock in it. Session A's save could commit M1 and mint R1, session B could then save M2 against
+	 * R1 and commit R2, and A's later read would answer with B's aggregate and R2 -- while A's
+	 * browser still held the local state it sent as M1, because the client adopts the returned
+	 * metadata without replacing its editor state. That pairs stale client state with a live
+	 * concurrency token, and A's next whole-state save would overwrite B without ever being told
+	 * STALE_ROW_VERSION. Under the lock no other SAVE, COMPLETE or VOID can commit between the
+	 * mutation and its response, so the pairing cannot arise.
+	 *
+	 * The row version is re-asserted against the recorded result rather than assumed, so the
+	 * invariant is the code's and not merely the lock's: the DTO that leaves here always carries
+	 * the row version this mutation recorded, or the transaction rolls back and nothing leaves.
+	 */
+	private struct function mutationDto(required string walkId, required struct principal, required struct row, required struct result) {
+		var dto = loadDto(arguments.walkId, arguments.principal, arguments.row);
+		if (compare(dto.rowVersion, arguments.result.rowVersion) != 0) {
+			throw(
+				type = "ICFWalk.MutationIncoherent",
+				message = "A mutation response was materialized against a different row version than the mutation recorded.",
+				errorcode = "MUTATION_RESPONSE_INCOHERENT"
+			);
+		}
+		return dto;
 	}
 
 	/**

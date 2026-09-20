@@ -1,0 +1,185 @@
+POST /index.cfm/api/maintenance/tests/run  (fifth correction session)
+engine: Lucee 6.2.8.20   elapsedMs: 35699   ok: True
+totals: passed=148 failed=0 skipped=0
+
+SnapshotServiceTest: 4 passed, 0 failed, 0 skipped
+  passed   testCurrentVersionFallsBackToTheSeededDraftOutsideProduction
+  passed   testInvalidAndUnknownVersionsFailClosed
+  passed   testProductionSemanticsRequireAPublishedVersion
+  passed   testSnapshotIsParsedOnceAndCachedByChecksum
+
+WalkMutationResponseTest: 5 passed, 0 failed, 0 skipped
+  passed   testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary
+  passed   testANoopSaveOnACompletedWalkIsAlsoCoherent
+  passed   testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary
+  passed   testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt
+  passed   testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete
+
+WalkSchoolScopeTest: 8 passed, 0 failed, 0 skipped
+  passed   testANonIdentifyingValueIsRefusedAsAnIdentityMapping
+  passed   testASchoolUnitCodedOtherStaysUnmappedAndFailsClosed
+  passed   testAWalkAuthorizedAtSchoolACannotBeSubmittedAsSchoolB
+  passed   testCodeEqualityAloneMapsNothing
+  passed   testDistrictUserMaySelectAnAuthorizedDescendantSchool
+  passed   testExplicitMappingIsFilledAndLocked
+  passed   testOneSchoolValueBelongsToOneOrgUnit
+  passed   testUnmappedSchoolUnitsAcceptNoSchoolValue
+
+CanonicalJsonTest: 6 passed, 0 failed, 0 skipped
+  passed   testBracketKeysPreserveCase
+  passed   testDateFormatting
+  passed   testDecimalsFromDatabaseStyleValuesFormatPlainly
+  passed   testExplicitNullAssignmentSerializesAsNull
+  passed   testNullValuedKeysAreRetainedFromJson
+  passed   testSharedVectorsProduceIdenticalCanonicalText
+
+WalkServiceTest: 18 passed, 0 failed, 0 skipped
+  passed   testAuditAndMutationLogsContainNoNarrativeContent
+  passed   testAuth09TamperedKeysCodesAndIdentifiersAreRejectedAndAudited
+  passed   testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained
+  passed   testCond10HiddenSectionAnswersArePersistedAsHiddenAndReturn
+  passed   testCond12And13SkippableComponentClearsRatingsKeepsNotesInOneTransaction
+  passed   testCreateRequiresAnInScopeActiveOrgUnit
+  passed   testCrossScopeAccessFailsClosedThroughTheService
+  passed   testPostCompletionEditAppendsARevisionAndMustStayComplete
+  passed   testSave04StaleWriteIsRejectedWithoutOverwriting
+  passed   testSave06RetryWithSameMutationIdCommitsOneLogicalChange
+  passed   testSaveRoundTripPersistsTypedValuesAndSurvivesRetrieval
+  passed   testWalk02CreatePinsCurrentVersionOwnerAndDefaults
+  passed   testWalk03CreateRetryWithSameMutationIdCreatesOneWalk
+  passed   testWalk04ListSortsByUpdatedAtDescendingWithCardDimensions
+  passed   testWalk06And08VoidLifecycleAndDeleteRefusal
+  passed   testWalk09CompletionRejectsMissingRequiredResponsesAndKeepsTheDraft
+  passed   testWalk10CompletionSetsStatusTimestampRevisionAndAudit
+  passed   testWalk11OlderWalkRendersFromItsPinnedSnapshotAfterANewVersion
+
+AuthorizationTest: 12 passed, 0 failed, 0 skipped
+  passed   testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools
+  passed   testAuth04SchoolRoleCannotReachWalkInUnassignedSchool
+  passed   testAuth05ReportOnlyRolesCannotOpenOrEditWalks
+  passed   testAuth06InstrumentAdminHasNoWalkOrReportAccess
+  passed   testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing
+  passed   testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch
+  passed   testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected
+  passed   testDeniedAccessIsAuditedWithoutNarrativeOrTokens
+  passed   testEndingAnAssignmentRevokesAccessImmediately
+  passed   testInactiveOrgUnitAssignmentGrantsNothing
+  passed   testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable
+  passed   testSchoolWalkRoleWorksInsideItsOwnSchool
+
+WalkCorrectionTest: 17 passed, 0 failed, 0 skipped
+  passed   testCorr01CreateReplayIsReauthorizedAfterAccessIsRevoked
+  passed   testCorr02ReplayOfARecordedMutationOutsideScopeIsNotFound
+  passed   testCorr03SameMutationIdWithAnAlteredRequestIsRefused
+  passed   testCorr04CreateReplaySurvivesANewerPublishedVersion
+  passed   testCorr05OmittedHiddenValueIsRetained
+  passed   testCorr06HiddenValueInjectionIsIgnored
+  passed   testCorr07HideThenShowRestoresTheStoredValue
+  passed   testCorr08OmittingAVisibleValueClearsIt
+  passed   testCorr09NotApplicableClearsRatingsAndKeepsNotes
+  passed   testCorr10EveryMutationRequiresAClientMutationId
+  passed   testCorr11SaveCompleteAndVoidRequireARowVersionButCreateDoesNot
+  passed   testCorr12AStaleVoidIsARefusalThatChangesNothing
+  passed   testCorr13IdenticalCompletedSaveIsANoOpAndAMaterialOneAppendsOneRevision
+  passed   testCorr14VisitDateSetThenClearedFallsBackToTheCreationInstant
+  passed   testCorr15WholeStateSaveRequiresBothRootContainers
+  passed   testCorr16JsonPrimitiveTypesAreCheckedNotCoerced
+  passed   testCorr17ClientAssertedResponseStateCannotControlPersistedState
+
+ConfigLoaderTest: 9 passed, 0 failed, 0 skipped
+  passed   testDefaultsFailClosedToProduction
+  passed   testDescribeOmitsSecrets
+  passed   testDevIdentityStubCannotBeEnabledInProduction
+  passed   testDevIdentityStubIsOnlyForDevelopmentOrTest
+  passed   testEnvFileParsing
+  passed   testInvalidEnvironmentAndLogLevelAreRejected
+  passed   testMaintenanceRequiresLongToken
+  passed   testTestRunnerIsNeverEnabledInProduction
+  passed   testUnpublishedInstrumentRenderingIsRefusedInProduction
+
+VisibilityEngineTest: 10 passed, 0 failed, 0 skipped
+  passed   testAnsweredRequiresAValidOptionAndUnansweredIsNeverNumeric
+  passed   testBlankStateAppliesConfiguredDefaults
+  passed   testConditionalClassroomSectionsFollowGradeClassTypeAndContent
+  passed   testGradeFilteringFollowsSchoolGroup
+  passed   testHiddenConditionalAnswersAreRetainedAndReappear
+  passed   testInvalidGradeIsClearedAndDependentVisibilityRecalculates
+  passed   testMatchesTheSharedVectorsExactly
+  passed   testPeriodVisibilityAndHiddenRetentionPolicy
+  passed   testSkippableComponentClearsRatingsKeepsNotesAndReturnsUnanswered
+  passed   testUnsupportedOperatorsAreRefused
+
+InstrumentConfigValidatorTest: 12 passed, 0 failed, 0 skipped
+  passed   testBadParentSectionIsReported
+  passed   testChoiceItemWithoutResponseSetIsRejected
+  passed   testConditionMismatchIsReported
+  passed   testCorruptConditionsJsonIsReported
+  passed   testDuplicateItemKeyIsReported
+  passed   testDuplicateOptionOrderIsReported
+  passed   testMissingResponseSetIsReportedWithSpecificReference
+  passed   testNonDraftStatusIsRejected
+  passed   testRetiredSipContentIsRejected
+  passed   testStructuralFailureStopsEarlyWithoutCrashing
+  passed   testSuppliedConfigurationIsValidWithSeventeenPlaceholderWarnings
+  passed   testUnsupportedRuleEffectIsReported
+
+InstrumentScopeTest: 4 passed, 0 failed, 0 skipped
+  passed   testACorruptedSnapshotFailsClosedOnAnUncachedLoad
+  passed   testASecondInstrumentNeverSuppliesTheCurrentVersion
+  passed   testDiscardDraftCannotReachAnotherInstrumentsSameLabelDraft
+  passed   testFutureAndExpiredIcfwalkVersionsAreNotSelected
+
+WalkReplayCoherenceTest: 8 passed, 0 failed, 0 skipped
+  passed   testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto
+  passed   testAnAlteredRequestAgainstALegacyRowIsTheSameRefusal
+  passed   testAnExactLookingRetryAgainstALegacyRowIsARefusal
+  passed   testAnOldSaveReplayedAfterALaterSaveCannotOverwriteIt
+  passed   testAReplayIsStillIdempotentWhileTheAggregateHasNotMoved
+  passed   testASupersededReplayNeverMaterializesTheNewerAggregate
+  passed   testAuthorizationAnswersBeforeTheLegacyConflict
+  passed   testCreateCompleteAndVoidReplaysAreAlsoRefusedOnceSuperseded
+
+IdentityTest: 10 passed, 0 failed, 0 skipped
+  passed   testAuthenticationProvisionsAndBuildsPrincipal
+  passed   testConfigLoaderRejectsUnsafeIdentitySettings
+  passed   testDevelopmentStubCannotBeConstructedWhenNotPermitted
+  passed   testDevelopmentStubReadsOnlyItsOwnHeaders
+  passed   testHeaderProviderRejectsMissingOrMalformedSubjects
+  passed   testHeaderProviderRequiresSharedSecretWhenConfigured
+  passed   testHeaderProviderTrustsOnlyListedProxies
+  passed   testHeaderProviderWithNoProxyListTrustsNobody
+  passed   testInactiveUserIsRejectedByAuthentication
+  passed   testProvisioningIsKeyedBySubjectAndTolerantOfEmailCollisions
+
+SnapshotCompilerTest: 3 passed, 0 failed, 0 skipped
+  passed   testCompiledSnapshotMatchesReferenceGolden
+  passed   testRuleTargetsResolveToKeysNotLogicalIds
+  passed   testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior
+
+RenderModelTest: 9 passed, 0 failed, 0 skipped
+  passed   testLayoutsAndNumberingComeFromResponseSetsAndOrder
+  passed   testModelSerializesToCanonicalJsonWithoutGuids
+  passed   testPlacementsCarryDimensionMetadataInAuthoredOrder
+  passed   testPresentationIsDerivedFromStructureNotNames
+  passed   testPromptsAndPlaceholdersComeFromTheConfiguration
+  passed   testResponseOptionsAndDefinitionsMatchTheConfigurationExactly
+  passed   testRulesArePassedThroughAndUnsupportedEffectsAreRefused
+  passed   testSkippableComponentsDeriveApplicabilityFromRules
+  passed   testTreeFollowsAuthoredParentsAndDisplayOrder
+
+InstrumentImportServiceTest: 10 passed, 0 failed, 0 skipped
+  passed   testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot
+  passed   testDb05ReimportIsIdempotentWithStableGuidsAndChecksum
+  passed   testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges
+  passed   testDb07MissingResponseSetRollsBackWithSpecificError
+  passed   testDb08CorruptConditionsJsonRollsBack
+  passed   testDb09ResponseOptionDefinitionsMatchTheJsonExactly
+  passed   testDiscardDraftRemovesVersionAndChildren
+  passed   testListVersionsIncludesImportedDraft
+  passed   testReorderedReimportSucceedsAndReturnsToGolden
+  passed   testTransactionRollsBackWhenDatabaseRejectsAWrite
+
+LoggerTest: 3 passed, 0 failed, 0 skipped
+  passed   testEntrySerializesAsSingleJsonLine
+  passed   testLevelThresholds
+  passed   testRedactsSensitiveKeysAndTruncatesLongText
