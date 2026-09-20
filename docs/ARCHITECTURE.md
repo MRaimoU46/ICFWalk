@@ -296,7 +296,7 @@ version load their render model through `GET /api/walks/{id}/instrument` and cac
 ## Summary export and teacher email draft (Phase 5)
 
 ```
-browser  app.js #export-btn -> GET /api/walks/{id}/summary            (flush autosave, then download)
+browser  app.js #export-btn -> GET /api/walks/{id}/summary            (flush to the server, then download)
          renderer.js email-draft slot -> email-composer.js -> setResponse + commit -> PUT /api/walks/{id}
 server   WalkController.summary -> WalkService.summary
                                    -> AuthorizationService.authorizeWalk(read)

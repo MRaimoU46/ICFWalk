@@ -1524,8 +1524,13 @@ before any Phase 5 change.
 
 | Command | Result |
 | --- | --- |
-| `npm test` (full regression, `docs/evidence/phase5-npm-test.txt`) | **143/143 pass**, 0 failed, 0 skipped (baseline 101) |
-| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | **165 passed, 0 failed, 0 skipped** (baseline 148) |
+| `npm test` (full regression, `docs/evidence/phase5-npm-test.txt`) | **144/144 pass**, 0 failed, 0 skipped (baseline 101) |
+| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | **166 passed, 0 failed, 0 skipped** (baseline 148) |
+
+> Corrected in the Phase 5 correction session. This table previously read 143 and 165. Both were
+> transcription errors: `docs/evidence/phase5-npm-test.txt`, the transcript of the run this table
+> describes, records `1..144 / # tests 144 / # pass 144` and `passed=166 failed=0 skipped=0`. The
+> run is unchanged; only the numbers written down here were wrong.
 | `node scripts/validate-handoff.mjs` | ok, 51 checks, 0 errors (unchanged) |
 | `node --check` on every browser module, script, and test | clean |
 | `npm run oracle:summary` | 10/10 vectors accounted for; 0 UNEXPLAINED differences |
@@ -1640,8 +1645,209 @@ retire `PART4_LABELS`, and whether a voided walk's export should carry a status 
 | Summary golden-file tests pass | Met: `WalkSummaryFormatterTest` and `summary.test.mjs` byte-equal on all 10 vectors, 13 rounding cases and 10 file-label cases; the persisted path through `WalkService.summary`, the HTTP body of `GET /api/walks/{id}/summary`, and the browser's downloaded file all compared with the same vectors |
 | No-automatic-send tests pass | Met: `no-mail.test.mjs` (source scan, composer scan, route/controller/config scan, live 404 probes, `mailto:` encoding), `browser-email.test.mjs` "SUM-08" (no mail request, no navigation), `walks.test.mjs` "SUM-08" (`/email` and `/send` are 404) |
 | SUM-01..09 PASS with evidence | Met: `docs/ACCEPTANCE_TRACKING.md`, plus screenshots |
-| Phase 0-4 suites still green | Met: `npm test` 143/143 (baseline 101), CFML 165/165 (baseline 148), 0 failed, 0 skipped, handoff unchanged at 51 checks / 0 errors |
+| Phase 0-4 suites still green | Met: `npm test` 144/144 (baseline 101), CFML 166/166 (baseline 148), 0 failed, 0 skipped, handoff unchanged at 51 checks / 0 errors |
 | Documentation and BUILD_STATUS updated, committed, pushed | Met |
+
+## Phase 5 correction session (export coherence, browser fallback, test gating)
+
+Scope: the three defects an independent audit raised against the Phase 5 candidate, and nothing
+else. No redesign, no product-contract change, no outbound mail, no migration, no unrelated
+refactoring. Phase 6 was not started.
+
+The frozen Phase 0-4 baseline `d8f3736` is in this branch's ancestry; the Phase 5 commit `2522e79`
+is its parent.
+
+### Summary export could combine two committed states (CORR-P5-01, HIGH)
+
+`WalkService.summary()` authorized the read and then performed its reads unlocked and in sequence:
+the walk header, the dimension values, the responses, the pinned render model. SAVE, COMPLETE, VOID
+and a mutation replay all open `variables.db.transact(...)` and take the walk mutation lock --
+`WalkRepository.findWalk(id, true)`, `SELECT ... WITH (UPDLOCK, ROWLOCK)` -- as their first act. The
+export took part in none of that, so a mutation could commit between the export's dimension read and
+its response read.
+
+The result is not merely stale, it is unreal: the file carries one committed state's dimensions
+beside another's responses, a combination no version of the walk ever held. And because the
+dimensions are what the visibility engine evaluates, the older dimensions can show a section the
+committed dimensions hide, so the export prints a retained answer the walk's actual state excludes.
+That is SUM-01 and SUM-04 broken at the same time.
+
+**The correction.** `summary()` now materializes inside one transaction that takes
+`findWalk(id, true)` first and holds it across the header, both halves of the aggregate, the
+visibility evaluation, the summary text, the file name and the returned metadata. The complete
+result is returned through the transaction outcome. The metadata-only log line and the
+`WALK_SUMMARY_EXPORTED` audit event are written afterwards, from that already-coherent result, so
+the lock lasts no longer than the reads that need it. Authorization, the pinned version, voided-walk
+behavior, the response headers, the file name and the audit payload are all unchanged, and the
+export still writes nothing: no row version moves, no revision, no mutation record.
+
+**The invariant now enforced.** The text, the file name, every visibility decision, the status and
+the version metadata of one export all describe one serialized database state. Equivalently: no
+SAVE, COMPLETE or VOID can commit between the beginning and the end of a summary materialization.
+One concurrent SAVE proves it for all three because the serialization is a property of the row lock,
+not of SAVE: every mutation path queues on the same walk row. `create()` is the only transaction
+that does not take it, and cannot -- there is no walk row until its own insert makes one, and until
+that commits no other session can see the walk at all.
+
+**Regression:** `tests/cfml/specs/WalkSummaryCoherenceTest.cfc` (3 cases).
+`testASummaryExportCannotStraddleAConcurrentSave` uses the existing intercepting-repository and
+concurrent-session pattern (`WalkMutationResponseTest`): it fires at `loadDimensionValues`, the
+exact boundary between the export's two aggregate reads, and starts a real second session running a
+real SAVE that changes both `classType` (which drives the Dual Language section's visibility) and
+`summary_strengths` (visible under both states). The writer is still blocked when the bounded join
+expires; the export describes state A only; the writer then commits; a later export describes state
+B only, with the retained Dual Language note excluded from the text while still present in the
+table. `testEveryMutationPathTakesTheSameWalkLock` asserts the shared-lock structure against the
+source. `testTheLockedExportStillWritesNothingAboutTheWalk` proves holding the lock did not turn the
+read into a write.
+
+### Browser export fell back to a local file when the server was reachable (CORR-P5-02, MEDIUM)
+
+`exportSummary()` chose the download path from the editor's unsent-work flags:
+
+```js
+const unsent = walk.canEdit && (app.dirty || app.failed || Boolean(ambiguousSave()));
+```
+
+That is broader than the Phase 5 contract, which allows a browser-generated file only when the save
+flush fails because of a network transport failure. Two wrong paths followed from it:
+
+1. **An edit made during an in-flight save.** `saveCurrent()` coalesces: called with a request
+   already on the wire it returns that request's promise and leaves the newer state on the autosave
+   timer. The export awaited the older save, saw `app.dirty` still set, and built a Blob while the
+   queued edit sat unsent. The file was browser-made and the person was told the server could not be
+   reached, when the server was answering normally.
+2. **A definitive rejection.** Any 4xx sets `app.failed`. The server was reached and refused the
+   state; the export nevertheless produced a file of the refused state and blamed the network.
+
+**The correction.** A new `flushForExport(walk)` drives the editor state onto the server before the
+path is chosen. It loops: each pass awaits whatever `saveCurrent()` does, then re-reads the real
+unsaved-work signals and sends again if any is still set, cancelling the autosave timer rather than
+waiting it out. It is bounded at `EXPORT_FLUSH_PASSES` (6; a normal flush takes at most three), so a
+pathological state ends in a blocked export rather than a spinning tab. `saveCurrent()` now records
+how each attempt ended in `app.saveOutcome` -- `saved`, `transport`, `server`, `conflict`,
+`rejected` -- because `app.dirty` and `app.failed` cannot tell a refused state from a lost answer,
+and neither says whether the server was ever reached.
+
+**The fallback rule now enforced.** The browser formatter is used when, and only when, the flush
+failed with a transport failure: no HTTP response at all, which `api.js` raises as `NetworkError`
+rather than `ApiError`. Everything else blocks the export with its own accurate message and no file:
+
+| Flush outcome | Export |
+| --- | --- |
+| everything saved | `GET /api/walks/{id}/summary` (authoritative, authorized, audited) |
+| read-only viewer (nothing to flush) | `GET /api/walks/{id}/summary` |
+| transport failure (no response produced) | browser formatter, and the message says the file was generated in the browser from unsaved information and is not the saved copy |
+| definitive 4xx rejection | blocked; "The server did not accept the latest changes..." |
+| HTTP 5xx (ambiguous, server reached) | blocked; "The last save did not finish..." -- never described as a network failure |
+| 409 conflict | blocked; the existing conflict workflow is untouched |
+
+Phase 4 is unaffected: the operation record, its mutation id and its frozen body are not touched on
+any of these paths, so replay, row-version comparison, conflict handling and the unfinished-work
+guards behave exactly as before. The byte-identical formatter contract and the sanitized file name
+are unchanged.
+
+**Regression:** `tests/node/browser-export.test.mjs` (7 cases) on
+`tests/node/export-harness.mjs`. The harness serves the shipped browser modules and the real
+`src/views/shell.html` (with the three substitutions `ShellController.cfc` makes) against a scripted
+API, so a save can be held open at a chosen instant and the next one answered 400, 409 or 503 on
+demand. Nothing under test is stubbed; the instrument is a small synthetic one, because the behavior
+under test is which URL the export downloads from, not the district's content. A transport failure
+is produced as a transport failure (`route.abort("connectionreset")`) and an HTTP error as a real
+response, so the two are never conflated. `browser-email.test.mjs` continues to prove the export
+against the real application, the real instrument and SQL Server.
+
+### An unavailable application counted as a passing live test (CORR-P5-03, LOW)
+
+The live half of `tests/node/no-mail.test.mjs` returned early when the application was unreachable,
+so TAP counted it as a pass although no endpoint was probed. A live test that did not run is not a
+live test that succeeded.
+
+**The correction.** `tests/node/helpers.mjs` gains `requireApp(env)`, reading
+`ICFWALK_REQUIRE_APP`. With no application expected, the live test reports as an explicit skip
+naming the reason. Under `ICFWALK_REQUIRE_APP=1` -- the full integration and release-verification
+profile -- an unreachable application fails the run. The four static no-mail scans always run, and
+none was weakened. The requirement itself is unchanged: ICFWalk has no mail-delivery route, no
+server mail integration, no SMTP configuration and no automatic-send mechanism.
+
+### Files changed (Phase 5 correction session)
+
+| File | Change |
+| --- | --- |
+| `src/walks/WalkService.cfc` | `summary()` materialized inside one transaction under the walk mutation lock |
+| `app/assets/js/app.js` | `flushForExport`, `app.saveOutcome`, the rewritten `exportSummary`, `blockExport`, and the two new blocked-export messages |
+| `tests/cfml/specs/WalkSummaryCoherenceTest.cfc` | new: 3 cases |
+| `tests/node/browser-export.test.mjs` | new: 7 cases |
+| `tests/node/export-harness.mjs` | new: the deterministic stub the export regressions run against |
+| `tests/node/helpers.mjs` | new `requireApp(env)` |
+| `tests/node/no-mail.test.mjs` | live probe skips explicitly, or fails under `ICFWALK_REQUIRE_APP` |
+| `docs/DATA_CONTRACT.md` | "Summary export coherence" |
+| `docs/ENDPOINTS.md` | the summary route is materialized under the walk mutation lock |
+| `docs/ARCHITECTURE.md` | export line: "flush to the server, then download" |
+| `BUILD_STATUS.md` | this section; Phase 5 totals corrected to the transcript's 144/166 |
+| `docs/evidence/phase5-correction-npm-test.txt` | new: the full suite transcript |
+| `docs/evidence/phase5-correction-red-before-fix.txt` | new: red-before-green record |
+| `docs/evidence/phase5-correction-environment.md` | new: what was verified where, and what was not |
+
+No migration, no schema change, no new table or column; `database/` is untouched. No outbound-mail
+capability of any kind was added.
+
+### Tests and results (Phase 5 correction session)
+
+Environment: Node 22.22.2, Playwright 1.56.1 with the pre-installed Chromium, Lucee 6.2.8.20 on
+Jetty 9.4.58 for CFML compilation only. **No SQL Server and no application runtime.**
+`docs/evidence/phase5-correction-environment.md` records why and what it costs.
+
+| Command | Result |
+| --- | --- |
+| `npm test` (`docs/evidence/phase5-correction-npm-test.txt`) | **151 cases, 29 pass, 0 fail, 122 skipped** |
+| `node --test tests/node/browser-export.test.mjs` | **7/7 pass** |
+| `node --test tests/node/no-mail.test.mjs` | 5 cases, 4 pass, 1 explicit skip (no application) |
+| `ICFWALK_REQUIRE_APP=1 node --test tests/node/no-mail.test.mjs` | 5 cases, 4 pass, **1 fail** -- the profile refusing to pass an unrun live check |
+| `npm run test:package` | 18/18 pass |
+| `npm run test:summary` | 20 cases, 4 pass, 16 skipped (the rest need the application) |
+| `npm run validate:handoff` | ok, 51 checks, 0 errors |
+| `npm run oracle:summary` | 10/10 vectors accounted for; 0 unexplained differences |
+| `node --check` on every browser module, script and test | 34 files, 0 failures |
+| CFML compilation on Lucee 6.2.8.20 | 67 components, 0 failures |
+| CFML suite | **not run**: needs SQL Server |
+| `npm run vectors:summary:check` | **not run**: needs the running application |
+
+**Totals.** Node/HTTP/Playwright: **151** declared cases, up from the 144 in
+`docs/evidence/phase5-npm-test.txt` (7 new export regressions). CFML: **169** declared cases, up
+from 166 (3 new coherence cases), counted from the spec sources by the same rule `TestRunner` uses
+and **not executed in this environment**. The 122 skips are the application-dependent cases; 29
+pass. Nothing was weakened and no required test became a skip -- the one case that moved from pass
+to skip is the no-mail live probe, which is the CORR-P5-03 correction doing its job, and it accounts
+exactly for the delta (23 pass + 7 new - 1 = 29; 121 skips + 1 = 122).
+
+**Red-before-green** (`docs/evidence/phase5-correction-red-before-fix.txt`): each new regression was
+run against the Phase 5 implementation exactly as committed at `2522e79`. Four of the seven export
+regressions failed, each naming the audited behavior -- one PUT instead of two, a Blob carrying a
+server-refused state, a Blob on an HTTP 5xx, and a message that did not say the file was made in the
+browser -- and all seven pass against the correction. The three that passed under the unfixed code
+did so on purpose: they prove the correction did not break the paths that were already right. The
+CFML structural lock assertion fails against the unfixed `summary()` and passes against the
+correction. No temporary mutation remains in the tree.
+
+### Unresolved and not verified (Phase 5 correction session)
+
+1. **The concurrency regression itself has not been executed.**
+   `testASummaryExportCannotStraddleAConcurrentSave` needs SQL Server's UPDLOCK/ROWLOCK semantics --
+   that is the whole point of it -- and SQL Server could not be installed: Docker is absent, and the
+   native package redirects to a host this session's egress policy refuses with HTTP 403. The spec
+   compiles and its structural sibling runs green, but the interleaving it forces has not been
+   observed. This is the first thing an environment with SQL Server should run.
+2. **The CFML suite total of 169 is a count of declared cases, not a run.**
+3. **Adobe ColdFusion 2023 was not available and was not used.** No CF2023 claim is made. The CF2023
+   verification items listed for Phase 5 and the earlier correction sessions are unchanged and still
+   outstanding, plus: the locked `summary()` transaction should be exercised on CF2023, whose
+   `transaction` + closure semantics and datasource locking behavior are the reason those items
+   exist.
+4. **SQL Server 2016 was not available and was not used.** The frozen Phase 5 evidence records SQL
+   Server 2022; this session adds no SQL Server run of any version.
+5. **Phase 5 is not declared ready to freeze here.** This session reports a correction candidate and
+   its evidence; whether the candidate is sound is for a fresh independent audit to determine.
 
 ## Exact recommended starting point for Phase 6
 

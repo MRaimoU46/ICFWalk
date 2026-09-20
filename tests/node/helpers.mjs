@@ -84,6 +84,25 @@ export function baseUrl(env) {
   return (env.ICFWALK_BASE_URL || `http://127.0.0.1:${env.ICFWALK_PORT || 8888}`).replace(/\/$/, "");
 }
 
+/**
+ * Whether a running application is *expected* for this run.
+ *
+ * A test that needs the application has three possible states, and collapsing any two of them
+ * hides a real result. It can run and pass; it can be skipped because this is an optional local
+ * run with nothing deployed; or it can fail because a run that was supposed to exercise the live
+ * application did not exercise it. The third is the one that matters for release verification: an
+ * absent application there means the check never happened, which is not the same as the check
+ * having succeeded and must not be reported as one.
+ *
+ * Optional local runs leave ICFWALK_REQUIRE_APP unset and live tests report as explicit skips.
+ * The full integration and release-verification profiles set ICFWALK_REQUIRE_APP=1, and then an
+ * unreachable application fails the run.
+ */
+export function requireApp(env) {
+  const value = String(env.ICFWALK_REQUIRE_APP ?? "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
 export async function api(env, method, apiPath, { body, token } = {}) {
   const headers = { "Accept": "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";

@@ -116,22 +116,55 @@ component output="false" {
 	 * file name is accepted from the caller. The audit event and the log line carry identifiers,
 	 * the walk's status, and a byte count only -- never the summary text, a note, or any other
 	 * narrative value (SEC-05).
+	 *
+	 * COHERENCE (Phase 5 correction). The export is materialized inside one transaction that takes
+	 * the walk mutation lock first -- findWalk(id, true), the same WITH (UPDLOCK, ROWLOCK) row that
+	 * SAVE, COMPLETE and VOID all take as their first act -- and holds it across the header,
+	 * dimension and response reads, the visibility evaluation, the text, and the file name.
+	 *
+	 * Unlocked, the reads were three separate statements and a mutation could commit between any
+	 * two of them. A save that changes a visibility-driving dimension and a response it governs
+	 * commits both together; an export straddling that commit could pair the old dimensions with
+	 * the new responses, and then print, under the old dimensions, a retained answer the new ones
+	 * hide -- a file describing a state the database never held, violating SUM-01 and SUM-04. This
+	 * is the same failure mutationDto() was corrected for, on the read side.
+	 *
+	 * Because every mutation path begins by taking that one row lock, serializing against it
+	 * serializes against all of them: SAVE, COMPLETE and VOID each block on findWalk(id, true)
+	 * while this transaction holds it, and this transaction blocks on it while any of them does.
+	 * A concurrent SAVE therefore commits strictly before or strictly after an export, never
+	 * inside one.
+	 *
+	 * The lock is released when the transaction returns. The log line and the audit event are
+	 * written afterwards, from the already-coherent result: they are metadata only, nothing else
+	 * reads them, and keeping them out of the transaction keeps the lock's duration to the reads
+	 * that need it.
 	 */
 	public struct function summary(required struct principal, required string walkId) {
 		var access = variables.authz.authorizeWalk(arguments.principal, arguments.walkId, "read");
-		var row = variables.walks.findWalk(access.walkId);
-		if (structIsEmpty(row)) variables.errors.notFound();
-		var dims = variables.walks.loadDimensionValues(access.walkId);
-		var responses = variables.walks.loadResponses(access.walkId);
-		var model = variables.snapshots.renderModelFor(row.versionId);
-		var state = stateOf(dims, responses);
-		var evaluation = variables.engine.evaluateVisibility(model, state);
-		var text = variables.summaries.summaryText(model, state, evaluation);
-		var name = variables.summaries.fileName(model, state, evaluation, row.walkId);
-		var bytes = arrayLen(charsetDecode(text, "utf-8"));
-		variables.logger.info("walk.summary.exported", { "walkId": row.walkId, "versionId": row.versionId, "status": row.status, "bytes": bytes });
-		variables.audit.record("WALK", row.walkId, "WALK_SUMMARY_EXPORTED", arguments.principal.userId, { "status": row.status, "versionId": row.versionId, "bytes": bytes });
-		return { "text": text, "fileName": name, "status": row.status, "versionId": row.versionId, "bytes": bytes };
+		var id = access.walkId;
+		var walks = variables.walks;
+		var errors = variables.errors;
+		var materialized = variables.db.transact(function() {
+			var row = walks.findWalk(id, true);
+			if (structIsEmpty(row)) errors.notFound();
+			var dims = walks.loadDimensionValues(id);
+			var responses = walks.loadResponses(id);
+			var model = variables.snapshots.renderModelFor(row.versionId);
+			var state = stateOf(dims, responses);
+			var evaluation = variables.engine.evaluateVisibility(model, state);
+			var text = variables.summaries.summaryText(model, state, evaluation);
+			return {
+				"text": text,
+				"fileName": variables.summaries.fileName(model, state, evaluation, row.walkId),
+				"status": row.status,
+				"versionId": row.versionId,
+				"bytes": arrayLen(charsetDecode(text, "utf-8"))
+			};
+		});
+		variables.logger.info("walk.summary.exported", { "walkId": id, "versionId": materialized.versionId, "status": materialized.status, "bytes": materialized.bytes });
+		variables.audit.record("WALK", id, "WALK_SUMMARY_EXPORTED", arguments.principal.userId, { "status": materialized.status, "versionId": materialized.versionId, "bytes": materialized.bytes });
+		return materialized;
 	}
 
 	/** Render model of the walk's pinned version (WALK-11: historical walks render from their own snapshot). */

@@ -1,0 +1,182 @@
+ICFWalk Phase 5 correction -- red-before-green evidence
+=======================================================
+
+Each new regression was run against the Phase 5 implementation exactly as committed at 2522e79,
+with nothing else in the tree changed, and then against the correction. The unfixed file was
+restored from `git show 2522e79:<path>` and put back afterwards; no temporary mutation remains in
+the tree (see the final `git status` at the end of this file).
+
+Two defects have executable red-before-green evidence here. The third (the summary concurrency
+regression itself) requires SQL Server, which this environment could not provide; what was and was
+not established for it is recorded at the end.
+
+
+-------------------------------------------------------------------------------------------------
+1. DEFECT 2 -- browser export fallback (tests/node/browser-export.test.mjs)
+-------------------------------------------------------------------------------------------------
+
+RED: app/assets/js/app.js replaced with the 2522e79 version, everything else unchanged.
+
+  $ node --test --test-reporter=spec tests/node/browser-export.test.mjs
+
+  x a save in flight and an edit behind it are both flushed before the summary is fetched
+  x a definitive 4xx save rejection produces no download and an accurate message
+  v a conflict produces no download and leaves the conflict workflow open
+  x an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  x a genuine transport failure produces a browser-generated file from the screen state
+  v a clean export with nothing unsent uses the authenticated summary GET
+  v a read-only viewer exports straight from the server route
+
+  tests 7 | pass 3 | fail 4 | duration_ms 8783
+
+The four failures, verbatim, each naming the audited behavior:
+
+  [1] a save in flight and an edit behind it are both flushed before the summary is fetched
+      AssertionError [ERR_ASSERTION]: both the in-flight save and the edit queued behind it were sent
+      1 !== 2
+      actual: 1, expected: 2, operator: 'strictEqual'
+
+      One PUT, not two. The edit made during the in-flight save was still on the autosave timer
+      when the export ran; the export saw app.dirty, built a Blob, and never sent it.
+
+  [2] a definitive 4xx save rejection produces no download and an accurate message
+      AssertionError [ERR_ASSERTION]: no file may be downloaded, but one arrived from
+      blob:http://127.0.0.1:37995/ee6ef035-ad3b-45b6-81e1-d41b8c4a5be6
+      + { fileName: 'ICFWalk_2_2026-09-20.txt',
+      +   text: 'ICFWALK SUMMARY\n================\nGrade level: 2\nDate: 2026-09-20\n\n'
+      +         'PART 3 - CONDITIONS FOR LEARNING\nNotes: an edit the server will refuse',
+      +   url: 'blob:http://127.0.0.1:37995/ee6ef035-ad3b-45b6-81e1-d41b8c4a5be6' }
+      - null
+
+      The server was reached and refused the state; the browser produced a file containing the
+      refused state anyway.
+
+  [3] an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+      AssertionError [ERR_ASSERTION]: no file may be downloaded, but one arrived from
+      blob:http://127.0.0.1:37995/8f6e1688-2d50-47e3-85c5-a4709f3d53b3
+      + { fileName: 'ICFWalk_2_2026-09-20.txt',
+      +   text: '... Notes: an edit whose save does not finish',
+      +   url: 'blob:http://127.0.0.1:37995/8f6e1688-2d50-47e3-85c5-a4709f3d53b3' }
+      - null
+
+  [4] a genuine transport failure produces a browser-generated file from the screen state
+      AssertionError [ERR_ASSERTION]: and that the browser made it
+      actual: 'The server could not be reached, so the exported summary was built from what is on
+               this page.'
+      expected: /generated in your browser/i, operator: 'match'
+
+      The one case the fallback is for still worked, but the message did not say the file was
+      generated in the browser from unsaved information.
+
+The three that passed under the unfixed code are there on purpose: a conflict already blocked the
+export, and the clean and read-only paths already used the server route. They are the regressions
+that prove the correction did not break what was already right.
+
+GREEN: correction in place, same command, same harness.
+
+  $ node --test tests/node/browser-export.test.mjs
+  tests 7 | pass 7 | fail 0 | skipped 0
+
+  ok 1 - a save in flight and an edit behind it are both flushed before the summary is fetched
+  ok 2 - a definitive 4xx save rejection produces no download and an accurate message
+  ok 3 - a conflict produces no download and leaves the conflict workflow open
+  ok 4 - an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  ok 5 - a genuine transport failure produces a browser-generated file from the screen state
+  ok 6 - a clean export with nothing unsent uses the authenticated summary GET
+  ok 7 - a read-only viewer exports straight from the server route
+
+
+-------------------------------------------------------------------------------------------------
+2. DEFECT 1 -- summary materialization under the walk mutation lock
+-------------------------------------------------------------------------------------------------
+
+tests/cfml/specs/WalkSummaryCoherenceTest.cfc carries three cases. One of them,
+testEveryMutationPathTakesTheSameWalkLock, reads the repository source through BaseSpec.repoFile
+and touches no database, so it was run here on Lucee 6.2.8.20 with no SQL Server present.
+
+RED: src/walks/WalkService.cfc replaced with the 2522e79 version.
+
+  {
+    "status": "FAILED",
+    "test": "testEveryMutationPathTakesTheSameWalkLock",
+    "type": "ICFWalk.Test.AssertionFailed",
+    "message": "the summary export is materialized inside a transaction Expected to find
+                [variables.db.transact(function() {] in [public struct function summary(required
+                struct principal, required string walkId) {\n\t\tvar access =
+                variables.authz.authorizeWalk(arguments.principal, arguments.walkId, \"read\");
+                \n\t\tvar row = variables.walks.findWalk(access.walkId);\n\t\tif
+                (structIsEmpty(row)) variables.errors.notFound();\n\t\tvar dims = va]."
+  }
+
+GREEN: correction restored, same page, same engine.
+
+  { "status": "PASSED", "test": "testEveryMutationPathTakesTheSameWalkLock" }
+
+NOT RUN HERE: testASummaryExportCannotStraddleAConcurrentSave and
+testTheLockedExportStillWritesNothingAboutTheWalk. Both drive the real service against a real
+database and both need SQL Server's UPDLOCK/ROWLOCK semantics, which is the entire point of the
+regression -- no substitute engine would prove anything about it. SQL Server could not be installed
+in this environment; see docs/evidence/phase5-correction-environment.md. The spec compiles on
+Lucee 6.2.8.20 (all 67 repository components compile, 0 failures) and its structural case runs
+green, but its concurrency case is UNEXECUTED and the audit should treat it as such.
+
+
+-------------------------------------------------------------------------------------------------
+3. DEFECT 3 -- live no-mail test gating
+-------------------------------------------------------------------------------------------------
+
+Before: with no application running, the live test returned early and TAP counted it as a pass.
+
+  $ node --test tests/node/no-mail.test.mjs      # at 2522e79
+  ok 5 - the summary export is the only new endpoint and it is read-only
+  tests 5 | pass 5 | fail 0 | skipped 0
+
+After, optional local profile (ICFWALK_REQUIRE_APP unset, no application):
+
+  $ node --test tests/node/no-mail.test.mjs
+  ok 5 - the summary export is the only new endpoint and it is read-only # SKIP application not
+    reachable at http://127.0.0.1:8888 and ICFWALK_REQUIRE_APP is not set, so no live no-mail route
+    probe was performed
+  tests 5 | pass 4 | fail 0 | skipped 1
+
+After, release-verification profile (ICFWALK_REQUIRE_APP=1, no application):
+
+  $ ICFWALK_REQUIRE_APP=1 node --test tests/node/no-mail.test.mjs
+  not ok 5 - the summary export is the only new endpoint and it is read-only
+    error: 'ICFWALK_REQUIRE_APP is set, so the live no-mail route probe must run, but the
+            application is not reachable at http://127.0.0.1:8888. Start it
+            (tools/runtime/lucee-up.sh) or clear ICFWALK_REQUIRE_APP for an optional local run.'
+    code: 'ERR_ASSERTION'
+  tests 5 | pass 4 | fail 1 | skipped 0
+
+The four static no-mail scans run and pass in every profile; none was weakened.
+
+
+-------------------------------------------------------------------------------------------------
+Tree after the red-before-green runs
+-------------------------------------------------------------------------------------------------
+
+  $ git status --porcelain
+   M BUILD_STATUS.md
+   M app/assets/js/app.js
+   M docs/ARCHITECTURE.md
+   M docs/DATA_CONTRACT.md
+   M docs/ENDPOINTS.md
+   M docs/LOCAL_SETUP.md
+   M manifest.json
+   M src/walks/WalkService.cfc
+   M tests/node/helpers.mjs
+   M tests/node/no-mail.test.mjs
+  ?? docs/evidence/phase5-correction-environment.md
+  ?? docs/evidence/phase5-correction-npm-test.txt
+  ?? docs/evidence/phase5-correction-red-before-fix.txt
+  ?? tests/cfml/specs/WalkSummaryCoherenceTest.cfc
+  ?? tests/node/browser-export.test.mjs
+  ?? tests/node/export-harness.mjs
+
+  manifest.json carries one refreshed entry, for docs/DATA_CONTRACT.md, produced by
+  scripts/refresh-manifest.mjs (which only ever updates entries already listed). The handoff
+  validator is back to ok, 51 checks, 0 errors.
+
+No temporary mutation of app.js or WalkService.cfc remains: both files in the tree are the
+corrected versions, and the diff of each is the correction and nothing else.

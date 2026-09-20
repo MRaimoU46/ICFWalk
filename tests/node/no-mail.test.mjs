@@ -7,14 +7,36 @@
  * accident, which is what these checks are for.
  *
  * Two halves: a static scan of the shipped source, and a live check that no such route answers.
+ *
+ * The static half needs nothing but the working tree and always runs. The live half needs the
+ * application, and it is never reported as a pass without it: with no application expected it is
+ * an explicit skip naming the reason, and under ICFWALK_REQUIRE_APP (the full integration and
+ * release-verification profiles) an unreachable application fails the run. Reporting "the live
+ * probe found no mail route" when no probe was made would be evidence of nothing.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { baseUrl, loadRuntimeEnv, root } from "./helpers.mjs";
+import { baseUrl, loadRuntimeEnv, requireApp, root } from "./helpers.mjs";
 
 const env = loadRuntimeEnv();
+
+/** Reachable means the health route answered 200, which is what the live probes below need. */
+async function appReachable() {
+  try {
+    const r = await fetch(`${baseUrl(env)}/index.cfm/api/health`, { signal: AbortSignal.timeout(10000) });
+    return r.status === 200;
+  } catch {
+    return false;
+  }
+}
+const appUp = await appReachable();
+const appExpected = requireApp(env);
+// Skipped only when no application was expected. When one was, the test runs and fails.
+const liveSkip = appUp || appExpected
+  ? false
+  : `application not reachable at ${baseUrl(env)} and ICFWALK_REQUIRE_APP is not set, so no live no-mail route probe was performed`;
 
 /** Every shipped source file: the application, the browser bundle, the tooling, and the config. */
 function sourceFiles() {
@@ -151,12 +173,15 @@ test("no route, controller action, or configuration key accepts a recipient", ()
   }
 });
 
-test("the summary export is the only new endpoint and it is read-only", async () => {
-  const r = await fetch(`${baseUrl(env)}/index.cfm/api/health`, { signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!r || r.status !== 200) {
-    // Static checks above already hold; the live probe needs the application.
-    return;
-  }
+test("the summary export is the only new endpoint and it is read-only", { skip: liveSkip }, async () => {
+  // Reached only when the application was expected or was found running. If it was expected and is
+  // not there, this is a failure: the probes below are the only thing that can establish that no
+  // mail-shaped route answers at runtime, and they did not happen.
+  assert.ok(
+    appUp,
+    `ICFWALK_REQUIRE_APP is set, so the live no-mail route probe must run, but the application is not reachable at ${baseUrl(env)}. ` +
+    `Start it (tools/runtime/lucee-up.sh) or clear ICFWALK_REQUIRE_APP for an optional local run.`,
+  );
   // Unauthenticated probes: a route that does not exist answers 404 before any authorization runs,
   // so a 404 here proves the endpoint is absent rather than merely refused.
   for (const [method, p] of [

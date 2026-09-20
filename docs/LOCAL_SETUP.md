@@ -149,13 +149,31 @@ use" (`INSTRUMENT_VERSION_IN_USE`) until they are removed or the version is publ
 | `npm run validate:handoff` | Supplied handoff validator (PKG-01). |
 | `npm run test:package` | PKG-02..05, canonical JSON vectors, reference snapshot golden, schema/DAO contract. No database needed. |
 | `npm run test:db` | DB-01..03 against a disposable SQL Server database (needs `ICFWALK_DB_*` admin credentials). |
-| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity, authorization, and walk persistence specs, including the deterministic mutation-concurrency specs `WalkReplayCoherenceTest` and `WalkMutationResponseTest`), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. A single spec can be run with `?filter=<SpecName>` on that endpoint. |
+| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity, authorization, and walk persistence specs, including the deterministic concurrency specs `WalkReplayCoherenceTest`, `WalkMutationResponseTest` and `WalkSummaryCoherenceTest`), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. A single spec can be run with `?filter=<SpecName>` on that endpoint. |
 | `npm run test:auth` | HTTP identity/authorization checks (AUTH-01, CSRF, cookies, admin route separation). Needs the app in development mode with `ICFWALK_SSO_MODE=development` and `ICFWALK_DEV_IDENTITY_ENABLED=true`. |
 | `npm run test:shell` | Phase 3: authorization and headers of the HTML shell and `/api/instrument/current`; browser rules engine against the shared visibility vectors and COND-01..15 (same prerequisites as `test:auth`). |
 | `npm run test:walks` | Phase 4: HTTP checks of `/api/walks` (authentication, CSRF, role separation, cross-scope 404s, tampered keys/codes/identifiers, stale writes, idempotent retries, completion, void, delete refusal, pinned instrument). Same prerequisites as `test:auth`. |
 | `npm run test:summary` | Phase 5: the browser summary formatter against the shared golden vectors (`tests/fixtures/summary-vectors.json`), the SUM-02..06 behaviors, file-name sanitization, the composer's canonical serialization, and the no-automatic-send gate (no `cfmail`/SMTP/mail library anywhere, no route that accepts a recipient, `mailto:` values percent-encoded). Same prerequisites as `test:auth`. The CFML twin runs inside `npm run test:cfml` (`?filter=WalkSummaryFormatter`). |
 | `npm run test:browser` | Phase 3 + 4 + 5: Playwright (Chromium) runs of the real page against the persistent store: dynamic rendering from the served model, conditional behavior, My Walks flow (create, reload, open, void), 700 ms autosave coalescing, network-failure retry, two-session conflict resolution, completion errors and completion, the summary export download (compared byte for byte with the route and the vectors), the Part 4 composer (draft, edit, reload, copy, `mailto:`, clear), keyboard operation, axe-core WCAG checks, screenshots at 375/768/1280 px into `docs/evidence/screenshots/`. Needs `npm install` (Playwright and axe-core are dev dependencies) and a Chromium that Playwright can find (`npx playwright install chromium` where it is not pre-installed). |
-| `npm test` | Everything above. |
+| `npm test` | Everything above, plus `tests/node/browser-export.test.mjs`. |
+| `node --test tests/node/browser-export.test.mjs` | Phase 5 correction: the export's flush-and-path-selection rules (a save in flight with an edit queued behind it, a definitive 4xx, a conflict, an HTTP 5xx, a genuine transport failure, a clean export, a read-only viewer). Runs against `tests/node/export-harness.mjs`, which serves the shipped browser modules and the real shell against a scripted API, so it needs **only Playwright**: no application, no database, no maintenance token. |
+
+### Requiring the application: `ICFWALK_REQUIRE_APP`
+
+Most of the suite needs the running application, and a test that needs it and cannot reach it has
+three possible outcomes, not two. Leave `ICFWALK_REQUIRE_APP` unset for an optional local run and
+those tests report as explicit skips naming the reason. Set `ICFWALK_REQUIRE_APP=1` for the full
+integration or release-verification profile, where an application that was expected and is not
+reachable **fails the run** instead of being quietly absent:
+
+```bash
+tools/runtime/mssql-up.sh
+tools/runtime/lucee-up.sh
+ICFWALK_REQUIRE_APP=1 npm test
+```
+
+`tests/node/no-mail.test.mjs` is the gate that enforces this today: its four static scans always
+run, and its live route probe is a skip or a failure but never a vacuous pass.
 
 ### Regenerating and reviewing the summary vectors (Phase 5 tooling, not part of `npm test`)
 

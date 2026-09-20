@@ -41,8 +41,15 @@ const EMPTY_STATE_LINES = ["No walks saved yet.", 'Start one with "New walk" abo
 const EXPORT_ANNOUNCE = "Summary exported";
 const EXPORT_BLOCKED = "Resolve the conflict above before exporting the summary.";
 // SAVE-03 spirit: when the flush did not reach the server, the person still gets the text of what
-// is on screen rather than a stale server copy or nothing at all.
-const EXPORT_LOCAL = "The server could not be reached, so the exported summary was built from what is on this page.";
+// is on screen rather than a stale server copy or nothing at all. The message says where the file
+// came from, because a browser-generated file is not the saved copy and must not be mistaken for it.
+const EXPORT_LOCAL = "The server could not be reached, so this file was generated in your browser from the unsaved information currently on this page. It is not the saved copy.";
+// The two ways a flush can end without the server holding the editor state and without the server
+// being unreachable. Neither is a network failure and neither gets a browser-generated file: the
+// server was reached, so its summary route is still the authority, and exporting is blocked until
+// the state it would describe is actually the state on screen.
+const EXPORT_REJECTED = "The server did not accept the latest changes, so they are not part of the saved walk. The summary was not exported. Correct the reported problem, save, then export.";
+const EXPORT_UNRESOLVED = "The last save did not finish, so the server may not hold the latest changes. The summary was not exported. Retry the save, then export.";
 const DELETE_CONFIRM = "Delete this walk? This cannot be undone.";
 const VOID_CONFIRM = "Void this completed walk? It stays in the audit history but leaves your list. A reason is required.";
 
@@ -58,6 +65,11 @@ const app = {
   baseline: null,            // state as last loaded from / committed to the server (for conflict review)
   timer: null, inFlight: null, queued: false,
   failed: false,             // a definitive failure; the edits are held on this page only
+  // How the most recent save attempt ended, recorded by saveCurrent for callers that must tell the
+  // outcomes apart. app.failed cannot: it is set both by a definitive server rejection and by
+  // nothing at all when the answer was merely lost, and it says nothing about whether the server
+  // was ever reached. See saveOutcome kinds in saveCurrent.
+  saveOutcome: null,
   conflict: null, completionErrors: [],
   // Every mutation whose outcome is not yet definitive owns one immutable operation record here,
   // keyed "ACTION:target" so a CREATE, SAVE, COMPLETE, or VOID is scoped to the org unit or the walk
@@ -834,7 +846,7 @@ function saveCurrent() {
   if (app.inFlight) { app.queued = true; return app.inFlight; }
   const walk = app.current;
   const resend = ambiguousSave();
-  if (!resend && !app.dirty) { app.failed = false; setSaveStatus(STATUS.saved); return Promise.resolve(); }
+  if (!resend && !app.dirty) { app.failed = false; app.saveOutcome = SAVE_OK; setSaveStatus(STATUS.saved); return Promise.resolve(); }
   // A resend reuses its record untouched. Otherwise the record for this payload is reused if one is
   // still open (the payload has not changed since it was minted) or minted now from the working
   // state and the row version it is issued against.
@@ -853,6 +865,7 @@ function saveCurrent() {
     try {
       const saved = await store.save(payload, op.mutationId);
       settleOp(op);
+      app.saveOutcome = SAVE_OK;
       walk.rowVersion = saved.rowVersion;
       walk.updatedAt = saved.updatedAt;
       walk.status = saved.status;
@@ -865,6 +878,10 @@ function saveCurrent() {
       setSaveStatus(app.dirty ? STATUS.unsaved : STATUS.saved);
     } catch (e) {
       if (isAmbiguousFailure(e)) {
+        // Ambiguous, but not in one way: an ApiError means the server answered (an HTTP 5xx), and
+        // anything else means the request never produced a response at all. Only the second is a
+        // transport failure, and only the second may be answered with a browser-generated file.
+        app.saveOutcome = e instanceof ApiError ? { kind: "server", status: e.status, code: e.code } : { kind: "transport" };
         // The server may have committed before the answer was lost: the record keeps the same
         // mutation id and the same frozen body so the retry replays rather than duplicating or
         // dropping the change. Marking it here rather than behind the editor check is what keeps
@@ -877,7 +894,11 @@ function saveCurrent() {
         return;
       }
       // Definitive outcomes below: the operation id is spent and a new payload gets a new record.
+      // The server was reached and answered definitively in every one of them.
       settleOp(op);
+      app.saveOutcome = e instanceof ApiError && e.status === 409 && (e.code === "STALE_ROW_VERSION" || e.code === "MUTATION_REPLAY_SUPERSEDED")
+        ? { kind: "conflict", status: e.status, code: e.code }
+        : { kind: "rejected", status: e instanceof ApiError ? e.status : 0, code: e instanceof ApiError ? e.code : "UNKNOWN_ERROR" };
       if (!stillOpen()) {
         showMessage(`A save for another walk could not be completed (${e instanceof ApiError ? e.code : "network error"}).`, "error");
         return;
@@ -910,6 +931,21 @@ function saveCurrent() {
   })();
   return app.inFlight;
 }
+
+/**
+ * How a save attempt ended, for callers that must act differently on outcomes app.dirty and
+ * app.failed cannot tell apart. Exactly one is recorded per attempt, in app.saveOutcome:
+ *
+ *   saved      the server committed the payload this attempt carried.
+ *   transport  no response was produced at all: the browser could not reach the server (offline,
+ *              connection reset, DNS failure, timeout before any status line). Ambiguous.
+ *   server     the server answered with an HTTP 5xx. Also ambiguous, but the server was reached,
+ *              so nothing here may be reported to the person as a network failure.
+ *   conflict   409 STALE_ROW_VERSION or MUTATION_REPLAY_SUPERSEDED; the conflict workflow owns it.
+ *   rejected   any other definitive answer, including every 4xx validation rejection. The server
+ *              was reached and it refused the state; nothing was committed.
+ */
+const SAVE_OK = Object.freeze({ kind: "saved" });
 
 /**
  * A failure is ambiguous when the request may have been committed before the answer was lost:
@@ -1056,25 +1092,97 @@ async function resolveConflictKeep() {
 // ---- summary export (SUM-01..05) ---------------------------------------------------------------
 
 /**
- * Downloads the walk summary. The server's copy is authoritative -- it is authorized, built from
- * the walk's pinned instrument version, and audited -- so pending edits are flushed first and the
- * download is a plain GET of the summary route, which carries the session cookie.
+ * How many send-and-settle passes the export flush will make before giving up. Each pass either
+ * sends something or finds nothing left to send, so the flush terminates on its own; the bound is
+ * there so that a pathological state (an editor that re-dirties itself, a store that reports a
+ * success without clearing the payload) ends in a blocked export rather than a spinning tab.
  *
- * When that flush did not reach the server, downloading the server's copy would hand the person a
- * summary that is missing what is on their screen. In that case the browser formatter produces the
- * same text from the working state instead (the shared vectors prove the two are byte-identical)
- * and the fallback is announced, so nobody is told a stale file is current.
+ * A normal flush takes at most three: settle a save already on the wire, send the state queued
+ * behind it, confirm nothing is left.
+ */
+const EXPORT_FLUSH_PASSES = 6;
+
+/**
+ * Drives the editor state onto the server, and reports how that ended.
+ *
+ * saveCurrent() coalesces: called while a request is already on the wire it awaits *that* request
+ * and leaves the newer state on the autosave timer. Awaiting it once is therefore not the same as
+ * "everything on screen is saved", which is exactly what the export has to know. So this loops:
+ * each pass awaits whatever saveCurrent does, then looks again at the real unsaved-work signals
+ * (dirty, a queued timer, a request in flight, an unresolved save) and sends again if any is still
+ * set, cancelling the autosave timer rather than waiting it out.
+ *
+ * It stops the moment the outcome is not "saved", because every other outcome is a different
+ * answer for the caller and none of them is improved by sending again:
+ *
+ *   { saved: true }          the editor state is on the server.
+ *   { unreachable: true }    the browser could not reach the server at all.
+ *   { blocked: "conflict" }  the conflict workflow owns the walk until the person resolves it.
+ *   { blocked: "rejected" }  the server was reached and refused the state.
+ *   { blocked: "unresolved" }the server answered 5xx, or the bound above was reached: whether it
+ *                            holds the latest state is unknown, and it was reached either way.
+ *   { blocked: "moved" }     the editor is no longer on this walk.
+ */
+async function flushForExport(walk) {
+  for (let pass = 0; pass < EXPORT_FLUSH_PASSES; pass += 1) {
+    if (app.current !== walk) return { blocked: "moved" };
+    if (app.conflict) return { blocked: "conflict" };
+    if (!app.dirty && app.timer === null && !app.inFlight && !ambiguousSave()) return { saved: true };
+    app.saveOutcome = null;
+    await saveCurrent();
+    if (app.current !== walk) return { blocked: "moved" };
+    if (app.conflict) return { blocked: "conflict" };
+    const outcome = app.saveOutcome;
+    if (!outcome || outcome.kind === "saved") continue;
+    if (outcome.kind === "transport") return { unreachable: true };
+    if (outcome.kind === "conflict") return { blocked: "conflict" };
+    if (outcome.kind === "rejected") return { blocked: "rejected", outcome };
+    return { blocked: "unresolved", outcome };            // kind === "server" (HTTP 5xx)
+  }
+  return { blocked: "unresolved" };
+}
+
+/**
+ * Downloads the walk summary.
+ *
+ * The server's copy is authoritative: it is authorized, built from the walk's pinned instrument
+ * version, evaluated by the server engine, and audited. So the editor state is flushed onto the
+ * server first and the download is a plain GET of the summary route, which carries the session
+ * cookie. A read-only viewer has nothing to flush and goes straight there.
+ *
+ * THE FALLBACK RULE (Phase 5 correction). The browser formatter is used when, and only when, the
+ * flush failed because the browser could not reach the server. Every other unsent-work condition
+ * blocks the export instead of producing a file:
+ *
+ *   - Work merely queued or in flight is not a reason for anything: it is flushed (see
+ *     flushForExport) and the export then proceeds from the server. Previously an edit made during
+ *     an in-flight save left app.dirty set, and the export read that as unsent work and built a
+ *     local file while the queued save was still sitting on the autosave timer, never sent.
+ *   - A definitive rejection (any 4xx) is not a transport failure: the server was reached and it
+ *     refused the state. A browser-generated file would put the refused state into a document that
+ *     looks like the saved walk, and the old message would have blamed a network that was working.
+ *   - An HTTP 5xx is not a transport failure either. It stays ambiguous and keeps every Phase 4
+ *     recovery guarantee (the operation record, its mutation id and its frozen body are untouched
+ *     here), but it is reported as an unfinished save, not as an unreachable server.
+ *   - A conflict blocks the export and leaves the conflict workflow exactly as it was.
+ *
+ * When the fallback does run, the file is the browser formatter's text for the working state
+ * (byte-identical to the server's for the same state, per the shared vectors) and the message says
+ * it was generated in the browser from unsaved information, so nobody mistakes it for the saved copy.
  */
 async function exportSummary() {
   const walk = app.current;
   if (!walk) return;
-  if (app.conflict) { showMessage(EXPORT_BLOCKED, "error"); announce(EXPORT_BLOCKED); return; }
-  if (walk.canEdit && (app.dirty || app.timer !== null || app.inFlight || ambiguousSave())) await saveCurrent();
-  if (app.current !== walk) return;                 // the editor moved on while the flush ran
-  if (app.conflict) { showMessage(EXPORT_BLOCKED, "error"); announce(EXPORT_BLOCKED); return; }
+  if (app.conflict) { blockExport(EXPORT_BLOCKED); return; }
 
-  const unsent = walk.canEdit && (app.dirty || app.failed || Boolean(ambiguousSave()));
-  const href = unsent ? localSummaryUrl(walk) : `${body.dataset.apiBase}/walks/${encodeURIComponent(walk.id)}/summary`;
+  const flushed = walk.canEdit ? await flushForExport(walk) : { saved: true };
+  if (app.current !== walk) return;                 // the editor moved on while the flush ran
+  if (flushed.blocked === "conflict" || app.conflict) { blockExport(EXPORT_BLOCKED); return; }
+  if (flushed.blocked === "rejected") { blockExport(EXPORT_REJECTED); return; }
+  if (flushed.blocked) { blockExport(EXPORT_UNRESOLVED); return; }
+
+  const local = Boolean(flushed.unreachable);
+  const href = local ? localSummaryUrl(walk) : `${body.dataset.apiBase}/walks/${encodeURIComponent(walk.id)}/summary`;
   const link = document.createElement("a");
   link.href = href;
   // The server route already answers with Content-Disposition: attachment and the sanitized file
@@ -1082,15 +1190,21 @@ async function exportSummary() {
   // that is redundant -- the header wins over it per the HTML spec -- and it makes the browser
   // fetch the URL on its own terms instead of following the response, so it is set only for the
   // local fallback, whose blob carries no headers at all.
-  if (unsent) link.download = summaryFileName(modelFor(walk), walk.state, app.editor.evaluation, walk.id);
+  if (local) link.download = summaryFileName(modelFor(walk), walk.state, app.editor.evaluation, walk.id);
   document.body.appendChild(link);
   link.click();
   link.remove();
-  if (unsent) {
+  if (local) {
     URL.revokeObjectURL(href);
     showMessage(EXPORT_LOCAL, "error");
   }
-  announce(EXPORT_ANNOUNCE);
+  announce(local ? `${EXPORT_ANNOUNCE}. ${EXPORT_LOCAL}` : EXPORT_ANNOUNCE);
+}
+
+/** No file, and the person is told why in the same words on screen and to a screen reader. */
+function blockExport(message) {
+  showMessage(message, "error");
+  announce(message);
 }
 
 function localSummaryUrl(walk) {

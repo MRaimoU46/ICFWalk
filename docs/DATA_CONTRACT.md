@@ -412,6 +412,20 @@ submitted one.
   submitted state a rowversion minted for someone else's, and that client's next whole-state save
   would overwrite the newer work without ever seeing 409 `STALE_ROW_VERSION`. A replay is materialized
   under the same lock by the same rule (see "Mutation identity and idempotency").
+- **Summary export coherence** (Phase 5 correction): `GET /api/walks/{id}/summary` is a read, but
+  it is a read of an *aggregate*, so it is materialized inside one transaction that takes the walk
+  mutation lock first (`findWalk(id, true)`) and holds it across the header, the dimension values,
+  the responses, the visibility evaluation, the text and the file name. Unlocked, those were
+  separate statements and a mutation could commit between any two of them: a save that changes a
+  visibility-driving dimension and a response it governs commits both together, and an export
+  straddling that commit could pair the old dimensions with the new responses, then print, under
+  the old dimensions, a retained answer the new ones hide. The file would describe a state the
+  database never held, violating SUM-01 and SUM-04. Because SAVE, COMPLETE, VOID and a replay all
+  begin by taking that same row lock, serializing against it serializes against all of them: a
+  mutation commits strictly before or strictly after an export, never inside one. The export still
+  writes nothing -- no row version moves, no revision, no mutation record -- and the metadata-only
+  log line and `WALK_SUMMARY_EXPORTED` audit event are written after the transaction, from the
+  already-coherent result.
 - **Revisions**: appended on completion (`COMPLETE`, the pre-completion snapshot) and on each
   *material* edit of a COMPLETED walk (`POST_COMPLETION_EDIT`, the snapshot before the edit); DRAFT
   autosaves append none. An identical save to a COMPLETED walk writes nothing at all: no revision, no
