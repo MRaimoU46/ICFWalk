@@ -49,6 +49,9 @@ component output="false" {
 		add("POST", "^/api/walks$", "walkController", "create", { "permission": "walk.create", "orgUnitBody": "orgUnitId" });
 		add("GET", "^/api/walks/([^/]+)$", "walkController", "open", { "anyPermission": variables.WALK_READ_PERMISSIONS });
 		add("GET", "^/api/walks/([^/]+)/instrument$", "walkController", "instrument", { "anyPermission": variables.WALK_READ_PERMISSIONS });
+		// Summary export (Phase 5): read-only, so the same read policy as opening a walk and no CSRF.
+		// The bare-id route is "$" anchored, so this path is unambiguous.
+		add("GET", "^/api/walks/([^/]+)/summary$", "walkController", "summary", { "anyPermission": variables.WALK_READ_PERMISSIONS });
 		add("PUT", "^/api/walks/([^/]+)$", "walkController", "save", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
 		add("POST", "^/api/walks/([^/]+)/complete$", "walkController", "complete", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
 		add("POST", "^/api/walks/([^/]+)/void$", "walkController", "void", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });

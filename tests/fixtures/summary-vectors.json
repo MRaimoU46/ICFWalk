@@ -1,0 +1,966 @@
+{
+  "format": "icfwalk-summary-vectors/1",
+  "contract": "icfwalk-summary/1",
+  "source": "c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9",
+  "policies": {
+    "hiddenDimensionPolicy": "RETAIN_HIDDEN"
+  },
+  "averages": [
+    {
+      "sum": 0,
+      "count": 0,
+      "expected": "n/a"
+    },
+    {
+      "sum": 3,
+      "count": 1,
+      "expected": "3.0"
+    },
+    {
+      "sum": 7,
+      "count": 2,
+      "expected": "3.5"
+    },
+    {
+      "sum": 9,
+      "count": 4,
+      "expected": "2.3"
+    },
+    {
+      "sum": 5,
+      "count": 2,
+      "expected": "2.5"
+    },
+    {
+      "sum": 61,
+      "count": 20,
+      "expected": "3.0"
+    },
+    {
+      "sum": 89,
+      "count": 20,
+      "expected": "4.5"
+    },
+    {
+      "sum": 1,
+      "count": 3,
+      "expected": "0.3"
+    },
+    {
+      "sum": 2,
+      "count": 3,
+      "expected": "0.7"
+    },
+    {
+      "sum": 10,
+      "count": 3,
+      "expected": "3.3"
+    },
+    {
+      "sum": 25,
+      "count": 6,
+      "expected": "4.2"
+    },
+    {
+      "sum": 1,
+      "count": 8,
+      "expected": "0.1"
+    },
+    {
+      "sum": 15,
+      "count": 4,
+      "expected": "3.8"
+    }
+  ],
+  "fileLabels": [
+    {
+      "label": "Unlisted/Site?",
+      "expected": "Unlisted_Site_"
+    },
+    {
+      "label": "Art & Design",
+      "expected": "Art_Design"
+    },
+    {
+      "label": "../../etc/passwd",
+      "expected": "_etc_passwd"
+    },
+    {
+      "label": "..\\..\\windows",
+      "expected": "_windows"
+    },
+    {
+      "label": "quote\"and;semi",
+      "expected": "quote_and_semi"
+    },
+    {
+      "label": "already_safe-label",
+      "expected": "already_safe-label"
+    },
+    {
+      "label": "  leading and trailing  ",
+      "expected": "_leading_and_trailing_"
+    },
+    {
+      "label": "café résumé",
+      "expected": "caf_r_sum_"
+    },
+    {
+      "label": "9_Art & Design_2026-09-17",
+      "expected": "9_Art_Design_2026-09-17"
+    },
+    {
+      "label": "",
+      "expected": ""
+    }
+  ],
+  "vectors": [
+    {
+      "name": "fully answered high school walk",
+      "walkId": "11111111-1111-4111-8111-111111111111",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-17"
+          },
+          "observer": {
+            "textValue": "Jane Doe"
+          },
+          "school": {
+            "selectedValueCode": "elgin_high_school"
+          },
+          "grade": {
+            "selectedValueCode": "9"
+          },
+          "content": {
+            "selectedValueCode": "ela"
+          },
+          "period": {
+            "selectedValueCode": "second"
+          },
+          "classType": {
+            "selectedValueCode": "general_education"
+          },
+          "visitTiming": {
+            "selectedValueCode": "beginning_of_lesson"
+          },
+          "topic": {
+            "textValue": "RL.9-10.2"
+          },
+          "tag": {
+            "textValue": "cohort B"
+          }
+        },
+        "responses": {
+          "p1q1": {
+            "storedCode": "Partial"
+          },
+          "p1q2": {
+            "storedCode": "Retrieval"
+          },
+          "p1q3": {
+            "storedCode": "Analysis"
+          },
+          "part1_adopted_pacing": {
+            "storedCode": "on"
+          },
+          "part1_adopted_ac1": {
+            "storedCode": "3"
+          },
+          "part1_adopted_ac2": {
+            "storedCode": "4"
+          },
+          "part1_adopted_notes": {
+            "textValue": "Adopted curriculum in use throughout."
+          },
+          "part1_targettask_tt1": {
+            "storedCode": "5"
+          },
+          "part1_targettask_tt2": {
+            "storedCode": "2"
+          },
+          "part1_targettask_notes": {
+            "textValue": "Task matched the target for most students."
+          },
+          "comp_s1_q1": {
+            "storedCode": "4"
+          },
+          "comp_s1_q2": {
+            "storedCode": "3"
+          },
+          "comp_s1_notes": {
+            "textValue": "Students annotated a complex text."
+          },
+          "comp_s2_q1": {
+            "storedCode": "2"
+          },
+          "comp_s2_q2": {
+            "storedCode": "3"
+          },
+          "comp_s2_notes": {
+            "textValue": "Vocabulary was displayed but rarely used."
+          },
+          "comp_s3_applicable": {
+            "storedCode": "yes"
+          },
+          "comp_s3_q1": {
+            "storedCode": "5"
+          },
+          "comp_s3_q2": {
+            "storedCode": "4"
+          },
+          "comp_s3_notes": {
+            "textValue": "Mini-lesson, work time, and share time were all visible."
+          },
+          "comp_s4_applicable": {
+            "storedCode": "yes"
+          },
+          "comp_s4_q1": {
+            "storedCode": "3"
+          },
+          "comp_s4_q2": {
+            "storedCode": "3"
+          },
+          "comp_s4_notes": {
+            "textValue": "Roles were named but not held."
+          },
+          "comp_s5_q1": {
+            "storedCode": "4"
+          },
+          "comp_s5_q2": {
+            "storedCode": "5"
+          },
+          "comp_s6_q1": {
+            "storedCode": "2"
+          },
+          "comp_s6_q2": {
+            "storedCode": "1"
+          },
+          "comp_s6_notes": {
+            "textValue": "Feedback was mostly evaluative."
+          },
+          "comp_s7_q1": {
+            "storedCode": "5"
+          },
+          "comp_s7_q2": {
+            "storedCode": "5"
+          },
+          "comp_s7_notes": {
+            "textValue": "Scaffolds were in place for every group."
+          },
+          "conditions_b1": {
+            "storedCode": "4"
+          },
+          "conditions_b2": {
+            "storedCode": "5"
+          },
+          "conditions_b3": {
+            "storedCode": "4"
+          },
+          "conditions_b4": {
+            "storedCode": "3"
+          },
+          "conditions_b5": {
+            "storedCode": "5"
+          },
+          "conditions_b6": {
+            "storedCode": "4"
+          },
+          "conditions_notes": {
+            "textValue": "Warm, predictable routines."
+          },
+          "summary_strengths": {
+            "textValue": "Every student had access to the grade-level text."
+          },
+          "summary_growth": {
+            "textValue": "Move feedback from evaluative to actionable."
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-17\nObserver(s): Jane Doe\nSchool: Elgin High School\nGrade level: 9\nContent area / subject: ELA\nPeriod: Second\nClass type: General Education\nVisit occurred at the: Beginning of Lesson\n\nPART 1 — TARGET / TAXONOMY / PACING\nLesson Standard: RL.9-10.2\nOther disaggregation tag(s): cohort B\n- There is a learning target that is directly from the content area standard.  [Partial]\n- The content area standard is written at this level of thinking.  [Retrieval]\n- The student evidence during the visit requires this level of thinking.  [Analysis]\n\nADOPTED CURRICULUM\n- Pacing:  [ON pace]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [3/5]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [4/5]\nNotes: Adopted curriculum in use throughout.\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [5/5]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [2/5]\nNotes: Task matched the target for most students.\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: 3.5)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [4/5]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [3/5]\nNotes: Students annotated a complex text.\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: 2.5)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [2/5]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [3/5]\nNotes: Vocabulary was displayed but rarely used.\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (avg: 4.5)\n- Instruction is intentionally structured so that students move from explicit teaching/modeling into guided and increasingly independent application of the learning.  [5/5]\n- Students are doing the majority of the cognitive work — reading, writing, discussing, reasoning, problem-solving, creating, or applying — rather than primarily watching or listening to the teacher.  [4/5]\nNotes: Mini-lesson, work time, and share time were all visible.\n\n2.4 ACADEMIC TEAMING  (avg: 3.0)\n- Students are engaged in purposeful academic dialogue in which they explain their thinking, respond to others, ask questions, and build on or challenge ideas.  [3/5]\n- The structure of collaborative learning requires individual accountability and meaningful contribution from all students — not simply students sitting or working together.  [3/5]\nNotes: Roles were named but not held.\n\n2.5 FORMATIVE ASSESSMENT  (avg: 4.5)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [4/5]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [5/5]\n\n2.6 ACTIONABLE FEEDBACK  (avg: 1.5)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [2/5]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [1/5]\nNotes: Feedback was mostly evaluative.\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: 5.0)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [5/5]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [5/5]\nNotes: Scaffolds were in place for every group.\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [4/5]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [5/5]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [4/5]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [3/5]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [5/5]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [4/5]\nNotes: Warm, predictable routines.\n\nPART 4 — WALK SUMMARY\nStrengths: Every student had access to the grade-level text.\nGrowth areas: Move feedback from evaluative to actionable.",
+        "fileName": "ICFWalk_9_ELA_2026-09-17.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 9 ELA",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 ELA on 2026-09-17.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nJane Doe"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 9 ELA (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 ELA on 2026-09-17.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Adopted curriculum in use throughout.\nTarget/Task Alignment notes: Task matched the target for most students.\n\n2.3 — Workshop Model of Instruction:\nNotes: Mini-lesson, work time, and share time were all visible.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\nStrengths: Every student had access to the grade-level text.\nGrowth areas: Move feedback from evaluative to actionable.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nJane Doe"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 9 ELA (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 ELA on 2026-09-17.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Adopted curriculum in use throughout.\nTarget/Task Alignment notes: Task matched the target for most students.\n\n2.3 — Workshop Model of Instruction:\nNotes: Mini-lesson, work time, and share time were all visible.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\nStrengths: Every student had access to the grade-level text.\nGrowth areas: Move feedback from evaluative to actionable.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nJane Doe"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 9 ELA (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 ELA on 2026-09-17.\n\n2.1 — Daily Engagement with Complex Texts:\nNotes: Students annotated a complex text.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nJane Doe"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 9 ELA (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 ELA on 2026-09-17.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Adopted curriculum in use throughout.\nTarget/Task Alignment notes: Task matched the target for most students.\n\n2.1 — Daily Engagement with Complex Texts:\nNotes: Students annotated a complex text.\n\n2.2 — Daily Engagement with Academic Vocabulary:\nNotes: Vocabulary was displayed but rarely used.\n\n2.3 — Workshop Model of Instruction:\nNotes: Mini-lesson, work time, and share time were all visible.\n\n2.4 — Academic Teaming:\nNotes: Roles were named but not held.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\nNotes: Feedback was mostly evaluative.\n\n2.7 — Culturally & Linguistically Responsive:\nNotes: Scaffolds were in place for every group.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\nStrengths: Every student had access to the grade-level text.\nGrowth areas: Move feedback from evaluative to actionable.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nJane Doe"
+          }
+        }
+      }
+    },
+    {
+      "name": "unanswered items",
+      "walkId": "22222222-2222-4222-8222-222222222222",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-18"
+          },
+          "school": {
+            "selectedValueCode": "abbott_middle_school"
+          },
+          "grade": {
+            "selectedValueCode": "7"
+          },
+          "classType": {
+            "selectedValueCode": "general_education"
+          }
+        },
+        "responses": {
+          "p1q1": {
+            "storedCode": "No"
+          },
+          "part1_adopted_ac1": {
+            "storedCode": "4"
+          },
+          "comp_s1_q1": {
+            "storedCode": "2"
+          },
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          },
+          "conditions_b1": {
+            "storedCode": "5"
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-18\nSchool: Abbott Middle School\nGrade level: 7\nClass type: General Education\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [No]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [4/5]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: 2.0)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [2/5]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [5/5]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_7_2026-09-18.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 7",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 7 on 2026-09-18.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 7 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 7 on 2026-09-18.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 7 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 7 on 2026-09-18.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 7 (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 7 on 2026-09-18.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 7 (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 7 on 2026-09-18.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          }
+        }
+      }
+    },
+    {
+      "name": "workshop model no with notes",
+      "walkId": "33333333-3333-4333-8333-333333333333",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-19"
+          },
+          "observer": {
+            "textValue": "Sam Rivera"
+          },
+          "school": {
+            "selectedValueCode": "elgin_high_school"
+          },
+          "grade": {
+            "selectedValueCode": "11"
+          },
+          "content": {
+            "selectedValueCode": "math"
+          },
+          "classType": {
+            "selectedValueCode": "general_education"
+          }
+        },
+        "responses": {
+          "p1q1": {
+            "storedCode": "Partial"
+          },
+          "p1q2": {
+            "storedCode": "Retrieval"
+          },
+          "p1q3": {
+            "storedCode": "Analysis"
+          },
+          "part1_adopted_pacing": {
+            "storedCode": "on"
+          },
+          "part1_adopted_ac1": {
+            "storedCode": "3"
+          },
+          "part1_adopted_ac2": {
+            "storedCode": "4"
+          },
+          "part1_adopted_notes": {
+            "textValue": "Adopted curriculum in use throughout."
+          },
+          "part1_targettask_tt1": {
+            "storedCode": "5"
+          },
+          "part1_targettask_tt2": {
+            "storedCode": "2"
+          },
+          "part1_targettask_notes": {
+            "textValue": "Task matched the target for most students."
+          },
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s3_q1": {},
+          "comp_s3_q2": {},
+          "comp_s3_notes": {
+            "textValue": "Not a workshop day; notes kept for the follow-up."
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s1_q1": {
+            "storedCode": "4"
+          },
+          "comp_s1_q2": {
+            "storedCode": "4"
+          },
+          "conditions_b1": {
+            "storedCode": "4"
+          },
+          "conditions_b2": {
+            "storedCode": "5"
+          },
+          "conditions_b3": {
+            "storedCode": "4"
+          },
+          "conditions_b4": {
+            "storedCode": "3"
+          },
+          "conditions_b5": {
+            "storedCode": "5"
+          },
+          "conditions_b6": {
+            "storedCode": "4"
+          },
+          "conditions_notes": {
+            "textValue": "Warm, predictable routines."
+          },
+          "summary_growth": {
+            "textValue": "Plan a workshop cycle for the next unit."
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-19\nObserver(s): Sam Rivera\nSchool: Elgin High School\nGrade level: 11\nContent area / subject: Math\nClass type: General Education\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [Partial]\n- The content area standard is written at this level of thinking.  [Retrieval]\n- The student evidence during the visit requires this level of thinking.  [Analysis]\n\nADOPTED CURRICULUM\n- Pacing:  [ON pace]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [3/5]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [4/5]\nNotes: Adopted curriculum in use throughout.\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [5/5]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [2/5]\nNotes: Task matched the target for most students.\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: 4.0)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [4/5]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [4/5]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\nNotes: Not a workshop day; notes kept for the follow-up.\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [4/5]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [5/5]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [4/5]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [3/5]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [5/5]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [4/5]\nNotes: Warm, predictable routines.\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: Plan a workshop cycle for the next unit.",
+        "fileName": "ICFWalk_11_Math_2026-09-19.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 11 Math",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 11 Math on 2026-09-19.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nSam Rivera"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 11 Math (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 11 Math on 2026-09-19.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Adopted curriculum in use throughout.\nTarget/Task Alignment notes: Task matched the target for most students.\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\nNotes: Not a workshop day; notes kept for the follow-up.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\nGrowth areas: Plan a workshop cycle for the next unit.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nSam Rivera"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 11 Math (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 11 Math on 2026-09-19.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Adopted curriculum in use throughout.\nTarget/Task Alignment notes: Task matched the target for most students.\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\nNotes: Not a workshop day; notes kept for the follow-up.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\nGrowth areas: Plan a workshop cycle for the next unit.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nSam Rivera"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 11 Math (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 11 Math on 2026-09-19.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nSam Rivera"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 11 Math (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 11 Math on 2026-09-19.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Adopted curriculum in use throughout.\nTarget/Task Alignment notes: Task matched the target for most students.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\nNotes: Not a workshop day; notes kept for the follow-up.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\nGrowth areas: Plan a workshop cycle for the next unit.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nSam Rivera"
+          }
+        }
+      }
+    },
+    {
+      "name": "dual language answers retained while hidden",
+      "walkId": "44444444-4444-4444-8444-444444444444",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-20"
+          },
+          "observer": {
+            "textValue": "Dana Fox"
+          },
+          "school": {
+            "selectedValueCode": "bartlett_elementary_school"
+          },
+          "grade": {
+            "selectedValueCode": "2"
+          },
+          "classType": {
+            "selectedValueCode": "general_education"
+          }
+        },
+        "responses": {
+          "dual_language_q1": {
+            "storedCode": "yes"
+          },
+          "dual_language_q2": {
+            "storedCode": "no"
+          },
+          "dual_language_notes": {
+            "textValue": "Bridge time was protected."
+          },
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          },
+          "summary_strengths": {
+            "textValue": "Biliteracy routines are established."
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-20\nObserver(s): Dana Fox\nSchool: Bartlett Elementary School\nGrade level: 2\nClass type: General Education\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [not answered]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\n\nPART 4 — WALK SUMMARY\nStrengths: Biliteracy routines are established.\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_2_2026-09-20.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 2",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 2 on 2026-09-20.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nDana Fox"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 2 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 2 on 2026-09-20.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\nStrengths: Biliteracy routines are established.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nDana Fox"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 2 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 2 on 2026-09-20.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\nStrengths: Biliteracy routines are established.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nDana Fox"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 2 (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 2 on 2026-09-20.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nDana Fox"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 2 (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 2 on 2026-09-20.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\nStrengths: Biliteracy routines are established.\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nDana Fox"
+          }
+        }
+      }
+    },
+    {
+      "name": "period retained but hidden for an elementary grade",
+      "walkId": "55555555-5555-4555-8555-555555555555",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-21"
+          },
+          "school": {
+            "selectedValueCode": "bartlett_elementary_school"
+          },
+          "grade": {
+            "selectedValueCode": "3"
+          },
+          "period": {
+            "selectedValueCode": "fourth"
+          },
+          "classType": {
+            "selectedValueCode": "general_education"
+          }
+        },
+        "responses": {
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-21\nSchool: Bartlett Elementary School\nGrade level: 3\nClass type: General Education\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [not answered]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_3_2026-09-21.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 3",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 3 on 2026-09-21.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 3 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 3 on 2026-09-21.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 3 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 3 on 2026-09-21.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 3 (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 3 on 2026-09-21.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 3 (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 3 on 2026-09-21.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          }
+        }
+      }
+    },
+    {
+      "name": "other school and other content with punctuation",
+      "walkId": "66666666-6666-4666-8666-666666666666",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-17"
+          },
+          "observer": {
+            "textValue": "R. O'Neil-Vega"
+          },
+          "school": {
+            "selectedValueCode": "other",
+            "otherText": "Unlisted/Site?"
+          },
+          "grade": {
+            "selectedValueCode": "9"
+          },
+          "content": {
+            "selectedValueCode": "other",
+            "otherText": "Art & Design"
+          },
+          "classType": {
+            "selectedValueCode": "other",
+            "otherText": "Co-taught"
+          },
+          "visitTiming": {
+            "selectedValueCode": "end_of_the_lesson"
+          }
+        },
+        "responses": {
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-17\nObserver(s): R. O'Neil-Vega\nSchool: Unlisted/Site?\nGrade level: 9\nContent area / subject: Art & Design\nClass type: Co-taught\nVisit occurred at the: End of the Lesson\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [not answered]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_9_Art_Design_2026-09-17.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 9 Art & Design",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Art & Design on 2026-09-17.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nR. O'Neil-Vega"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 9 Art & Design (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Art & Design on 2026-09-17.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nR. O'Neil-Vega"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 9 Art & Design (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Art & Design on 2026-09-17.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nR. O'Neil-Vega"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 9 Art & Design (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Art & Design on 2026-09-17.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nR. O'Neil-Vega"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 9 Art & Design (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Art & Design on 2026-09-17.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nR. O'Neil-Vega"
+          }
+        }
+      }
+    },
+    {
+      "name": "content area music",
+      "walkId": "77777777-7777-4777-8777-777777777777",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-22"
+          },
+          "observer": {
+            "textValue": "Pat Lin"
+          },
+          "school": {
+            "selectedValueCode": "elgin_high_school"
+          },
+          "grade": {
+            "selectedValueCode": "10"
+          },
+          "content": {
+            "selectedValueCode": "music"
+          },
+          "classType": {
+            "selectedValueCode": "esl"
+          }
+        },
+        "responses": {
+          "content_area_q1": {
+            "storedCode": "yes"
+          },
+          "content_area_q2": {
+            "storedCode": "no"
+          },
+          "content_area_notes": {
+            "textValue": "Instruments were out and in use."
+          },
+          "esl_q1": {
+            "storedCode": "yes"
+          },
+          "esl_notes": {
+            "textValue": "Language objectives were posted."
+          },
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-22\nObserver(s): Pat Lin\nSchool: Elgin High School\nGrade level: 10\nContent area / subject: Music\nClass type: ESL\n\nCONTENT-AREA LOOK-FORS\n- 1 - Question place holder — specific questions to this content area  [Yes]\n- 2 - Question place holder — specific questions to this content area  [No]\n- 3 - Question place holder — specific questions to this content area  [not answered]\n- 4 - Question place holder — specific questions to this content area  [not answered]\n- 5 - Question place holder — specific questions to this content area  [not answered]\nNotes: Instruments were out and in use.\n\nESL CLASSROOM\n- Is there evidence of linguistic transfer and/or contrastive/metalinguistic analysis in the Bridge space?  [Yes]\n- Is the classroom teacher incorporating language acquisition instruction to support students’ access to the Core Curriculum (10 Key Language Acquisition Strategies)?  [not answered]\n- Is there evidence of intentional oracy instruction to support language acquisition and academic discourse (e.g., structured student conversations, such as the use of academic language stems; collaborative discussions; teacher modeling of language; TPR; Concept Attainment; or other language acquisition strategies)?  [not answered]\nNotes: Language objectives were posted.\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [not answered]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_10_Music_2026-09-22.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 10 Music",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 10 Music on 2026-09-22.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nPat Lin"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 10 Music (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 10 Music on 2026-09-22.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nPat Lin"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 10 Music (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 10 Music on 2026-09-22.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nPat Lin"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 10 Music (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 10 Music on 2026-09-22.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nPat Lin"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 10 Music (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 10 Music on 2026-09-22.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nPat Lin"
+          }
+        }
+      }
+    },
+    {
+      "name": "markup in notes",
+      "walkId": "88888888-8888-4888-8888-888888888888",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-23"
+          },
+          "observer": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "school": {
+            "selectedValueCode": "elgin_high_school"
+          },
+          "grade": {
+            "selectedValueCode": "12"
+          },
+          "classType": {
+            "selectedValueCode": "general_education"
+          },
+          "topic": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          }
+        },
+        "responses": {
+          "part1_adopted_notes": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "comp_s1_notes": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          },
+          "conditions_notes": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "summary_strengths": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "summary_growth": {
+            "textValue": "Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-23\nObserver(s): Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\nSchool: Elgin High School\nGrade level: 12\nClass type: General Education\n\nPART 1 — TARGET / TAXONOMY / PACING\nLesson Standard: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [not answered]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nPART 4 — WALK SUMMARY\nStrengths: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\nGrowth areas: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>",
+        "fileName": "ICFWalk_12_2026-09-23.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 12",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 12 on 2026-09-23.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nLine 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 12 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 12 on 2026-09-23.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nPart 4: Walk Summary:\nStrengths: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\nGrowth areas: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nLine 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 12 (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 12 on 2026-09-23.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nPart 4: Walk Summary:\nStrengths: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\nGrowth areas: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nLine 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 12 (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 12 on 2026-09-23.\n\n2.1 — Daily Engagement with Complex Texts:\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nLine 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 12 (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 12 on 2026-09-23.\n\nPart 1 — Target / Taxonomy / Pacing:\nAdopted Curriculum notes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\n2.1 — Daily Engagement with Complex Texts:\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\nNotes: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nPart 4: Walk Summary:\nStrengths: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\nGrowth areas: Line 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\nLine 1 <b>bold</b> & \"quotes\" <script>alert(1)</script>"
+          }
+        }
+      }
+    },
+    {
+      "name": "blank new walk",
+      "walkId": "99999999-9999-4999-8999-999999999999",
+      "state": {
+        "dimensions": {},
+        "responses": {
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [not answered]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [not answered]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [not answered]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [not answered]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [not answered]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [not answered]\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_99999999-9999-4999-8999-999999999999.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\n(No notes recorded for this part.)\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          }
+        }
+      }
+    },
+    {
+      "name": "no observer and nothing selected",
+      "walkId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "state": {
+        "dimensions": {
+          "date": {
+            "dateValue": "2026-09-24"
+          },
+          "school": {
+            "selectedValueCode": "elgin_high_school"
+          },
+          "grade": {
+            "selectedValueCode": "9"
+          },
+          "content": {
+            "selectedValueCode": "science"
+          },
+          "classType": {
+            "selectedValueCode": "avid"
+          }
+        },
+        "responses": {
+          "avid_q1": {
+            "storedCode": "yes"
+          },
+          "avid_notes": {
+            "textValue": "WICOR strategies visible."
+          },
+          "comp_s3_applicable": {
+            "storedCode": "no"
+          },
+          "comp_s4_applicable": {
+            "storedCode": "no"
+          },
+          "conditions_b1": {
+            "storedCode": "4"
+          },
+          "conditions_b2": {
+            "storedCode": "5"
+          },
+          "conditions_b3": {
+            "storedCode": "4"
+          },
+          "conditions_b4": {
+            "storedCode": "3"
+          },
+          "conditions_b5": {
+            "storedCode": "5"
+          },
+          "conditions_b6": {
+            "storedCode": "4"
+          },
+          "conditions_notes": {
+            "textValue": "Warm, predictable routines."
+          }
+        }
+      },
+      "expected": {
+        "summaryText": "ICFWALK SUMMARY\n================\nDate: 2026-09-24\nSchool: Elgin High School\nGrade level: 9\nContent area / subject: Science\nClass type: AVID\n\nAVID CLASSROOM\n- 1 - Question place holder  [Yes]\n- 2 - Question place holder  [not answered]\n- 3 - Question place holder  [not answered]\nNotes: WICOR strategies visible.\n\nPART 1 — TARGET / TAXONOMY / PACING\n- There is a learning target that is directly from the content area standard.  [not answered]\n- The content area standard is written at this level of thinking.  [not answered]\n- The student evidence during the visit requires this level of thinking.  [not answered]\n\nADOPTED CURRICULUM\n- Pacing:  [not answered]\n- The learning students are experiencing is clearly grounded in the district’s adopted curriculum and grade/course-level expectations.  [not answered]\n- Students are using the intended high-quality curricular materials and resources in ways that preserve the rigor and purpose of the lesson.  [not answered]\n\nTARGET/TASK ALIGNMENT\n- There is clear evidence that students understand what they are learning and what successful learning/work looks like. (Teacher Clarity ES = 0.85)  [not answered]\n- The tasks students are completing require the level of thinking, rigor, and evidence called for by the learning target/standard.  [not answered]\n\nPART 2 — INSTRUCTIONAL CLARITY FRAMEWORK COMPONENTS\n\n2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: n/a)\n- ENGAGEMENT: Students are required to make meaning from the text/content — citing evidence, questioning, analyzing, annotating, summarizing, or explaining their thinking — rather than primarily receiving the meaning from the teacher.  [not answered]\n- ENGAGEMENT: Students are actively reading, writing, speaking, and/or listening to appropriately challenging, grade-level/complex text or content as part of the daily learning.  [not answered]\n\n2.2 DAILY ENGAGEMENT WITH ACADEMIC VOCABULARY  (avg: n/a)\n- VOCABULARY: Essential academic and discipline-specific vocabulary is intentionally taught and reinforced within the context of the learning. (Vocabulary Programs ES = 0.69)  [not answered]\n- VOCABULARY: Students are expected to use newly learned academic vocabulary accurately in their speaking, writing, reasoning, or discussion. (Vocabulary Programs ES = 0.69)  [not answered]\n\n2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)\n\n2.4 ACADEMIC TEAMING  (not part of this lesson at the time of the visit)\n\n2.5 FORMATIVE ASSESSMENT  (avg: n/a)\n- The teacher is actively eliciting evidence of learning from multiple students during the lesson to determine who understands, who does not, and why.  [not answered]\n- There is evidence that the teacher and/or students are using that information to adjust instruction, strategy, grouping, pacing, or next steps in learning.  [not answered]\n\n2.6 ACTIONABLE FEEDBACK  (avg: n/a)\n- Students are receiving specific feedback tied to the learning target/success criteria that helps them understand where they are and what they need to do next. (Feedback ES = 0.50)  [not answered]\n- Students are using feedback to revise, refine, correct, or improve their work or thinking during the learning process. (Feedback ES = 0.50)  [not answered]\n\n2.7 CULTURALLY & LINGUISTICALLY RESPONSIVE  (avg: n/a)\n- Students’ cultural and linguistic backgrounds are reflected and drawn upon in the texts, resources, tasks, and discussion of the lesson.  [not answered]\n- Targeted scaffolds and explicit language supports are in place so that all students, including multilingual learners and students with disabilities, engage meaningfully with grade-level content.  [not answered]\n\nPART 3 — CONDITIONS FOR LEARNING\n- Adults consistently initiate positive interactions with students — using names, greeting them, checking in, listening, and showing interest in them as individuals.  [4/5]\n- Students readily approach, interact with, and seek assistance from adults, and adults respond with attention, respect, and support.  [5/5]\n- Students listen to, include, help, encourage, and positively engage with one another across classrooms and common spaces.  [4/5]\n- Expectations and routines are clearly communicated and consistently reinforced, and adults respond to student behavior calmly, respectfully, and in ways that preserve student dignity.  [3/5]\n- Students have opportunities to contribute their ideas and perspectives, make meaningful choices, assume leadership or responsibility, and participate in decisions that affect their learning or school experience.  [5/5]\n- When students are disengaged, isolated, struggling, or not meeting expectations, adults notice, approach, support, redirect, and reconnect them.  [4/5]\nNotes: Warm, predictable routines.\n\nPART 4 — WALK SUMMARY\nStrengths: (none noted)\nGrowth areas: (none noted)",
+        "fileName": "ICFWalk_9_Science_2026-09-24.txt",
+        "emails": {
+          "": {
+            "subject": "Quick note from today’s walk-through — 9 Science",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Science on 2026-09-24.\n\n(No sections were selected — check at least one part above, then update the draft.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s3,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 9 Science (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Science on 2026-09-24.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "summary,belonging,comp_s3,part1": {
+            "subject": "Quick note from today’s walk-through — 9 Science (Part 1: Target / Taxonomy / Pacing, 2.3: Workshop Model, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Science on 2026-09-24.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "comp_s1": {
+            "subject": "Quick note from today’s walk-through — 9 Science (2.1: Complex Texts)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Science on 2026-09-24.\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          },
+          "part1,comp_s1,comp_s2,comp_s3,comp_s4,comp_s5,comp_s6,comp_s7,belonging,summary": {
+            "subject": "Quick note from today’s walk-through — 9 Science (Part 1: Target / Taxonomy / Pacing, 2.1: Complex Texts, 2.2: Academic Vocabulary, 2.3: Workshop Model, 2.4: Academic Teaming, 2.5: Formative Assessment, 2.6: Actionable Feedback, 2.7: Culturally Responsive, Part 3: Conditions for Learning, Part 4: Walk Summary)",
+            "body": "I enjoyed my time stopping by your classroom today. I wanted to share a quick feedback note from what I observed during the visit in 9 Science on 2026-09-24.\n\nPart 1 — Target / Taxonomy / Pacing:\n(No notes recorded for this part.)\n\n2.1 — Daily Engagement with Complex Texts:\n(No notes recorded for this component.)\n\n2.2 — Daily Engagement with Academic Vocabulary:\n(No notes recorded for this component.)\n\n2.3 — Workshop Model of Instruction:\n• Not part of this lesson at the time of the visit.\n\n2.4 — Academic Teaming:\n• Not part of this lesson at the time of the visit.\n\n2.5 — Formative Assessment:\n(No notes recorded for this component.)\n\n2.6 — Actionable Feedback:\n(No notes recorded for this component.)\n\n2.7 — Culturally & Linguistically Responsive:\n(No notes recorded for this component.)\n\nPart 3 — Conditions for Learning:\nNotes: Warm, predictable routines.\n\nPart 4: Walk Summary:\n(No summary notes recorded yet.)\n\nStop by whenever you can, as I would love to talk through this with you — thanks again for what you do in your classroom for our students.\n\n[Your name]"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -31,6 +31,27 @@ component output="false" {
 		return { "status": 200, "body": out };
 	}
 
+	/**
+	 * Text export (Phase 5). The body is the summary exactly as the formatter produced it: UTF-8,
+	 * LF line ends, no trailing newline, no BOM. The file name is sanitized down to [A-Za-z0-9_-]
+	 * by the formatter (SUM-05), so the Content-Disposition value can carry no quote, path
+	 * separator, or traversal sequence however a walk was filled in. Cache-Control and nosniff are
+	 * passed explicitly because the Responder's text path sets only the status and content type.
+	 */
+	public struct function summary(required struct req) {
+		var out = variables.c.walkService.summary(arguments.req.principal, arguments.req.params[1]);
+		return {
+			"status": 200,
+			"text": out.text,
+			"contentType": "text/plain; charset=utf-8",
+			"headers": {
+				"Content-Disposition": 'attachment; filename="' & out.fileName & '"',
+				"Cache-Control": "no-store",
+				"X-Content-Type-Options": "nosniff"
+			}
+		};
+	}
+
 	public struct function save(required struct req) {
 		var walk = variables.c.walkService.save(arguments.req.principal, arguments.req.params[1], arguments.req.body);
 		return { "status": 200, "body": { "walk": walk, "correlationId": variables.c.requestContext.correlationId() } };

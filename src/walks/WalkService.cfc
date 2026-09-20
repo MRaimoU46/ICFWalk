@@ -59,7 +59,8 @@ component output="false" {
 	public WalkService function init(
 		required struct config, required any db, required any errors, required any logger, required any auditRepository,
 		required any canonicalJson, required any authorizationService, required any snapshotService, required any visibilityEngine,
-		required any walkRepository, required any payloadValidator, required any orgUnitRepository
+		required any walkRepository, required any payloadValidator, required any orgUnitRepository,
+		required any summaryFormatter
 	) {
 		variables.config = arguments.config;
 		variables.db = arguments.db;
@@ -73,6 +74,7 @@ component output="false" {
 		variables.walks = arguments.walkRepository;
 		variables.validator = arguments.payloadValidator;
 		variables.orgUnits = arguments.orgUnitRepository;
+		variables.summaries = arguments.summaryFormatter;
 		return this;
 	}
 
@@ -99,6 +101,37 @@ component output="false" {
 	public struct function open(required struct principal, required string walkId) {
 		var access = variables.authz.authorizeWalk(arguments.principal, arguments.walkId, "read");
 		return loadDto(access.walkId, arguments.principal);
+	}
+
+	/**
+	 * Text summary export (Phase 5, SUM-01..05). Read-only: the same read authorization as open()
+	 * (403 for a report-only or instrument-admin role, 404 outside the caller's organizational
+	 * scope, 400 for a malformed id), the walk's own pinned instrument version (WALK-11), and the
+	 * server engine's evaluation -- so a value the instrument currently hides is excluded from the
+	 * text and the file name however it is retained in the database (docs/DATA_CONTRACT.md).
+	 *
+	 * A voided walk still exports: Phase 4 keeps it readable by id and the text carries no status.
+	 *
+	 * Nothing about the request chooses what is exported: no version id, org unit, item list, or
+	 * file name is accepted from the caller. The audit event and the log line carry identifiers,
+	 * the walk's status, and a byte count only -- never the summary text, a note, or any other
+	 * narrative value (SEC-05).
+	 */
+	public struct function summary(required struct principal, required string walkId) {
+		var access = variables.authz.authorizeWalk(arguments.principal, arguments.walkId, "read");
+		var row = variables.walks.findWalk(access.walkId);
+		if (structIsEmpty(row)) variables.errors.notFound();
+		var dims = variables.walks.loadDimensionValues(access.walkId);
+		var responses = variables.walks.loadResponses(access.walkId);
+		var model = variables.snapshots.renderModelFor(row.versionId);
+		var state = stateOf(dims, responses);
+		var evaluation = variables.engine.evaluateVisibility(model, state);
+		var text = variables.summaries.summaryText(model, state, evaluation);
+		var name = variables.summaries.fileName(model, state, evaluation, row.walkId);
+		var bytes = arrayLen(charsetDecode(text, "utf-8"));
+		variables.logger.info("walk.summary.exported", { "walkId": row.walkId, "versionId": row.versionId, "status": row.status, "bytes": bytes });
+		variables.audit.record("WALK", row.walkId, "WALK_SUMMARY_EXPORTED", arguments.principal.userId, { "status": row.status, "versionId": row.versionId, "bytes": bytes });
+		return { "text": text, "fileName": name, "status": row.status, "versionId": row.versionId, "bytes": bytes };
 	}
 
 	/** Render model of the walk's pinned version (WALK-11: historical walks render from their own snapshot). */

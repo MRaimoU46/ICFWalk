@@ -894,3 +894,312 @@ test("CORR3: the School dimension's free-text value is never stored as a school'
   assert.equal(await storedRowVersion(created.json.walk.id), created.json.walk.rowVersion, "the refusal wrote nothing");
   assert.equal((await W.call("GET", "/api/walks")).json.walks.length, walksBefore + 1, "and created no extra walk");
 });
+
+// ---- Phase 5: summary export and the Part 4 email draft ------------------------------------------
+
+/**
+ * The route returns the exact bytes the shared formatter produced, with the headers that keep a
+ * text export a download and not a rendered document. The vectors are the contract: the state is
+ * saved through the ordinary PUT, so this proves the persisted path -- rows to state to engine to
+ * formatter to HTTP body -- and not only the pure function.
+ */
+test("SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers", { skip }, async () => {
+  const vectors = JSON.parse(await (await import("node:fs/promises")).readFile(new URL("../fixtures/summary-vectors.json", import.meta.url), "utf8"));
+  const vector = vectors.vectors.find((v) => v.name === "fully answered high school walk");
+  assert.ok(vector, "the fully answered vector is present");
+
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  assert.equal(created.status, 201, created.text);
+  const walk = created.json.walk;
+
+  // School is server-owned for a SCHOOL unit, so the vector's School is dropped from the payload and
+  // the walk keeps the value its org unit maps to. The grade option filter follows that value, and
+  // the fixture school is a middle school, so the grade becomes one that school can offer. Period
+  // stays visible (it shows for grades 6-12), so only the School and Grade level lines differ.
+  const dimensions = { ...vector.state.dimensions };
+  delete dimensions.school;
+  dimensions.grade = { selectedValueCode: "7" };
+  const saved = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(), dimensions, responses: vector.state.responses,
+  });
+  assert.equal(saved.status, 200, saved.text);
+
+  const r = await fetch(`${baseUrl(env)}/index.cfm/api/walks/${walk.id}/summary`, {
+    headers: { "X-ICFWalk-Dev-Subject": walker, Accept: "text/plain" },
+  });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("content-type") || "", /^text\/plain;\s*charset=utf-8$/i);
+  assert.match(r.headers.get("content-disposition") || "", /^attachment; filename="ICFWalk_[A-Za-z0-9_-]+\.txt"$/);
+  assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.ok(r.headers.get("x-correlation-id"), "the request context correlation id is present");
+
+  const text = await r.text();
+  assert.ok(!text.startsWith("﻿"), "no byte-order mark");
+  assert.ok(!text.includes("\r"), "LF line ends only");
+  assert.ok(!text.endsWith("\n"), "no trailing newline");
+  assert.equal(text.split("\n")[0], "ICFWALK SUMMARY");
+
+  // Byte-for-byte against the vector, minus the two server-owned lines. The walk carries the School
+  // value its org unit maps to rather than the vector's, and the grade band follows that value, so
+  // both lines are dropped from each side and everything else must match exactly.
+  const drop = (s) => s.split("\n").filter((line) => !line.startsWith("School: ") && !line.startsWith("Grade level: ")).join("\n");
+  assert.equal(drop(text), drop(vector.expected.summaryText), "the HTTP body is the shared vector text");
+  assert.match(text, /^School: Eastview Middle School$/m, "the server-owned School value is the one exported");
+  assert.match(text, /^Grade level: 7$/m, "the grade the school's band allows is the one exported");
+  assert.match(text, /^Period: Second$/m, "Period is visible for this grade, so it is exported");
+});
+
+test("SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+
+  // The values have to be answered while the instrument shows them: a value the pinned instrument
+  // currently hides is taken from the database and never from the browser, so submitting one while
+  // it is hidden is dropped rather than stored (Phase 4 hidden-value retention).
+  const visible = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(),
+    dimensions: { grade: { selectedValueCode: "7" }, classType: { selectedValueCode: "dual_language" } },
+    responses: {
+      comp_s1_q1: { storedCode: "4" },
+      comp_s3_applicable: { storedCode: "no" }, comp_s3_notes: { textValue: "kept for follow-up" },
+      dual_language_q1: { storedCode: "yes" }, dual_language_notes: { textValue: "retained while hidden" },
+      period: undefined,
+    },
+  });
+  assert.equal(visible.status, 200, visible.text);
+  assert.equal(visible.json.walk.states.responseStates.dual_language_notes, "ANSWERED");
+
+  // Now hide them: grade 3 hides Period, and the class type hides the Dual Language card. Both are
+  // retained in the database, so what follows is exclusion at the export and not deletion.
+  const saved = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: visible.json.walk.rowVersion, clientMutationId: uuid(),
+    dimensions: { grade: { selectedValueCode: "3" }, classType: { selectedValueCode: "general_education" } },
+    responses: { comp_s1_q1: { storedCode: "4" }, comp_s3_applicable: { storedCode: "no" }, comp_s3_notes: { textValue: "kept for follow-up" } },
+  });
+  assert.equal(saved.status, 200, saved.text);
+
+  const text = await (await fetch(`${baseUrl(env)}/index.cfm/api/walks/${walk.id}/summary`, { headers: { "X-ICFWalk-Dev-Subject": walker } })).text();
+  assert.match(text, /2\.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS {2}\(avg: 4\.0\)/, "SUM-02 the answered rating is the whole average");
+  assert.match(text, /\[not answered\]/, "SUM-02 a blank rating says so");
+  assert.doesNotMatch(text, /\(avg: 0\.0\)/, "SUM-02 a blank is never a zero");
+  assert.match(text, /2\.3 WORKSHOP MODEL OF INSTRUCTION {2}\(not part of this lesson at the time of the visit\)\nNotes: kept for follow-up/, "SUM-03");
+  assert.doesNotMatch(text, /DUAL LANGUAGE/, "SUM-04 a hidden section is excluded");
+  assert.doesNotMatch(text, /retained while hidden/, "SUM-04 its retained notes are excluded too");
+  assert.doesNotMatch(text, /^Period:/m, "the hidden Period is excluded");
+
+  // The hidden values really are still stored: the export excludes them, it does not delete them.
+  const reopened = await A.call("GET", `/api/walks/${walk.id}`);
+  assert.equal(reopened.json.walk.state.responses.dual_language_notes.textValue, "retained while hidden");
+  assert.equal(reopened.json.walk.states.responseStates.dual_language_notes, "HIDDEN");
+});
+
+test("SEC-02 stored markup reaches the export as inert text, never escaped and never executed", { skip }, async () => {
+  const payload = 'Line 1 <b>bold</b> & "quotes" <script>alert(1)</script>';
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(),
+    dimensions: { observer: { textValue: payload } }, responses: { conditions_notes: { textValue: payload } },
+  });
+  const r = await fetch(`${baseUrl(env)}/index.cfm/api/walks/${walk.id}/summary`, { headers: { "X-ICFWalk-Dev-Subject": walker } });
+  const text = await r.text();
+  assert.ok(text.includes(`Observer(s): ${payload}`), "the payload is present verbatim");
+  assert.ok(text.includes(`Notes: ${payload}`));
+  assert.ok(!text.includes("&amp;"), "text/plain is not HTML-escaped");
+  // text/plain plus nosniff is what stops a browser treating the payload as a document.
+  assert.match(r.headers.get("content-type") || "", /^text\/plain/i);
+  assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+});
+
+test("SUM-05 a punctuated label cannot steer the Content-Disposition file name", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  const saved = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(),
+    dimensions: { content: { selectedValueCode: "other", otherText: '../../etc/passwd"; rm -rf /' }, date: { dateValue: "2026-09-17" } },
+    responses: {},
+  });
+  assert.equal(saved.status, 200, saved.text);
+  const r = await fetch(`${baseUrl(env)}/index.cfm/api/walks/${walk.id}/summary`, { headers: { "X-ICFWalk-Dev-Subject": walker } });
+  const disposition = r.headers.get("content-disposition") || "";
+  assert.match(disposition, /^attachment; filename="ICFWalk_[A-Za-z0-9_-]+\.txt"$/, disposition);
+  // The header carries exactly one filename parameter, and its value carries nothing that could
+  // close the quoted string, add a second parameter, or name a path.
+  assert.equal(disposition.split("filename=").length - 1, 1);
+  const quoted = disposition.slice(disposition.indexOf('"') + 1, disposition.lastIndexOf('"'));
+  for (const forbidden of ["..", "/", "\\", ";", '"', " ", "rm -rf"]) {
+    assert.ok(!quoted.includes(forbidden), `${quoted} must not contain ${JSON.stringify(forbidden)}`);
+  }
+});
+
+test("AUTH-04/05 the summary route authorizes every request exactly as opening the walk does", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+
+  const get = (subject, id = walk.id) => fetch(`${baseUrl(env)}/index.cfm/api/walks/${id}/summary`, subject ? { headers: { "X-ICFWalk-Dev-Subject": subject } } : {});
+
+  assert.equal((await get(null)).status, 401, "no identity");
+  assert.equal((await get(nobody)).status, 403, "a signed-in user with no walk capability");
+  assert.equal((await get(report)).status, 403, "AUTH-05 a report-only role gets no walk detail");
+  assert.equal((await get(admin)).status, 403, "an instrument admin holds no walk capability");
+
+  // AUTH-04: another school is 404, the same answer as opening it, so the route leaks no existence.
+  const outside = await get(other);
+  assert.equal(outside.status, 404);
+  assert.equal((await A.call("GET", `/api/walks/${walk.id}`)).status, 200);
+  assert.equal((await O.call("GET", `/api/walks/${walk.id}`)).status, 404, "the open route answers the same");
+
+  // A colleague in scope may read, so a colleague may export.
+  assert.equal((await get(colleague)).status, 200);
+  // A malformed id is rejected before anything is read.
+  assert.equal((await get(walker, "not-a-guid")).status, 400);
+  assert.equal((await get(walker, crypto.randomUUID())).status, 404, "an unknown id is 404");
+
+  // Refusals carry no summary text and no walk data at all.
+  for (const subject of [report, admin, other]) {
+    const body = await (await get(subject)).text();
+    assert.ok(!body.includes("ICFWALK SUMMARY"), `${subject} received no summary`);
+  }
+});
+
+test("a voided walk still exports for a reader, and the export never mutates the walk", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  const voided = await A.call("POST", `/api/walks/${walk.id}/void`, { rowVersion: walk.rowVersion, clientMutationId: uuid(), reason: "Voided in an export test" });
+  assert.equal(voided.status, 200, voided.text);
+
+  const before = await storedRowVersion(walk.id);
+  const mutationsBefore = await mutationCount(walk.id);
+  const r = await fetch(`${baseUrl(env)}/index.cfm/api/walks/${walk.id}/summary`, { headers: { "X-ICFWalk-Dev-Subject": walker } });
+  assert.equal(r.status, 200);
+  const text = await r.text();
+  assert.equal(text.split("\n")[0], "ICFWALK SUMMARY");
+  assert.doesNotMatch(text, /VOIDED/, "the text carries no status line");
+  // A read is a read: no row version bump, no revision, no mutation row.
+  assert.equal(await storedRowVersion(walk.id), before, "exporting writes nothing");
+  assert.equal(await mutationCount(walk.id), mutationsBefore, "exporting records no mutation");
+  assert.equal(await walkStatus(walk.id), "VOIDED");
+});
+
+test("SEC-05 the export audit event carries identifiers and counts only, never narrative text", { skip }, async () => {
+  const secret = "Do not log this sentence about a teacher.";
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(),
+    dimensions: { observer: { textValue: secret } },
+    responses: { summary_strengths: { textValue: secret }, conditions_notes: { textValue: secret } },
+  });
+  const r = await fetch(`${baseUrl(env)}/index.cfm/api/walks/${walk.id}/summary`, { headers: { "X-ICFWalk-Dev-Subject": walker } });
+  assert.equal(r.status, 200);
+  assert.ok((await r.text()).includes(secret), "the text itself does carry the narrative");
+
+  const details = await scalar(
+    "SELECT TOP 1 details_json FROM icf.audit_event WHERE entity_type = N'WALK' AND entity_id = @id AND event_type = N'WALK_SUMMARY_EXPORTED' ORDER BY event_at DESC",
+    { id: walk.id });
+  assert.ok(details, "the export was audited");
+  const parsed = JSON.parse(details);
+  assert.deepEqual(Object.keys(parsed).sort(), ["bytes", "status", "versionId"], "only approved keys");
+  assert.equal(parsed.status, "DRAFT");
+  assert.ok(Number.isInteger(parsed.bytes) && parsed.bytes > 0);
+  assert.ok(!details.includes(secret), "no narrative value reached the audit row");
+
+  // No audit row anywhere carries the sentence, whatever event wrote it.
+  const leaked = await scalar(
+    "SELECT COUNT(*) AS n FROM icf.audit_event WHERE details_json LIKE @needle", { needle: "%Do not log this sentence%" });
+  assert.equal(leaked, 0, "no audit row carries the narrative");
+});
+
+test("SUM-07/09 the email draft round-trips through the ordinary save path in canonical form", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  const canonical = '{"body":"Body text","drafted":true,"includedPartKeys":["part1","comp_s3"],"subject":"Subject text","to":"teacher@u46.org"}';
+
+  const saved = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(),
+    dimensions: {}, responses: { email_workflow: { textValue: canonical }, summary_strengths: { textValue: "kept" } },
+  });
+  assert.equal(saved.status, 200, saved.text);
+  // The response is what the browser adopts, so the canonical form must already be in it: a
+  // different string here would make the conflict panel report a phantom unsent edit on reload.
+  assert.equal(saved.json.walk.state.responses.email_workflow.textValue, canonical);
+  assert.equal(saved.json.walk.states.responseStates.email_workflow, "ANSWERED");
+
+  const reopened = await A.call("GET", `/api/walks/${walk.id}`);
+  assert.equal(reopened.json.walk.state.responses.email_workflow.textValue, canonical, "SUM-07 reopening restores it exactly");
+
+  // SUM-09: clearing the draft leaves the recipient, the ticked parts, and every other answer alone.
+  const cleared = '{"body":"","drafted":false,"includedPartKeys":["part1","comp_s3"],"subject":"","to":"teacher@u46.org"}';
+  const after = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: reopened.json.walk.rowVersion, clientMutationId: uuid(),
+    dimensions: {}, responses: { email_workflow: { textValue: cleared }, summary_strengths: { textValue: "kept" } },
+  });
+  assert.equal(after.status, 200, after.text);
+  assert.equal(after.json.walk.state.responses.email_workflow.textValue, cleared);
+  assert.equal(after.json.walk.state.responses.summary_strengths.textValue, "kept", "other responses are untouched");
+
+  // The draft is not an observation: it never blocks completion and is never a completion issue.
+  const required = {
+    p1q1: { storedCode: "Partial" }, p1q2: { storedCode: "Retrieval" }, p1q3: { storedCode: "Analysis" },
+    part1_adopted_pacing: { storedCode: "on" }, part1_adopted_ac1: { storedCode: "3" }, part1_adopted_ac2: { storedCode: "4" },
+    part1_targettask_tt1: { storedCode: "5" }, part1_targettask_tt2: { storedCode: "2" },
+  };
+  const ready = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: after.json.walk.rowVersion, clientMutationId: uuid(),
+    dimensions: {}, responses: { ...required, email_workflow: { textValue: cleared }, summary_strengths: { textValue: "kept" } },
+  });
+  assert.equal(ready.status, 200, ready.text);
+  const completed = await A.call("POST", `/api/walks/${walk.id}/complete`, { rowVersion: ready.json.walk.rowVersion, clientMutationId: uuid() });
+  assert.equal(completed.status, 200, completed.text);
+  assert.equal(completed.json.walk.status, "COMPLETED");
+});
+
+test("SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  const hostile = JSON.stringify({ body: "b", drafted: true, includedPartKeys: [], subject: "s", to: "a@b.test\r\nbcc: victim@example.test" });
+  const saved = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: { email_workflow: { textValue: hostile } },
+  });
+  assert.equal(saved.status, 200, saved.text);
+  const stored = JSON.parse(saved.json.walk.state.responses.email_workflow.textValue);
+  assert.equal(stored.to, "a@b.test\r\nbcc: victim@example.test", "stored verbatim as data");
+  // Nothing on the server reads it: there is no mail route to inject a header into.
+  const mail = await A.call("POST", `/api/walks/${walk.id}/email`, { to: stored.to });
+  assert.equal(mail.status, 404, "no mail endpoint exists");
+  const send = await A.call("POST", `/api/walks/${walk.id}/send`, { to: stored.to });
+  assert.equal(send.status, 404, "no send endpoint exists");
+});
+
+test("SAVE-07 the email draft schema is enforced on the server, whatever the browser sends", { skip }, async () => {
+  const created = await A.call("POST", "/api/walks", { orgUnitId: unitA, clientMutationId: uuid(), dimensions: {}, responses: {} });
+  const walk = created.json.walk;
+  const reject = async (textValue, why) => {
+    const r = await A.call("PUT", `/api/walks/${walk.id}`, {
+      rowVersion: walk.rowVersion, clientMutationId: uuid(), dimensions: {}, responses: { email_workflow: { textValue } },
+    });
+    assert.equal(r.status, 400, `${why}: ${r.text}`);
+    assert.ok(JSON.stringify(r.json.error.details).includes("INVALID_EMAIL_DRAFT"), `${why} is reported as an email-draft problem`);
+    assert.equal(await storedRowVersion(walk.id), walk.rowVersion, `${why} wrote nothing`);
+  };
+  await reject('{"body":"b","drafted":true,"includedPartKeys":[],"subject":"s","to":"","extra":"x"}', "an unknown key");
+  await reject('{"drafted":{"nested":true}}', "a structured drafted flag");
+  await reject('{"includedPartKeys":"part1"}', "a non-array part list");
+  await reject('{"includedPartKeys":[{"nested":true}]}', "a structured part key");
+  await reject('{"subject":{"nested":true}}', "a non-string subject");
+  await reject("not json at all", "a value that is not JSON");
+  await reject("[1,2,3]", "a JSON array rather than an object");
+
+  // Documented Phase 4 behavior, pinned here so a future change is deliberate: CFML's isBoolean()
+  // accepts "yes"/"no"/1/0, so a CFML-truthy scalar is canonicalized to a real JSON boolean rather
+  // than refused. The stored document is always well formed either way; the browser only ever
+  // sends a real boolean (app/assets/js/email-composer.js serializeEmailDocument).
+  const coerced = await A.call("PUT", `/api/walks/${walk.id}`, {
+    rowVersion: walk.rowVersion, clientMutationId: uuid(), dimensions: {},
+    responses: { email_workflow: { textValue: '{"drafted":"yes"}' } },
+  });
+  assert.equal(coerced.status, 200, coerced.text);
+  assert.equal(coerced.json.walk.state.responses.email_workflow.textValue,
+    '{"body":"","drafted":true,"includedPartKeys":[],"subject":"","to":""}');
+});

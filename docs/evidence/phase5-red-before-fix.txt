@@ -1,0 +1,88 @@
+Phase 5 red-before-green evidence: the shared summary vectors catch a divergent CFML formatter.
+
+Each mutation below was applied to src/walks/WalkSummaryFormatter.cfc on its own, Lucee was
+restarted (it compiles components once and does not watch sources), and the CFML spec was run
+through /api/maintenance/tests/run?filter=WalkSummaryFormatter. The file was restored from an
+untouched copy between mutations; the final block is the corrected formatter.
+
+Each mutation removes exactly one of the decisions recorded in
+docs/PHASE_5_IMPLEMENTATION_BRIEF.md section 14, so this also shows that each decision is
+actually load-bearing in the output rather than only described in a comment.
+
+Environment: Lucee 6.2.8.20, SQL Server 2022 Developer (Docker), Node 22.22.
+Adobe ColdFusion 2023 and SQL Server 2016 were not used.
+
+==============================================================
+MUTATION: averageText rounds the exact rational instead of the IEEE-754 double
+--------------------------------------------------------------
+totals: passed=10 failed=1 skipped=0
+FAILED testAverageTextMatchesTheSharedRoundingVectors
+   averageText(61, 20). Output differs at character 3. Expected [3.0] but got [3.1].
+
+==============================================================
+MUTATION: placement label keeps its trailing colon (brief 14.4 not applied)
+--------------------------------------------------------------
+totals: passed=10 failed=1 skipped=0
+FAILED testMatchesTheSharedSummaryVectorsExactly
+   Vector 'fully answered high school walk' summaryText. Output differs at character 209. Expected [General Education
+Visit occurred at the: Beginning of Lesson
+
+PART 1 — TARGET / TAXONOMY /] but got [General Education
+Visit occurred at the:: Beginning of Lesson
+
+PART 1 — TARGET / TAXONOMY ].
+
+==============================================================
+MUTATION: non-scored choice prints the stored code instead of the option label (brief 14.5 not applied)
+--------------------------------------------------------------
+totals: passed=10 failed=1 skipped=0
+FAILED testMatchesTheSharedSummaryVectorsExactly
+   Vector 'fully answered high school walk' summaryText. Output differs at character 617. Expected [alysis]
+
+ADOPTED CURRICULUM
+- Pacing:  [ON pace]
+- The learning students are experiencing ] but got [alysis]
+
+ADOPTED CURRICULUM
+- Pacing:  [on]
+- The learning students are experiencing is cl].
+
+==============================================================
+MUTATION: a hidden dimension is exported anyway (brief 14.2 / SUM-04 not applied)
+--------------------------------------------------------------
+totals: passed=9 failed=2 skipped=0
+FAILED testHiddenSectionsAndHiddenPeriodAreExcluded
+   A hidden Period must not be exported.
+FAILED testMatchesTheSharedSummaryVectorsExactly
+   Vector 'period retained but hidden for an elementary grade' summaryText. Output differs at character 101. Expected [rtlett Elementary School
+Grade level: 3
+Class type: General Education
+
+PART 1 — TARGET / T] but got [rtlett Elementary School
+Grade level: 3
+Period: Fourth
+Class type: General Education
+
+PART].
+
+==============================================================
+MUTATION: conditional cards keep snapshot order (brief 14.1 not applied)
+--------------------------------------------------------------
+totals: passed=9 failed=2 skipped=0
+FAILED testConditionalCardsFollowThePrototypeExportOrder
+   The content-sourced card prints before the class-type card that follows it.
+FAILED testMatchesTheSharedSummaryVectorsExactly
+   Vector 'content area music' summaryText. Output differs at character 161. Expected [ area / subject: Music
+Class type: ESL
+
+CONTENT-AREA LOOK-FORS
+- 1 - Question place holder] but got [ area / subject: Music
+Class type: ESL
+
+ESL CLASSROOM
+- Is there evidence of linguistic tr].
+
+==============================================================
+RESTORED: the corrected formatter
+--------------------------------------------------------------
+totals: passed=11 failed=0 skipped=0

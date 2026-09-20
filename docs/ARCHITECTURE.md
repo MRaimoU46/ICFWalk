@@ -293,16 +293,83 @@ field is marked `aria-invalid` with a description. Non-owners get a read-only ed
 show a banner; a completed walk's delete action asks for a void reason. Walks pinned to an older
 version load their render model through `GET /api/walks/{id}/instrument` and cache it per version.
 
-## What Phase 5 builds on
+## Summary export and teacher email draft (Phase 5)
+
+```
+browser  app.js #export-btn -> GET /api/walks/{id}/summary            (flush autosave, then download)
+         renderer.js email-draft slot -> email-composer.js -> setResponse + commit -> PUT /api/walks/{id}
+server   WalkController.summary -> WalkService.summary
+                                   -> AuthorizationService.authorizeWalk(read)
+                                   -> WalkRepository (header, dimension values, responses)
+                                   -> SnapshotService.renderModelFor(pinned versionId)
+                                   -> VisibilityEngine.evaluateVisibility
+                                   -> WalkSummaryFormatter.summaryText / fileName
+                                   -> AuditRepository (WALK_SUMMARY_EXPORTED: ids and a byte count)
+shared   src/walks/WalkSummaryFormatter.cfc  ==  app/assets/js/summary.js
+         proven byte-identical by tests/fixtures/summary-vectors.json
+```
+
+**One formatting contract, implemented twice.** The export is the same problem the visibility engine
+already had: the browser must show what the server would produce, and neither may drift. It is
+solved the same way. Both formatters are pure functions of `(model, state, evaluation)` with the
+same function names and the same output, and `tests/fixtures/summary-vectors.json` holds golden
+expectations that both suites compare byte for byte (`compare()` in CFML, never `==`). Nothing else
+formats a summary: the browser's fallback export, the email draft, and the server's download all
+come from these two files.
+
+The vectors are not self-certifying. `scripts/generate-summary-vectors.mjs` produces them from the
+**served** render model with the JavaScript formatter, and `scripts/prototype-summary-oracle.mjs`
+then replays every vector through `source/current-prototype.html` itself and classifies each
+difference. Only the deviations recorded in `BUILD_STATUS.md` (hidden values excluded, the
+content-area heading, the doubled trailing colon, yes/no capitalization) are allowed; anything else
+fails. The generated email drafts match the prototype exactly, with no deviation at all.
+
+**Nothing new is stored.** The summary is derived on demand and never cached; the file name is
+derived; the email draft is one ordinary `walk_response.text_value` of the existing
+`EMAIL_DRAFT_JSON` item. Phase 5 adds no table, column, or migration.
+
+**Exporting is a read.** The route carries the same policy and the same `authorizeWalk(read)` as
+opening a walk, takes nothing from the request but the walk id, writes nothing, and moves no row
+version. A VOIDED walk still exports, because Phase 4 keeps it readable by id.
+
+**The draft rides the existing mutation path.** The composer writes the whole document into the
+walk's `email_workflow` response and commits through the renderer, so autosave, the row-version
+compare, mutation idempotency, replay coherence, and the conflict panel all apply unchanged. The
+browser serializes its keys in the order the server canonicalizes to, so a reload compares equal
+and no phantom unsent edit appears.
+
+**Nothing sends mail, and nothing may.** No SMTP configuration, no `cfmail`, no mail library, no
+endpoint that accepts a recipient. The only outbound action is a `mailto:` URL the browser hands to
+the person's own mail client, with every value percent-encoded.
+`tests/node/no-mail.test.mjs` is the standing gate on all of that.
+
+## What Phase 6 builds on
+
+- `WalkSummaryFormatter` / `summary.js` are the one place walk content becomes prose. Anything that
+  has to render or export a walk (an administration preview, a report) should call them rather than
+  format again; the vectors are what keeps that promise enforceable.
+- `GET /api/walks/{id}/summary` is the pattern for any future read-only, downloadable artifact:
+  `authorizeWalk(read)`, the walk's pinned version, a sanitized `Content-Disposition`, `no-store`,
+  `nosniff`, and an audit event carrying identifiers and counts only.
+- The composer shows how a composite control lives inside the renderer: it is built once into the
+  item's slot, syncs from the walk state on every refresh, writes through `setResponse` + `commit`,
+  and is disabled by `applyEditability` like every other control.
+- Publishing (Phase 6) must keep `behavior.export.fileNamePattern` and the `email_workflow` item's
+  `settings.selectableParts` intact, because both formatters are driven by them. Adding an
+  `exportLabel` item setting and a `settings.titleTemplate` would retire the two presentation maps
+  that remain (`PART4_LABELS` and the content-area heading decision).
+- The email draft is non-reportable by contract: Phase 7 must exclude `email_workflow` from every
+  report and extract.
+
+## What Phase 5 built on (Phase 4 hand-off)
 
 - `WalkService.open` returns the normalized state plus derived states; the summary/export
-  formatter can be built once in CFML and once in JavaScript over the same render model + state,
+  formatter was built once in CFML and once in JavaScript over the same render model + state,
   like the visibility engine, and proven equal by vectors.
-- The email-draft item (`EMAIL_DRAFT_JSON`) already persists the `docs/DATA_CONTRACT.md` document
+- The email-draft item (`EMAIL_DRAFT_JSON`) already persisted the `docs/DATA_CONTRACT.md` document
   through the ordinary save path (validated, canonical JSON in `text_value`, non-reportable).
-- `renderer.js` exposes the `email-draft` layout slot; `app.js` `#export-btn` is the hidden hook for
-  the text export, and `WalkService.completionIssues` is the required-field source for "complete
-  parts" selection.
+- `renderer.js` exposed the `email-draft` layout slot; `app.js` `#export-btn` was the hidden hook for
+  the text export.
 
 ## What Phase 4 built on (Phase 3 hand-off)
 

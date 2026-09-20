@@ -1,0 +1,1063 @@
+Phase 5 verification: complete npm test run (summary export and teacher email draft).
+
+Command: npm test
+Environment: Lucee 6.2.8.20 on Jetty, SQL Server 2022 Developer (Docker), Node 22.22.2,
+Playwright 1.56 with the pre-installed Chromium, axe-core 4.
+Adobe ColdFusion 2023 and SQL Server 2016 were NOT used; see BUILD_STATUS.md for the
+CF2023 verification items this run therefore does not cover.
+
+Totals: 144/144 Node, HTTP and Playwright tests passed (Phase 0-4 baseline was 101/101).
+        CFML suite 166 passed, 0 failed, 0 skipped (Phase 0-4 baseline was 148).
+        0 failed, 0 skipped, 0 cancelled.
+        node scripts/validate-handoff.mjs: ok, 51 checks, 0 errors (PKG-01, inside this run).
+
+
+> icfwalk@0.1.0 test
+> node --test --test-concurrency=1 "tests/node/*.test.mjs"
+
+TAP version 13
+# Subtest: fixtures: org units, users, and roles through maintenance endpoints
+ok 1 - fixtures: org units, users, and roles through maintenance endpoints
+  ---
+  duration_ms: 69.713878
+  type: 'test'
+  ...
+# Subtest: AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+ok 2 - AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+  ---
+  duration_ms: 16.522184
+  type: 'test'
+  ...
+# Subtest: signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+ok 3 - signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+  ---
+  duration_ms: 34.274316
+  type: 'test'
+  ...
+# Subtest: AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+ok 4 - AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+  ---
+  duration_ms: 35.765227
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints stay token-guarded even for signed-in admins
+ok 5 - maintenance endpoints stay token-guarded even for signed-in admins
+  ---
+  duration_ms: 3.45015
+  type: 'test'
+  ...
+# Subtest: SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 6 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+  ---
+  duration_ms: 2647.134589
+  type: 'test'
+  ...
+# Subtest: SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 7 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+  ---
+  duration_ms: 2364.112752
+  type: 'test'
+  ...
+# Subtest: SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+ok 8 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+  ---
+  duration_ms: 2895.515113
+  type: 'test'
+  ...
+# Subtest: SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+ok 9 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+  ---
+  duration_ms: 2956.045976
+  type: 'test'
+  ...
+# Subtest: SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 10 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+  ---
+  duration_ms: 2229.596329
+  type: 'test'
+  ...
+# Subtest: exporting follows the read decision: a reader may, a report-only role may not
+ok 11 - exporting follows the read decision: a reader may, a report-only role may not
+  ---
+  duration_ms: 2446.808905
+  type: 'test'
+  ...
+# Subtest: SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 12 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+  ---
+  duration_ms: 3405.090433
+  type: 'test'
+  ...
+# Subtest: SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 13 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+  ---
+  duration_ms: 4466.498062
+  type: 'test'
+  ...
+# Subtest: SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 14 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+  ---
+  duration_ms: 3413.976583
+  type: 'test'
+  ...
+# Subtest: SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 15 - SUM-09: Clear empties the generated text and leaves every other answer alone
+  ---
+  duration_ms: 4069.975044
+  type: 'test'
+  ...
+# Subtest: read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 16 - read-only: the server refuses a reader's save, and every composer control is one the editor disables
+  ---
+  duration_ms: 3200.305799
+  type: 'test'
+  ...
+# Subtest: A11Y-01: the composer is fully operable from the keyboard
+ok 17 - A11Y-01: the composer is fully operable from the keyboard
+  ---
+  duration_ms: 3076.682267
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violation in either composer state
+ok 18 - A11Y-03: axe-core finds no serious or critical violation in either composer state
+  ---
+  duration_ms: 3963.606745
+  type: 'test'
+  ...
+# Subtest: SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+ok 19 - SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+  ---
+  duration_ms: 4836.235713
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+ok 20 - WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+  ---
+  duration_ms: 1783.78957
+  type: 'test'
+  ...
+# Subtest: SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+ok 21 - SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+  ---
+  duration_ms: 1703.141083
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+ok 22 - SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+  ---
+  duration_ms: 3795.345264
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+ok 23 - WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+  ---
+  duration_ms: 2254.598298
+  type: 'test'
+  ...
+# Subtest: WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+ok 24 - WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+  ---
+  duration_ms: 204.195893
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+ok 25 - A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+  ---
+  duration_ms: 2154.862724
+  type: 'test'
+  ...
+# Subtest: CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+ok 26 - CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+  ---
+  duration_ms: 2143.887646
+  type: 'test'
+  ...
+# Subtest: CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+ok 27 - CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+  ---
+  duration_ms: 1112.509767
+  type: 'test'
+  ...
+# Subtest: CORR: beforeunload protects in-flight and queued saves, not only dirty state
+ok 28 - CORR: beforeunload protects in-flight and queued saves, not only dirty state
+  ---
+  duration_ms: 1662.233747
+  type: 'test'
+  ...
+# Subtest: CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+ok 29 - CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+  ---
+  duration_ms: 1143.518943
+  type: 'test'
+  ...
+# Subtest: CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+ok 30 - CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+  ---
+  duration_ms: 2789.688983
+  type: 'test'
+  ...
+# Subtest: CORR2: a VOID committed but lost is retried from its record, not from the edited input
+ok 31 - CORR2: a VOID committed but lost is retried from its record, not from the edited input
+  ---
+  duration_ms: 1238.010407
+  type: 'test'
+  ...
+# Subtest: CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+ok 32 - CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+  ---
+  duration_ms: 4207.392597
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+ok 33 - CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+  ---
+  duration_ms: 3418.799606
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+ok 34 - CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+  ---
+  duration_ms: 3463.754874
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+ok 35 - CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+  ---
+  duration_ms: 3378.284983
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+ok 36 - CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+  ---
+  duration_ms: 1537.031089
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+ok 37 - CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+  ---
+  duration_ms: 4088.960634
+  type: 'test'
+  ...
+# Subtest: CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+ok 38 - CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+  ---
+  duration_ms: 3404.506734
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+ok 39 - CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+  ---
+  duration_ms: 3184.936176
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+ok 40 - CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+  ---
+  duration_ms: 2348.072468
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+ok 41 - CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+  ---
+  duration_ms: 1406.831059
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+ok 42 - CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+  ---
+  duration_ms: 2619.103555
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+ok 43 - CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+  ---
+  duration_ms: 1728.948082
+  type: 'test'
+  ...
+# Subtest: CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+ok 44 - CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+  ---
+  duration_ms: 1250.500043
+  type: 'test'
+  ...
+# Subtest: CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+ok 45 - CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+  ---
+  duration_ms: 1811.408106
+  type: 'test'
+  ...
+# Subtest: WALK-01 empty My Walks state with the prototype wording and a New walk action
+ok 46 - WALK-01 empty My Walks state with the prototype wording and a New walk action
+  ---
+  duration_ms: 1411.561593
+  type: 'test'
+  ...
+# Subtest: editor renders every section, item, and option from the served instrument model
+ok 47 - editor renders every section, item, and option from the served instrument model
+  ---
+  duration_ms: 334.099141
+  type: 'test'
+  ...
+# Subtest: COND-01..05 grade choices follow the school of the walk's org unit
+ok 48 - COND-01..05 grade choices follow the school of the walk's org unit
+  ---
+  duration_ms: 4329.236577
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+ok 49 - COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+  ---
+  duration_ms: 43.03678
+  type: 'test'
+  ...
+# Subtest: COND-07..10 conditional classroom sections and retained hidden answers
+ok 50 - COND-07..10 conditional classroom sections and retained hidden answers
+  ---
+  duration_ms: 592.861072
+  type: 'test'
+  ...
+# Subtest: COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+ok 51 - COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+  ---
+  duration_ms: 391.467094
+  type: 'test'
+  ...
+# Subtest: COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+ok 52 - COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+  ---
+  duration_ms: 1672.428835
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+ok 53 - A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+  ---
+  duration_ms: 51.041253
+  type: 'test'
+  ...
+# Subtest: A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+ok 54 - A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+  ---
+  duration_ms: 1147.407297
+  type: 'test'
+  ...
+# Subtest: My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+ok 55 - My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+  ---
+  duration_ms: 634.718619
+  type: 'test'
+  ...
+# Subtest: A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ok 56 - A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+  ---
+  duration_ms: 1535.29487
+  type: 'test'
+  ...
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 57 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.816641
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 58 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.311683
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 59 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.131393
+  type: 'test'
+  ...
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 60 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 11.201473
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 61 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 7.70047
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 62 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 15.722328
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 63 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 39927.112993
+  type: 'test'
+  ...
+# SnapshotServiceTest.testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: passed
+# SnapshotServiceTest.testInvalidAndUnknownVersionsFailClosed: passed
+# SnapshotServiceTest.testProductionSemanticsRequireAPublishedVersion: passed
+# SnapshotServiceTest.testSnapshotIsParsedOnceAndCachedByChecksum: passed
+# WalkMutationResponseTest.testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: passed
+# WalkMutationResponseTest.testANoopSaveOnACompletedWalkIsAlsoCoherent: passed
+# WalkMutationResponseTest.testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: passed
+# WalkMutationResponseTest.testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt: passed
+# WalkMutationResponseTest.testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete: passed
+# WalkSchoolScopeTest.testANonIdentifyingValueIsRefusedAsAnIdentityMapping: passed
+# WalkSchoolScopeTest.testASchoolUnitCodedOtherStaysUnmappedAndFailsClosed: passed
+# WalkSchoolScopeTest.testAWalkAuthorizedAtSchoolACannotBeSubmittedAsSchoolB: passed
+# WalkSchoolScopeTest.testCodeEqualityAloneMapsNothing: passed
+# WalkSchoolScopeTest.testDistrictUserMaySelectAnAuthorizedDescendantSchool: passed
+# WalkSchoolScopeTest.testExplicitMappingIsFilledAndLocked: passed
+# WalkSchoolScopeTest.testOneSchoolValueBelongsToOneOrgUnit: passed
+# WalkSchoolScopeTest.testUnmappedSchoolUnitsAcceptNoSchoolValue: passed
+# CanonicalJsonTest.testBracketKeysPreserveCase: passed
+# CanonicalJsonTest.testDateFormatting: passed
+# CanonicalJsonTest.testDecimalsFromDatabaseStyleValuesFormatPlainly: passed
+# CanonicalJsonTest.testExplicitNullAssignmentSerializesAsNull: passed
+# CanonicalJsonTest.testNullValuedKeysAreRetainedFromJson: passed
+# CanonicalJsonTest.testSharedVectorsProduceIdenticalCanonicalText: passed
+# WalkSummaryFormatterTest.testAnUnsafeFileNamePatternIsRefused: passed
+# WalkSummaryFormatterTest.testAverageTextMatchesTheSharedRoundingVectors: passed
+# WalkSummaryFormatterTest.testComponentAverageUsesAnsweredScoresOnly: passed
+# WalkSummaryFormatterTest.testConditionalCardsFollowThePrototypeExportOrder: passed
+# WalkSummaryFormatterTest.testEmailDraftPartsAndTemplates: passed
+# WalkSummaryFormatterTest.testFileLabelSanitizationMatchesTheSharedVectors: passed
+# WalkSummaryFormatterTest.testFileNameSanitization: passed
+# WalkSummaryFormatterTest.testHiddenSectionsAndHiddenPeriodAreExcluded: passed
+# WalkSummaryFormatterTest.testMatchesTheSharedSummaryVectorsExactly: passed
+# WalkSummaryFormatterTest.testStoredMarkupIsExportedVerbatimAsText: passed
+# WalkSummaryFormatterTest.testTextShapeIsStable: passed
+# WalkSummaryFormatterTest.testUnresolvablePartFailsLoudly: passed
+# WalkServiceTest.testAuditAndMutationLogsContainNoNarrativeContent: passed
+# WalkServiceTest.testAuth09TamperedKeysCodesAndIdentifiersAreRejectedAndAudited: passed
+# WalkServiceTest.testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained: passed
+# WalkServiceTest.testCond10HiddenSectionAnswersArePersistedAsHiddenAndReturn: passed
+# WalkServiceTest.testCond12And13SkippableComponentClearsRatingsKeepsNotesInOneTransaction: passed
+# WalkServiceTest.testCreateRequiresAnInScopeActiveOrgUnit: passed
+# WalkServiceTest.testCrossScopeAccessFailsClosedThroughTheService: passed
+# WalkServiceTest.testEmailDraftRoundTripAndSchema: passed
+# WalkServiceTest.testEmailDraftSchemaRejectionsWriteNothing: passed
+# WalkServiceTest.testPostCompletionEditAppendsARevisionAndMustStayComplete: passed
+# WalkServiceTest.testSave04StaleWriteIsRejectedWithoutOverwriting: passed
+# WalkServiceTest.testSave06RetryWithSameMutationIdCommitsOneLogicalChange: passed
+# WalkServiceTest.testSaveRoundTripPersistsTypedValuesAndSurvivesRetrieval: passed
+# WalkServiceTest.testServiceSummaryMatchesTheFormatterForAPersistedWalk: passed
+# WalkServiceTest.testSummaryAuditCarriesNoNarrative: passed
+# WalkServiceTest.testSummaryAuthorizationMatchesOpen: passed
+# WalkServiceTest.testSummaryOfAVoidedWalkExportsAndWritesNothing: passed
+# WalkServiceTest.testWalk02CreatePinsCurrentVersionOwnerAndDefaults: passed
+# WalkServiceTest.testWalk03CreateRetryWithSameMutationIdCreatesOneWalk: passed
+# WalkServiceTest.testWalk04ListSortsByUpdatedAtDescendingWithCardDimensions: passed
+# WalkServiceTest.testWalk06And08VoidLifecycleAndDeleteRefusal: passed
+# WalkServiceTest.testWalk09CompletionRejectsMissingRequiredResponsesAndKeepsTheDraft: passed
+# WalkServiceTest.testWalk10CompletionSetsStatusTimestampRevisionAndAudit: passed
+# WalkServiceTest.testWalk11OlderWalkRendersFromItsPinnedSnapshotAfterANewVersion: passed
+# AuthorizationTest.testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools: passed
+# AuthorizationTest.testAuth04SchoolRoleCannotReachWalkInUnassignedSchool: passed
+# AuthorizationTest.testAuth05ReportOnlyRolesCannotOpenOrEditWalks: passed
+# AuthorizationTest.testAuth06InstrumentAdminHasNoWalkOrReportAccess: passed
+# AuthorizationTest.testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing: passed
+# AuthorizationTest.testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch: passed
+# AuthorizationTest.testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected: passed
+# AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens: passed
+# AuthorizationTest.testEndingAnAssignmentRevokesAccessImmediately: passed
+# AuthorizationTest.testInactiveOrgUnitAssignmentGrantsNothing: passed
+# AuthorizationTest.testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable: passed
+# AuthorizationTest.testSchoolWalkRoleWorksInsideItsOwnSchool: passed
+# WalkCorrectionTest.testCorr01CreateReplayIsReauthorizedAfterAccessIsRevoked: passed
+# WalkCorrectionTest.testCorr02ReplayOfARecordedMutationOutsideScopeIsNotFound: passed
+# WalkCorrectionTest.testCorr03SameMutationIdWithAnAlteredRequestIsRefused: passed
+# WalkCorrectionTest.testCorr04CreateReplaySurvivesANewerPublishedVersion: passed
+# WalkCorrectionTest.testCorr05OmittedHiddenValueIsRetained: passed
+# WalkCorrectionTest.testCorr06HiddenValueInjectionIsIgnored: passed
+# WalkCorrectionTest.testCorr07HideThenShowRestoresTheStoredValue: passed
+# WalkCorrectionTest.testCorr08OmittingAVisibleValueClearsIt: passed
+# WalkCorrectionTest.testCorr09NotApplicableClearsRatingsAndKeepsNotes: passed
+# WalkCorrectionTest.testCorr10EveryMutationRequiresAClientMutationId: passed
+# WalkCorrectionTest.testCorr11SaveCompleteAndVoidRequireARowVersionButCreateDoesNot: passed
+# WalkCorrectionTest.testCorr12AStaleVoidIsARefusalThatChangesNothing: passed
+# WalkCorrectionTest.testCorr13IdenticalCompletedSaveIsANoOpAndAMaterialOneAppendsOneRevision: passed
+# WalkCorrectionTest.testCorr14VisitDateSetThenClearedFallsBackToTheCreationInstant: passed
+# WalkCorrectionTest.testCorr15WholeStateSaveRequiresBothRootContainers: passed
+# WalkCorrectionTest.testCorr16JsonPrimitiveTypesAreCheckedNotCoerced: passed
+# WalkCorrectionTest.testCorr17ClientAssertedResponseStateCannotControlPersistedState: passed
+# ConfigLoaderTest.testDefaultsFailClosedToProduction: passed
+# ConfigLoaderTest.testDescribeOmitsSecrets: passed
+# ConfigLoaderTest.testDevIdentityStubCannotBeEnabledInProduction: passed
+# ConfigLoaderTest.testDevIdentityStubIsOnlyForDevelopmentOrTest: passed
+# ConfigLoaderTest.testEnvFileParsing: passed
+# ConfigLoaderTest.testInvalidEnvironmentAndLogLevelAreRejected: passed
+# ConfigLoaderTest.testMaintenanceRequiresLongToken: passed
+# ConfigLoaderTest.testTestRunnerIsNeverEnabledInProduction: passed
+# ConfigLoaderTest.testUnpublishedInstrumentRenderingIsRefusedInProduction: passed
+# VisibilityEngineTest.testAnsweredRequiresAValidOptionAndUnansweredIsNeverNumeric: passed
+# VisibilityEngineTest.testBlankStateAppliesConfiguredDefaults: passed
+# VisibilityEngineTest.testConditionalClassroomSectionsFollowGradeClassTypeAndContent: passed
+# VisibilityEngineTest.testGradeFilteringFollowsSchoolGroup: passed
+# VisibilityEngineTest.testHiddenConditionalAnswersAreRetainedAndReappear: passed
+# VisibilityEngineTest.testInvalidGradeIsClearedAndDependentVisibilityRecalculates: passed
+# VisibilityEngineTest.testMatchesTheSharedVectorsExactly: passed
+# VisibilityEngineTest.testPeriodVisibilityAndHiddenRetentionPolicy: passed
+# VisibilityEngineTest.testSkippableComponentClearsRatingsKeepsNotesAndReturnsUnanswered: passed
+# VisibilityEngineTest.testUnsupportedOperatorsAreRefused: passed
+# InstrumentConfigValidatorTest.testBadParentSectionIsReported: passed
+# InstrumentConfigValidatorTest.testChoiceItemWithoutResponseSetIsRejected: passed
+# InstrumentConfigValidatorTest.testConditionMismatchIsReported: passed
+# InstrumentConfigValidatorTest.testCorruptConditionsJsonIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateItemKeyIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateOptionOrderIsReported: passed
+# InstrumentConfigValidatorTest.testMissingResponseSetIsReportedWithSpecificReference: passed
+# InstrumentConfigValidatorTest.testNonDraftStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testRetiredSipContentIsRejected: passed
+# InstrumentConfigValidatorTest.testStructuralFailureStopsEarlyWithoutCrashing: passed
+# InstrumentConfigValidatorTest.testSuppliedConfigurationIsValidWithSeventeenPlaceholderWarnings: passed
+# InstrumentConfigValidatorTest.testUnsupportedRuleEffectIsReported: passed
+# InstrumentScopeTest.testACorruptedSnapshotFailsClosedOnAnUncachedLoad: passed
+# InstrumentScopeTest.testASecondInstrumentNeverSuppliesTheCurrentVersion: passed
+# InstrumentScopeTest.testDiscardDraftCannotReachAnotherInstrumentsSameLabelDraft: passed
+# InstrumentScopeTest.testFutureAndExpiredIcfwalkVersionsAreNotSelected: passed
+# WalkReplayCoherenceTest.testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto: passed
+# WalkReplayCoherenceTest.testAnAlteredRequestAgainstALegacyRowIsTheSameRefusal: passed
+# WalkReplayCoherenceTest.testAnExactLookingRetryAgainstALegacyRowIsARefusal: passed
+# WalkReplayCoherenceTest.testAnOldSaveReplayedAfterALaterSaveCannotOverwriteIt: passed
+# WalkReplayCoherenceTest.testAReplayIsStillIdempotentWhileTheAggregateHasNotMoved: passed
+# WalkReplayCoherenceTest.testASupersededReplayNeverMaterializesTheNewerAggregate: passed
+# WalkReplayCoherenceTest.testAuthorizationAnswersBeforeTheLegacyConflict: passed
+# WalkReplayCoherenceTest.testCreateCompleteAndVoidReplaysAreAlsoRefusedOnceSuperseded: passed
+# IdentityTest.testAuthenticationProvisionsAndBuildsPrincipal: passed
+# IdentityTest.testConfigLoaderRejectsUnsafeIdentitySettings: passed
+# IdentityTest.testDevelopmentStubCannotBeConstructedWhenNotPermitted: passed
+# IdentityTest.testDevelopmentStubReadsOnlyItsOwnHeaders: passed
+# IdentityTest.testHeaderProviderRejectsMissingOrMalformedSubjects: passed
+# IdentityTest.testHeaderProviderRequiresSharedSecretWhenConfigured: passed
+# IdentityTest.testHeaderProviderTrustsOnlyListedProxies: passed
+# IdentityTest.testHeaderProviderWithNoProxyListTrustsNobody: passed
+# IdentityTest.testInactiveUserIsRejectedByAuthentication: passed
+# IdentityTest.testProvisioningIsKeyedBySubjectAndTolerantOfEmailCollisions: passed
+# SnapshotCompilerTest.testCompiledSnapshotMatchesReferenceGolden: passed
+# SnapshotCompilerTest.testRuleTargetsResolveToKeysNotLogicalIds: passed
+# SnapshotCompilerTest.testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior: passed
+# RenderModelTest.testLayoutsAndNumberingComeFromResponseSetsAndOrder: passed
+# RenderModelTest.testModelSerializesToCanonicalJsonWithoutGuids: passed
+# RenderModelTest.testPlacementsCarryDimensionMetadataInAuthoredOrder: passed
+# RenderModelTest.testPresentationIsDerivedFromStructureNotNames: passed
+# RenderModelTest.testPromptsAndPlaceholdersComeFromTheConfiguration: passed
+# RenderModelTest.testResponseOptionsAndDefinitionsMatchTheConfigurationExactly: passed
+# RenderModelTest.testRulesArePassedThroughAndUnsupportedEffectsAreRefused: passed
+# RenderModelTest.testSkippableComponentsDeriveApplicabilityFromRules: passed
+# RenderModelTest.testTreeFollowsAuthoredParentsAndDisplayOrder: passed
+# InstrumentImportServiceTest.testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot: passed
+# InstrumentImportServiceTest.testDb05ReimportIsIdempotentWithStableGuidsAndChecksum: passed
+# InstrumentImportServiceTest.testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges: passed
+# InstrumentImportServiceTest.testDb07MissingResponseSetRollsBackWithSpecificError: passed
+# InstrumentImportServiceTest.testDb08CorruptConditionsJsonRollsBack: passed
+# InstrumentImportServiceTest.testDb09ResponseOptionDefinitionsMatchTheJsonExactly: passed
+# InstrumentImportServiceTest.testDiscardDraftRemovesVersionAndChildren: passed
+# InstrumentImportServiceTest.testListVersionsIncludesImportedDraft: passed
+# InstrumentImportServiceTest.testReorderedReimportSucceedsAndReturnsToGolden: passed
+# InstrumentImportServiceTest.testTransactionRollsBackWhenDatabaseRejectsAWrite: passed
+# LoggerTest.testEntrySerializesAsSingleJsonLine: passed
+# LoggerTest.testLevelThresholds: passed
+# LoggerTest.testRedactsSensitiveKeysAndTruncatesLongText: passed
+# engine=Lucee 6.2.8.20 passed=166 failed=0 skipped=0 ms=39902
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 64 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 2414.619175
+  type: 'test'
+  ...
+# (node:8573) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 65 - DB-01..03 supplied scripts against an empty SQL Server database
+  ---
+  duration_ms: 994.869886
+  type: 'test'
+  ...
+# SQL Server 16.0.4295.3 Developer Edition (64-bit)
+# Subtest: no mail-delivery construct exists anywhere in the shipped source
+ok 66 - no mail-delivery construct exists anywhere in the shipped source
+  ---
+  duration_ms: 17.747482
+  type: 'test'
+  ...
+# Subtest: the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+ok 67 - the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+  ---
+  duration_ms: 0.551672
+  type: 'test'
+  ...
+# Subtest: mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+ok 68 - mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+  ---
+  duration_ms: 18.037909
+  type: 'test'
+  ...
+# Subtest: no route, controller action, or configuration key accepts a recipient
+ok 69 - no route, controller action, or configuration key accepts a recipient
+  ---
+  duration_ms: 0.681303
+  type: 'test'
+  ...
+# Subtest: the summary export is the only new endpoint and it is read-only
+ok 70 - the summary export is the only new endpoint and it is read-only
+  ---
+  duration_ms: 69.463799
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 71 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 161.857318
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 72 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.09591
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 73 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.402369
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 74 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.693087
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 75 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 6.301533
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 76 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.569926
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 77 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.212215
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 78 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.109909
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 79 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.298357
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 80 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.547322
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 81 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 2.142706
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 82 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.239891
+  type: 'test'
+  ...
+# Subtest: fixtures
+ok 83 - fixtures
+  ---
+  duration_ms: 80.689021
+  type: 'test'
+  ...
+# Subtest: AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+ok 84 - AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+  ---
+  duration_ms: 9.2904
+  type: 'test'
+  ...
+# Subtest: users without any capability are forbidden; walk, report, and admin roles may load the instrument
+ok 85 - users without any capability are forbidden; walk, report, and admin roles may load the instrument
+  ---
+  duration_ms: 544.64728
+  type: 'test'
+  ...
+# Subtest: shell page is served to signed-in users with a strict CSP and no embedded content
+ok 86 - shell page is served to signed-in users with a strict CSP and no embedded content
+  ---
+  duration_ms: 9.563494
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 87 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 23.158427
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 88 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 16.193439
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 89 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 12.416201
+  type: 'test'
+  ...
+# Subtest: JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+ok 90 - JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+  ---
+  duration_ms: 213.926595
+  type: 'test'
+  ...
+# Subtest: the stored states are already normalized, so a vector describes a real persisted walk
+ok 91 - the stored states are already normalized, so a vector describes a real persisted walk
+  ---
+  duration_ms: 5.200391
+  type: 'test'
+  ...
+# Subtest: averageText matches JavaScript toFixed(1) on every shared rounding vector
+ok 92 - averageText matches JavaScript toFixed(1) on every shared rounding vector
+  ---
+  duration_ms: 0.204148
+  type: 'test'
+  ...
+# Subtest: SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+ok 93 - SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+  ---
+  duration_ms: 1.13225
+  type: 'test'
+  ...
+# Subtest: SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+ok 94 - SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+  ---
+  duration_ms: 0.545272
+  type: 'test'
+  ...
+# Subtest: SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+ok 95 - SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+  ---
+  duration_ms: 0.688114
+  type: 'test'
+  ...
+# Subtest: SUM-05 file names carry only safe characters and no path can be steered through them
+ok 96 - SUM-05 file names carry only safe characters and no path can be steered through them
+  ---
+  duration_ms: 1.46722
+  type: 'test'
+  ...
+# Subtest: the file name is driven by behavior.export.fileNamePattern, not by a restated list
+ok 97 - the file name is driven by behavior.export.fileNamePattern, not by a restated list
+  ---
+  duration_ms: 1.757653
+  type: 'test'
+  ...
+# Subtest: SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+ok 98 - SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+  ---
+  duration_ms: 1.27565
+  type: 'test'
+  ...
+# Subtest: every selectable part the instrument offers resolves to a section, and a bad one throws
+ok 99 - every selectable part the instrument offers resolves to a section, and a bad one throws
+  ---
+  duration_ms: 0.705804
+  type: 'test'
+  ...
+# Subtest: brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+ok 100 - brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+  ---
+  duration_ms: 0.508494
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+ok 101 - SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+  ---
+  duration_ms: 0.372521
+  type: 'test'
+  ...
+# Subtest: the text shape is stable: LF only, no trailing newline, no BOM
+ok 102 - the text shape is stable: LF only, no trailing newline, no BOM
+  ---
+  duration_ms: 0.313683
+  type: 'test'
+  ...
+# Subtest: the composer's document serializes to the server's canonical form and survives a round trip
+ok 103 - the composer's document serializes to the server's canonical form and survives a round trip
+  ---
+  duration_ms: 15.91902
+  type: 'test'
+  ...
+# Subtest: the formatter is pure: it never mutates the state or the model it is given
+ok 104 - the formatter is pure: it never mutates the state or the model it is given
+  ---
+  duration_ms: 2.183956
+  type: 'test'
+  ...
+# Subtest: JS engine reproduces every shared vector (parity contract with the CFML engine)
+ok 105 - JS engine reproduces every shared vector (parity contract with the CFML engine)
+  ---
+  duration_ms: 246.375613
+  type: 'test'
+  ...
+# Subtest: COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+ok 106 - COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+  ---
+  duration_ms: 1.27248
+  type: 'test'
+  ...
+# Subtest: COND-05 an invalid grade is cleared and dependent visibility recalculates
+ok 107 - COND-05 an invalid grade is cleared and dependent visibility recalculates
+  ---
+  duration_ms: 0.847355
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+ok 108 - COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+  ---
+  duration_ms: 2.171701
+  type: 'test'
+  ...
+# Subtest: COND-07..09 conditional classroom sections
+ok 109 - COND-07..09 conditional classroom sections
+  ---
+  duration_ms: 1.493576
+  type: 'test'
+  ...
+# Subtest: COND-10 hidden conditional answers are retained and reappear
+ok 110 - COND-10 hidden conditional answers are retained and reappear
+  ---
+  duration_ms: 0.685895
+  type: 'test'
+  ...
+# Subtest: COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+ok 111 - COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+  ---
+  duration_ms: 1.110251
+  type: 'test'
+  ...
+# Subtest: COND-15 answered requires a valid option; unanswered never becomes zero
+ok 112 - COND-15 answered requires a valid option; unanswered never becomes zero
+  ---
+  duration_ms: 0.39097
+  type: 'test'
+  ...
+# Subtest: engine rejects unsupported operators instead of guessing
+ok 113 - engine rejects unsupported operators instead of guessing
+  ---
+  duration_ms: 2.08003
+  type: 'test'
+  ...
+# Subtest: walk-state helpers: a blank state presets no School value; display text; rating summary
+ok 114 - walk-state helpers: a blank state presets no School value; display text; rating summary
+  ---
+  duration_ms: 0.771987
+  type: 'test'
+  ...
+# Subtest: AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+ok 115 - AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+  ---
+  duration_ms: 226.841422
+  type: 'test'
+  ...
+# Subtest: AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+ok 116 - AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+  ---
+  duration_ms: 201.734745
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+ok 117 - WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+  ---
+  duration_ms: 299.659878
+  type: 'test'
+  ...
+# Subtest: WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+ok 118 - WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+  ---
+  duration_ms: 123.308516
+  type: 'test'
+  ...
+# Subtest: AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+ok 119 - AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+  ---
+  duration_ms: 362.602728
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+ok 120 - SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+  ---
+  duration_ms: 195.851565
+  type: 'test'
+  ...
+# Subtest: COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+ok 121 - COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+  ---
+  duration_ms: 156.232282
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+ok 122 - WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+  ---
+  duration_ms: 371.853155
+  type: 'test'
+  ...
+# Subtest: WALK-11: the walk instrument route serves the walk's pinned version render model
+ok 123 - WALK-11: the walk instrument route serves the walk's pinned version render model
+  ---
+  duration_ms: 406.538646
+  type: 'test'
+  ...
+# Subtest: CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+ok 124 - CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+  ---
+  duration_ms: 193.754355
+  type: 'test'
+  ...
+# Subtest: CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+ok 125 - CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+  ---
+  duration_ms: 461.402535
+  type: 'test'
+  ...
+# Subtest: CORR: a create mutation id from a school the caller lost never discloses that walk
+ok 126 - CORR: a create mutation id from a school the caller lost never discloses that walk
+  ---
+  duration_ms: 87.046871
+  type: 'test'
+  ...
+# (node:8646) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+ok 127 - CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+  ---
+  duration_ms: 360.084484
+  type: 'test'
+  ...
+# Subtest: CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+ok 128 - CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+  ---
+  duration_ms: 243.763772
+  type: 'test'
+  ...
+# Subtest: CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+ok 129 - CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+  ---
+  duration_ms: 160.359385
+  type: 'test'
+  ...
+# Subtest: CORR2: the School dimension follows an explicit mapping and fails closed without one
+ok 130 - CORR2: the School dimension follows an explicit mapping and fails closed without one
+  ---
+  duration_ms: 383.866715
+  type: 'test'
+  ...
+# Subtest: CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+ok 131 - CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+  ---
+  duration_ms: 42.098931
+  type: 'test'
+  ...
+# Subtest: CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+ok 132 - CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+  ---
+  duration_ms: 446.927539
+  type: 'test'
+  ...
+# Subtest: CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+ok 133 - CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+  ---
+  duration_ms: 70.076781
+  type: 'test'
+  ...
+# Subtest: CORR3: the School dimension's free-text value is never stored as a school's identity
+ok 134 - CORR3: the School dimension's free-text value is never stored as a school's identity
+  ---
+  duration_ms: 187.168582
+  type: 'test'
+  ...
+# Subtest: SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+ok 135 - SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+  ---
+  duration_ms: 141.747967
+  type: 'test'
+  ...
+# Subtest: SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+ok 136 - SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+  ---
+  duration_ms: 171.847761
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+ok 137 - SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+  ---
+  duration_ms: 111.45866
+  type: 'test'
+  ...
+# Subtest: SUM-05 a punctuated label cannot steer the Content-Disposition file name
+ok 138 - SUM-05 a punctuated label cannot steer the Content-Disposition file name
+  ---
+  duration_ms: 110.601869
+  type: 'test'
+  ...
+# Subtest: AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+ok 139 - AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+  ---
+  duration_ms: 189.037449
+  type: 'test'
+  ...
+# Subtest: a voided walk still exports for a reader, and the export never mutates the walk
+ok 140 - a voided walk still exports for a reader, and the export never mutates the walk
+  ---
+  duration_ms: 105.553216
+  type: 'test'
+  ...
+# Subtest: SEC-05 the export audit event carries identifiers and counts only, never narrative text
+ok 141 - SEC-05 the export audit event carries identifiers and counts only, never narrative text
+  ---
+  duration_ms: 133.558979
+  type: 'test'
+  ...
+# Subtest: SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+ok 142 - SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+  ---
+  duration_ms: 219.818077
+  type: 'test'
+  ...
+# Subtest: SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+ok 143 - SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+  ---
+  duration_ms: 108.786392
+  type: 'test'
+  ...
+# Subtest: SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+ok 144 - SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+  ---
+  duration_ms: 220.443027
+  type: 'test'
+  ...
+1..144
+# tests 144
+# suites 0
+# pass 144
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 172925.098714

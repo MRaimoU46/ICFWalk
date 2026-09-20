@@ -10,6 +10,7 @@
  * aria-expanded, every input has a programmatic label, and visibility changes are announced.
  */
 import { setDimension, setResponse, settle, isOtherValue, ratingSummary } from "./walk-state.js";
+import { createEmailComposer } from "./email-composer.js";
 
 const SELECT_PLACEHOLDER = "Select...";
 const OTHER_PLACEHOLDER = "Please specify...";
@@ -27,7 +28,8 @@ export function lightTint(hex, amt = 0.85) {
   return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
 }
 
-function el(tag, attrs = {}, children = []) {
+/** Generic element builder, exported so the Part 4 composer builds its controls the same way. */
+export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v === undefined || v === null || v === false) continue;
@@ -121,6 +123,8 @@ function refresh(ctx, initial = false) {
     if (entry.pills) for (const pill of entry.pills) pill.setAttribute("aria-pressed", value.storedCode === pill.dataset.code ? "true" : "false");
     if (entry.textarea && entry.textarea.value !== (value.textValue || "")) entry.textarea.value = value.textValue || "";
     if (entry.note) entry.note.hidden = !(entry.item.layout === "applicability" && value.storedCode && !entry.section.ratedItemKeys.some((k) => e.items[k]));
+    // An item that owns a composite control (the Part 4 email draft) syncs itself from the state.
+    if (entry.sync) entry.sync();
   }
 }
 
@@ -342,10 +346,21 @@ function appendItems(container, section, ctx) {
       continue;
     }
     if (item.layout === "email-draft") {
-      // Phase 5 renders the Part 4 email-draft composer here from the item settings.
+      // Phase 5: the Part 4 email-draft composer, built from the item's own settings. It writes the
+      // draft into this item's response and commits through the ordinary save path, so the draft is
+      // autosaved, concurrency-checked, and reloaded exactly like every other answer.
       const slot = el("div", { class: "email-slot", "data-item-key": item.itemKey, "data-item-type": item.itemType, hidden: true });
       container.appendChild(slot);
-      ctx.itemNodes.set(item.itemKey, { node: slot, item, section });
+      const composer = createEmailComposer(slot, item, {
+        model: ctx.model,
+        announce: (text) => ctx.announce(text),
+        read: () => ({ state: ctx.state, evaluation: ctx.evaluation }),
+        write: (textValue) => {
+          setResponse(ctx.state, item.itemKey, { textValue });
+          commit(ctx);
+        },
+      });
+      ctx.itemNodes.set(item.itemKey, { node: slot, item, section, sync: () => composer.sync() });
       i++;
       continue;
     }

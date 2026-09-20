@@ -1403,3 +1403,259 @@ in this session**; the verification above ran on Lucee 6.2.8.20 and SQL Server 2
   against production-sized walks on SQL Server 2016.
 - `tests/cfml/support/InterceptingDb.cfc` calling a closure immediately after the decorated
   `transaction` block exits, on the Adobe engine.
+
+## Phase 5: summary export and teacher email draft
+
+Base: commit `d8f3736` (the frozen Phase 0-4 baseline, after the fifth correction session). No
+Phase 0-4 behavior was reworked except one defect Phase 5 testing exposed (`app/index.cfm`, below);
+every earlier test still passes.
+
+The implementation brief (`docs/PHASE_5_IMPLEMENTATION_BRIEF.md`) was written at the end of Phase 4
+against commit `0df22bc`. Its functional scope, resolved decisions, formatting contracts,
+acceptance criteria and test requirements were followed as written; its starting commit and its
+`68/68` / `106/106` baseline totals are historical and were superseded by the frozen baseline's
+`101/101` and `148/148`, which this session reproduced before changing anything.
+
+### Work completed
+
+1. **One summary formatting contract, implemented twice.** `src/walks/WalkSummaryFormatter.cfc` and
+   `app/assets/js/summary.js` are pure, side-effect-free functions of `(model, state, evaluation)`
+   with the same function names and byte-identical output: `summaryText`, `fileName`, `emailDraft`,
+   `componentAverage`, `averageText`, `sanitizeFileLabel`, `exportSections`, `resolvePartSection`.
+   No section, item, dimension or option is named in either; every string comes from the render
+   model (titles, prompts, option labels, placement labels, `partNumber`, `selectableParts`,
+   `behavior.export.fileNamePattern`) or from a small documented presentation map, the same device
+   as `LIST_CARD` in `app.js` (Phase 3 decision 5). Every code comparison in the CFML twin uses
+   `compare()` (Phase 4 decision 10).
+2. **Golden vectors, reviewed against the prototype.** `tests/fixtures/summary-vectors.json` holds
+   10 walk states with their expected summary text, file name and five email-key combinations each,
+   plus 13 rounding cases and 10 file-label cases.
+   `scripts/generate-summary-vectors.mjs` produces them from the **served** render model with the
+   JavaScript formatter (states normalized first, so a vector describes a walk the database could
+   really hold), and `scripts/prototype-summary-oracle.mjs` replays every one through
+   `source/current-prototype.html` itself, aligns the output with an LCS diff and classifies each
+   difference. All 10 vectors are accounted for by the four recorded deviations below, and **every
+   generated email draft matches the prototype exactly, with no deviation at all**. Neither script
+   runs in `npm test`.
+3. **`GET /api/walks/{id}/summary`** (`WalkService.summary`, `WalkController.summary`, one route
+   under the existing `WALK_READ_PERMISSIONS` policy). Read-only: `authorizeWalk(read)`, the walk's
+   pinned version (WALK-11), nothing taken from the request but the walk id, nothing written, no
+   row version moved, no mutation recorded. `text/plain; charset=utf-8`, no BOM, LF, no trailing
+   newline, `Content-Disposition: attachment` with the sanitized name, `Cache-Control: no-store`,
+   `X-Content-Type-Options: nosniff`. Audits `WALK_SUMMARY_EXPORTED` with `{ status, versionId,
+   bytes }` only.
+4. **Part 4 teacher email composer** (`app/assets/js/email-composer.js`, rendered into the
+   `email-draft` slot `renderer.js` already reserved). Checkboxes come from the item's
+   `settings.selectableParts`; Draft / Clear / Update / Copy / Open in email app behave as the
+   prototype does; the box carries To, Subject, Message and the note "Editable -- review and
+   personalize before sending. Nothing is sent automatically." The document is written into the
+   walk's `email_workflow` response through `setResponse` + the renderer's `commit`, so it rides
+   the Phase 4 autosave, row-version compare, idempotency, replay and conflict handling unchanged,
+   and it is serialized in the key order the server canonicalizes to so a reload compares equal.
+5. **Export button** (`app.js`): shown for every walk the person may read, hidden with the walk
+   view. On click it flushes a pending autosave, then downloads the server's copy (authorized,
+   pinned, audited). When that flush did not reach the server it falls back to the browser
+   formatter over the working state and says so, rather than handing the person a file missing what
+   is on their screen. CSS for the composer went into `icfwalk.css`; no inline script or style was
+   added and the CSP is unchanged.
+6. **No automatic send.** No SMTP configuration, no `cfmail`, no mail library, no endpoint that
+   accepts a recipient. The only outbound action is a `mailto:` URL with every value
+   percent-encoded. `tests/node/no-mail.test.mjs` is the standing gate.
+7. **Tests**: `WalkSummaryFormatterTest` (11 CFML cases), `WalkServiceTest` +6 (persisted-walk
+   export, authorization parity with `open`, voided-walk export writes nothing, export audit
+   privacy, email round trip and schema), `summary.test.mjs` (15), `no-mail.test.mjs` (5),
+   `walks.test.mjs` +10 HTTP cases, `browser-email.test.mjs` (12 Playwright cases).
+8. **Documentation**: `docs/ENDPOINTS.md` (the route and the email-draft transport),
+   `docs/ARCHITECTURE.md` (Phase 5 section, Phase 6 hand-off), `docs/DATA_CONTRACT.md` (the 14
+   Phase 5 decisions), `docs/LOCAL_SETUP.md` (new commands and the vector/oracle workflow),
+   `docs/ACCEPTANCE_TRACKING.md` (SUM-01..09, the no-send gate, SEC-02/05, AUTH-05, A11Y-01/02/03),
+   `package.json` scripts, evidence `docs/evidence/phase5-npm-test.txt` and
+   `docs/evidence/phase5-red-before-fix.txt`, screenshots `email-composer-desktop.png` and
+   `email-composer-phone.png`.
+
+### Files created or changed (Phase 5)
+
+```
+Created: src/walks/WalkSummaryFormatter.cfc   app/assets/js/{summary,email-composer}.js
+         tests/fixtures/summary-vectors.json  tests/cfml/specs/WalkSummaryFormatterTest.cfc
+         tests/node/{summary,no-mail,browser-email}.test.mjs
+         scripts/{generate-summary-vectors,prototype-summary-oracle}.mjs
+         docs/evidence/{phase5-npm-test.txt,phase5-red-before-fix.txt}
+         docs/evidence/screenshots/email-composer-{desktop,phone}.png
+Changed: src/Bootstrap.cfc (construct and inject the formatter)  src/walks/WalkService.cfc (summary())
+         src/controllers/WalkController.cfc (summary())  src/http/Router.cfc (one route)
+         app/index.cfm (trailing newline; see the defect below)
+         app/assets/js/{app,renderer}.js  app/assets/css/icfwalk.css
+         tests/cfml/specs/{WalkServiceTest,WalkReplayCoherenceTest,WalkMutationResponseTest}.cfc
+         tests/node/walks.test.mjs  package.json
+         docs/{ENDPOINTS,ARCHITECTURE,DATA_CONTRACT,LOCAL_SETUP,ACCEPTANCE_TRACKING}.md  BUILD_STATUS.md
+```
+
+`WalkReplayCoherenceTest` and `WalkMutationResponseTest` changed only because they construct
+`WalkService` directly and the constructor gained the formatter argument. No assertion in them was
+touched. `manifest.json` is unchanged: no manifest-tracked supplied file was modified.
+
+### Database and API changes
+
+- **No new table, column, or migration.** The summary is derived on demand and never stored, the
+  file name is derived, and the email draft is the existing `EMAIL_DRAFT_JSON` response. The
+  migration scripts are byte-identical to the baseline and `npm run test:db` still applies them
+  twice to a clean database.
+- New route: `GET /api/walks/{id}/summary` (read-only, no CSRF). No other route changed.
+- New audit event: `WALK_SUMMARY_EXPORTED`. New log event: `walk.summary.exported`.
+
+### Phase 0-4 defect found and fixed
+
+**Every response carried a trailing newline.** `app/index.cfm` ended with a newline after
+`</cfscript>`. Anything after the closing tag is template output, and `cfcontent(reset=true)` has
+already run inside `dispatch()`, so that byte was appended to every response body. JSON parsers
+ignored it for four phases. The Phase 5 export cannot: its contract is byte-exact and ends without
+a newline, and the first HTTP test of the route failed on exactly that. The fix is to end the file
+at its closing tag, with a comment saying why. It is the smallest change that makes the contract
+achievable, and it makes every other response byte-exact as a side effect. No test's expectations
+were weakened to accommodate it.
+
+### Tests and results (Phase 5)
+
+Environment: Lucee 6.2.8.20 on Jetty, SQL Server 2022 Developer in Docker, Node 22.22.2,
+Playwright 1.56 with the pre-installed Chromium, axe-core 4. The frozen Phase 0-4 baseline
+(`npm test` 101/101, CFML 148/148, handoff 51 checks / 0 errors) was reproduced in this environment
+before any Phase 5 change.
+
+| Command | Result |
+| --- | --- |
+| `npm test` (full regression, `docs/evidence/phase5-npm-test.txt`) | **143/143 pass**, 0 failed, 0 skipped (baseline 101) |
+| CFML suite via `/api/maintenance/tests/run` (inside `npm test`) | **165 passed, 0 failed, 0 skipped** (baseline 148) |
+| `node scripts/validate-handoff.mjs` | ok, 51 checks, 0 errors (unchanged) |
+| `node --check` on every browser module, script, and test | clean |
+| `npm run oracle:summary` | 10/10 vectors accounted for; 0 UNEXPLAINED differences |
+| Targeted runs during implementation | `?filter=WalkSummaryFormatter` (x7), `?filter=WalkService` (x3), `npm run test:walks`, `npm run test:summary`, `node --test tests/node/browser-email.test.mjs` (x6) |
+
+New coverage: 42 Node/HTTP/Playwright cases and 17 CFML cases.
+
+**Red-before-green evidence** (`docs/evidence/phase5-red-before-fix.txt`): five mutations were
+applied to `WalkSummaryFormatter.cfc` one at a time, each removing exactly one recorded decision,
+and the suite was re-run against each. Every one failed and named the divergence -- rounding the
+exact rational instead of the IEEE-754 double (`3.1` for `3.05`), keeping the doubled trailing
+colon, printing the stored code instead of the option label, exporting a hidden dimension, and
+dropping the conditional-card reordering. The corrected formatter passes 11/11. This also
+demonstrates that each decision is load-bearing in the output rather than only described in a
+comment.
+
+### Acceptance IDs satisfied in Phase 5
+
+PASS: SUM-01, SUM-02, SUM-03, SUM-04, SUM-05, SUM-06, SUM-07, SUM-08, SUM-09, and the
+no-automatic-send gate. Extended: SEC-02 (export and composer surfaces), SEC-05 (export audit and
+logs), AUTH-05 (the summary route), A11Y-01/02/03 (the composer states). Details:
+`docs/ACCEPTANCE_TRACKING.md`.
+
+### Assumptions, decisions, and source conflicts (Phase 5)
+
+The brief's section 14 resolved these from source precedence; the form each one took in the code is
+recorded in `docs/DATA_CONTRACT.md` ("Summary export and email-draft decisions recorded in Phase
+5"). Four of them are visible deviations from `source/current-prototype.html`, and the oracle
+classifies every one of them on every vector:
+
+1. **Hidden values are excluded from the export** (SUM-04), where the prototype cleared them
+   outright. The values stay in the database and print again when the instrument shows them.
+2. **The content-area heading is the section title uppercased** (`CONTENT-AREA LOOK-FORS`), matching
+   the on-screen card, where the prototype composed `MUSIC CLASSROOM`. OPEN with the card heading.
+3. **One trailing colon is stripped from a placement label**, so `Visit occurred at the:` prints
+   once. The prototype's doubled colon is a defect.
+4. **Non-scored choices print the option label** (`[Yes]`), where the prototype printed the raw
+   stored code (`[yes]`). The label is what the person saw on the pill.
+
+Also decided, without a visible prototype difference:
+
+5. **Conditional-card export order** is one rule keyed on the SHOW rule's source dimension (a
+   `content`-sourced card prints immediately before the last `classType`-sourced card), which
+   reproduces the prototype's order today and becomes a no-op once content owners renumber
+   `displayOrder`. The renderer keeps `displayOrder`. Recorded next to Phase 3 decision 3.
+6. **The file name is driven by `behavior.export.fileNamePattern`** rather than by a restated list
+   of dimension codes, because that setting is the contract for the exported name.
+7. **Averages match JavaScript's `toFixed(1)`** on the IEEE-754 double quotient, reproduced in CFML
+   with `BigDecimal(double).setScale(1, HALF_UP)` after taking the quotient to 40 significant digits
+   and narrowing, so the result never depends on whether the CFML engine widens arithmetic. The
+   vectors pin 2.25 → `2.3` and 3.05 → `3.0`.
+8. **Upper-casing goes through `Locale.ROOT`** in the CFML twin, so a server whose default locale is
+   Turkish cannot produce a dotted capital and break the vectors.
+9. **Characters that must survive byte-exactly are built with `chr()`** in the CFML twin (em dash,
+   en dash, bullet, middle dot, curly apostrophe) rather than written as source literals, so the
+   exported bytes never depend on how a CFML engine decodes the file.
+10. **The export button falls back to the browser formatter** only when a flush did not reach the
+    server, and says so. The two formatters are proven identical, so the text is the same; what
+    differs is that the fallback is not authorized, pinned, or audited, which is why it is not the
+    default.
+11. **A read-only editor for a non-owner is not reachable through the Phase 4 My Walks UI**, which
+    lists only the signed-in user's own walks. `applyEditability` disables the composer's controls
+    and the browser test proves its selector set reaches every one of them, but the read-only flow
+    itself is proven at the API, where the decision is actually made (a reader with a valid session,
+    a valid CSRF token and the current row version is refused 403).
+12. **`{"drafted":"yes"}` is coerced, not refused.** CFML's `isBoolean()` accepts `"yes"`/`"no"`/
+    `1`/`0`, so the Phase 4 validator canonicalizes such a value to a real JSON boolean. This is
+    existing Phase 0-4 behavior, it always yields a well-formed stored document, and the browser
+    only ever sends a real boolean. It was left alone (the baseline is frozen) and pinned by a test
+    so a future change is deliberate.
+
+### CF2023 verification items (Phase 5 additions)
+
+Adobe ColdFusion 2023 and SQL Server 2016 were **not** available in this environment. Nothing was
+executed on them and nothing below is claimed as tested. A compatibility review was done and these
+are the items to verify on the target:
+
+- `chr()` for the non-ASCII literals and `javaCast("string", x).toUpperCase(Locale.ROOT)` in
+  `WalkSummaryFormatter`, and that the `.cfc` file itself is read as UTF-8 by the ColdFusion
+  compiler. `WalkSummaryFormatterTest` fails loudly if either is wrong, because the vectors are
+  byte-exact.
+- `java.math.BigDecimal.divide(BigDecimal, MathContext)` → `doubleValue()` →
+  `new BigDecimal(double).setScale(1, HALF_UP)` producing the same string ColdFusion's own
+  arithmetic would, which is why the division is not left to the engine. Pinned by the rounding
+  vectors (2.25 → `2.3`, 3.05 → `3.0`, 4.45 → `4.5`).
+- `cfcontent(type = "text/plain; charset=utf-8", reset = true)` + `writeOutput` on Adobe emitting
+  the body with no added whitespace and no BOM, and `cfheader` emitting `Content-Disposition`
+  before it. `walks.test.mjs` asserts the exact bytes; re-run it against the ColdFusion deployment.
+- That no template under the ColdFusion connector appends output after `dispatch()` (the
+  `app/index.cfm` defect above); the byte-exactness assertions catch a regression.
+- `reFind("<([^<>]+)>", pattern, at, true)` position/length semantics in `fileNameSpec`, and
+  `reReplace(..., "[^A-Za-z0-9_-]+", "_", "all")` in `sanitizeFileLabel`.
+- Closures passed to `eachSection` capturing an outer array on Adobe (`emailItem`,
+  `resolvePartSection`).
+- `charsetDecode(text, "utf-8")` for the audited byte count.
+- Browser suites on the target: `npm run test:browser` and `npm run test:summary` against the
+  ColdFusion deployment in development mode.
+
+### Unresolved defects or blockers (Phase 5)
+
+None open. Deliberately not addressed, and out of the approved Phase 5 scope: the deferred
+indefinitely hung `IN_FLIGHT` request behavior, and CREATE/VOID response materialization. External
+items unchanged (Adobe ColdFusion 2023 environment, identity gateway details, district org-unit
+codes, content-owner wording for the 17 placeholders). OPEN for content owners: the conditional-card
+`displayOrder` (decision 5), the content-area heading (decision 2), an `exportLabel` item setting to
+retire `PART4_LABELS`, and whether a voided walk's export should carry a status line.
+
+### Phase 5 completion gate
+
+| Gate item | Status |
+| --- | --- |
+| Summary golden-file tests pass | Met: `WalkSummaryFormatterTest` and `summary.test.mjs` byte-equal on all 10 vectors, 13 rounding cases and 10 file-label cases; the persisted path through `WalkService.summary`, the HTTP body of `GET /api/walks/{id}/summary`, and the browser's downloaded file all compared with the same vectors |
+| No-automatic-send tests pass | Met: `no-mail.test.mjs` (source scan, composer scan, route/controller/config scan, live 404 probes, `mailto:` encoding), `browser-email.test.mjs` "SUM-08" (no mail request, no navigation), `walks.test.mjs` "SUM-08" (`/email` and `/send` are 404) |
+| SUM-01..09 PASS with evidence | Met: `docs/ACCEPTANCE_TRACKING.md`, plus screenshots |
+| Phase 0-4 suites still green | Met: `npm test` 143/143 (baseline 101), CFML 165/165 (baseline 148), 0 failed, 0 skipped, handoff unchanged at 51 checks / 0 errors |
+| Documentation and BUILD_STATUS updated, committed, pushed | Met |
+
+## Exact recommended starting point for Phase 6
+
+Phase 6 is publishing and administration and **has not been started**. Nothing in this session
+touched `src/instrument/*Import*`, the admin controller, or the migration scripts.
+
+1. Read `docs/IMPLEMENTATION_PLAN.md` Phase 6, `docs/ARCHITECTURE.md` ("What Phase 6 builds on" and
+   the Phase 5 section), and `docs/ACCEPTANCE_TRACKING.md` rows ADM-01..08.
+2. Publishing must freeze a snapshot and leave existing walks on their pinned versions (WALK-11 is
+   already proven). Both summary formatters are driven by `behavior.export.fileNamePattern` and the
+   `email_workflow` item's `settings.selectableParts`, so a publish that changes either changes the
+   export: regenerate and re-review the vectors (`npm run vectors:summary`, `npm run oracle:summary`)
+   as part of that work.
+3. Two content-owner decisions are waiting and would each retire a presentation map: the
+   conditional-card `displayOrder` and a `settings.titleTemplate` for the content-area heading. An
+   `exportLabel` item setting would retire `PART4_LABELS`.
+4. The admin UI takes over the import/publish operations the maintenance endpoints do today.

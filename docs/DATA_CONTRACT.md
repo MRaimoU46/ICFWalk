@@ -424,3 +424,68 @@ submitted one.
   walk.edit_owned or walk.read; `scope=all` adds other users' non-voided walks in walk.read units.
 - **Email-draft JSON** is validated on save against the schema above (only those five keys,
   `includedPartKeys` strings, `drafted` boolean) and stored as canonical JSON.
+
+## Summary export and email-draft decisions recorded in Phase 5 (presentation policy)
+
+The text export is derived, never stored: there is no summary table, no "last exported" column, and
+no cache. Phase 5 adds no table, column, or migration. The email draft is the existing
+`EMAIL_DRAFT_JSON` response (`email_workflow`) and follows "Values by type" unchanged.
+
+One formatting contract is implemented twice, in `src/walks/WalkSummaryFormatter.cfc` and
+`app/assets/js/summary.js`, and `tests/fixtures/summary-vectors.json` proves them byte-identical.
+Both are pure functions of the render model, the working state, and the engine evaluation. The
+decisions below are the points where a source had to be resolved; each was reviewed against
+`source/current-prototype.html` with `scripts/prototype-summary-oracle.mjs`.
+
+1. **A hidden value is excluded from the export, not deleted.** A dimension prints only while
+   `dimensionStates[code] == "ANSWERED"` and a section only while it is visible, so a retained
+   hidden Period or a hidden conditional card never reaches the text, the file name, or the email
+   (SUM-04). The rows stay in the database and print again the moment the instrument shows them.
+   This is the contract's "exclude from reports and export while hidden" applied to the export.
+2. **Conditional-card order in the export.** `behavior.export.preservePrototypeSectionOrder` is
+   true, so the export follows the prototype rather than `displayOrder`. The two differ in exactly
+   one place. The rule is keyed on the SHOW rule's source dimension, never on a section key: a
+   conditional card sourced from the `content` dimension prints immediately before the last
+   conditional card sourced from `classType`. Today that is Content-Area before ESL. The renderer
+   keeps `displayOrder`. OPEN for content owners: renumber `displayOrder` and the rule becomes a
+   no-op on its own.
+3. **The content-area heading is the section title uppercased** (`CONTENT-AREA LOOK-FORS`), matching
+   the on-screen card, where the prototype composed `<CONTENT> CLASSROOM`. OPEN together with the
+   card heading (a `settings.titleTemplate` supporting `{contentLabel}` would retire it).
+4. **One trailing colon is stripped from a placement label** before `": "` is appended, so
+   `Visit occurred at the:` prints once and not twice. The doubled colon is a prototype defect.
+5. **Non-scored choices print the option label** (`[Yes]`, `[ON pace]`, `[Partial]`); scored choices
+   print `<storedCode>/<max numeric score>`. The only visible difference from the prototype is the
+   capitalization of yes/no, and the label is what the person saw on the pill.
+6. **Part 4 export labels come from a presentation map by item key** (`Strengths`, `Growth areas`),
+   the same device as `LIST_CARD` in `app.js`. OPEN for a future DRAFT: an `exportLabel` item
+   setting would remove the map.
+7. **A non-scored choice among scored siblings prints its prompt with a trailing colon**
+   (`- Pacing:  [ON pace]`), stated as a data rule rather than an item key.
+8. **Component averages use answered numeric scores only** and print `n/a` when none is answered; a
+   blank never counts as zero (COND-15, SUM-02). A component whose rated rows are all
+   `NOT_APPLICABLE` prints the not-part line, no average and no ratings, and keeps its notes
+   (SUM-03). One decimal place, rounded exactly as JavaScript's `toFixed(1)` rounds the IEEE-754
+   double quotient, so 2.25 formats as `2.3` and 3.05 as `3.0`; the CFML twin reproduces that with
+   `BigDecimal(double).setScale(1, HALF_UP)` and the vectors pin the agreement.
+9. **Line endings and encoding.** UTF-8 without a BOM, LF only, no trailing newline. `app/index.cfm`
+   ends at its closing tag with no trailing newline for the same reason: any character after it is
+   template output and would be appended to every response body.
+10. **The file name is derived from `behavior.export.fileNamePattern`**, which names the dimensions
+    that label the walk. Values are joined by the pattern's separator, and runs of characters
+    outside `[A-Za-z0-9_-]` collapse to a single underscore with case preserved. A walk with nothing
+    named falls back to its id. Nothing else survives, so no quote, path separator, or traversal
+    sequence can reach a `Content-Disposition` header (SUM-05).
+11. **The email draft's key order is part of the contract.** The server canonicalizes to
+    `body, drafted, includedPartKeys, subject, to` and the browser serializes in that same order, so
+    a reload compares equal and the conflict panel never reports an unsent edit nobody made.
+    Clearing a draft keeps the recipient and the ticked parts and empties only the generated text
+    (SUM-09). The draft is never a completion issue.
+12. **`to` is optional free text.** It is not validated as an address, is stored verbatim, and is
+    never parsed as a mail header, because nothing in the application sends mail. The browser
+    percent-encodes it into a `mailto:` URL, where a CR/LF or a `bcc:` is data and not a header.
+13. **A voided walk still exports.** Phase 4 keeps it readable by id, and the text carries no status
+    line. OPEN: content owners could ask for one later.
+14. **Export privacy.** `WALK_SUMMARY_EXPORTED` and the export log line carry the walk id, its
+    status, the version id, and a byte count. The summary text, notes, subject, body, and recipient
+    are never logged or audited (SEC-05).

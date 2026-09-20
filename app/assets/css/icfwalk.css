@@ -194,3 +194,20 @@ textarea{resize:vertical;min-height:56px;background:#FFF9E7;border:3px solid var
 .field-error{color:#7A1C1C;font-size:12.5px;font-weight:600;margin:6px 0 0}
 .has-error{box-shadow:inset 3px 0 0 #B32424;padding-left:8px}
 .pill[disabled],select[disabled],input[disabled],textarea[disabled]{opacity:.7;cursor:not-allowed}
+
+/* Phase 5: Part 4 teacher email composer and summary export.
+   Every rule lives here rather than inline, so the shell's CSP (no 'unsafe-inline') is unchanged. */
+.email-prompt{background:var(--tint);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.email-q{font-weight:700;color:var(--navy);font-size:14px;margin:0 0 10px}
+.email-parts{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:12px}
+.email-parts .checkrow{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--ink);letter-spacing:0;margin-bottom:0;text-transform:none}
+.email-parts .checkrow input{width:auto;margin:0}
+.email-actions{display:flex;gap:8px;flex-wrap:wrap}
+.email-box{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.email-box label{margin-top:10px}
+.email-box label:first-child{margin-top:0}
+.email-box .email-actions{margin-top:10px}
+.email-body{min-height:220px}
+.email-status:empty{display:none}
+.email-status{font-size:12.5px;font-weight:600;color:var(--navy);margin:8px 0 0}
+.email-note{font-size:11.5px;margin:8px 0 0}

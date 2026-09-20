@@ -254,7 +254,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var interceptingService = createObject("component", "icfwalk.walks.WalkService").init(
 			variables.c.config, variables.c.db, variables.c.errors, variables.c.logger, variables.c.auditRepository,
 			variables.c.canonicalJson, variables.c.authorizationService, variables.c.snapshotService,
-			variables.c.visibilityEngine, interceptor, variables.c.walkPayloadValidator, variables.c.orgUnitRepository
+			variables.c.visibilityEngine, interceptor, variables.c.walkPayloadValidator, variables.c.orgUnitRepository,
+			variables.c.walkSummaryFormatter
 		);
 
 		var realService = variables.svc;
@@ -324,7 +325,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var interceptingService = createObject("component", "icfwalk.walks.WalkService").init(
 			variables.c.config, variables.c.db, variables.c.errors, variables.c.logger, variables.c.auditRepository,
 			variables.c.canonicalJson, variables.c.authorizationService, variables.c.snapshotService,
-			variables.c.visibilityEngine, interceptor, variables.c.walkPayloadValidator, variables.c.orgUnitRepository
+			variables.c.visibilityEngine, interceptor, variables.c.walkPayloadValidator, variables.c.orgUnitRepository,
+			variables.c.walkSummaryFormatter
 		);
 		interceptor.arm("loadDimensionValues", function() { fail("a superseded replay must never load the aggregate it is refusing to return."); });
 

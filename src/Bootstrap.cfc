@@ -52,9 +52,13 @@ component output="false" {
 		// Walk persistence (Phase 4).
 		c["walkRepository"] = new icfwalk.walks.WalkRepository(c.db, c.canonicalJson, c.definitionRepository);
 		c["walkPayloadValidator"] = new icfwalk.walks.WalkPayloadValidator(c.errors, c.canonicalJson);
+		// Summary export and teacher email draft (Phase 5). The formatter is pure: no database, no
+		// request scope, no logging, so it is a plain singleton shared by every walk.
+		c["walkSummaryFormatter"] = new icfwalk.walks.WalkSummaryFormatter();
 		c["walkService"] = new icfwalk.walks.WalkService(
 			c.config, c.db, c.errors, c.logger, c.auditRepository, c.canonicalJson, c.authorizationService,
-			c.snapshotService, c.visibilityEngine, c.walkRepository, c.walkPayloadValidator, c.orgUnitRepository
+			c.snapshotService, c.visibilityEngine, c.walkRepository, c.walkPayloadValidator, c.orgUnitRepository,
+			c.walkSummaryFormatter
 		);
 
 		c["healthController"] = new icfwalk.controllers.HealthController(c.config, c.db, c.requestContext);

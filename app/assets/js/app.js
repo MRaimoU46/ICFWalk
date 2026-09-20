@@ -11,6 +11,7 @@ import { createApi, ApiError } from "./api.js";
 import { ApiWalkStore, newId } from "./walk-store.js";
 import { renderEditor } from "./renderer.js";
 import { createBlankState, dimensionDisplay } from "./walk-state.js";
+import { fileName as summaryFileName, summaryText } from "./summary.js";
 
 // Presentation configuration for the My Walks card (dimension codes, not instrument content):
 // title = grade · content; meta = school · date · relative update time (prototype behavior).
@@ -37,6 +38,11 @@ const RECOVERY_EDITOR_BUSY = "Finish or discard the changes in the walk you have
 const RECOVERY_CREATED_ELSEWHERE = "That walk was created and is waiting in My walks. Nothing here was replaced — your changes on this page were kept.";
 const RECOVERY_MOVED_ON = "That action did finish, and the walk has changed since. Your changes on this page were kept; saving them will offer the saved version to reconcile with.";
 const EMPTY_STATE_LINES = ["No walks saved yet.", 'Start one with "New walk" above.'];
+const EXPORT_ANNOUNCE = "Summary exported";
+const EXPORT_BLOCKED = "Resolve the conflict above before exporting the summary.";
+// SAVE-03 spirit: when the flush did not reach the server, the person still gets the text of what
+// is on screen rather than a stale server copy or nothing at all.
+const EXPORT_LOCAL = "The server could not be reached, so the exported summary was built from what is on this page.";
 const DELETE_CONFIRM = "Delete this walk? This cannot be undone.";
 const VOID_CONFIRM = "Void this completed walk? It stays in the audit history but leaves your list. A reason is required.";
 
@@ -507,6 +513,7 @@ function showView(name) {
   $("view-list").hidden = name !== "list";
   $("view-walk").hidden = name !== "walk";
   $("nav-list-btn").hidden = name !== "walk";
+  if (name !== "walk") $("export-btn").hidden = true;
   // The unfinished-operations bar belongs to neither view, so it is re-asserted on every switch.
   renderPendingOps();
   if (name === "list") $("list-heading").focus?.();
@@ -759,9 +766,14 @@ function applyEditability(walk) {
   for (const el of $("editor").querySelectorAll("select, input, textarea, .pill")) {
     el.disabled = !editable || Boolean(el.closest('[data-locked="true"]'));
   }
+  // The composer's buttons are controls like any other: a read-only walk must not offer Draft,
+  // Clear, or Update. Client visibility is never the boundary -- the server refuses the save too.
+  for (const button of $("editor").querySelectorAll(".email-slot button")) button.disabled = !editable;
   $("save-btn").hidden = !editable;
   $("save-btn-bottom").hidden = !editable;
   $("complete-btn").hidden = !editable || walk.status !== "DRAFT";
+  // Exporting is a read: every walk the person may open, they may export (the route re-authorizes).
+  $("export-btn").hidden = false;
 }
 
 function renderWalkBanner(walk) {
@@ -1041,6 +1053,51 @@ async function resolveConflictKeep() {
   announce("Your edits were applied to the saved version");
 }
 
+// ---- summary export (SUM-01..05) ---------------------------------------------------------------
+
+/**
+ * Downloads the walk summary. The server's copy is authoritative -- it is authorized, built from
+ * the walk's pinned instrument version, and audited -- so pending edits are flushed first and the
+ * download is a plain GET of the summary route, which carries the session cookie.
+ *
+ * When that flush did not reach the server, downloading the server's copy would hand the person a
+ * summary that is missing what is on their screen. In that case the browser formatter produces the
+ * same text from the working state instead (the shared vectors prove the two are byte-identical)
+ * and the fallback is announced, so nobody is told a stale file is current.
+ */
+async function exportSummary() {
+  const walk = app.current;
+  if (!walk) return;
+  if (app.conflict) { showMessage(EXPORT_BLOCKED, "error"); announce(EXPORT_BLOCKED); return; }
+  if (walk.canEdit && (app.dirty || app.timer !== null || app.inFlight || ambiguousSave())) await saveCurrent();
+  if (app.current !== walk) return;                 // the editor moved on while the flush ran
+  if (app.conflict) { showMessage(EXPORT_BLOCKED, "error"); announce(EXPORT_BLOCKED); return; }
+
+  const unsent = walk.canEdit && (app.dirty || app.failed || Boolean(ambiguousSave()));
+  const href = unsent ? localSummaryUrl(walk) : `${body.dataset.apiBase}/walks/${encodeURIComponent(walk.id)}/summary`;
+  const link = document.createElement("a");
+  link.href = href;
+  // The server route already answers with Content-Disposition: attachment and the sanitized file
+  // name, which is what makes it a download and what names it. A `download` attribute on top of
+  // that is redundant -- the header wins over it per the HTML spec -- and it makes the browser
+  // fetch the URL on its own terms instead of following the response, so it is set only for the
+  // local fallback, whose blob carries no headers at all.
+  if (unsent) link.download = summaryFileName(modelFor(walk), walk.state, app.editor.evaluation, walk.id);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  if (unsent) {
+    URL.revokeObjectURL(href);
+    showMessage(EXPORT_LOCAL, "error");
+  }
+  announce(EXPORT_ANNOUNCE);
+}
+
+function localSummaryUrl(walk) {
+  const text = summaryText(modelFor(walk), walk.state, app.editor.evaluation);
+  return URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+}
+
 // ---- completion --------------------------------------------------------------------------------
 
 async function completeCurrent() {
@@ -1273,6 +1330,7 @@ async function init() {
   $("save-btn-bottom").addEventListener("click", () => saveCurrent());
   $("save-retry").addEventListener("click", () => saveCurrent());
   $("complete-btn").addEventListener("click", completeCurrent);
+  $("export-btn").addEventListener("click", exportSummary);
   $("conflict-reload").addEventListener("click", resolveConflictReload);
   $("conflict-keep").addEventListener("click", resolveConflictKeep);
   $("conflict-retry").addEventListener("click", () => beginConflict(app.conflict && app.conflict.error));

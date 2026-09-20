@@ -79,7 +79,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		return createObject("component", "icfwalk.walks.WalkService").init(
 			variables.c.config, arguments.db, variables.c.errors, variables.c.logger, variables.c.auditRepository,
 			variables.c.canonicalJson, variables.c.authorizationService, variables.c.snapshotService,
-			variables.c.visibilityEngine, arguments.walkRepository, variables.c.walkPayloadValidator, variables.c.orgUnitRepository
+			variables.c.visibilityEngine, arguments.walkRepository, variables.c.walkPayloadValidator, variables.c.orgUnitRepository,
+			variables.c.walkSummaryFormatter
 		);
 	}
 

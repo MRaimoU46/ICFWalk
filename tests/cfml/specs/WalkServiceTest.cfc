@@ -570,6 +570,187 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		}
 	}
 
+	// ---- Phase 5: summary export and the Part 4 email draft -----------------------------------
+
+	/**
+	 * SUM-01: the text a reader downloads is the text the shared formatter produces for the walk as
+	 * the database holds it. This is the whole persisted path -- rows, stateOf, the server engine,
+	 * the formatter -- so it proves the export agrees with the vectors for a real saved walk and not
+	 * only for a hand-built state.
+	 */
+	public void function testServiceSummaryMatchesTheFormatterForAPersistedWalk() {
+		var w = newWalk();
+		var responses = requiredAnswers();
+		responses["comp_s1_q1"] = { "storedCode": "4" };
+		responses["comp_s1_q2"] = { "storedCode": "3" };
+		responses["comp_s1_notes"] = { "textValue": variables.NOTE };
+		responses["comp_s3_applicable"] = { "storedCode": "no" };
+		responses["comp_s3_notes"] = { "textValue": "kept" };
+		responses["summary_strengths"] = { "textValue": "strength" };
+		var saved = saveState(w, { "observer": { "textValue": "Jane Doe" }, "date": { "dateValue": "2026-09-17" } }, responses);
+
+		var out = variables.svc.summary(p(variables.walker), w.id);
+		var model = variables.c.snapshotService.renderModelFor(saved.versionId);
+		var evaluation = variables.c.visibilityEngine.evaluateVisibility(model, saved.state);
+		var expected = variables.c.walkSummaryFormatter.summaryText(model, saved.state, evaluation);
+		assertEquals(0, compare(expected, out.text), "The exported text is the formatter's text for the saved state.");
+		assertEquals(0, compare(variables.c.walkSummaryFormatter.fileName(model, saved.state, evaluation, w.id), out.fileName));
+		assertContains("2.1 DAILY ENGAGEMENT WITH COMPLEX TEXTS  (avg: 3.5)", out.text);
+		assertContains("2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)", out.text);
+		// SEC-02: the injection string is text in the export, neither escaped nor stripped.
+		assertContains("Notes: " & variables.NOTE, out.text);
+		assertEquals("DRAFT", out.status);
+		assertEquals(saved.versionId, out.versionId, "WALK-11: the walk's pinned version, not the current one.");
+		assertTrue(out.bytes > 0);
+	}
+
+	/** AUTH-04/05: the export re-authorizes the record exactly as opening the walk does. */
+	public void function testSummaryAuthorizationMatchesOpen() {
+		var w = newWalk();
+		var svc = variables.svc;
+		var walkId = w.id;
+
+		// A colleague who may read the walk may export it.
+		assertTrue(len(svc.summary(p(variables.walker2), walkId).text) > 0, "A reader in scope may export.");
+
+		// A report-only role and an instrument admin hold no walk capability: 403, and no text.
+		assertThrows(function() { svc.summary(p(variables.reportOnly), walkId); }, "ICFWalk.Forbidden");
+		assertThrows(function() { svc.summary(p(variables.admin), walkId); }, "ICFWalk.Forbidden");
+		// Another school is 404, the same answer open() gives, so the route discloses no existence.
+		assertThrows(function() { svc.summary(p(variables.otherSchool), walkId); }, "ICFWalk.NotFound");
+		assertThrows(function() { svc.open(p(variables.otherSchool), walkId); }, "ICFWalk.NotFound");
+		assertThrows(function() { svc.summary(p(variables.foreign), walkId); }, "ICFWalk.NotFound");
+		// A malformed id never reaches the database.
+		assertThrows(function() { svc.summary(p(variables.walker), "not-a-guid"); }, "ICFWalk.Validation");
+	}
+
+	/** A voided walk stays readable by id in Phase 4, so it stays exportable, and a read writes nothing. */
+	public void function testSummaryOfAVoidedWalkExportsAndWritesNothing() {
+		var w = newWalk();
+		var saved = saveState(w, {}, requiredAnswers());
+		var completed = variables.svc.complete(p(variables.walker), w.id, { "rowVersion": saved.rowVersion, "clientMutationId": newMutationId() });
+		var voided = variables.svc.void(p(variables.walker), w.id, { "rowVersion": completed.rowVersion, "clientMutationId": newMutationId(), "reason": "Voided in a summary test" });
+
+		var rowsBefore = variables.db.run("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", { "id": variables.db.guid(w.id) }).n[1];
+		var out = variables.svc.summary(p(variables.walker), w.id);
+		assertEquals("VOIDED", out.status);
+		assertContains("ICFWALK SUMMARY", out.text);
+		assertTrue(find("VOIDED", out.text) == 0, "The text carries no status line.");
+
+		var after = variables.db.run(
+			"SELECT CONVERT(varchar(18), CAST(row_version AS binary(8)), 1) AS rv, (SELECT COUNT(*) FROM [icf].[walk_mutation] WHERE walk_id = :id) AS n FROM [icf].[walk] WHERE walk_id = :id",
+			{ "id": variables.db.guid(w.id) }
+		);
+		assertEquals(voided.rowVersion, after.rv[1], "Exporting does not bump the row version.");
+		assertEquals(rowsBefore, after.n[1], "Exporting records no mutation.");
+	}
+
+	/** SEC-05: the export audit row names the walk and counts bytes; it never carries the text. */
+	public void function testSummaryAuditCarriesNoNarrative() {
+		var secret = "A sentence about a teacher that must never be logged.";
+		var w = newWalk();
+		saveState(w, { "observer": { "textValue": secret } }, { "conditions_notes": { "textValue": secret } });
+		var out = variables.svc.summary(p(variables.walker), w.id);
+		assertContains(secret, out.text, "The text itself does carry the narrative.");
+
+		var q = variables.db.run(
+			"SELECT TOP 1 details_json AS d FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id = :id AND event_type = N'WALK_SUMMARY_EXPORTED' ORDER BY event_at DESC",
+			{ "id": variables.db.guid(w.id) }
+		);
+		assertEquals(1, q.recordCount, "The export was audited.");
+		var details = deserializeJSON(q.d[1]);
+		var keys = structKeyArray(details);
+		arraySort(keys, "text");
+		assertEquals(["bytes", "status", "versionId"], keys, "Only approved identifiers and counts.");
+		assertTrue(find(secret, q.d[1]) == 0, "No narrative value reached the audit row.");
+	}
+
+	/**
+	 * SUM-07/09: the draft rides the ordinary save path. It is canonicalized on the way in, restored
+	 * exactly on reopen, clearable without touching any other answer, and never a completion issue.
+	 */
+	public void function testEmailDraftRoundTripAndSchema() {
+		var w = newWalk();
+		var canonical = '{"body":"Body","drafted":true,"includedPartKeys":["part1","comp_s3"],"subject":"Subject","to":"teacher@u46.org"}';
+		var responses = requiredAnswers();
+		responses["email_workflow"] = { "textValue": canonical };
+		responses["summary_strengths"] = { "textValue": "kept" };
+		var saved = saveState(w, {}, responses);
+		// The mutation response is what the browser adopts, so the canonical form is already in it.
+		assertEquals(0, compare(canonical, saved.state.responses.email_workflow.textValue), "Canonical on the way out of the save.");
+		assertEquals("ANSWERED", saved.states.responseStates.email_workflow);
+
+		var reopened = variables.svc.open(p(variables.walker), w.id);
+		assertEquals(0, compare(canonical, reopened.state.responses.email_workflow.textValue), "SUM-07: reopening restores it byte for byte.");
+
+		// Key order on the way in does not matter; the stored document is canonical either way.
+		var shuffled = duplicate(responses);
+		shuffled["email_workflow"] = { "textValue": '{"to":"teacher@u46.org","subject":"Subject","includedPartKeys":["part1","comp_s3"],"drafted":true,"body":"Body"}' };
+		var again = saveState(w, {}, shuffled, variables.walker, "", reopened.rowVersion);
+		assertEquals(0, compare(canonical, again.state.responses.email_workflow.textValue), "Canonicalized whatever order arrives.");
+
+		// SUM-09: clearing drops the generated text and keeps the recipient, the ticked parts, and
+		// every other answer.
+		var cleared = duplicate(responses);
+		cleared["email_workflow"] = { "textValue": '{"body":"","drafted":false,"includedPartKeys":["part1","comp_s3"],"subject":"","to":"teacher@u46.org"}' };
+		var afterClear = saveState(w, {}, cleared, variables.walker, "", again.rowVersion);
+		var doc = deserializeJSON(afterClear.state.responses.email_workflow.textValue);
+		assertFalse(doc.drafted);
+		assertEquals("", doc.subject);
+		assertEquals("", doc.body);
+		assertEquals("teacher@u46.org", doc.to, "The recipient is kept.");
+		assertEquals(["part1", "comp_s3"], doc.includedPartKeys, "The ticked parts are kept.");
+		assertEquals("kept", afterClear.state.responses.summary_strengths.textValue, "Other responses are untouched.");
+		assertEquals("Partial", afterClear.state.responses.p1q1.storedCode);
+
+		// A recipient carrying header-injection characters is stored as text; nothing interprets it.
+		var hostile = duplicate(responses);
+		hostile["email_workflow"] = { "textValue": serializeJSON({ "body": "b", "drafted": true, "includedPartKeys": [], "subject": "s", "to": "a@b.test" & chr(13) & chr(10) & "bcc: victim@example.test" }) };
+		var afterHostile = saveState(w, {}, hostile, variables.walker, "", afterClear.rowVersion);
+		var hostileDoc = deserializeJSON(afterHostile.state.responses.email_workflow.textValue);
+		assertEquals("a@b.test" & chr(13) & chr(10) & "bcc: victim@example.test", hostileDoc.to, "Stored verbatim as data.");
+
+		// The draft is not an observation: it never appears in the completion issues.
+		var model = variables.c.snapshotService.renderModelFor(afterHostile.versionId);
+		var evaluation = variables.c.visibilityEngine.evaluateVisibility(model, afterHostile.state);
+		for (var issue in variables.svc.completionIssues(model, evaluation)) {
+			assertNotEquals("email_workflow", issue.key, "The email draft is never a completion issue.");
+		}
+		var completed = variables.svc.complete(p(variables.walker), w.id, { "rowVersion": afterHostile.rowVersion, "clientMutationId": newMutationId() });
+		assertEquals("COMPLETED", completed.status);
+		assertEquals(0, compare(afterHostile.state.responses.email_workflow.textValue, completed.state.responses.email_workflow.textValue), "Completion leaves the draft alone.");
+	}
+
+	/** The draft schema is enforced on the server; a rejection writes nothing at all. */
+	public void function testEmailDraftSchemaRejectionsWriteNothing() {
+		var w = newWalk();
+		var svc = variables.svc;
+		var walkId = w.id;
+		var before = variables.svc.open(p(variables.walker), walkId);
+		for (var bad in [
+			'{"body":"b","drafted":true,"includedPartKeys":[],"subject":"s","to":"","extra":"x"}',
+			'{"includedPartKeys":"part1"}',
+			'{"includedPartKeys":[{"nested":true}]}',
+			'{"subject":{"nested":true}}',
+			'{"drafted":{"nested":true}}',
+			"not json at all",
+			"[1,2,3]"
+		]) {
+			var payload = bad;
+			// The validator reports the first issue's own code, so the rejection names the email
+			// draft rather than a generic payload failure: the browser can point at the right field.
+			var e = assertThrows(function() {
+				svc.save(p(variables.walker), walkId, {
+					"rowVersion": before.rowVersion, "clientMutationId": newMutationId(),
+					"dimensions": {}, "responses": { "email_workflow": { "textValue": payload } }
+				});
+			}, "ICFWalk.Validation", "INVALID_EMAIL_DRAFT");
+			assertContains("responses.email_workflow.textValue", serializeJSON(variables.c.errors.detailsOf(e)), "The rejection names the field: " & payload);
+		}
+		var after = variables.svc.open(p(variables.walker), walkId);
+		assertEquals(before.rowVersion, after.rowVersion, "Every rejection wrote nothing.");
+	}
+
 	private struct function findItem(required struct model, required string key) {
 		var stack = [arguments.model.root];
 		while (arrayLen(stack)) {

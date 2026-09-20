@@ -153,8 +153,29 @@ use" (`INSTRUMENT_VERSION_IN_USE`) until they are removed or the version is publ
 | `npm run test:auth` | HTTP identity/authorization checks (AUTH-01, CSRF, cookies, admin route separation). Needs the app in development mode with `ICFWALK_SSO_MODE=development` and `ICFWALK_DEV_IDENTITY_ENABLED=true`. |
 | `npm run test:shell` | Phase 3: authorization and headers of the HTML shell and `/api/instrument/current`; browser rules engine against the shared visibility vectors and COND-01..15 (same prerequisites as `test:auth`). |
 | `npm run test:walks` | Phase 4: HTTP checks of `/api/walks` (authentication, CSRF, role separation, cross-scope 404s, tampered keys/codes/identifiers, stale writes, idempotent retries, completion, void, delete refusal, pinned instrument). Same prerequisites as `test:auth`. |
-| `npm run test:browser` | Phase 3 + 4: Playwright (Chromium) runs of the real page against the persistent store: dynamic rendering from the served model, conditional behavior, My Walks flow (create, reload, open, void), 700 ms autosave coalescing, network-failure retry, two-session conflict resolution, completion errors and completion, keyboard operation, axe-core WCAG checks, screenshots at 375/768/1280 px into `docs/evidence/screenshots/`. Needs `npm install` (Playwright and axe-core are dev dependencies) and a Chromium that Playwright can find (`npx playwright install chromium` where it is not pre-installed). |
+| `npm run test:summary` | Phase 5: the browser summary formatter against the shared golden vectors (`tests/fixtures/summary-vectors.json`), the SUM-02..06 behaviors, file-name sanitization, the composer's canonical serialization, and the no-automatic-send gate (no `cfmail`/SMTP/mail library anywhere, no route that accepts a recipient, `mailto:` values percent-encoded). Same prerequisites as `test:auth`. The CFML twin runs inside `npm run test:cfml` (`?filter=WalkSummaryFormatter`). |
+| `npm run test:browser` | Phase 3 + 4 + 5: Playwright (Chromium) runs of the real page against the persistent store: dynamic rendering from the served model, conditional behavior, My Walks flow (create, reload, open, void), 700 ms autosave coalescing, network-failure retry, two-session conflict resolution, completion errors and completion, the summary export download (compared byte for byte with the route and the vectors), the Part 4 composer (draft, edit, reload, copy, `mailto:`, clear), keyboard operation, axe-core WCAG checks, screenshots at 375/768/1280 px into `docs/evidence/screenshots/`. Needs `npm install` (Playwright and axe-core are dev dependencies) and a Chromium that Playwright can find (`npx playwright install chromium` where it is not pre-installed). |
 | `npm test` | Everything above. |
+
+### Regenerating and reviewing the summary vectors (Phase 5 tooling, not part of `npm test`)
+
+`tests/fixtures/summary-vectors.json` is the parity contract between `src/walks/WalkSummaryFormatter.cfc`
+and `app/assets/js/summary.js`. Change either formatter's output on purpose and the vectors have to
+be regenerated and re-reviewed; change it by accident and both suites fail, which is the point.
+
+```bash
+npm run vectors:summary:check    # fails if the fixture is stale (needs the running app)
+npm run vectors:summary          # regenerate from the SERVED render model with the JS formatter
+npm run oracle:summary           # replay every vector through source/current-prototype.html
+npm run oracle:summary -- --verbose
+```
+
+`oracle:summary` launches Chromium on the prototype, rebuilds each vector's state in the
+prototype's own shape, and diffs its `buildSummaryText()` / `generateEmailDraftFor()` output against
+the fixture. Every difference must be one of the deviations recorded in `BUILD_STATUS.md` (hidden
+values excluded, the content-area heading, the doubled trailing colon, yes/no capitalization);
+anything else is reported as UNEXPLAINED and exits non-zero. Never bless a vector the oracle cannot
+account for.
 
 The CFML suite can also be triggered directly:
 

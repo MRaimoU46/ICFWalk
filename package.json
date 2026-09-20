@@ -13,9 +13,13 @@
     "test:cfml": "node --test tests/node/cfml-suite.test.mjs",
     "test:auth": "node --test tests/node/auth.test.mjs",
     "test:shell": "node --test tests/node/shell.test.mjs tests/node/visibility.test.mjs",
-    "test:browser": "node --test tests/node/browser.test.mjs tests/node/browser-persistence.test.mjs",
+    "test:browser": "node --test tests/node/browser.test.mjs tests/node/browser-persistence.test.mjs tests/node/browser-email.test.mjs",
     "db:apply": "node scripts/db/apply-schema.mjs",
-    "test:walks": "node --test tests/node/walks.test.mjs"
+    "test:walks": "node --test tests/node/walks.test.mjs",
+    "test:summary": "node --test tests/node/summary.test.mjs tests/node/no-mail.test.mjs",
+    "vectors:summary": "node scripts/generate-summary-vectors.mjs",
+    "vectors:summary:check": "node scripts/generate-summary-vectors.mjs --check",
+    "oracle:summary": "node scripts/prototype-summary-oracle.mjs"
   },
   "engines": {
     "node": ">=20"
