@@ -29,6 +29,13 @@ const STATUS = {
 const UNSAVED_LEAVE = "Your changes are still on this page and have not reached the server. Keep editing to try again, or discard them and leave.";
 const UNSAVED_CONFLICT = "Resolve the conflict above before leaving, or discard your unsent edits.";
 const UNSAVED_LIFECYCLE = "An action on this walk did not finish and may or may not have been applied. Retry it, or abandon it and leave.";
+// Recovery messages. An unfinished action is resolved wherever the user happens to be, so resolving
+// one can land on an editor that is carrying newer work. None of these ever replaces that work.
+const UNSAVED_VOIDED = "That walk was removed, so the changes still on this page can no longer be saved to it. Discard them and return to My walks, or stay here to copy them first.";
+const RECOVERY_VOIDED_STAY = "That walk was removed. Your changes are still on screen but cannot be saved to it.";
+const RECOVERY_EDITOR_BUSY = "Finish or discard the changes in the walk you have open before retrying that save.";
+const RECOVERY_CREATED_ELSEWHERE = "That walk was created and is waiting in My walks. Nothing here was replaced — your changes on this page were kept.";
+const RECOVERY_MOVED_ON = "That action did finish, and the walk has changed since. Your changes on this page were kept; saving them will offer the saved version to reconcile with.";
 const EMPTY_STATE_LINES = ["No walks saved yet.", 'Start one with "New walk" above.'];
 const DELETE_CONFIRM = "Delete this walk? This cannot be undone.";
 const VOID_CONFIRM = "Void this completed walk? It stays in the audit history but leaves your list. A reason is required.";
@@ -131,13 +138,25 @@ function beginOp(action, target, { body = {}, rowVersion = null } = {}) {
  * Called immediately before the request carrying this record's mutation id is dispatched. From this
  * moment the server may hold the mutation, so the record stops being replaceable local intent and
  * becomes the only thing that can resolve it.
+ *
+ * A retry makes the same transition from AMBIGUOUS: while a request carrying this mutation id is on
+ * the wire the operation is IN_FLIGHT, which is what takes its retry control out of the recovery bar
+ * and what every dispatch path tests before sending. Retries used to leave the record AMBIGUOUS for
+ * the whole round trip, so the control stayed live and a second activation dispatched the same
+ * mutation id again -- harmless on the server, which recognises the replay, but two answers racing
+ * to refresh and re-open the same views on the way back. The flip happens synchronously before the
+ * request is created, so there is no window between the test and the transition.
  */
 function markOpSent(op) {
-  if (op && app.ops[op.key] === op && op.status === OP_UNSENT) op.status = OP_IN_FLIGHT;
+  if (!op || app.ops[op.key] !== op) return;
+  if (op.status === OP_UNSENT || op.status === OP_AMBIGUOUS) {
+    op.status = OP_IN_FLIGHT;
+    renderPendingOps();
+  }
 }
 
 function markOpAmbiguous(op) {
-  if (op && app.ops[op.key] === op) op.status = OP_AMBIGUOUS;
+  if (op && app.ops[op.key] === op) { op.status = OP_AMBIGUOUS; op.wasAmbiguous = true; }
   renderPendingOps();
 }
 
@@ -171,6 +190,22 @@ function pendingOps() {
 
 function ambiguousOps() {
   return pendingOps().filter((op) => op.status === OP_AMBIGUOUS);
+}
+
+/**
+ * What the recovery bar shows: every operation waiting for the user, plus the one whose retry is
+ * currently on the wire. Keeping a retrying record on screen (with its controls disabled) is what
+ * makes "already retrying" visible instead of making the bar blink out and back; an operation that
+ * has never been ambiguous is an ordinary first attempt and belongs nowhere near recovery.
+ */
+function recoveryOps() {
+  return pendingOps().filter((op) => op.status === OP_AMBIGUOUS || (op.status === OP_IN_FLIGHT && op.wasAmbiguous));
+}
+
+/** True when a request carrying this operation's mutation id is already on the wire. */
+function opInFlight(action, target) {
+  const op = currentOp(action, target);
+  return Boolean(op && op.status === OP_IN_FLIGHT);
 }
 
 /** The current walk's save record while its outcome is unknown, or null. */
@@ -237,27 +272,36 @@ function renderPendingOps() {
   const box = $("pending-ops");
   if (!box) return;
   const list = $("pending-ops-list");
-  const ops = ambiguousOps();
+  const ops = recoveryOps();
   list.innerHTML = "";
   if (!ops.length) { box.hidden = true; return; }
   $("pending-ops-summary").textContent = ops.length === 1
     ? "One action did not finish."
     : `${ops.length} actions did not finish.`;
   for (const op of ops) {
+    const retrying = op.status === OP_IN_FLIGHT;
     const li = document.createElement("li");
     li.className = "pending-op";
     li.dataset.opAction = op.action;
     li.dataset.opTarget = op.target;
+    li.dataset.opStatus = op.status;
     const text = document.createElement("span");
     text.className = "pending-op-text";
-    text.textContent = `${opDescription(op)} Retrying sends the same request, so it cannot happen twice.`;
+    text.textContent = retrying
+      ? `${opDescription(op)} Retrying it now...`
+      : `${opDescription(op)} Retrying sends the same request, so it cannot happen twice.`;
     const retry = document.createElement("button");
     retry.type = "button"; retry.className = "btn btn-sm btn-primary pending-op-retry";
-    retry.textContent = "Retry";
+    retry.textContent = retrying ? "Retrying..." : "Retry";
+    // While the retry is on the wire the operation owns its mutation id and nothing may dispatch it
+    // again: the controls are disabled here, and resolveAmbiguousOp refuses an IN_FLIGHT record
+    // whatever managed to reach it.
+    retry.disabled = retrying;
     retry.addEventListener("click", () => resolveAmbiguousOp(op));
     const drop = document.createElement("button");
     drop.type = "button"; drop.className = "btn btn-sm pending-op-discard";
     drop.textContent = "Stop trying";
+    drop.disabled = retrying;
     drop.addEventListener("click", () => {
       // An explicit decision, like the unsaved-changes panel: the browser stops tracking the
       // operation and whatever the server holds stands.
@@ -279,36 +323,49 @@ function renderPendingOps() {
  */
 async function resolveAmbiguousOp(op) {
   if (app.ops[op.key] !== op) { renderPendingOps(); return; }
+  // A request carrying this mutation id is already on the wire. A second dispatch would be a
+  // duplicate the server only tolerates because it recognises the replay, and its answer would race
+  // the first one through the refresh below, so it is refused here as well as in the disabled control.
+  if (op.status === OP_IN_FLIGHT) { renderPendingOps(); return; }
   if (op.action === "SAVE") {
-    // A save belongs to its editor, which holds the local state it is still carrying.
-    if (!app.current || app.current.id !== op.target) await openWalk(op.target);
+    // A save belongs to its editor, which holds the local state it is still carrying. Opening it
+    // would replace whatever is in the editor now, so a busy editor is asked for first.
+    if (!app.current || app.current.id !== op.target) {
+      if (editorHoldsNewerWork()) { showMessage(RECOVERY_EDITOR_BUSY, "error"); renderPendingOps(); return; }
+      await openWalk(op.target);
+    }
     if (app.current && app.current.id === op.target) await saveCurrent();
     renderPendingOps();
     return;
   }
-  // The record stays AMBIGUOUS while the retry is out: it is still the only thing that can resolve
-  // the operation, and it keeps its place in the bar until the answer is definitive.
+  // From here the record is IN_FLIGHT: it is still the only thing that can resolve the operation,
+  // it keeps its (disabled) place in the bar, and no second retry can be dispatched for it.
+  markOpSent(op);
   try {
     if (op.action === "CREATE") {
       const walk = await store.create({ ...op.body, clientMutationId: op.mutationId });
       settleOp(op);
+      // Recovery never switches the editor away from newer work: the walk exists and is listed,
+      // and the user opens it once their own changes are settled.
+      if (editorHoldsNewerWork()) { showMessage(RECOVERY_CREATED_ELSEWHERE); return; }
       showMessage("");
       await openWalk(walk.id, walk);
       return;
     }
     if (op.action === "COMPLETE") {
-      await store.complete({ id: op.target, rowVersion: op.rowVersion }, op.mutationId);
+      const done = await store.complete({ id: op.target, rowVersion: op.rowVersion }, op.mutationId);
       settleOp(op);
       announce("Walk completed");
-      await refreshAfterResolvedOp(op.target, false);
+      await refreshAfterResolvedOp(op.target, false, done);
       return;
     }
-    await store.remove(op.target, { reason: op.body.reason, rowVersion: op.rowVersion, clientMutationId: op.mutationId });
+    const voided = await store.remove(op.target, { reason: op.body.reason, rowVersion: op.rowVersion, clientMutationId: op.mutationId });
     settleOp(op);
     announce("Walk removed");
-    await refreshAfterResolvedOp(op.target, true);
+    await refreshAfterResolvedOp(op.target, true, voided);
   } catch (e) {
     if (isAmbiguousFailure(e)) {
+      // Back to AMBIGUOUS, which restores the retry and discard controls for this record.
       markOpAmbiguous(op);
       showMessage(e instanceof ApiError
         ? `That still did not finish (${e.code}). Try again; it cannot happen twice.`
@@ -317,11 +374,14 @@ async function resolveAmbiguousOp(op) {
     }
     settleOp(op);
     if (e instanceof ApiError && e.code === "MUTATION_REPLAY_SUPERSEDED") {
-      // It did commit, and the walk has changed since: the server record is the truth.
+      // It did commit, and the walk has changed since: the server record is the truth. Reading it
+      // into the editor is still a replacement, so newer editor work comes first and reconciles
+      // through the conflict panel on its own next save.
       const walkId = op.action === "CREATE" && e.details && e.details.walkId ? e.details.walkId : op.target;
+      if (op.action === "VOID") { await refreshAfterResolvedOp(op.target, true); return; }
+      if (editorHoldsNewerWork()) { showMessage(RECOVERY_MOVED_ON, "error"); return; }
       showMessage("");
-      if (op.action === "VOID") await refreshAfterResolvedOp(op.target, true);
-      else await openWalk(walkId);
+      await openWalk(walkId);
       return;
     }
     showMessage(`That action could not be finished (${e instanceof ApiError ? e.code : "network error"}): ${e.message}`, "error");
@@ -331,9 +391,64 @@ async function resolveAmbiguousOp(op) {
   }
 }
 
-/** Puts the views back in step with the server after an operation finally resolved. */
-async function refreshAfterResolvedOp(walkId, leaveEditorView) {
+/**
+ * True while the open editor is carrying work the server has not definitively accepted: a dirty
+ * field, a debounced save waiting to go out, a save on the wire, a definitively failed save, an
+ * unresolved conflict, or any save record still pending for this walk.
+ *
+ * Recovery reads this before it reloads, replaces, or leaves an editor. Resolving an ambiguous
+ * CREATE, COMPLETE, or VOID used to reload or switch the editor unconditionally, and openWalk
+ * cancels the scheduled save, replaces the editor state with the server copy, and clears the dirty
+ * flag -- so a change typed after the operation went ambiguous disappeared the moment the user
+ * pressed Retry, inside the 700 ms before its own autosave had even been dispatched.
+ */
+function editorHoldsNewerWork() {
+  if (!app.current || !app.current.canEdit) return false;
+  if (app.dirty || app.timer !== null || app.inFlight || app.failed || app.conflict) return true;
+  return Boolean(currentOp("SAVE", app.current.id));
+}
+
+/**
+ * Applies the lifecycle outcome of a resolved operation to the walk the editor is holding, without
+ * touching the state on screen. Only the aggregate's own metadata moves: its status, the row version
+ * the replay proved it still stands at, and the stamps that go with them. That is what lets the save
+ * waiting behind the recovery go out against the right concurrency token and carry the user's newer
+ * edit through, instead of colliding with the browser's own committed operation.
+ */
+function adoptResolvedWalk(resolved) {
+  const walk = app.current;
+  if (!walk || !resolved || resolved.id !== walk.id) return;
+  walk.status = resolved.status;
+  walk.rowVersion = resolved.rowVersion;
+  walk.updatedAt = resolved.updatedAt;
+  walk.completedAt = resolved.completedAt;
+  walk.voidedAt = resolved.voidedAt;
+  walk.revisionCount = resolved.revisionCount;
+  walk.canEdit = resolved.canEdit;
+  renderWalkBanner(walk);
+  applyEditability(walk);
+}
+
+/**
+ * Puts the views back in step with the server after an operation finally resolved -- but never at
+ * the cost of newer editor work. When the open editor is carrying changes the server has not
+ * definitively accepted, the state on screen is left exactly as it is: a refresh adopts the
+ * resolved aggregate's metadata only, and leaving the editor altogether (a void) becomes the
+ * user's explicit decision instead of the app's.
+ */
+async function refreshAfterResolvedOp(walkId, leaveEditorView, resolved = null) {
   const open = app.current && app.current.id === walkId;
+  if (open && editorHoldsNewerWork()) {
+    if (!leaveEditorView) { adoptResolvedWalk(resolved); renderPendingOps(); return; }
+    // The walk is gone, so the changes still on this page can never be saved to it. They are not
+    // dropped on the user's behalf: leaving is their decision, and staying keeps them on screen.
+    // Staying deliberately leaves the editor as it stands rather than marking it read only from the
+    // voided record: the unsaved-work guard is what stops the next navigation from dropping the
+    // text silently, and a read-only walk is not guarded. The server refuses the next save with
+    // WALK_VOIDED, which is the definitive answer that asks the question again.
+    const discarded = await askToDiscard(UNSAVED_VOIDED);
+    if (!discarded) { showMessage(RECOVERY_VOIDED_STAY, "error"); renderPendingOps(); return; }
+  }
   if (open && leaveEditorView) {
     app.current = null;
     app.editor = null;
@@ -480,6 +595,7 @@ function confirmDelete(card, walk, title) {
     // A void whose outcome is unknown owns its request: the reason and the row version come from its
     // record, never from the inputs as they stand now, so a retry is the same semantic request even
     // if the field was edited or the list was refreshed in between.
+    if (opInFlight("VOID", walk.id)) return;      // one dispatch at a time for this mutation id
     const pending = currentOp("VOID", walk.id);
     if (!pending && completed && !reason.value.trim()) { err.textContent = "Enter a reason to void this walk."; err.hidden = false; reason.focus(); return; }
     yes.disabled = true;
@@ -531,6 +647,10 @@ function creatableUnits() {
 }
 
 async function startNewWalk(unit) {
+  // A request carrying this create's mutation id may already be on the wire (the button is
+  // re-enabled after an ambiguous answer, and the recovery bar offers the same retry): one
+  // dispatch at a time, whichever control started it.
+  if (opInFlight("CREATE", unit.id)) return;
   // The create operation owns its id and its exact body until the outcome is definitive: an
   // ambiguous answer may already have created the walk, and retrying the same record replays it
   // instead of creating a second one. A definitive 4xx spends the record.
@@ -712,34 +832,45 @@ function saveCurrent() {
   setSaveStatus(STATUS.saving);
   markOpSent(op);
   app.inFlight = (async () => {
+    // A save's record is settled from the save's own outcome, never from whether its editor is
+    // still the one on screen. Returning early on `app.current !== walk` left the record IN_FLIGHT
+    // for good: unsaved work the unload guard sees for ever, on an operation the recovery bar
+    // cannot offer (it lists what is unresolved, and IN_FLIGHT means a request is still on the
+    // wire). The editor-facing work below is what is skipped when the editor has moved on.
+    const stillOpen = () => app.current === walk;
     try {
       const saved = await store.save(payload, op.mutationId);
-      if (app.current !== walk) return;
+      settleOp(op);
       walk.rowVersion = saved.rowVersion;
       walk.updatedAt = saved.updatedAt;
       walk.status = saved.status;
       walk.revisionCount = saved.revisionCount;
+      if (!stillOpen()) return;
       app.baseline = op.body.state;
-      settleOp(op);
       app.failed = false;
       // A resend that carried exactly the current working state leaves nothing unsaved.
       if (resend && JSON.stringify(walk.state) === JSON.stringify(op.body.state)) app.dirty = false;
       setSaveStatus(app.dirty ? STATUS.unsaved : STATUS.saved);
     } catch (e) {
-      if (app.current !== walk) return;
-      if (!resend) app.dirty = true;
       if (isAmbiguousFailure(e)) {
         // The server may have committed before the answer was lost: the record keeps the same
         // mutation id and the same frozen body so the retry replays rather than duplicating or
-        // dropping the change.
+        // dropping the change. Marking it here rather than behind the editor check is what keeps
+        // it offered in the recovery bar when the editor is no longer on this walk.
         markOpAmbiguous(op);
+        if (!stillOpen()) return;
+        if (!resend) app.dirty = true;
         setSaveStatus(e instanceof ApiError ? `${STATUS.ambiguous} (${e.code})` : STATUS.network, { retry: true });
         announce(e instanceof ApiError ? "Save did not finish" : "Save failed: the server could not be reached");
         return;
       }
       // Definitive outcomes below: the operation id is spent and a new payload gets a new record.
       settleOp(op);
-      if (resend) app.dirty = true;
+      if (!stillOpen()) {
+        showMessage(`A save for another walk could not be completed (${e instanceof ApiError ? e.code : "network error"}).`, "error");
+        return;
+      }
+      app.dirty = true;
       if (e instanceof ApiError && e.status === 409 && (e.code === "STALE_ROW_VERSION" || e.code === "MUTATION_REPLAY_SUPERSEDED")) {
         // MUTATION_REPLAY_SUPERSEDED: this save did commit, but the walk has moved on since, so the
         // server refused to hand a stale editor a token for the newer state. That is a conflict like
@@ -756,9 +887,13 @@ function saveCurrent() {
       }
     } finally {
       app.inFlight = null;
-      const stillAmbiguous = Boolean(ambiguousSave());
-      if (app.queued) { app.queued = false; if ((app.dirty || stillAmbiguous) && !app.conflict) scheduleSave(); }
-      else if (!stillAmbiguous && app.dirty && !app.conflict && resend) scheduleSave();
+      // Rescheduling belongs to the editor this save came from; another walk's autosave is not this
+      // save's to drive.
+      if (stillOpen()) {
+        const stillAmbiguous = Boolean(ambiguousSave());
+        if (app.queued) { app.queued = false; if ((app.dirty || stillAmbiguous) && !app.conflict) scheduleSave(); }
+        else if (!stillAmbiguous && app.dirty && !app.conflict && resend) scheduleSave();
+      }
     }
   })();
   return app.inFlight;
@@ -914,6 +1049,7 @@ async function completeCurrent() {
   if (app.inFlight) await app.inFlight;
   if (app.conflict || app.dirty || ambiguousSave()) return;
   const walk = app.current;
+  if (opInFlight("COMPLETE", walk.id)) return;   // one dispatch at a time for this mutation id
   // The completion operation owns its record until the outcome is definitive, so an ambiguous answer
   // retries the same request instead of starting a second one. The record is keyed to this walk, so
   // completing a different walk later never reuses this id against it.

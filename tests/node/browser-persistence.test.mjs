@@ -18,6 +18,8 @@ const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
 const tag = `persist-${Date.now().toString(36)}`;
 const subject = `${tag}-walker`;
 const shotDir = path.join(root, "docs", "evidence", "screenshots");
+// The application's autosave debounce; the recovery interleavings below are pinned inside it.
+const AUTOSAVE_DEBOUNCE = 700;
 
 let chromium = null;
 try { ({ chromium } = require("playwright")); } catch { chromium = null; }
@@ -795,5 +797,466 @@ test("CORR3: an ambiguous VOID stays resolvable after navigation destroys the ro
   assert.equal((await apiWalk(target)).status, "VOIDED", "voided exactly once");
   assert.equal(await page.isVisible("#view-list"), true, "and the user is left on a usable view");
   assert.equal(await guarded(), false, "the resolved operation releases the guard");
+  assert.deepEqual(pageErrors, []);
+});
+
+// ---- fourth correction session: recovery never discards newer work, and never re-enters ---------
+
+/**
+ * Records every matching request and holds the first one at the browser boundary until `release()`
+ * is called, then lets it reach the server and answer normally. Unlike holdThenLoseFirst this keeps
+ * the answer, so it is the barrier for interleavings where a request is genuinely still on the wire
+ * while something else happens.
+ */
+function holdFirst(p, { method, urlPattern, seen }) {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let taken = false;
+  const routed = p.route(urlPattern, async (route) => {
+    const request = route.request();
+    if (request.method() !== method) return route.continue();
+    if (seen) seen.push(request.postDataJSON());
+    if (taken) return route.continue();
+    taken = true;
+    await gate;
+    return route.continue();
+  });
+  return routed.then(() => release);
+}
+
+/**
+ * Waits for state the harness itself holds (requests the route handlers have recorded). The page's
+ * own status text changes synchronously before the matching request is created, so "Saving..." is
+ * not by itself proof that anything has reached the wire; this is.
+ */
+async function until(predicate, what, timeout = 15000) {
+  const deadline = Date.now() + timeout;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
+/**
+ * Types into the notes field and activates the recovery Retry control in the same browser task, so
+ * the retry is guaranteed to land inside the 700 ms autosave debounce: the edit is dirty, its save
+ * is scheduled, and nothing carrying it has left the browser yet. That is the exact window the
+ * defect lived in, and a wall-clock race would not pin it down.
+ */
+const editThenRetry = (text, p = page) => p.evaluate((value) => {
+  const area = document.querySelector('[data-item-key="comp_s1_notes"] textarea');
+  area.value = value;
+  area.dispatchEvent(new Event("input", { bubbles: true }));
+  const dispatched = performance.now();
+  document.querySelector("#pending-ops .pending-op-retry").click();
+  return performance.now() - dispatched;
+}, text);
+
+/** The recovery bar's current shape, as the user sees it. */
+const recoveryBar = (p = page) => p.evaluate(() => {
+  const box = document.getElementById("pending-ops");
+  if (!box || box.hidden) return { visible: false, ops: [] };
+  return {
+    visible: true,
+    ops: [...box.querySelectorAll(".pending-op")].map((li) => ({
+      action: li.dataset.opAction,
+      status: li.dataset.opStatus,
+      retryDisabled: li.querySelector(".pending-op-retry").disabled,
+      discardDisabled: li.querySelector(".pending-op-discard").disabled,
+    })),
+  };
+});
+
+/**
+ * DEFECT 1. Resolving an ambiguous COMPLETE called refreshAfterResolvedOp, which re-opened the same
+ * walk, and openWalk cancels the scheduled save, replaces the editor state with the server copy and
+ * clears the dirty flag. A change typed after the completion went ambiguous therefore disappeared
+ * the moment the user pressed Retry -- inside the 700 ms before its own autosave had been
+ * dispatched, so nothing carrying it had ever left the browser and the server never saw it either.
+ */
+test("CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched", { skip }, async () => {
+  await openHome();
+  const id = await startWalk();
+  await answerEverythingRequired();
+  await expand("part2");
+  await expand("s1");
+
+  const completes = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks/*/complete", commit: "5xx", seen: completes });
+  await page.click("#complete-btn");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+  assert.equal((await apiWalk(id)).status, "COMPLETED", "the server did commit the completion");
+  const committedAt = (await apiWalk(id)).rowVersion;
+
+  const puts = [];
+  page.on("request", (r) => { if (r.method() === "PUT" && r.url().includes("/api/walks/")) puts.push(r.postDataJSON()); });
+
+  // The newer editor change, and the Retry, in one browser task: dirty, scheduled, not dispatched.
+  const elapsed = await editThenRetry("typed while the completion was unresolved");
+  assert.ok(elapsed < AUTOSAVE_DEBOUNCE, `retry landed ${elapsed}ms after the edit, inside the debounce window`);
+  assert.equal(puts.length, 0, "no save carrying the newer edit had left the browser");
+
+  await page.waitForSelector("#pending-ops", { state: "hidden", timeout: 15000 });
+  assert.equal(completes.length, 2, "the completion was replayed under its own record");
+  assert.equal(completes[1].clientMutationId, completes[0].clientMutationId);
+
+  // The edit survived recovery, on screen and on its way to the server.
+  assert.equal(await page.inputValue(notes), "typed while the completion was unresolved",
+    "recovery did not replace the editor state");
+  await waitStatus("All changes saved");
+  await page.waitForTimeout(900);
+  await page.unroute("**/api/walks/*/complete");
+  page.removeAllListeners("request");
+
+  assert.equal(puts.length, 1, "the scheduled autosave was never cancelled, and ran exactly once");
+  assert.equal(puts[0].responses.comp_s1_notes.textValue, "typed while the completion was unresolved");
+  assert.equal(puts[0].rowVersion, committedAt,
+    "and went out against the row version the resolved completion committed, so it did not collide with it");
+
+  const server = await apiWalk(id);
+  assert.equal(server.state.responses.comp_s1_notes.textValue, "typed while the completion was unresolved",
+    "the newer edit reached the server");
+  assert.equal(server.status, "COMPLETED");
+  assert.equal(await page.isVisible("#conflict-panel"), false, "and needed no conflict to get there");
+  assert.equal(await guarded(), false, "everything settled");
+  assert.deepEqual(await recoveryBar(), { visible: false, ops: [] });
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * DEFECT 1, second half. A SAVE whose answer arrived after the editor had moved on returned early
+ * from `app.current !== walk` before settling its record, so the operation stayed IN_FLIGHT for
+ * good: unfinished work the unload guard sees, on an operation the recovery bar never lists (it
+ * offers what is unresolved, and IN_FLIGHT means a request is still on the wire). Recovery re-opening
+ * the walk was what moved the editor underneath it.
+ */
+test("CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation", { skip }, async () => {
+  await openHome();
+  const id = await startWalk();
+  await answerEverythingRequired();
+  await expand("part2");
+  await expand("s1");
+
+  const completes = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks/*/complete", commit: "5xx", seen: completes });
+  await page.click("#complete-btn");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+  assert.equal((await apiWalk(id)).status, "COMPLETED");
+
+  // A save is put on the wire and held there: it has left the browser and has no answer.
+  const puts = [];
+  const releaseSave = await holdFirst(page, { method: "PUT", urlPattern: "**/api/walks/*", seen: puts });
+  await page.fill(notes, "saved while the completion was unresolved");
+  await page.waitForFunction(() => document.getElementById("save-status").textContent === "Saving...", null, { timeout: 15000 });
+  await until(() => puts.length === 1, "the save to reach the wire");
+  assert.equal(await guarded(), true);
+
+  // Resolve the completion underneath it.
+  await page.click("#pending-ops .pending-op-retry");
+  await page.waitForFunction(() => !document.querySelector('#pending-ops .pending-op[data-op-action="COMPLETE"]'), null, { timeout: 15000 });
+  assert.equal(completes.length, 2, "the completion replayed");
+  assert.equal(await page.inputValue(notes), "saved while the completion was unresolved",
+    "and did not replace the editor state behind the in-flight save");
+
+  // Release the save. It was issued against the pre-completion row version, so the server refuses
+  // it -- a definitive answer, which must settle the record wherever the editor ended up.
+  releaseSave();
+  await page.waitForSelector("#conflict-panel:not([hidden])", { timeout: 20000 });
+  await page.unroute("**/api/walks/*");
+  await page.unroute("**/api/walks/*/complete");
+
+  // The save is resolvable: the conflict panel holds the unsent edit and offers the decision.
+  assert.equal(await page.isEnabled("#conflict-keep"), true, "the unsent edit is offered, not discarded");
+  await page.click("#conflict-keep");
+  await waitStatus("All changes saved");
+  assert.equal((await apiWalk(id)).state.responses.comp_s1_notes.textValue, "saved while the completion was unresolved",
+    "and it reached the server");
+
+  assert.equal(await guarded(), false, "no operation is left blocking unload");
+  assert.deepEqual(await recoveryBar(), { visible: false, ops: [] }, "and nothing is left unresolved with no control");
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * DEFECT 1, across walks. Resolving an ambiguous CREATE opened the newly created walk
+ * unconditionally, so it switched the editor away from whatever the user was working in -- taking
+ * the scheduled save and the dirty state with it.
+ */
+test("CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk", { skip }, async () => {
+  await openHome();
+  const host = await startWalk();
+  await expand("part2");
+  await expand("s1");
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+
+  const before = await walkCount();
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks", commit: "transport", seen: posts });
+  await page.click("#new-walk-btn");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+  assert.equal(await walkCount(), before + 1, "the server did commit the create");
+
+  // Work in a different walk while the create is unresolved.
+  await openCard(host);
+  await ensureExpanded("part2");
+  await ensureExpanded("s1");
+  const puts = [];
+  page.on("request", (r) => { if (r.method() === "PUT" && r.url().includes("/api/walks/")) puts.push(r.postDataJSON()); });
+
+  const elapsed = await editThenRetry("dirty work in another walk");
+  assert.ok(elapsed < AUTOSAVE_DEBOUNCE, `retry landed ${elapsed}ms after the edit, inside the debounce window`);
+  assert.equal(puts.length, 0, "no save carrying the edit had left the browser");
+
+  await page.waitForSelector("#pending-ops", { state: "hidden", timeout: 15000 });
+  assert.equal(posts.length, 2, "the create replayed under its own record");
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId);
+  assert.equal(await walkCount(), before + 1, "and created exactly one walk");
+
+  assert.equal(await page.inputValue(notes), "dirty work in another walk", "the editor was not replaced");
+  await waitStatus("All changes saved");
+  await page.waitForTimeout(900);
+  await page.unroute("**/api/walks");
+  page.removeAllListeners("request");
+  assert.equal(puts.length, 1, "the scheduled autosave survived recovery and ran once");
+  assert.equal((await apiWalk(host)).state.responses.comp_s1_notes.textValue, "dirty work in another walk",
+    "and the edit reached the walk it belonged to");
+  assert.equal(await guarded(), false);
+  assert.deepEqual(await recoveryBar(), { visible: false, ops: [] });
+  assert.deepEqual(pageErrors, []);
+});
+
+/** DEFECT 1: the same, with the other walk's save genuinely on the wire rather than scheduled. */
+test("CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither", { skip }, async () => {
+  await openHome();
+  const host = await startWalk();
+  await expand("part2");
+  await expand("s1");
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+
+  const before = await walkCount();
+  const posts = [];
+  await loseAnswerOnce(page, { method: "POST", urlPattern: "**/api/walks", commit: "transport", seen: posts });
+  await page.click("#new-walk-btn");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+  assert.equal(await walkCount(), before + 1);
+
+  await openCard(host);
+  await ensureExpanded("part2");
+  await ensureExpanded("s1");
+  const puts = [];
+  const releaseSave = await holdFirst(page, { method: "PUT", urlPattern: "**/api/walks/*", seen: puts });
+  await page.fill(notes, "on the wire during create recovery");
+  await page.waitForFunction(() => document.getElementById("save-status").textContent === "Saving...", null, { timeout: 15000 });
+  await until(() => puts.length === 1, "the save to reach the wire");
+
+  await page.click("#pending-ops .pending-op-retry");
+  await page.waitForFunction(() => !document.querySelector('#pending-ops .pending-op[data-op-action="CREATE"]'), null, { timeout: 15000 });
+  assert.equal(posts.length, 2);
+  assert.equal(await walkCount(), before + 1, "exactly one walk was created");
+  assert.equal(await page.inputValue(notes), "on the wire during create recovery", "the editor was not switched away");
+
+  releaseSave();
+  await waitStatus("All changes saved");
+  await page.unroute("**/api/walks/*");
+  await page.unroute("**/api/walks");
+  assert.equal((await apiWalk(host)).state.responses.comp_s1_notes.textValue, "on the wire during create recovery",
+    "the save settled against the walk it belonged to");
+  assert.equal(await guarded(), false, "and neither operation is left blocking unload");
+  assert.deepEqual(await recoveryBar(), { visible: false, ops: [] });
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * DEFECT 2. An ambiguous operation stayed AMBIGUOUS for the whole of its retry round trip, so the
+ * recovery bar kept offering Retry and a second activation dispatched the same mutation id again.
+ * The server recognises the replay, so the database was never at risk, but the client lifecycle was
+ * wrong and the two answers raced each other through the refresh on the way back.
+ */
+for (const shape of [
+  {
+    action: "CREATE",
+    label: "CREATE",
+    method: "POST",
+    urlPattern: "**/api/walks",
+    async provoke() {
+      await openHome();
+      await page.click("#new-walk-btn");
+    },
+  },
+  {
+    action: "COMPLETE",
+    label: "COMPLETE",
+    method: "POST",
+    urlPattern: "**/api/walks/*/complete",
+    async provoke() {
+      await openHome();
+      await startWalk();
+      await answerEverythingRequired();
+      await page.click("#complete-btn");
+    },
+  },
+  {
+    action: "VOID",
+    label: "VOID",
+    method: "POST",
+    urlPattern: "**/api/walks/*/void",
+    async provoke() {
+      await openHome();
+      const id = await startWalk();
+      await page.click("#back-btn");
+      await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+      await page.click(`.walk-card[data-walk-id="${id}"] .delete-btn`);
+      await page.click(".confirm-delete");
+    },
+  },
+]) {
+  test(`CORR4: activating Retry twice on an ambiguous ${shape.label} dispatches one request and offers no second Retry`, { skip }, async () => {
+    await loseAnswerOnce(page, { method: shape.method, urlPattern: shape.urlPattern, commit: "transport" });
+    await shape.provoke();
+    await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+    assert.equal(await page.getAttribute("#pending-ops .pending-op", "data-op-action"), shape.action);
+    assert.deepEqual(await recoveryBar(), {
+      visible: true,
+      ops: [{ action: shape.action, status: "AMBIGUOUS", retryDisabled: false, discardDisabled: false }],
+    }, "the recovery controls are live while the operation waits for the user");
+    await page.unroute(shape.urlPattern);
+
+    // The retry is held on the wire, and Retry is activated twice in one browser task.
+    const sent = [];
+    const release = await holdFirst(page, { method: shape.method, urlPattern: shape.urlPattern, seen: sent });
+    await page.evaluate(() => {
+      const button = document.querySelector("#pending-ops .pending-op-retry");
+      button.click();
+      button.click();
+    });
+    await page.waitForFunction(() => document.querySelector("#pending-ops .pending-op")?.dataset.opStatus === "IN_FLIGHT", null, { timeout: 15000 });
+    await until(() => sent.length >= 1, "the retry to reach the wire");
+
+    assert.equal(sent.length, 1, "exactly one request carries the mutation id while the retry is in flight");
+    assert.deepEqual(await recoveryBar(), {
+      visible: true,
+      ops: [{ action: shape.action, status: "IN_FLIGHT", retryDisabled: true, discardDisabled: true }],
+    }, "and the recovery controls are disabled until it comes back");
+
+    // A third activation while IN_FLIGHT is refused by the lifecycle, not only by the control.
+    await page.evaluate(() => {
+      const button = document.querySelector("#pending-ops .pending-op-retry");
+      button.disabled = false;
+      button.click();
+    });
+    await page.waitForTimeout(250);
+    assert.equal(sent.length, 1, "an operation whose request is in flight cannot be dispatched again");
+
+    release();
+    await page.waitForSelector("#pending-ops", { state: "hidden", timeout: 20000 });
+    await page.unroute(shape.urlPattern);
+    assert.equal(sent.length, 1, "and the resolved operation sent exactly one retry in total");
+    assert.equal(await guarded(), false, "the settled operation releases the guard");
+    assert.deepEqual(pageErrors, []);
+  });
+}
+
+/**
+ * DEFECT 2, restoring the controls: an ambiguous outcome for the retry itself has to put the
+ * operation back where the user can act on it, rather than leaving it IN_FLIGHT with no control.
+ */
+test("CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls", { skip }, async () => {
+  await openHome();
+  let calls = 0;
+  await page.route("**/api/walks", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    calls += 1;
+    if (calls > 2) return route.continue();
+    const response = await route.fetch();          // the server commits here
+    return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "UPSTREAM_UNAVAILABLE", message: "lost", details: { committed: response.status() } } }) });
+  });
+  const before = await walkCount();
+  await page.click("#new-walk-btn");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+
+  await page.click("#pending-ops .pending-op-retry");
+  await page.waitForFunction(() => /still did not finish/i.test(document.getElementById("app-message").textContent), null, { timeout: 15000 });
+  assert.deepEqual(await recoveryBar(), {
+    visible: true,
+    ops: [{ action: "CREATE", status: "AMBIGUOUS", retryDisabled: false, discardDisabled: false }],
+  }, "the operation is offered again, not stuck IN_FLIGHT");
+
+  await page.click("#pending-ops .pending-op-retry");
+  await page.waitForSelector("#pending-ops", { state: "hidden", timeout: 20000 });
+  await page.unroute("**/api/walks");
+  assert.equal(calls, 3, "two ambiguous attempts and one that resolved");
+  assert.equal(await walkCount(), before + 1, "replayed, never duplicated");
+  assert.equal(await guarded(), false);
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * DEFECT 1, VOID equivalence. A resolved void leaves the editor view, which would drop whatever is
+ * on screen. The walk is gone, so those changes can never be saved to it -- but discarding them is
+ * the user's decision to make, not the app's.
+ *
+ * The void here is lost *before* it reaches the server, which is the only way this interleaving is
+ * reachable: a void that already committed makes the walk read only, so no newer editor work can
+ * exist on it. The browser cannot tell the two apart, which is exactly why the record is ambiguous.
+ */
+test("CORR4: a resolved VOID never leaves a dirty editor without an explicit decision", { skip }, async () => {
+  await openHome();
+  const id = await startWalk();
+  await expand("part2");
+  await expand("s1");
+  await page.click("#back-btn");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+
+  const posts = [];
+  let dropped = false;
+  await page.route("**/api/walks/*/void", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    posts.push(route.request().postDataJSON());
+    if (dropped) return route.continue();
+    dropped = true;
+    return route.abort("connectionreset");          // never reaches the server
+  });
+  await page.click(`.walk-card[data-walk-id="${id}"] .delete-btn`);
+  await page.click(".confirm-delete");
+  await page.waitForSelector("#pending-ops:not([hidden])", { timeout: 15000 });
+  assert.equal((await apiWalk(id)).status, "DRAFT", "this void never reached the server");
+
+  // The user opens the walk the unresolved void is aimed at, and types into it.
+  await openCard(id);
+  await ensureExpanded("part2");
+  await ensureExpanded("s1");
+  const elapsed = await editThenRetry("typed into a walk that was being voided");
+  assert.ok(elapsed < AUTOSAVE_DEBOUNCE, `retry landed ${elapsed}ms after the edit, inside the debounce window`);
+
+  // Recovery asks before it takes the editor away.
+  await page.waitForSelector("#unsaved-panel:not([hidden])", { timeout: 15000 });
+  assert.match(await page.textContent("#unsaved-summary"), /removed/i);
+  assert.equal((await apiWalk(id)).status, "VOIDED", "the retry did commit the void");
+  assert.equal(await page.inputValue(notes), "typed into a walk that was being voided",
+    "and the text is still on screen while the question is open");
+
+  // Staying keeps it on screen rather than discarding it silently.
+  await page.click("#unsaved-stay");
+  await page.waitForSelector("#unsaved-panel", { state: "hidden", timeout: 15000 });
+  assert.equal(await page.isVisible("#view-walk"), true, "the user was not moved off their work");
+  assert.equal(await page.inputValue(notes), "typed into a walk that was being voided");
+  assert.match(await page.textContent("#app-message"), /removed/i);
+  assert.equal(await guarded(), true, "and the work is still guarded, so nothing drops it on the way out");
+
+  // The explicit decision is what ends it: the server refuses the save on a voided walk, which is
+  // the definitive answer that asks again.
+  await page.click("#back-btn");
+  await page.waitForSelector("#unsaved-panel:not([hidden])", { timeout: 20000 });
+  await page.click("#unsaved-discard");
+  await page.waitForSelector("#view-list:not([hidden])", { timeout: 15000 });
+  await page.unroute("**/api/walks/*/void");
+  assert.equal(posts.length, 2, "the void replayed under its own record");
+  assert.equal(posts[1].clientMutationId, posts[0].clientMutationId);
+  assert.equal(posts[1].rowVersion, posts[0].rowVersion);
+  assert.equal((await apiWalk(id)).status, "VOIDED", "voided exactly once");
+  assert.equal(await guarded(), false, "and nothing is left blocking unload");
+  assert.deepEqual(await recoveryBar(), { visible: false, ops: [] });
   assert.deepEqual(pageErrors, []);
 });

@@ -1215,3 +1215,73 @@ Everything recorded earlier still applies. New items:
   `BEGIN TRY` of `005_org_unit_dimension_map.sql` (the script is applied by tooling here, not CFML).
 - The unfinished-operations bar and the `UNSENT`/`IN_FLIGHT` record lifecycle on the ColdFusion
   deployment (`npm run test:browser`).
+
+## Fourth correction session (browser operation recovery)
+
+Correction-only session against the two residual browser recovery defects reported against commit
+`7f7c86a`. Both were reproduced against the code before anything changed, and all nine regressions
+added here were run against the unfixed `app/assets/js/app.js` first and observed to fail, so none
+of them can pass vacuously. No server, schema, migration, authorization, or instrument code was
+touched; the verified replay/row-version coherence and "other" org-unit identity protections are
+unchanged, and Phase 5 was not started.
+
+### Recovery never discards newer editor work (CORR4-01)
+
+Resolving an ambiguous `CREATE`, `COMPLETE`, or `VOID` reloaded or switched the editor
+unconditionally, and `openWalk` cancels the scheduled save, replaces the editor state with the
+server copy, and clears `dirty`. A change typed after the operation went ambiguous was therefore
+lost the moment the user pressed Retry, inside the 700 ms before its own autosave had been
+dispatched.
+
+- `editorHoldsNewerWork()` is the single test recovery reads before it reloads, replaces, or leaves
+  an editor: dirty, a debounced save, a save on the wire, a definitively failed save, an unresolved
+  conflict, or any `SAVE` record still pending for the open walk.
+- A resolved `COMPLETE` on that editor adopts the resolved aggregate's **metadata only**
+  (`adoptResolvedWalk`): status, the row version the replay proved it still stands at, and the
+  stamps that go with it. The state on screen is never touched, so the waiting autosave goes out
+  against the right concurrency token and carries the newer edit through with no conflict.
+- A resolved `CREATE` leaves the open editor alone and says the walk is waiting in My walks.
+- A resolved `VOID` asks before it takes the editor away. Staying keeps the text on screen under a
+  live unsaved-work guard; the server's 409 `WALK_VOIDED` on the next save is the definitive answer
+  that asks the question again.
+- `saveCurrent` settles its record from the save's own outcome — `settleOp` on success and on a
+  definitive 4xx, `markOpAmbiguous` on an ambiguous one — before any editor check. The early return
+  on `app.current !== walk` used to leave the record `IN_FLIGHT` for good: unfinished work the
+  unload guard sees, on an operation the recovery bar never lists. Only the editor-facing work and
+  the rescheduling are skipped when the editor has moved on.
+
+### Recovery retries are not re-entrant (CORR4-02)
+
+An ambiguous operation stayed `AMBIGUOUS` for the whole of its retry round trip, so the Retry
+control stayed live and a second activation dispatched the same mutation id again.
+
+- `markOpSent` transitions `AMBIGUOUS` → `IN_FLIGHT` as well as `UNSENT` → `IN_FLIGHT`,
+  synchronously before the request is created.
+- `resolveAmbiguousOp` refuses an `IN_FLIGHT` record outright, and so do `startNewWalk`,
+  `completeCurrent`, and the void confirmation (`opInFlight`).
+- The recovery bar keeps a retrying record on screen with both controls disabled (`recoveryOps`,
+  `data-op-status`), so "already retrying" is visible rather than the bar blinking out and back.
+- An ambiguous outcome for the retry returns the record to `AMBIGUOUS` and restores the controls.
+  Definitive failures, conflicts, and `MUTATION_REPLAY_SUPERSEDED` keep the existing contract.
+
+### Files changed (fourth correction session)
+
+- `app/assets/js/app.js` -- `markOpSent`, `markOpAmbiguous`, `recoveryOps`, `opInFlight`,
+  `renderPendingOps`, `resolveAmbiguousOp`, `editorHoldsNewerWork`, `adoptResolvedWalk`,
+  `refreshAfterResolvedOp`, `saveCurrent`, `startNewWalk`, `completeCurrent`, `confirmDelete`, and
+  the recovery message constants.
+- `tests/node/browser-persistence.test.mjs` -- the nine CORR4 regressions and their barriers
+  (`holdFirst`, `until`, `editThenRetry`, `recoveryBar`).
+- `BUILD_STATUS.md`, `docs/ACCEPTANCE_TRACKING.md`.
+
+### Unresolved defects or blockers (fourth correction session)
+
+None open. External items unchanged (Adobe ColdFusion 2023 environment, identity gateway details,
+district org-unit codes and their School dimension mappings, content-owner wording for the 17
+placeholders, the content-area heading decision from Phase 3).
+
+### CF2023 verification items (fourth correction session additions)
+
+Everything recorded earlier still applies. The changes are browser-side only, so nothing new depends
+on the CFML engine; re-run `npm run test:browser` against the ColdFusion 2023 deployment to confirm
+the recovery lifecycle behaves identically there.
