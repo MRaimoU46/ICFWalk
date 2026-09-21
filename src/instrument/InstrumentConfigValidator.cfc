@@ -5,6 +5,20 @@
  *
  * Errors block import. Warnings (placeholder content, review mismatches) are returned with the
  * import result and, per docs/OPEN_DECISIONS.md, only block publication when configured.
+ *
+ * TWO LAYERS, ONE RULE SET. The checks in this component are the ones that only mean something for
+ * an inbound authoring document: that its arrays are present, that its authoring ids are unique and
+ * resolve to each other, that conditionsJson is parseable text, that it declares DRAFT. None of
+ * them can be applied to a version already in SQL Server, which has keys instead of authoring ids
+ * and a parsed conditions document instead of a string.
+ *
+ * Everything that is a rule about the instrument itself -- references, allowed types, unique logical
+ * keys, hierarchy, response-set requirements, option ordering, rule semantics, dimension and value
+ * rules, placements -- lives in DefinitionValidator, over the normalized definitions. This component
+ * runs it on the normalized form of the document it is validating, and InstrumentPublishService runs
+ * the same component on the locked version's stored snapshot and on the definitions SQL Server holds.
+ * That is deliberate: an import that passes and a publish that passes are then the same predicate,
+ * and neither can drift into accepting what the other refuses.
  */
 component output="false" {
 
@@ -22,8 +36,10 @@ component output="false" {
 	variables.PLACEHOLDER_REVIEW_STATUS = "Placeholder in source";
 	variables.RETIRED_TEXT = ["school improvement (sip)", "sip grade"];
 
-	public InstrumentConfigValidator function init(required any errors) {
+	public InstrumentConfigValidator function init(required any errors, required any configNormalizer, required any definitionValidator) {
 		variables.errors = arguments.errors;
+		variables.normalizer = arguments.configNormalizer;
+		variables.definitionValidator = arguments.definitionValidator;
 		return this;
 	}
 
@@ -52,8 +68,27 @@ component output="false" {
 		checkPlacements(r, cfg);
 		checkRetiredContent(r, cfg);
 		collectPlaceholders(r, cfg);
+		checkDefinitions(r, cfg);
 		r.valid = arrayLen(r.errors) == 0;
 		return r;
+	}
+
+	/**
+	 * Runs the shared definition rules on the normalized form of this document, so that what import
+	 * accepts is exactly what publish will accept later. Normalization is only reached once the
+	 * structural checks above have passed, so every array exists and holds objects; a document that
+	 * still defeats it is reported rather than allowed through on an exception.
+	 */
+	private void function checkDefinitions(required struct r, required struct cfg) {
+		var definitions = "";
+		try {
+			definitions = variables.normalizer.fromConfig(arguments.cfg).definitions;
+		} catch (any e) {
+			err(arguments.r, "DEFINITIONS_NOT_VALIDATABLE", "The document could not be normalized for definition validation: " & e.message, "$");
+			return;
+		}
+		var result = variables.definitionValidator.validate(definitions, { "path": "$.definitions" });
+		for (var issue in result.errors) arrayAppend(arguments.r.errors, issue);
 	}
 
 	// ---------------------------------------------------------------------------------------

@@ -2,15 +2,24 @@
 
 Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation),
 Phase 2 (identity, roles, authorization, organizational scope), Phase 3 (instrument engine and
-visual shell), and Phase 4 (walk persistence, autosave, completion, concurrency, audit)** from
-`docs/IMPLEMENTATION_PLAN.md`. Phase 5 and later have not been started. Phase 4 details are in the
-section "Phase 4" at the end; earlier records are kept as delivered.
+visual shell), Phase 4 (walk persistence, autosave, completion, concurrency, audit), Phase 5
+(summary export and teacher email draft), and the Phase 6 publish foundation (ADM-03/04/05 at the
+service and endpoint level)** from `docs/IMPLEMENTATION_PLAN.md`. The rest of Phase 6 -- ADM-02
+preview, ADM-06 clone-and-compare, ADM-07 retirement, ADM-08 placeholder review, and all
+administration UI -- has **not** been started, and neither has Phase 7.
 
-Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+. Branch: `claude/admiring-wozniak-fsuayk`
-(Phase 3 base commit `9c03298`, itself on `claude/sharp-faraday-szq937`).
+Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-Five correction-only sessions followed Phase 4, each against an independent audit; their records
-are the last five sections of this file. The fifth one is the current state of the build.
+**Current state: Phase 6 publish-foundation correction candidate, awaiting independent
+verification.** Branch `claude/icfwalk-phase-6-admin-publish`, on top of the frozen Phase 5 baseline
+`e55ec08af5b8622db5823b6e353423b891918549`. Phase 6 is **not** frozen and **not** complete; the
+correction it carries has not yet been independently audited.
+
+Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
+Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
+and finally the Phase 6 publish-foundation correction, which is the current state of the build.
+Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
+them; where they disagree, the later section is the record.
 
 ## Phase 0 baseline
 
@@ -2305,3 +2314,144 @@ has not been started, read it as the remainder above.
    conditional-card `displayOrder` and a `settings.titleTemplate` for the content-area heading. An
    `exportLabel` item setting would retire `PART4_LABELS`.
 4. The admin UI takes over the import/publish operations the maintenance endpoints do today.
+
+## Phase 6 publish-foundation correction (current state)
+
+Correction-only session against an independent audit of the Phase 6 foundation
+(`5b243ed3d5a27142e65cdfbba8fc113ed65853e1`). It corrects that foundation; it does **not** add any
+of the remaining Phase 6 scope. **This is a correction candidate awaiting independent
+re-verification: Phase 6 is not frozen and not complete.**
+
+Starting point: branch `claude/icfwalk-phase-6-admin-publish` at
+`5b243ed3d5a27142e65cdfbba8fc113ed65853e1`, clean tree, with the frozen Phase 5 baseline
+`e55ec08af5b8622db5823b6e353423b891918549` verified as an ancestor and its tree hash
+`403d964ce250d6b089419a34ac29b91fa0915a38` confirmed.
+
+### What was wrong, and what each fix is
+
+**A. Publishing proved self-consistency, not validity.** The audited publish path proved that the
+stored snapshot hashed to its stored checksum and that the snapshot's definitions equalled the
+definitions SQL Server held. A DRAFT carrying the *same invalid content* in both places satisfies
+both checks perfectly and was published. Structural validation existed only in
+`InstrumentConfigValidator`, over the authoring document, at import.
+
+The rules are now in one place. `src/instrument/DefinitionValidator.cfc` holds the authoritative
+semantic rule set over **normalized definitions** -- the representation the importer produces, the
+compiler serializes into the snapshot, and `loadNormalizedDefinitions` reads back out of SQL Server.
+`InstrumentConfigValidator` keeps only what is meaningful for an inbound document (authoring ids,
+`conditionsJson` as text, the DRAFT declaration) and delegates the rest to the shared validator on
+the normalized form of that document. `InstrumentPublishService` runs the same component, under the
+version's row lock, on the stored snapshot's envelope, on the snapshot's definitions, and on the
+persisted definitions **independently** -- because agreeing with each other is exactly what a
+corrupted DRAFT does. Snapshot bytes and checksum are untouched on success; publishing still never
+recompiles.
+
+**B. Immutability was a helper nobody called.** `assertDraftForWrite` existed and was invoked by no
+production mutator; every `DefinitionRepository` method would have happily overwritten a PUBLISHED
+version, and `deleteVersionCascadeUnchecked` deleted one on request. The boundary is now
+structural: every mutator resolves and locks the owning `instrument_version` row
+(`UPDLOCK, ROWLOCK`) and refuses a non-DRAFT before any write; a method handed only a child id
+resolves the owner from the database rather than from its arguments; and every statement carries
+`status = N'DRAFT'` in its own predicate, so a bypassed guard still writes nothing. The unchecked
+cascade is gone -- `deleteDraftVersionCascade` refuses a frozen version like everything else, and
+fixture teardown moved to the test-only `tests/cfml/support/FixtureCleanup.cfc`, which no
+application code references.
+
+**C. Dimensions and values were global, and the importer rewrote them in place.** So importing V2
+with a renamed dimension, or a relabelled, reordered, deactivated or dropped value, silently changed
+what a published V1's definitions said -- invisibly, because V1's snapshot did not move. Migration
+`006` splits identity from meaning: `icf.dimension_definition` and `icf.dimension_value` keep
+`dimension_id`, `code`, `value_id` and `value_code` as immutable reporting identity (created once,
+never updated), while label, data type, reportability, sensitivity, settings, activity, membership,
+order and effective window move to `icf.instrument_dimension` and the new
+`icf.instrument_dimension_value`. `loadNormalizedDefinitions`, the render model and the walk path's
+definition index all read the version-scoped rows. A walk's stored `value_id` still means the same
+thing across versions, so cross-version reporting identity is preserved.
+
+**D. Refused-write audits died with their transaction.** A record written inside a failing mutation
+rolls back with it, so a refused import or discard left no trace. Both now use the shape `publish()`
+already had: capture a descriptor inside the transaction, roll back, write exactly one
+`INSTRUMENT_VERSION_WRITE_REFUSED` event afterwards, rethrow the established typed error. Details
+carry lifecycle facts only.
+
+**E. Publication could name nobody.** `publish()` defaulted `actorUserId` to `""` and
+`markPublished` had the same default. The publisher is now required at the service boundary,
+validated as a GUID, checked against `icf.app_user` under the lock, read back from the stored row
+before the success audit is written, required again by `markPublished`, and enforced by
+`CK_instrument_version_publisher_required`. Over HTTP it comes from the authenticated principal
+only: the route takes **no request body at all** and refuses a non-empty one with 400
+`PUBLISH_BODY_NOT_ALLOWED`, so a client cannot believe it supplied an actor.
+
+**F. The publish route had no live HTTP coverage.** The audited candidate's Node total was the
+Phase 5 count. `tests/node/admin-publish.test.mjs` now drives the real route against the running
+application and real SQL Server.
+
+**G. A lock-order inversion, found by the gate rather than by the audit.** Adding the instrument
+join to `findVersionByIdForUpdate` (needed for the snapshot identity check) gave publication the
+order `instrument_version` → `instrument`, while the importer took `instrument` (exclusive, via
+`updateInstrument`) → `instrument_version`. The first full `ICFWALK_REQUIRE_APP=1 npm test` run
+deadlocked on the publish-versus-mutation race. `importConfig` now takes the version lock first and
+updates the instrument row after it, so both paths share one order, and a repeated-race regression
+guards it.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `src/instrument/DefinitionValidator.cfc` | **New.** The authoritative semantic rule set over normalized definitions, plus snapshot-envelope and identity validation. |
+| `src/instrument/InstrumentConfigValidator.cfc` | Keeps the import-document-only rules; delegates every reusable rule to `DefinitionValidator` on the normalized form. |
+| `src/instrument/InstrumentPublishService.cfc` | Validates envelope, snapshot definitions and persisted definitions under the lock; requires and verifies a publisher; audits refusals after rollback with an actor the audit foreign key accepts. |
+| `src/instrument/DefinitionRepository.cfc` | `requireDraftVersion` / `requireDraftOwnerOf` and status-qualified DML on every mutator; `deleteDraftVersionCascade` replaces the unchecked cascade; version-scoped dimension reads and writes; `userExists`; `markPublished` requires a publisher and verifies it. |
+| `src/instrument/InstrumentImportService.cfc` | One lock order (version before instrument); dimension/value identity created once and never updated; version-scoped dimension and value writes; durable refusal audits for import and discard; optional identity overrides. |
+| `src/walks/WalkRepository.cfc` | The pinned version's definition index reads version-scoped dimensions and values, so a later import cannot change which values an older version accepts. |
+| `src/controllers/AdminInstrumentController.cfc` | The publish route takes no request body and refuses one. |
+| `src/controllers/MaintenanceController.cfc` | `instrumentCode` / `versionLabel` import overrides (maintenance-guarded); fixture cleanup also removes fixture instruments and their versions, before the fixture users they reference. |
+| `src/Bootstrap.cfc` | Wires `definitionValidator`; `definitionRepository` gains `errors`. |
+| `database/006_version_scoped_dimensions.sql` | **New.** Version-scoped dimension columns and `icf.instrument_dimension_value` with an exact non-destructive backfill; `CK_instrument_version_publisher_required`, which refuses to invent a publisher. |
+| `database/README.md`, `scripts/db/apply-schema.mjs` | Migration `006` in the run order. |
+| `tests/cfml/specs/DefinitionValidatorTest.cfc` | **New.** 45 cases: the shared rule set at its own boundary, including the classes SQL constraints make unpersistable. |
+| `tests/cfml/specs/InstrumentImmutabilityTest.cfc` | **New.** 8 cases: every mutator against PUBLISHED and RETIRED, the mutator inventory, durable refusal audits. |
+| `tests/cfml/specs/DimensionVersionIsolationTest.cfc` | **New.** 8 cases: V1 unchanged by V2, cross-version reporting identity, the walk index, direct writes to the shared rows. |
+| `tests/cfml/specs/InstrumentPublishServiceTest.cfc` | 27 cases: publisher attribution and fifteen checksum-matching semantic refusals added. |
+| `tests/cfml/support/FixtureCleanup.cfc` | **New.** Test-only fixture teardown, reachable only by the CFML test runner. |
+| `tests/node/admin-publish.test.mjs` | **New.** 13 live HTTP cases for the publish route. |
+| `tests/node/schema-contract.test.mjs`, `tests/node/db-scripts.test.mjs` | Migration `006` contract and behavior, including the publisher precondition and its refusal to invent one. |
+| `tests/cfml/specs/InstrumentImportServiceTest.cfc`, `InstrumentScopeTest.cfc` | Fixtures name a real publisher, which the new database constraint requires. |
+| `docs/ENDPOINTS.md`, `docs/DATA_CONTRACT.md`, `docs/ARCHITECTURE.md`, `docs/ACCEPTANCE_TRACKING.md` | The publish route, the shared validation path, the write boundary, the lock order, the publisher invariant, the dimension design, and acceptance rows from executed evidence. |
+| `manifest.json` | Refreshed hashes for the two supplied-package documents this correction edits (`docs/DATA_CONTRACT.md`, `database/README.md`). |
+
+### Tests and results
+
+Environment: `docs/evidence/phase6-correction-environment.md`. Full transcript:
+`docs/evidence/phase6-correction-release-gate.txt`. Red-before-green:
+`docs/evidence/phase6-correction-red-before-fix.md`.
+
+| Command | Result |
+| --- | --- |
+| `ICFWALK_REQUIRE_APP=1 npm test` (the full live gate) | Node/HTTP/Playwright **169 pass, 0 fail, 0 skip**; CFML **258 pass, 0 fail, 0 skip** |
+| `npm run validate:handoff` | ok, 51 checks, 0 errors |
+| `npm run test:package` | 19 pass, 0 fail, 0 skip |
+| `node --check` on every `.js` and `.mjs` | 35 files, 0 failures |
+| `npm run vectors:summary:check` | `summary-vectors.json is current.` |
+| Migration `006` on a clean database | applied; 23 `icf` tables; idempotent over three consecutive applications |
+| Migration `006` over the Phase 5 schema with data | applied; backfilled the placed dimension and all of its values exactly; re-application inserts nothing |
+| Migration `006` publisher precondition | refuses with error 50053 and the row count when a non-DRAFT row has no publisher, rolls its whole transaction back, and applies unchanged once the row is resolved |
+
+Totals against the audited candidate: CFML **178 → 258**, Node **155 → 169**. No existing case was
+removed, weakened, skipped or renamed away.
+
+### Unresolved and not verified
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** Everything above ran on Lucee
+   6.2.8.20 and SQL Server 2022. Migration `006` is written to SQL Server 2016 syntax and statically
+   checked for it, but running it on 2016 was not possible here and is not claimed.
+2. **The `phase-5-freeze` tag does not exist**, locally or on the remote (`git tag -l` and
+   `git ls-remote --tags origin` are both empty). There was nothing to verify and nothing to push,
+   and this correction did not create it. An earlier record says the tag was created locally and its
+   push refused with HTTP 403; that local tag was in a previous container and is gone. Creating and
+   pushing `phase-5-freeze` at `e55ec08af5b8622db5823b6e353423b891918549` remains an open repository
+   action for an authorized operator. This is a repository-permission item, not a code or test
+   result.
+3. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
+4. **This correction has not been independently audited.** It is a correction candidate, ready for a
+   fresh independent audit.

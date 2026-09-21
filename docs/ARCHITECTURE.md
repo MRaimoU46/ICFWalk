@@ -1,4 +1,4 @@
-# Architecture notes (Phases 1 to 3)
+# Architecture notes (Phases 1 to 5, plus the Phase 6 publish foundation)
 
 ## Shape
 
@@ -350,6 +350,53 @@ and no phantom unsent edit appears.
 endpoint that accepts a recipient. The only outbound action is a `mailto:` URL the browser hands to
 the person's own mail client, with every value percent-encoded.
 `tests/node/no-mail.test.mjs` is the standing gate on all of that.
+
+## Instrument publication (Phase 6 foundation)
+
+`InstrumentPublishService` freezes one DRAFT into a PUBLISHED version. What makes it safe is not one
+check but the shape of the transaction around it.
+
+**One rule set, two layers.** `DefinitionValidator` is the authoritative semantic rule set, and it
+works over *normalized definitions* -- the representation the importer produces, the compiler
+serializes into the snapshot, and `DefinitionRepository.loadNormalizedDefinitions` reads back out of
+SQL Server. `InstrumentConfigValidator` keeps only the rules that mean something for an inbound
+authoring document (authoring ids, `conditionsJson` as text, the DRAFT declaration) and delegates
+everything else to the shared validator on the normalized form of the document it is validating. So
+import and publish apply the same predicate and cannot drift apart. See
+`docs/DATA_CONTRACT.md`, "One semantic rule set".
+
+**Validity, not self-consistency.** Publication validates the stored snapshot's envelope and
+definitions, *and* the definitions SQL Server holds, each in its own right, before comparing the two
+by checksum. A DRAFT carrying the same invalid content in both places satisfies every comparison
+between them; only validating each one separately catches it.
+
+**One lock order.** `instrument_version` under `UPDLOCK, ROWLOCK` first, children afterwards -- for
+publication, for import, and inside every repository mutator
+(`DefinitionRepository.requireDraftVersion`). A publish racing an edit therefore queues on one row
+rather than interleaving into a partially frozen version, and neither order can deadlock by design.
+
+**A structural write boundary.** Immutability is not a helper a caller must remember. Every
+repository mutator locks and checks the owning version itself, and every statement it issues carries
+`status = N'DRAFT'` in its own predicate; a method handed only a child id resolves the owner from the
+database rather than from its arguments. There is no unchecked deletion path -- fixture teardown
+lives in `tests/cfml/support/FixtureCleanup.cfc`, which no application code references.
+
+**Durable refusals.** Every refusal happens inside the transaction, so a record written there would
+roll back with it. The refusing branch captures a small descriptor, the transaction rolls back, and
+exactly one audit event is written afterwards, carrying identifiers, statuses, reasons, counts and
+checksums -- never definitions, snapshot text or narrative content. `InstrumentImportService` uses
+the same shape for a refused import or discard.
+
+**A named publisher.** The publisher is required at the service boundary, checked against
+`icf.app_user` under the lock, read back from the row before the success audit is written, and
+enforced by `CK_instrument_version_publisher_required` in the database. Over HTTP it comes from the
+authenticated principal only; the route takes no request body at all.
+
+**Version-scoped dimensions.** `icf.dimension_definition` and `icf.dimension_value` hold reporting
+identity only. What a version calls a dimension and which values it offers live on
+`icf.instrument_dimension` and `icf.instrument_dimension_value` (migration `006`), so importing V2
+cannot change what published V1 says -- while a walk's stored `value_id` still means the same thing
+across versions.
 
 ## What Phase 6 builds on
 

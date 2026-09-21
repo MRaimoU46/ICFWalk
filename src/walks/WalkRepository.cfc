@@ -295,12 +295,22 @@ component output="false" {
 			if (!structKeyExists(idx.options, sid)) idx.options[sid] = {};
 			idx.options[sid][oq.stored_code[r]] = uCase(oq.option_id[r]);
 		}
-		var dq = variables.db.run("SELECT d.dimension_id, d.code FROM [icf].[dimension_definition] d JOIN [icf].[instrument_dimension] p ON p.dimension_id = d.dimension_id WHERE p.version_id = :id AND d.active = 1", p);
+		// Dimensions and values as the walk's *pinned* version defines them (migration 006). The
+		// global rows supply identity only; reading their label or active flag here would let a
+		// later DRAFT change which values an older published version accepts.
+		var dq = variables.db.run(
+			"SELECT p.dimension_id, d.code FROM [icf].[instrument_dimension] p
+			   JOIN [icf].[dimension_definition] d ON d.dimension_id = p.dimension_id
+			  WHERE p.version_id = :id AND p.dimension_active = 1", p);
 		for (var r = 1; r <= dq.recordCount; r++) {
 			var did = uCase(dq.dimension_id[r]);
 			idx.dimensions[dq.code[r]] = did;
 			idx.values[did] = {};
-			var vq = variables.db.run("SELECT value_id, value_code FROM [icf].[dimension_value] WHERE dimension_id = :id AND active = 1", { "id": variables.db.guid(did) });
+			var vq = variables.db.run(
+				"SELECT iv.value_id, dv.value_code FROM [icf].[instrument_dimension_value] iv
+				   JOIN [icf].[dimension_value] dv ON dv.value_id = iv.value_id
+				  WHERE iv.version_id = :versionId AND iv.dimension_id = :dimensionId AND iv.active = 1",
+				{ "versionId": variables.db.guid(id), "dimensionId": variables.db.guid(did) });
 			for (var vr = 1; vr <= vq.recordCount; vr++) idx.values[did][vq.value_code[vr]] = uCase(vq.value_id[vr]);
 		}
 		variables.indexCache[id] = idx;

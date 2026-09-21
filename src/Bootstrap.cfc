@@ -23,9 +23,13 @@ component output="false" {
 		c["requestContext"] = new icfwalk.core.RequestContext(c.logger);
 		c["db"] = new icfwalk.core.Db(c.config.datasource);
 		c["auditRepository"] = new icfwalk.audit.AuditRepository(c.db, c.canonicalJson, c.requestContext);
-		c["definitionRepository"] = new icfwalk.instrument.DefinitionRepository(c.db, c.canonicalJson);
+		c["definitionRepository"] = new icfwalk.instrument.DefinitionRepository(c.db, c.canonicalJson, c.errors);
 		c["configNormalizer"] = new icfwalk.instrument.ConfigNormalizer();
-		c["configValidator"] = new icfwalk.instrument.InstrumentConfigValidator(c.errors);
+		// The one authoritative semantic rule set over normalized definitions. Import runs it on
+		// every document it accepts and publish runs it on the locked version's snapshot and rows,
+		// so the two cannot drift into accepting what the other refuses.
+		c["definitionValidator"] = new icfwalk.instrument.DefinitionValidator();
+		c["configValidator"] = new icfwalk.instrument.InstrumentConfigValidator(c.errors, c.configNormalizer, c.definitionValidator);
 		c["snapshotCompiler"] = new icfwalk.instrument.SnapshotCompiler(c.canonicalJson);
 		c["instrumentImportService"] = new icfwalk.instrument.InstrumentImportService(
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
@@ -35,7 +39,7 @@ component output="false" {
 		// single guard for "a non-DRAFT version is never written to" (ADM-05).
 		c["instrumentPublishService"] = new icfwalk.instrument.InstrumentPublishService(
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
-			c.canonicalJson, c.snapshotCompiler
+			c.canonicalJson, c.snapshotCompiler, c.definitionValidator
 		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
 

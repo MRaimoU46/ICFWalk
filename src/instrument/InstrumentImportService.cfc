@@ -11,10 +11,21 @@
  *   3. Upsert every definition by its unique key, reusing existing GUIDs (idempotent), inserting
  *      sections in two passes so parents resolve, parking display orders so reorders never
  *      collide with unique sibling-order indexes, and deleting version-scoped rows that are no
- *      longer in the document. Global dimensions/values are upserted and never deleted.
+ *      longer in the document. Dimension and dimension-value *identities* (id and code) are created
+ *      once globally and never updated; what this version calls them, where it puts them, and which
+ *      values it offers are written to its own icf.instrument_dimension and
+ *      icf.instrument_dimension_value rows, so importing this DRAFT cannot change what an already
+ *      published version says (migration 006).
  *   4. Read the persisted definitions back, recompile them, and abort (rolling back) unless the
- *      definitions checksum equals the checksum compiled from the input.
+ *      definitions checksum equals the checksum compiled from the input. This is also the backstop
+ *      for the repository's status-qualified DML: a write that silently matched no rows leaves the
+ *      round trip short, and the whole transaction is refused rather than half-committed.
  *   5. Store the canonical snapshot and its SHA-256 on the version and write an audit event.
+ *
+ * A refused write leaves a durable trace. Every refusal below happens inside the transaction, so an
+ * audit record written there would roll back with it and the attempt would leave no evidence at
+ * all. The refusing branch records what it decided, the transaction rolls back, and exactly one
+ * INSTRUMENT_VERSION_WRITE_REFUSED event is written afterwards -- the same shape publish() uses.
  */
 component output="false" {
 
@@ -51,7 +62,12 @@ component output="false" {
 		return path;
 	}
 
-	public struct function importFromFile(required string path, string actorUserId = "") {
+	/**
+	 * Imports a configuration file. `identity` may carry `instrumentCode` and/or `versionLabel` to
+	 * import the same document under a different identity; nothing else about the document can be
+	 * overridden, and the full validation runs on the result either way.
+	 */
+	public struct function importFromFile(required string path, string actorUserId = "", struct identity = {}) {
 		if (!fileExists(arguments.path)) {
 			variables.errors.notFound("Configuration file not found.", "CONFIG_FILE_NOT_FOUND");
 		}
@@ -59,7 +75,15 @@ component output="false" {
 		if (!isJSON(text)) {
 			variables.errors.importValidation("Configuration file is not valid JSON.", [{ "code": "INVALID_JSON", "message": "The document could not be parsed as JSON.", "path": "$" }]);
 		}
-		var result = importConfig(deserializeJSON(text), arguments.actorUserId);
+		var document = deserializeJSON(text);
+		if (structKeyExists(arguments.identity, "instrumentCode") && isStruct(document) && structKeyExists(document, "instrument") && isStruct(document.instrument)) {
+			document.instrument["code"] = arguments.identity.instrumentCode;
+		}
+		if (structKeyExists(arguments.identity, "versionLabel") && isStruct(document) && structKeyExists(document, "instrument") && isStruct(document.instrument)
+			&& structKeyExists(document.instrument, "version") && isStruct(document.instrument.version)) {
+			document.instrument.version["versionLabel"] = arguments.identity.versionLabel;
+		}
+		var result = importConfig(document, arguments.actorUserId);
 		result["sourcePath"] = listLast(replace(arguments.path, "\", "/", "all"), "/");
 		return result;
 	}
@@ -76,17 +100,23 @@ component output="false" {
 		var compiled = variables.compiler.compile(normalized);
 		var actor = arguments.actorUserId;
 		var self = this;
+		// Filled by a refusing branch inside the transaction; written after the rollback below.
+		var refusal = {};
 
-		var outcome = variables.db.transact(function() {
+		var outcome = "";
+		try {
+		outcome = variables.db.transact(function() {
 			var instrument = variables.repo.findInstrumentByCode(normalized.instrument.code);
-			var instrumentId = "";
-			if (structIsEmpty(instrument)) {
-				instrumentId = variables.repo.createInstrument(normalized.instrument.code, normalized.instrument.name, normalized.instrument.description, normalized.instrument.active);
-			} else {
-				instrumentId = instrument.instrumentId;
-				variables.repo.updateInstrument(instrumentId, normalized.instrument.name, normalized.instrument.description, normalized.instrument.active);
-			}
+			var instrumentId = structIsEmpty(instrument)
+				? variables.repo.createInstrument(normalized.instrument.code, normalized.instrument.name, normalized.instrument.description, normalized.instrument.active)
+				: instrument.instrumentId;
 
+			// ONE LOCK ORDER: icf.instrument_version first, icf.instrument afterwards. Publishing
+			// takes the version row under UPDLOCK and only then reads the instrument row for the
+			// snapshot's identity check, so an import that took an exclusive lock on the instrument
+			// *before* locking the version would invert the order, and a publish racing an import
+			// would deadlock instead of queueing. The instrument update therefore happens after
+			// this lock, not before it.
 			var existing = variables.repo.findVersion(instrumentId, normalized.version.versionLabel, true);
 			var created = false;
 			var versionId = "";
@@ -95,6 +125,7 @@ component output="false" {
 				created = true;
 			} else {
 				if (existing.status != "DRAFT") {
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, "IMPORT", "VERSION_NOT_DRAFT", actor);
 					variables.errors.importPublishedVersion(normalized.version.versionLabel, existing.status);
 				}
 				var walkCount = variables.repo.countWalksForVersion(existing.versionId);
@@ -102,6 +133,10 @@ component output="false" {
 					variables.errors.importVersionInUse(normalized.version.versionLabel, walkCount);
 				}
 				versionId = existing.versionId;
+			}
+
+			if (!structIsEmpty(instrument)) {
+				variables.repo.updateInstrument(instrumentId, normalized.instrument.name, normalized.instrument.description, normalized.instrument.active);
 			}
 
 			var writeWarnings = writeDefinitions(versionId, normalized.definitions, created);
@@ -145,6 +180,13 @@ component output="false" {
 				"placeholders": placeholders
 			};
 		});
+		} catch (any e) {
+			// The transaction is rolled back by now, so this audit is the first write of a new one
+			// and survives. Only refusals this service decided on are recorded; anything else
+			// (a deadlock, a constraint, a driver fault) propagates unannotated.
+			writeRefusalAudit(refusal);
+			rethrow;
+		}
 
 		outcome["elapsedMs"] = getTickCount() - started;
 		variables.logger.info("instrument.import.completed", { "versionId": outcome.versionId, "created": outcome.created, "checksum": outcome.checksum, "counts": outcome.counts, "warningCount": arrayLen(outcome.warnings), "elapsedMs": outcome.elapsedMs });
@@ -164,21 +206,67 @@ component output="false" {
 		var label = arguments.versionLabel;
 		var actor = arguments.actorUserId;
 		var code = len(trim(arguments.instrumentCode)) ? trim(arguments.instrumentCode) : variables.config.instrumentCode;
-		return variables.db.transact(function() {
-			var instrument = variables.repo.findInstrumentByCode(code);
-			if (structIsEmpty(instrument)) variables.errors.notFound("No instrument with code '" & code & "' exists.", "INSTRUMENT_NOT_FOUND");
-			var q = variables.db.run(
-				"SELECT v.version_id, v.status FROM [icf].[instrument_version] v WITH (UPDLOCK, HOLDLOCK) WHERE v.instrument_id = :instrumentId AND v.version_label = :label",
-				{ "instrumentId": variables.db.guid(instrument.instrumentId), "label": variables.db.nvarchar(label, 100) }
-			);
-			if (!q.recordCount) variables.errors.notFound("No version of instrument '" & code & "' with that label exists.", "VERSION_NOT_FOUND");
-			var versionId = uCase(q.version_id[1]);
-			if (q.status[1] != "DRAFT") variables.errors.importPublishedVersion(label, q.status[1]);
-			var walkCount = variables.repo.countWalksForVersion(versionId);
-			if (walkCount > 0) variables.errors.importVersionInUse(label, walkCount);
-			variables.repo.deleteVersionCascadeUnchecked(versionId);
-			variables.audit.record("INSTRUMENT_VERSION", versionId, "INSTRUMENT_VERSION_DISCARDED", actor, { "versionLabel": label, "instrumentCode": code });
-			return { "versionId": versionId, "versionLabel": label, "instrumentCode": code, "discarded": true };
+		var self = this;
+		var refusal = {};
+		try {
+			return variables.db.transact(function() {
+				var instrument = variables.repo.findInstrumentByCode(code);
+				if (structIsEmpty(instrument)) variables.errors.notFound("No instrument with code '" & code & "' exists.", "INSTRUMENT_NOT_FOUND");
+				var q = variables.db.run(
+					"SELECT v.version_id, v.status FROM [icf].[instrument_version] v WITH (UPDLOCK, HOLDLOCK) WHERE v.instrument_id = :instrumentId AND v.version_label = :label",
+					{ "instrumentId": variables.db.guid(instrument.instrumentId), "label": variables.db.nvarchar(label, 100) }
+				);
+				if (!q.recordCount) variables.errors.notFound("No version of instrument '" & code & "' with that label exists.", "VERSION_NOT_FOUND");
+				var versionId = uCase(q.version_id[1]);
+				if (q.status[1] != "DRAFT") {
+					self.markRefusal(refusal, versionId, label, q.status[1], "DISCARD_DRAFT", "VERSION_NOT_DRAFT", actor);
+					variables.errors.importPublishedVersion(label, q.status[1]);
+				}
+				var walkCount = variables.repo.countWalksForVersion(versionId);
+				if (walkCount > 0) variables.errors.importVersionInUse(label, walkCount);
+				variables.repo.deleteDraftVersionCascade(versionId);
+				variables.audit.record("INSTRUMENT_VERSION", versionId, "INSTRUMENT_VERSION_DISCARDED", actor, { "versionLabel": label, "instrumentCode": code });
+				return { "versionId": versionId, "versionLabel": label, "instrumentCode": code, "discarded": true };
+			});
+		} catch (any e) {
+			writeRefusalAudit(refusal);
+			rethrow;
+		}
+	}
+
+	/**
+	 * Records what a refusing branch decided, without writing anything yet. `into` is mutated in
+	 * place rather than reassigned, because this is called from inside a transaction closure and an
+	 * assignment there would not reach the caller's variable.
+	 *
+	 * Details carry lifecycle facts only -- version, label, prior status, operation, reason code,
+	 * actor -- and never definitions, snapshot text, narrative content, secrets or tokens.
+	 *
+	 * Public only because the closures above reach it through `self`.
+	 */
+	public void function markRefusal(
+		required struct into, required string versionId, required string versionLabel,
+		required string status, required string operation, required string reason, string actorUserId = ""
+	) {
+		arguments.into["versionId"] = arguments.versionId;
+		arguments.into["actorUserId"] = arguments.actorUserId;
+		arguments.into["details"] = {
+			"versionLabel": arguments.versionLabel,
+			"status": arguments.status,
+			"operation": arguments.operation,
+			"reason": arguments.reason
+		};
+	}
+
+	/** Writes the single refusal event, after the rollback, if a branch above decided on one. */
+	private void function writeRefusalAudit(required struct refusal) {
+		if (structIsEmpty(arguments.refusal)) return;
+		variables.audit.record("INSTRUMENT_VERSION", arguments.refusal.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED", arguments.refusal.actorUserId, arguments.refusal.details);
+		variables.logger.warn("instrument.write.refused", {
+			"versionId": arguments.refusal.versionId,
+			"status": arguments.refusal.details.status,
+			"operation": arguments.refusal.details.operation,
+			"reason": arguments.refusal.details.reason
 		});
 	}
 
@@ -202,7 +290,7 @@ component output="false" {
 			seq++;
 			if (structKeyExists(existing.sections, s.sectionKey)) {
 				sectionIds[s.sectionKey] = existing.sections[s.sectionKey].id;
-				variables.repo.updateSectionContent(sectionIds[s.sectionKey], row);
+				variables.repo.updateSectionContent(arguments.versionId, sectionIds[s.sectionKey], row);
 			} else {
 				sectionIds[s.sectionKey] = variables.repo.insertSection(arguments.versionId, row, offset * 2 + seq);
 			}
@@ -223,16 +311,22 @@ component output="false" {
 			for (var op in opts) {
 				var optKey = rs.setKey & "|" & op.optionKey;
 				var existingOptId = structKeyExists(existing.options, optKey) ? existing.options[optKey].id : "";
-				variables.repo.upsertOption(setIds[rs.setKey], existingOptId, variables.mapper.optionRow(op));
+				variables.repo.upsertOption(arguments.versionId, setIds[rs.setKey], existingOptId, variables.mapper.optionRow(op));
 				keptOptions[optKey] = true;
 			}
 		}
 		for (var optKey in structKeyArray(existing.options)) {
-			if (!structKeyExists(keptOptions, optKey)) variables.repo.deleteOption(existing.options[optKey].id);
+			if (!structKeyExists(keptOptions, optKey)) variables.repo.deleteOption(arguments.versionId, existing.options[optKey].id);
 		}
 
-		// 3. Global dimensions and values (upsert only; never deleted).
+		// 3. Dimension and dimension-value IDENTITY only (migration 006). The global rows carry the
+		//    stable id and code that reporting and icf.walk_dimension_value depend on across
+		//    versions; they are created the first time a code is seen and never updated again.
+		//    What this version calls a dimension, and which values it offers, are written with the
+		//    placement in step 6 -- to rows only this version owns.
 		var dimensionIds = {};
+		var dimensionRows = {};
+		var valueIdsByDim = {};
 		var existingDims = variables.repo.loadDimensions();
 		var valuesByDim = {};
 		for (var v in arguments.d.dimensionValues) {
@@ -241,34 +335,20 @@ component output="false" {
 		}
 		for (var dim in arguments.d.dimensions) {
 			var vals = structKeyExists(valuesByDim, dim.code) ? valuesByDim[dim.code] : [];
-			var existingDimId = structKeyExists(existingDims, dim.code) ? existingDims[dim.code].id : "";
-			dimensionIds[dim.code] = variables.repo.upsertDimension(existingDimId, variables.mapper.dimensionRow(dim, vals));
-			var existingValues = len(existingDimId) ? variables.repo.loadDimensionValues(dimensionIds[dim.code]) : {};
-			if (structCount(existingValues)) variables.repo.parkDimensionValueOrders(dimensionIds[dim.code]);
-			var kept = {};
-			var usedOrders = {};
+			var dimRow = variables.mapper.dimensionRow(dim, vals);
+			dimensionRows[dim.code] = dimRow;
+			dimensionIds[dim.code] = structKeyExists(existingDims, dim.code)
+				? existingDims[dim.code].id
+				: variables.repo.createDimensionIdentity(dimRow);
+			var existingValues = variables.repo.loadDimensionValues(dimensionIds[dim.code]);
+			var valueIds = {};
 			for (var v in vals) {
-				var existingValueId = structKeyExists(existingValues, v.valueCode) ? existingValues[v.valueCode].id : "";
-				variables.repo.upsertDimensionValue(dimensionIds[dim.code], existingValueId, variables.mapper.dimensionValueRow(v));
-				kept[v.valueCode] = true;
-				usedOrders[toString(v.displayOrder)] = true;
+				var valueRow = variables.mapper.dimensionValueRow(v);
+				valueIds[v.valueCode] = structKeyExists(existingValues, v.valueCode)
+					? existingValues[v.valueCode].id
+					: variables.repo.createDimensionValueIdentity(dimensionIds[dim.code], valueRow);
 			}
-			// Values that exist in the database but not in the document keep their identity; restore
-			// their order, moving them after the document's values when the order is now taken.
-			var nextFree = 0;
-			for (var code in structKeyArray(existingValues)) {
-				if (structKeyExists(kept, code)) continue;
-				var original = existingValues[code].displayOrder;
-				var restored = original;
-				if (structKeyExists(usedOrders, toString(original))) {
-					if (nextFree == 0) nextFree = variables.repo.maxDimensionValueOrder(dimensionIds[dim.code]);
-					nextFree += 10;
-					restored = nextFree;
-				}
-				usedOrders[toString(restored)] = true;
-				variables.repo.setDimensionValueOrder(existingValues[code].id, restored);
-				arrayAppend(warnings, { "code": "DIMENSION_VALUE_NOT_IN_DOCUMENT", "message": "Dimension '" & dim.code & "' value '" & code & "' exists in the database but not in the imported document; it was left in place.", "path": "$.dimensionValues" });
-			}
+			valueIdsByDim[dim.code] = valueIds;
 		}
 
 		// 4. Rules (target keys already resolved by the normalizer).
@@ -288,7 +368,7 @@ component output="false" {
 			keptItems[it.itemKey] = true;
 		}
 		for (var itemKey in structKeyArray(existing.items)) {
-			if (!structKeyExists(keptItems, itemKey)) variables.repo.deleteItem(existing.items[itemKey].id);
+			if (!structKeyExists(keptItems, itemKey)) variables.repo.deleteItem(arguments.versionId, existing.items[itemKey].id);
 		}
 
 		// 6. Placements (instrument_dimension), which reference rules and sections. The document
@@ -301,28 +381,48 @@ component output="false" {
 			var sectionId = (!isNull(p.sectionKey) && structKeyExists(sectionIds, p.sectionKey)) ? sectionIds[p.sectionKey] : "";
 			var row = variables.mapper.placementRow(p);
 			row["displayOrder"] = columnOrders[p.dimensionCode];
+			// The version's own view of the dimension travels with its placement row, so a later
+			// DRAFT that renames or deactivates the dimension writes to its own row, not this one.
+			var dimRow = dimensionRows[p.dimensionCode];
+			row["dimensionLabel"] = dimRow.label;
+			row["dimensionDataType"] = dimRow.dataType;
+			row["dimensionReportable"] = dimRow.reportable;
+			row["dimensionSensitive"] = dimRow.sensitive;
+			row["dimensionActive"] = dimRow.active;
+			row["dimensionSettingsJson"] = dimRow.settingsJson;
 			variables.repo.upsertPlacement(arguments.versionId, dimensionIds[p.dimensionCode], structKeyExists(existing.placements, p.dimensionCode), row, sectionId);
+
+			// ...and so do the values it offers, in the order it offers them.
+			var vals = structKeyExists(valuesByDim, p.dimensionCode) ? valuesByDim[p.dimensionCode] : [];
+			var valueIds = structKeyExists(valueIdsByDim, p.dimensionCode) ? valueIdsByDim[p.dimensionCode] : {};
+			var valueRows = [];
+			for (var v in vals) {
+				var valueRow = variables.mapper.dimensionValueRow(v);
+				valueRow["valueId"] = valueIds[v.valueCode];
+				arrayAppend(valueRows, valueRow);
+			}
+			variables.repo.replaceVersionDimensionValues(arguments.versionId, dimensionIds[p.dimensionCode], valueRows);
 			keptPlacements[p.dimensionCode] = true;
 		}
 		for (var code in structKeyArray(existing.placements)) {
 			if (!structKeyExists(keptPlacements, code)) variables.repo.deletePlacement(arguments.versionId, existing.placements[code].dimensionId);
 		}
 		for (var ruleKey in structKeyArray(existing.rules)) {
-			if (!structKeyExists(keptRules, ruleKey)) variables.repo.deleteRule(existing.rules[ruleKey].id);
+			if (!structKeyExists(keptRules, ruleKey)) variables.repo.deleteRule(arguments.versionId, existing.rules[ruleKey].id);
 		}
 
 		// 7. Sections, pass two: parents and final orders; then stale sections and sets.
 		for (var s in arguments.d.sections) {
 			var parentId = (!isNull(s.parentSectionKey) && structKeyExists(sectionIds, s.parentSectionKey)) ? sectionIds[s.parentSectionKey] : "";
-			variables.repo.placeSection(sectionIds[s.sectionKey], parentId, s.displayOrder);
+			variables.repo.placeSection(arguments.versionId, sectionIds[s.sectionKey], parentId, s.displayOrder);
 		}
 		var staleSections = [];
 		for (var sectionKey in structKeyArray(existing.sections)) {
 			if (!structKeyExists(sectionIds, sectionKey)) arrayAppend(staleSections, existing.sections[sectionKey].id);
 		}
-		if (arrayLen(staleSections)) variables.repo.deleteSections(staleSections);
+		if (arrayLen(staleSections)) variables.repo.deleteSections(arguments.versionId, staleSections);
 		for (var setKey in structKeyArray(existing.responseSets)) {
-			if (!structKeyExists(setIds, setKey)) variables.repo.deleteResponseSet(existing.responseSets[setKey].id);
+			if (!structKeyExists(setIds, setKey)) variables.repo.deleteResponseSet(arguments.versionId, existing.responseSets[setKey].id);
 		}
 		return warnings;
 	}

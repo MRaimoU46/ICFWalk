@@ -121,6 +121,93 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     const orphan = await applyScript(pool, `INSERT INTO icf.org_unit_dimension_map (org_unit_id, dimension_code, value_code, source)
       VALUES ('00000000-0000-0000-0000-0000000000ff', 'school', 'orphan_school', 'EXPLICIT');`);
     assert.equal(orphan.ok, false, "a mapping always names a real org unit");
+
+    // ---- Correction migration 006 -------------------------------------------------------------
+    // Applied here over a database that is at exactly the Phase 5 schema (001..005) and carries
+    // data, so this is the "over the Phase 5 schema and data shape" case, not only a clean one.
+    await pool.request().batch(`
+      INSERT INTO icf.instrument (instrument_id, code, name) VALUES ('44444444-4444-4444-4444-444444444444', 'MIG006', 'Migration 006 fixture');
+      INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status, effective_start, published_at, published_by_user_id, compiled_snapshot_json, checksum_sha256)
+        VALUES ('55555555-5555-5555-5555-555555555501', '44444444-4444-4444-4444-444444444444', 'v1', N'PUBLISHED', SYSUTCDATETIME(), SYSUTCDATETIME(), '22222222-2222-2222-2222-222222222222', N'{}', REPLICATE('a', 64));
+      INSERT INTO icf.section_definition (section_id, version_id, section_key, display_order, title)
+        VALUES ('66666666-6666-6666-6666-666666666601', '55555555-5555-5555-5555-555555555501', 'sec', 10, N'Section');
+      INSERT INTO icf.dimension_definition (dimension_id, code, label, data_type, reportable, sensitive, active)
+        VALUES ('77777777-7777-7777-7777-777777777701', 'grade', N'Grade as V1 named it', N'LIST', 1, 0, 1);
+      INSERT INTO icf.dimension_value (value_id, dimension_id, value_code, label, display_order, active)
+        VALUES ('88888888-8888-8888-8888-888888888801', '77777777-7777-7777-7777-777777777701', 'k', N'Kindergarten as V1 labelled it', 10, 1),
+               ('88888888-8888-8888-8888-888888888802', '77777777-7777-7777-7777-777777777701', 'g1', N'Grade 1 as V1 labelled it', 20, 1);
+      INSERT INTO icf.instrument_dimension (version_id, dimension_id, section_id, display_order, required)
+        VALUES ('55555555-5555-5555-5555-555555555501', '77777777-7777-7777-7777-777777777701', '66666666-6666-6666-6666-666666666601', 10, 0);`);
+
+    const scoped = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
+    assert.equal(scoped.ok, true, scoped.error?.message);
+    assert.equal(scoped.recordset[0].version_scoped_dimension_columns_available, 1);
+    assert.equal(scoped.recordset[0].instrument_dimension_value_available, 1);
+    assert.equal(scoped.recordset[0].publisher_required_constraint_present, 1);
+    assert.equal(scoped.recordset[0].version_dimension_rows, 1);
+    assert.equal(scoped.recordset[0].version_dimension_value_rows, 2, "every value of the placed dimension is backfilled for the version");
+
+    // The backfill copies exactly what the version was already reading -- no label, order or
+    // activity is invented, so an existing version reads back unchanged.
+    const backfilled = await pool.request().query(`
+      SELECT p.dimension_label, p.dimension_data_type, p.dimension_reportable, p.dimension_sensitive, p.dimension_active
+        FROM icf.instrument_dimension p WHERE p.version_id = '55555555-5555-5555-5555-555555555501'`);
+    assert.equal(backfilled.recordset[0].dimension_label, "Grade as V1 named it");
+    assert.equal(backfilled.recordset[0].dimension_data_type, "LIST");
+    assert.equal(backfilled.recordset[0].dimension_active, true);
+    const values = await pool.request().query(`
+      SELECT dv.value_code, iv.label, iv.display_order, iv.active
+        FROM icf.instrument_dimension_value iv JOIN icf.dimension_value dv ON dv.value_id = iv.value_id
+       WHERE iv.version_id = '55555555-5555-5555-5555-555555555501' ORDER BY iv.display_order`);
+    assert.deepEqual(values.recordset.map((r) => [r.value_code, r.label, r.display_order, r.active]), [
+      ["k", "Kindergarten as V1 labelled it", 10, true],
+      ["g1", "Grade 1 as V1 labelled it", 20, true],
+    ]);
+
+    // Re-applying changes nothing: no duplicate rows, no second table, no altered column.
+    const scopedAgain = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
+    assert.equal(scopedAgain.ok, true, scopedAgain.error?.message);
+    assert.equal(scopedAgain.recordset[0].version_dimension_value_rows, 2, "re-application inserts nothing");
+    const scopedTables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
+    assert.equal(scopedTables.recordset[0].n, 23, "006 adds exactly one table");
+
+    // The publisher invariant is real: a non-DRAFT row with nobody named is now unstorable.
+    const unattributed = await applyScript(pool, `INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status, effective_start, published_at, compiled_snapshot_json, checksum_sha256)
+      VALUES ('55555555-5555-5555-5555-555555555502', '44444444-4444-4444-4444-444444444444', 'v2', N'PUBLISHED', SYSUTCDATETIME(), SYSUTCDATETIME(), N'{}', REPLICATE('b', 64));`);
+    assert.equal(unattributed.ok, false, "a PUBLISHED row must name its publisher");
+    const retiredUnattributed = await applyScript(pool, `INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status, effective_start, published_at, compiled_snapshot_json, checksum_sha256)
+      VALUES ('55555555-5555-5555-5555-555555555503', '44444444-4444-4444-4444-444444444444', 'v3', N'RETIRED', SYSUTCDATETIME(), SYSUTCDATETIME(), N'{}', REPLICATE('c', 64));`);
+    assert.equal(retiredUnattributed.ok, false, "and so must a RETIRED one");
+    const draftWithout = await applyScript(pool, `INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status)
+      VALUES ('55555555-5555-5555-5555-555555555504', '44444444-4444-4444-4444-444444444444', 'v4', N'DRAFT');`);
+    assert.equal(draftWithout.ok, true, "a DRAFT still needs no publisher");
+
+    // A version-scoped value cannot be offered under a dimension it does not belong to, and two
+    // values of one version-dimension cannot claim the same position.
+    const wrongDimension = await applyScript(pool, `INSERT INTO icf.instrument_dimension_value (version_id, dimension_id, value_id, label, display_order, active)
+      VALUES ('55555555-5555-5555-5555-555555555501', '77777777-7777-7777-7777-777777777701', '88888888-8888-8888-8888-8888888888ff', N'Ghost', 30, 1);`);
+    assert.equal(wrongDimension.ok, false, "a version value always names a real dimension value identity");
+    const duplicateOrder = await applyScript(pool, `UPDATE icf.instrument_dimension_value SET display_order = 10
+      WHERE version_id = '55555555-5555-5555-5555-555555555501' AND value_id = '88888888-8888-8888-8888-888888888802';`);
+    assert.equal(duplicateOrder.ok, false, "two values of one version-dimension cannot share a position");
+
+    // 006 refuses to invent a publisher: an existing unattributed non-DRAFT row fails it loudly.
+    await pool.request().batch(`
+      ALTER TABLE icf.instrument_version DROP CONSTRAINT CK_instrument_version_publisher_required;
+      INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status, effective_start, published_at, compiled_snapshot_json, checksum_sha256)
+        VALUES ('55555555-5555-5555-5555-555555555505', '44444444-4444-4444-4444-444444444444', 'v5', N'PUBLISHED', SYSUTCDATETIME(), SYSUTCDATETIME(), N'{}', REPLICATE('d', 64));`);
+    const refused = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
+    assert.equal(refused.ok, false, "the patch stops rather than attributing an existing publication");
+    assert.match(refused.error.message, /does not invent a publisher/);
+    assert.match(refused.error.message, /1 non-DRAFT/, "and says how many rows need a decision");
+    const stillNoConstraint = await pool.request().query(
+      "SELECT COUNT(*) AS n FROM sys.check_constraints WHERE name = 'CK_instrument_version_publisher_required'");
+    assert.equal(stillNoConstraint.recordset[0].n, 0, "and rolls its whole transaction back");
+    // Resolving the row lets it apply again, unchanged.
+    await pool.request().batch(`UPDATE icf.instrument_version SET published_by_user_id = '22222222-2222-2222-2222-222222222222' WHERE version_id = '55555555-5555-5555-5555-555555555505';`);
+    const resolved = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
+    assert.equal(resolved.ok, true, resolved.error?.message);
+    assert.equal(resolved.recordset[0].publisher_required_constraint_present, 1);
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

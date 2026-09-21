@@ -12,9 +12,13 @@ const patch = fs.readFileSync(path.join(root, "database", "002_alignment_patch.s
 const mutationPatch = fs.readFileSync(path.join(root, "database", "003_walk_mutation.sql"), "utf8");
 const fingerprintPatch = fs.readFileSync(path.join(root, "database", "004_mutation_fingerprint.sql"), "utf8");
 const mappingPatch = fs.readFileSync(path.join(root, "database", "005_org_unit_dimension_map.sql"), "utf8");
+const dimensionPatch = fs.readFileSync(path.join(root, "database", "006_version_scoped_dimensions.sql"), "utf8");
 
 function columnsOf(table) {
-  const source = table === "walk_mutation" ? mutationPatch : table === "org_unit_dimension_map" ? mappingPatch : schema;
+  const source = table === "walk_mutation" ? mutationPatch
+    : table === "org_unit_dimension_map" ? mappingPatch
+    : table === "instrument_dimension_value" ? dimensionPatch
+    : schema;
   const start = source.indexOf(`CREATE TABLE [icf].[${table}]`);
   assert.ok(start >= 0, `table ${table} present`);
   const end = source.indexOf(");", start);
@@ -23,6 +27,9 @@ function columnsOf(table) {
   // Columns added by a later additive patch belong to the same logical table.
   if (table === "walk_mutation") {
     for (const m of fingerprintPatch.matchAll(/ADD \[([a-z0-9_]+)\] (?:char|nvarchar|int|bit|datetime2)/g)) columns.add(m[1]);
+  }
+  if (table === "instrument_dimension") {
+    for (const m of dimensionPatch.matchAll(/\[(dimension_[a-z0-9_]+)\]\s+(?:nvarchar|bit)/g)) columns.add(m[1]);
   }
   return columns;
 }
@@ -36,7 +43,11 @@ const expected = {
   rule_definition: ["rule_id", "version_id", "rule_key", "target_type", "target_key", "effect", "conditions_json", "active", "updated_at"],
   dimension_definition: ["dimension_id", "code", "label", "data_type", "reportable", "sensitive", "settings_json", "active", "updated_at"],
   dimension_value: ["value_id", "dimension_id", "value_code", "label", "display_order", "effective_start", "effective_end", "active", "updated_at"],
-  instrument_dimension: ["version_id", "dimension_id", "section_id", "display_order", "required", "rule_key", "label_override", "settings_json", "updated_at"],
+  // dimension_* are the version-scoped dimension attributes added by migration 006: what *this*
+  // version says the dimension is, so a later DRAFT cannot rewrite a published version's meaning.
+  instrument_dimension: ["version_id", "dimension_id", "section_id", "display_order", "required", "rule_key", "label_override", "settings_json", "updated_at",
+    "dimension_label", "dimension_data_type", "dimension_reportable", "dimension_sensitive", "dimension_active", "dimension_settings_json"],
+  instrument_dimension_value: ["version_id", "dimension_id", "value_id", "label", "display_order", "effective_start", "effective_end", "active", "created_at", "updated_at", "row_version"],
   item_definition: ["item_id", "version_id", "section_id", "response_set_id", "item_key", "reporting_key", "item_type", "prompt", "help_text", "display_order", "required", "settings_json", "active", "updated_at"],
   walk: ["walk_id", "version_id", "org_unit_id", "owner_user_id", "status", "observed_at", "created_at", "updated_at", "completed_at", "voided_at", "void_reason", "row_version"],
   walk_dimension_value: ["walk_id", "version_id", "dimension_id", "selected_value_id", "text_value", "number_value", "date_value", "boolean_value", "updated_at"],
@@ -109,17 +120,50 @@ test("005 patch adds icf.org_unit_dimension_map idempotently and additively", ()
   assert.doesNotMatch(mappingPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST/i);
 });
 
+test("006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively", () => {
+  // Version-scoped dimension attributes, added only when absent.
+  assert.match(dimensionPatch, /IF COL_LENGTH\(N'\[icf\]\.\[instrument_dimension\]', N'dimension_label'\) IS NULL/);
+  assert.match(dimensionPatch, /ADD \[dimension_label\]\s+nvarchar\(200\) NULL/);
+  // ...and the version-scoped value table, keyed by the stable reporting identity.
+  assert.match(dimensionPatch, /IF OBJECT_ID\(N'\[icf\]\.\[instrument_dimension_value\]', N'U'\) IS NULL/);
+  assert.match(dimensionPatch, /CONSTRAINT \[PK_instrument_dimension_value\]\s+PRIMARY KEY CLUSTERED \(\[version_id\], \[value_id\]\)/);
+  assert.match(dimensionPatch, /CONSTRAINT \[FK_instrument_dimension_value_placement\][\s\S]{0,160}REFERENCES \[icf\]\.\[instrument_dimension\]/);
+  assert.match(dimensionPatch, /CONSTRAINT \[FK_instrument_dimension_value_identity\][\s\S]{0,160}REFERENCES \[icf\]\.\[dimension_value\]/);
+  assert.match(dimensionPatch, /CREATE UNIQUE INDEX \[UX_instrument_dimension_value_order\]/);
+  // The publisher invariant, and the refusal to invent one.
+  assert.match(dimensionPatch, /CONSTRAINT \[CK_instrument_version_publisher_required\]\s+CHECK \(\[status\] = N''DRAFT'' OR \[published_by_user_id\] IS NOT NULL\)/);
+  assert.match(dimensionPatch, /THROW 50053/, "a non-DRAFT row with no publisher fails the migration loudly");
+  assert.match(dimensionPatch, /This patch does not invent a publisher/);
+  // Non-destructive: it drops nothing and deletes nothing. The only UPDATE is the backfill of the
+  // columns it just added, and the only INSERT is the backfill of rows that do not exist yet.
+  assert.doesNotMatch(dimensionPatch, /\bDROP\b/);
+  assert.doesNotMatch(dimensionPatch, /\bDELETE\b/);
+  assert.doesNotMatch(dimensionPatch, /\bTRUNCATE\b/);
+  assert.match(dimensionPatch, /WHERE NOT EXISTS \(/, "the row backfill is guarded, so re-applying inserts nothing");
+  assert.doesNotMatch(dimensionPatch, /CREATE TABLE \[icf\]\.\[(?!instrument_dimension_value)/);
+  // SQL Server 2016 compatible.
+  assert.doesNotMatch(dimensionPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST|CREATE OR ALTER/i);
+});
+
 test("CFML SQL references only known icf tables", () => {
   const cfml = ["src/instrument/DefinitionRepository.cfc", "src/audit/AuditRepository.cfc", "src/controllers/HealthController.cfc", "src/instrument/InstrumentImportService.cfc",
     "src/identity/UserRepository.cfc", "src/authorization/OrgUnitRepository.cfc", "src/authorization/RoleScopeRepository.cfc", "src/authorization/AuthorizationService.cfc", "src/controllers/MaintenanceController.cfc",
     "src/walks/WalkRepository.cfc", "src/walks/WalkService.cfc", "src/instrument/SnapshotService.cfc"]
     .map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
-  const known = new Set([...(schema + mutationPatch + mappingPatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
+  const known = new Set([...(schema + mutationPatch + mappingPatch + dimensionPatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
   for (const match of cfml.matchAll(/\[icf\]\.\[([a-z_]+)\]/g)) assert.ok(known.has(match[1]), `unknown table icf.${match[1]}`);
 });
 
 test("schema-critical constraints the importer relies on are present", () => {
-  for (const name of ["UX_section_sibling_order", "UX_response_option_order", "UX_item_section_order", "UX_instrument_dimension_order", "UX_dimension_value_order", "UQ_instrument_version_label", "UQ_item_version_key", "UQ_section_version_key", "UQ_response_set_version_key", "UQ_rule_version_key", "CK_instrument_version_status", "CK_instrument_version_publish_values"]) {
+  for (const name of ["UX_section_sibling_order", "UX_response_option_order", "UX_item_section_order", "UX_instrument_dimension_order", "UX_dimension_value_order", "UQ_instrument_version_label", "UQ_item_version_key", "UQ_section_version_key", "UQ_response_set_version_key", "UQ_rule_version_key", "CK_instrument_version_status", "CK_instrument_version_publish_values",
+    // Logical-key uniqueness is what makes a duplicate-key version unstorable rather than merely
+    // refused, so the publish path's duplicate-key rule is tested at the validator's own boundary.
+    "UQ_response_option_set_key", "UQ_response_option_set_code", "UQ_dimension_definition_code", "UQ_dimension_value_code",
+    // ...and these are why a bad section parent cannot be persisted at all.
+    "FK_section_parent_same_version", "CK_section_not_self_parent"]) {
     assert.ok(schema.includes(name), name);
+  }
+  for (const name of ["CK_instrument_version_publisher_required", "UX_instrument_dimension_value_order", "PK_instrument_dimension_value"]) {
+    assert.ok(dimensionPatch.includes(name), name);
   }
 });

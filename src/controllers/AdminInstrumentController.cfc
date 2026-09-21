@@ -17,11 +17,23 @@ component output="false" {
 	/**
 	 * POST /api/admin/instrument/versions/{versionId}/publish (ADM-04).
 	 *
-	 * The route's permission check (instrument.manage) has already run; the publishing user is
-	 * recorded as the publisher. Every refusal is raised by the service and mapped to its status by
-	 * Errors.statusFor, so this action has no failure branch of its own.
+	 * The route's permission check (instrument.manage) and the central CSRF check have already run.
+	 *
+	 * THE PUBLISHER COMES FROM THE SESSION, NEVER FROM THE REQUEST. The only two inputs are the
+	 * version id in the path and the authenticated principal; the body selects nothing. A body that
+	 * carries anything at all is refused rather than ignored, so a client that believes it can name
+	 * an actor, a publisher, a checksum or a snapshot is told it cannot, instead of being quietly
+	 * misled into thinking it worked.
+	 *
+	 * Every refusal is raised by the service and mapped to its status by Errors.statusFor.
 	 */
 	public struct function publishVersion(required struct req) {
+		if (structCount(arguments.req.body)) {
+			variables.c.errors.validation(
+				"This endpoint takes no request body: the version is named in the path and the publisher is the signed-in user.",
+				"PUBLISH_BODY_NOT_ALLOWED"
+			);
+		}
 		return {
 			"status": 200,
 			"body": variables.c.instrumentPublishService.publish(arguments.req.params[1], arguments.req.principal.userId)

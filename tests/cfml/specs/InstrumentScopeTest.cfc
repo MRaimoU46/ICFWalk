@@ -30,6 +30,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.checksum = row.checksum;
 		variables.instrumentIds = [];
 		variables.versionIds = [];
+		variables.fixtures = new icfwalktests.support.FixtureCleanup(variables.c);
+		// A published row must name a publisher (CK_instrument_version_publisher_required,
+		// migration 006), so these fixtures carry a real user rather than nobody.
+		variables.publisher = variables.fixtures.ensureUser("scope-" & lCase(variables.tag) & "-publisher", "Instrument scope fixture publisher");
 		variables.foreignA = instrument("OTHER-A-" & variables.tag);
 		variables.foreignB = instrument("OTHER-B-" & variables.tag);
 	}
@@ -37,6 +41,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function afterAll() {
 		for (var id in variables.versionIds) variables.db.run("DELETE FROM [icf].[instrument_version] WHERE version_id = :id", { "id": variables.db.guid(id) });
 		for (var id in variables.instrumentIds) variables.db.run("DELETE FROM [icf].[instrument] WHERE instrument_id = :id", { "id": variables.db.guid(id) });
+		variables.fixtures.removeUsers("scope-" & lCase(variables.tag) & "-");
 		variables.snapshots.clearCache();
 	}
 
@@ -62,14 +67,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"id": variables.db.guid(id), "instrumentId": variables.db.guid(arguments.instrumentId),
 			"label": variables.db.nvarchar(arguments.label, 100), "status": variables.db.nvarchar(arguments.status, 20),
 			"snapshot": variables.db.ntext(len(arguments.snapshotJson) ? arguments.snapshotJson : variables.snapshotJson),
-			"checksum": variables.db.nvarchar(len(arguments.checksum) ? arguments.checksum : variables.checksum, 64)
+			"checksum": variables.db.nvarchar(len(arguments.checksum) ? arguments.checksum : variables.checksum, 64),
+			"publisher": variables.db.guid(arguments.status == "DRAFT" ? "" : variables.publisher)
 		};
 		var startSql = isNull(arguments.startOffset) ? "NULL" : "DATEADD(minute, " & int(arguments.startOffset) & ", SYSUTCDATETIME())";
 		var endSql = isNull(arguments.endOffset) ? "NULL" : "DATEADD(minute, " & int(arguments.endOffset) & ", SYSUTCDATETIME())";
 		var publishedSql = arguments.status == "PUBLISHED" ? "SYSUTCDATETIME()" : "NULL";
 		variables.db.run(
-			"INSERT INTO [icf].[instrument_version] (version_id, instrument_id, version_label, status, effective_start, effective_end, published_at, compiled_snapshot_json, checksum_sha256)
-			 VALUES (:id, :instrumentId, :label, :status, " & startSql & ", " & endSql & ", " & publishedSql & ", :snapshot, :checksum)",
+			"INSERT INTO [icf].[instrument_version] (version_id, instrument_id, version_label, status, effective_start, effective_end, published_at, compiled_snapshot_json, checksum_sha256, published_by_user_id)
+			 VALUES (:id, :instrumentId, :label, :status, " & startSql & ", " & endSql & ", " & publishedSql & ", :snapshot, :checksum, :publisher)",
 			params
 		);
 		arrayAppend(variables.versionIds, id);

@@ -11,14 +11,38 @@ component output="false" {
 		return this;
 	}
 
+	/**
+	 * Imports the instrument configuration as a DRAFT.
+	 *
+	 * `instrumentCode` and `versionLabel` let an operator import the same document as a separate
+	 * instrument or under a separate label. This is what makes the publish path verifiable
+	 * end-to-end without publishing (and thereby freezing) the seeded DRAFT every other check reads:
+	 * a verification run imports its own instrument, publishes that, and leaves the seed alone.
+	 * Both are plain identity overrides -- they rename nothing and reach no other document field --
+	 * and the route is behind the maintenance guard, so no session can reach it at all.
+	 */
 	public struct function importInstrument(required struct req) {
 		variables.c.maintenanceGuard.require(arguments.req, "instrument.import");
 		var path = variables.c.config.instrumentConfigPath;
 		if (structKeyExists(arguments.req.body, "configFile") && len(trim(arguments.req.body.configFile))) {
 			path = variables.c.instrumentImportService.resolveConfigFile(arguments.req.body.configFile);
 		}
-		var result = variables.c.instrumentImportService.importFromFile(path);
+		var overrides = {};
+		if (structKeyExists(arguments.req.body, "instrumentCode")) {
+			overrides["instrumentCode"] = requireIdentityOverride(arguments.req.body.instrumentCode, "instrumentCode", 60);
+		}
+		if (structKeyExists(arguments.req.body, "versionLabel")) {
+			overrides["versionLabel"] = requireIdentityOverride(arguments.req.body.versionLabel, "versionLabel", 100);
+		}
+		var result = variables.c.instrumentImportService.importFromFile(path, "", overrides);
 		return { "status": result.created ? 201 : 200, "body": result };
+	}
+
+	private string function requireIdentityOverride(required any value, required string name, required numeric maxLength) {
+		if (!isSimpleValue(arguments.value) || !len(trim(arguments.value)) || len(trim(arguments.value)) > arguments.maxLength) {
+			variables.c.errors.validation(arguments.name & " must be 1 to " & arguments.maxLength & " characters.", uCase(arguments.name) & "_INVALID");
+		}
+		return trim(arguments.value);
 	}
 
 	public struct function listVersions(required struct req) {
@@ -309,6 +333,36 @@ component output="false" {
 			db.run("DELETE FROM [icf].[walk_dimension_value] WHERE walk_id IN (" & owned & ")", { "like": like });
 			db.run("DELETE FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id IN (" & owned & ")", { "like": like });
 			db.run("DELETE FROM [icf].[walk] WHERE walk_id IN (" & owned & ")", { "like": like });
+			// Instrument versions of fixture instruments, whatever status they reached -- before the
+			// fixture users, because a published version names its publisher
+			// (FK_instrument_version_publisher) and a DRAFT names its creator. This route exists
+			// only where the test runner is enabled, which ConfigLoader forces off in production, so
+			// it is a verification harness and not a production deletion path: no application code,
+			// and no signed-in user, can reach it. It is deliberately scoped to instruments whose
+			// own code carries the run tag -- never the seeded ICFWalk instrument.
+			var scoped = "SELECT v.version_id FROM [icf].[instrument_version] v JOIN [icf].[instrument] i ON i.instrument_id = v.instrument_id WHERE i.code LIKE :like";
+			db.run("DELETE FROM [icf].[instrument_dimension_value] WHERE version_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE FROM [icf].[instrument_dimension] WHERE version_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE FROM [icf].[item_definition] WHERE version_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE FROM [icf].[rule_definition] WHERE version_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE o FROM [icf].[response_option] o JOIN [icf].[response_set] s ON s.response_set_id = o.response_set_id WHERE s.version_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE FROM [icf].[response_set] WHERE version_id IN (" & scoped & ")", { "like": like });
+			// Children before parents, without assuming a depth.
+			for (var pass = 1; pass <= 12; pass++) {
+				db.run(
+					"DELETE FROM [icf].[section_definition]
+					  WHERE version_id IN (" & scoped & ")
+					    AND section_id NOT IN (SELECT parent_section_id FROM [icf].[section_definition] WHERE parent_section_id IS NOT NULL)",
+					{ "like": like }
+				);
+			}
+			db.run("DELETE FROM [icf].[audit_event] WHERE entity_type = N'INSTRUMENT_VERSION' AND entity_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE FROM [icf].[instrument_version] WHERE version_id IN (" & scoped & ")", { "like": like });
+			db.run("DELETE FROM [icf].[instrument] WHERE code LIKE :like", { "like": like });
+			// A fixture user may also have created or published a version of another instrument
+			// (the seeded one, for example). Those versions are not this cleanup's to remove, so the
+			// reference is released rather than the row deleted.
+			db.run("UPDATE [icf].[instrument_version] SET created_by_user_id = NULL WHERE created_by_user_id IN (SELECT user_id FROM [icf].[app_user] WHERE identity_subject LIKE :like)", { "like": like });
 			db.run("DELETE s FROM [icf].[user_role_scope] s JOIN [icf].[app_user] u ON u.user_id = s.user_id WHERE u.identity_subject LIKE :like", { "like": like });
 			db.run("DELETE a FROM [icf].[audit_event] a JOIN [icf].[app_user] u ON u.user_id = a.actor_user_id OR u.user_id = a.entity_id WHERE u.identity_subject LIKE :like", { "like": like });
 			var users = db.run("DELETE FROM [icf].[app_user] WHERE identity_subject LIKE :like", { "like": like });

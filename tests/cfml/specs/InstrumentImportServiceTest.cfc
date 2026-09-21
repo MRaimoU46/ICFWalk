@@ -15,13 +15,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.golden = repoJson("tests/golden/instrument-snapshot.golden.json");
 		variables.svc = variables.c.instrumentImportService;
 		variables.repo = variables.c.definitionRepository;
+		// Fixtures are removed by the test-only harness, not by any production method: the
+		// repository has no unchecked deletion path, and a spec that publishes or freezes a fixture
+		// must still be able to clean it up (tests/cfml/support/FixtureCleanup.cfc).
+		variables.fixtures = new icfwalktests.support.FixtureCleanup(variables.c);
 	}
 
 	public void function afterAll() {
-		var q = variables.c.db.run("SELECT version_id FROM [icf].[instrument_version] WHERE version_label LIKE :prefix", { "prefix": { "value": variables.run & "%", "cfsqltype": "cf_sql_nvarchar" } });
-		for (var r = 1; r <= q.recordCount; r++) {
-			variables.repo.deleteVersionCascadeUnchecked(uCase(q.version_id[r]));
-		}
+		variables.fixtures.removeVersionsLabelled(variables.run);
+		variables.fixtures.removeUsers(variables.run & "-");
 	}
 
 	// ---- DB-04 ------------------------------------------------------------------------------
@@ -117,9 +119,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges() {
 		var label = label("db06");
 		var result = variables.svc.importConfig(config(label));
+		// A published row needs a publisher: CK_instrument_version_publisher_required (migration
+		// 006) refuses a non-DRAFT row with nobody named, so the fixture names a real user.
+		var publisher = variables.fixtures.ensureUser(variables.run & "-publisher", "Import fixture publisher");
 		variables.c.db.run(
-			"UPDATE [icf].[instrument_version] SET status = N'PUBLISHED', effective_start = SYSUTCDATETIME(), published_at = SYSUTCDATETIME() WHERE version_id = :id",
-			{ "id": variables.c.db.guid(result.versionId) }
+			"UPDATE [icf].[instrument_version] SET status = N'PUBLISHED', effective_start = SYSUTCDATETIME(), published_at = SYSUTCDATETIME(), published_by_user_id = :publisher WHERE version_id = :id",
+			{ "id": variables.c.db.guid(result.versionId), "publisher": variables.c.db.guid(publisher) }
 		);
 		var before = variables.repo.findVersionById(result.versionId);
 		var itemRowVersion = variables.c.db.run("SELECT MAX(CAST(row_version AS bigint)) AS rv, COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id", { "id": variables.c.db.guid(result.versionId) });

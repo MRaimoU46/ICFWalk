@@ -32,8 +32,14 @@ The aligned JSON uses readable logical IDs. SQL Server uses GUID primary keys. T
 5. For a new DRAFT, allocate GUIDs for all logical definitions. For an existing DRAFT, reuse rows by their unique version key.
 6. Insert/update sections in two passes so every parent GUID is known.
 7. Insert/update response sets and options.
-8. Resolve global dimensions by code and dimension values by value code.
-9. Insert/update rules, items, and version-specific dimension placements after their referenced GUIDs are known.
+8. Resolve dimension and dimension-value **identities** by code. `icf.dimension_definition` and
+   `icf.dimension_value` hold reporting identity only -- `dimension_id`, `code`, `value_id`,
+   `value_code`. A row is created the first time a code is seen and is never updated again.
+9. Insert/update rules, items, and version-specific dimension placements after their referenced
+   GUIDs are known. A placement row (`icf.instrument_dimension`) also carries what *this version*
+   says the dimension is -- label, data type, reportability, sensitivity, settings, activity -- and
+   `icf.instrument_dimension_value` carries the values this version offers, in its order, with its
+   labels, effective windows and activity flags.
 10. Validate every reference, allowed type, order, unique key, response option, and JSON document.
 11. Compile canonical snapshot JSON from the imported contract.
 12. Compare the compiled semantic content with the input. Abort on mismatch.
@@ -41,21 +47,149 @@ The aligned JSON uses readable logical IDs. SQL Server uses GUID primary keys. T
 
 The importer must be idempotent for an unchanged DRAFT and must not create duplicate child rows on retry.
 
+## One semantic rule set
+
+There is exactly one authoritative set of semantic rules about an instrument, and it is expressed
+over **normalized definitions** -- the representation the importer produces, the compiler
+serializes into the stored snapshot, and `DefinitionRepository.loadNormalizedDefinitions` reads back
+out of SQL Server. `src/instrument/DefinitionValidator.cfc` holds it: references, allowed types,
+unique logical keys, section hierarchy (including cycles), response-set requirements, option
+ordering, rule syntax and supported semantics, dimension and value rules, placements, and the
+retired-content guardrail. It also validates the snapshot **envelope**: declared format, a
+`definitions` object, an `instrument` and a `version`, a `counts` block that agrees with the
+definitions beside it, and -- when the caller supplies them -- an instrument code and version label
+that are the identity of the row the snapshot is stored on.
+
+Rules that only mean something for an inbound authoring document stay in
+`InstrumentConfigValidator`: that the document declares DRAFT, that its authoring ids are unique and
+resolve to each other, that `conditionsJson` parses as text. None of them can be applied to a
+version already in SQL Server, which has keys instead of authoring ids and a parsed conditions
+document instead of a string.
+
+Import runs both layers. Publish runs the shared layer, twice: once on the definitions carried in
+the stored snapshot, and once on the definitions SQL Server holds. So "a DRAFT that imported" and "a
+version that publishes" are the same predicate, and neither side can drift into accepting what the
+other refuses.
+
 ## Publishing
 
-Publishing a DRAFT is one transaction:
+Publishing a DRAFT is one transaction. Self-consistency is not validity: a DRAFT carrying the same
+invalid content in its rows and in its snapshot satisfies every comparison between them, so
+publishing validates each of them in its own right as well as against the other.
 
-1. Lock the DRAFT version for update.
-2. Revalidate all definitions and unresolved references.
-3. Confirm that current required items have valid response sets.
-4. Record unresolved placeholders as warnings, not invented replacements. Publishing policy may decide whether warnings block publication.
-5. Generate canonical compiled snapshot JSON.
-6. Calculate SHA-256 over the exact stored canonical JSON.
-7. Set effective start, publisher, published timestamp, checksum, and status to PUBLISHED.
-8. Write an audit event.
-9. Commit.
+1. Refuse a malformed version id, a missing or malformed publisher, before any database work.
+2. Take the version row under `UPDLOCK, ROWLOCK` -- the same lock, in the same order, that every
+   definition write takes -- and read its status under that lock.
+3. Refuse anything that is not a DRAFT.
+4. Refuse a publisher who is not a real `icf.app_user`.
+5. Refuse a version with no compiled snapshot, a snapshot that does not parse, or a stored checksum
+   that is not the SHA-256 of the stored snapshot.
+6. Validate the stored snapshot envelope, including that the instrument code and version label it
+   claims are the identity of the row it is stored on.
+7. Validate the definitions carried in the snapshot against the shared rule set.
+8. Validate the definitions SQL Server holds against the same rule set, independently.
+9. Confirm the two still compile to the same definitions checksum (the drift check).
+10. Record unresolved placeholders as warnings, not invented replacements. Publishing policy may
+    decide whether warnings block publication.
+11. Write status, the **unchanged** snapshot bytes, the unchanged checksum, the publisher,
+    `published_at` and `effective_start` in one statement. Publishing never recompiles: the stored
+    bytes and checksum are exactly what the import produced.
+12. Read the row back and confirm the stored publisher is the actor this call was made for.
+13. Write one audit event naming that publisher.
+14. Commit.
 
-After commit, the version and every child definition are immutable. A change requires a new DRAFT version.
+Every refusal happens inside the transaction and therefore changes nothing: status, timestamps,
+publisher, snapshot, checksum, definitions, audit success events and every row version are exactly
+as they were. Exactly one refusal audit event is written **after** the rollback, because a record
+written inside the transaction would be rolled back with it and the refusal would leave no trace.
+Refusal details carry lifecycle facts only -- version, label, prior status, operation, reason code,
+actor, checksums, counts -- never definitions, snapshot text, narrative content, secrets or tokens.
+
+After commit, the version and every child definition are immutable. A change requires a new DRAFT
+version.
+
+## The DRAFT-only write boundary
+
+"Published definitions are immutable" is structural, not procedural. Every method in
+`DefinitionRepository` that writes version content does two things, and neither is optional:
+
+1. **Resolve and lock the owning version first.** `requireDraftVersion` takes the
+   `icf.instrument_version` row under `UPDLOCK, ROWLOCK` inside the caller's transaction and refuses
+   anything that is not a DRAFT. It is called by the repository method itself, so a caller cannot
+   forget it -- there is no path to the DML that does not pass through it. A method handed only a
+   child id (an option id, a section id) resolves the owner **from the child row in the database**
+   rather than trusting the version it was told, and refuses a mismatch with
+   `INSTRUMENT_DEFINITION_VERSION_MISMATCH`.
+2. **Status-qualify the DML.** Every `UPDATE`, `DELETE` and `INSERT` carries the owning version's
+   `status = N'DRAFT'` in its own predicate. If the lock above were ever bypassed or defeated, the
+   statement still matches no rows.
+
+A refused write therefore changes no data and moves no `row_version`. A write that silently matched
+no rows is caught by the importer's round-trip checksum proof, which fails the whole transaction
+rather than committing a partial one.
+
+The same lock order holds for publication and for import, so a publish racing an edit queues on one
+row instead of interleaving: `instrument_version` first, children afterwards, every time.
+
+There is **no unchecked deletion path**. `deleteDraftVersionCascade` refuses a non-DRAFT version like
+every other mutator. Test fixtures that must remove a frozen fixture version use the test-only
+harness `tests/cfml/support/FixtureCleanup.cfc`, which no application code references and no HTTP
+route reaches, or the `ICFWALK_TESTS_ENABLED`-gated maintenance cleanup.
+
+## Publisher attribution
+
+A version that is not a DRAFT names the user who published it. There is no default, no empty string,
+and no path that publishes with nobody named:
+
+- `InstrumentPublishService.publish` requires a publisher argument and refuses a blank one
+  (`PUBLISHER_REQUIRED`), a malformed one (`PUBLISHER_INVALID`), and one that is not a real
+  `icf.app_user` (`PUBLISHER_UNKNOWN`).
+- `DefinitionRepository.markPublished` requires it too, so no future caller can reintroduce an
+  unattributed publication by going around the service.
+- The HTTP route derives the publisher from the authenticated principal only. Its request body
+  selects nothing and a non-empty body is refused (`PUBLISH_BODY_NOT_ALLOWED`).
+- `CK_instrument_version_publisher_required` (migration `006`) refuses any non-DRAFT row with a NULL
+  `published_by_user_id`, so the invariant survives a hand-written statement.
+- The success audit's actor is read back from the stored row, so the audit trail and the row can
+  never disagree about who published.
+
+Migration `006` never invents a publisher for an existing row: a non-DRAFT version with a NULL
+publisher fails the migration loudly, with the count, because attributing an existing publication is
+an authorized remediation decision and not a migration's to make.
+
+## Version-scoped dimensions and values
+
+`icf.dimension_definition` and `icf.dimension_value` are **reporting identity and nothing else**.
+`dimension_id`, `code`, `value_id` and `value_code` are created once, when a code is first seen, and
+never updated again. `icf.walk_dimension_value.selected_value_id` points at those rows, so a walk
+conducted under V1 and a walk conducted under V2 group together by one stable code.
+
+Everything a version *authors* is version-scoped:
+
+| What | Where |
+| --- | --- |
+| Dimension label, data type, reportability, sensitivity, settings, activity | `icf.instrument_dimension.dimension_*` |
+| Which values a version offers, and their label, order, effective window, activity | `icf.instrument_dimension_value` |
+
+`loadNormalizedDefinitions`, the render model, and the walk path's definition index all read the
+version-scoped rows. The invariant this buys:
+
+> After V1 is published, importing or editing V2 can never change `loadNormalizedDefinitions(V1)`,
+> V1's checksum materialization, V1's comparison metadata, or the meaning of data already reported
+> under V1.
+
+Before migration `006` the shared rows were read directly, so importing V2 with a renamed dimension,
+a relabelled or reordered value, a deactivated value or a dropped one silently rewrote what V1's
+definitions said -- after V1 was published, frozen and reported on. V1's stored snapshot did not
+move, so the corruption was invisible until something compared the snapshot with the tables and
+found drift in a version nobody had touched.
+
+A consequence worth stating: a dimension value that is in the database but not in the imported
+document is simply not part of that version. It keeps its identity row, and every earlier version
+that offers it keeps offering it. The importer no longer warns
+`DIMENSION_VALUE_NOT_IN_DOCUMENT`, because there is nothing left to warn about -- the value was not
+"left in place" in a shared row that other versions read; it is version-scoped, and this version
+does not have it.
 
 ## Walk aggregate
 
