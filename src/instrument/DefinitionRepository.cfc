@@ -100,6 +100,63 @@ component output="false" {
 		};
 	}
 
+	/**
+	 * findVersionById under the same row lock every mutation path takes, so a publish and a
+	 * concurrent import or publish of the same version queue on the walk of one row rather than
+	 * racing. Call inside a transaction; outside one the lock is released immediately and proves
+	 * nothing.
+	 */
+	public struct function findVersionByIdForUpdate(required string versionId) {
+		var q = variables.db.run(
+			"SELECT v.version_id, v.instrument_id, v.version_label, v.status, v.checksum_sha256, v.compiled_snapshot_json, v.updated_at, v.row_version
+			 FROM [icf].[instrument_version] v WITH (UPDLOCK, ROWLOCK) WHERE v.version_id = :id",
+			{ "id": variables.db.guid(arguments.versionId) }
+		);
+		if (!q.recordCount) return {};
+		return {
+			"versionId": uCase(q.version_id[1]),
+			"instrumentId": uCase(q.instrument_id[1]),
+			"versionLabel": q.version_label[1],
+			"status": q.status[1],
+			"checksum": q.checksum_sha256[1],
+			"snapshotJson": q.compiled_snapshot_json[1],
+			"updatedAt": q.updated_at[1],
+			"rowVersion": binaryEncode(q.row_version[1], "hex")
+		};
+	}
+
+	/**
+	 * The publish write, as one statement. Status, publisher, publication time, effective start,
+	 * snapshot and checksum move together or not at all: CK_instrument_version_publish_values
+	 * rejects any non-DRAFT row missing one of them, so a partial publish cannot be stored even
+	 * if a future caller tried. The WHERE clause re-asserts DRAFT, so two publishers racing on the
+	 * same version cannot both succeed; the loser updates nothing and is told so by the row count.
+	 */
+	public numeric function markPublished(required string versionId, required string canonicalJson, required string checksum, string publishedByUserId = "") {
+		variables.db.run(
+			"UPDATE [icf].[instrument_version]
+			    SET status = N'PUBLISHED',
+			        compiled_snapshot_json = :snapshot,
+			        checksum_sha256 = :checksum,
+			        published_by_user_id = :publishedBy,
+			        published_at = SYSUTCDATETIME(),
+			        effective_start = COALESCE(effective_start, SYSUTCDATETIME()),
+			        updated_at = SYSUTCDATETIME()
+			  WHERE version_id = :id AND status = N'DRAFT'",
+			{
+				"id": variables.db.guid(arguments.versionId),
+				"snapshot": variables.db.ntext(arguments.canonicalJson),
+				"checksum": { "value": arguments.checksum, "cfsqltype": "cf_sql_char" },
+				"publishedBy": variables.db.guid(arguments.publishedByUserId)
+			}
+		);
+		// Read back inside the same transaction rather than trusting a driver-reported row count.
+		return variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE version_id = :id AND status = N'PUBLISHED'",
+			{ "id": variables.db.guid(arguments.versionId) }
+		);
+	}
+
 	public string function createDraftVersion(required string instrumentId, required string versionLabel, string createdByUserId = "") {
 		var id = variables.db.newGuid();
 		variables.db.run(

@@ -31,6 +31,12 @@ component output="false" {
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
 			c.configNormalizer, c.configValidator, c.snapshotCompiler, c.requestContext
 		);
+		// Publishing (Phase 6). Freezes a DRAFT into an immutable PUBLISHED version and is the
+		// single guard for "a non-DRAFT version is never written to" (ADM-05).
+		c["instrumentPublishService"] = new icfwalk.instrument.InstrumentPublishService(
+			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
+			c.canonicalJson, c.snapshotCompiler
+		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
 
 		// Instrument engine (Phase 3): render model + visibility rules from the compiled snapshot.

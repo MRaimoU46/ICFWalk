@@ -41,6 +41,9 @@ component output="false" {
 		add("POST", "^/api/auth/sign-out$", "authController", "signOut", { "authenticated": true });
 
 		add("GET", "^/api/admin/instrument/versions$", "adminInstrumentController", "listVersions", { "permission": "instrument.manage" });
+		// Publishing (Phase 6). State-changing, so it carries the same CSRF and permission posture
+		// as every other POST; the service refuses anything that is not a DRAFT.
+		add("POST", "^/api/admin/instrument/versions/([^/]+)/publish$", "adminInstrumentController", "publishVersion", { "permission": "instrument.manage" });
 
 		// Walk persistence (Phase 4). Report-only and instrument-admin roles hold none of these
 		// capabilities and are refused before any controller runs; record-level scope/owner checks

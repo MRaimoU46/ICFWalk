@@ -2163,10 +2163,136 @@ Both are recorded in full, observed-failure-first, in
 The complete gate was executed against this exact candidate with **zero failures and zero skips**.
 The freeze decision itself belongs to the independent auditor, not to this session.
 
-## Exact recommended starting point for Phase 6
+## Phase 6 foundation: the publish transaction and published immutability
 
-Phase 6 is publishing and administration and **has not been started**. Nothing in this session
-touched `src/instrument/*Import*`, the admin controller, or the migration scripts.
+Started from the verified Phase 5 baseline `e55ec08af5b8622db5823b6e353423b891918549` (tree
+`403d964ce250d6b089419a34ac29b91fa0915a38`), confirmed against the live repository by an independent
+fresh clone before any Phase 6 code was written. This is the completion gate named in
+`docs/IMPLEMENTATION_PLAN.md` for Phase 6 -- "publish transaction produces a verified
+snapshot/checksum and every published child mutation is rejected" -- and nothing beyond it. DRAFT
+editing, preview, version compare, retire and the placeholder review queue are not started, and no
+admin UI was added.
+
+### What publishing now does
+
+`src/instrument/InstrumentPublishService.cfc`. One transaction, the version row taken under
+`UPDLOCK, ROWLOCK` first, so a concurrent publish or import of the same version queues behind it
+rather than interleaving -- the same lock discipline every walk mutation path uses.
+
+| Step | Refusal |
+| --- | --- |
+| Version exists | `ICFWalk.NotFound` / `INSTRUMENT_VERSION_NOT_FOUND` |
+| Status is DRAFT, read under the lock | `ICFWalk.Publish.NotDraft` / `INSTRUMENT_VERSION_NOT_DRAFT` (409) |
+| A compiled snapshot exists and parses | `INSTRUMENT_VERSION_NOT_PUBLISHABLE` (422) |
+| `checksum_sha256` is the SHA-256 of `compiled_snapshot_json` | `CHECKSUM_MISMATCH` |
+| The snapshot's definitions still equal the definitions SQL Server holds | `DEFINITIONS_DRIFT` |
+| Unresolved placeholders, where the deployment blocks on them | `UNRESOLVED_PLACEHOLDERS` |
+
+Then `DefinitionRepository.markPublished` writes status, publisher, `published_at`,
+`effective_start`, snapshot and checksum in one statement, whose `WHERE` re-asserts `DRAFT`. The
+database's existing `CK_instrument_version_publish_values` rejects any non-DRAFT row missing one of
+those columns, so a half-published row cannot be stored even by a future caller that tried. **No
+schema change was needed and none was made.**
+
+**Publishing does not recompute the snapshot.** It freezes the text the import compiled, byte for
+byte, under the checksum the import stored. The compiled snapshot carries metadata that exists only
+in the imported document (`schemaVersion`, `source`, `version`, `behavior`, `contentReview`) and is
+not reconstructible from the definition tables, so recompiling it here would be a guess dressed as a
+check. What publishing can prove it does prove: the stored checksum hashes the stored snapshot, and
+the snapshot's definitions still match the database's, compared by the same canonical checksum the
+import's own round-trip proof uses. That drift is the only thing that can have changed since import,
+and freezing a snapshot that no longer describes its definitions is the one unrecoverable mistake
+available here.
+
+Structural document validation (duplicate keys, bad parents, missing sets, option order, malformed
+rule JSON -- ADM-03) stays where it already is, in `InstrumentConfigValidator` at import, which is
+the only writer of these tables. `InstrumentConfigValidator` has no normalized-definitions entry
+point, and inventing one to re-run at publish would have duplicated the rule set against a partial
+input; the drift check covers the gap that actually exists.
+
+### Published immutability (ADM-05)
+
+`assertDraftForWrite(versionId, actor, operation)` is a callable guard, so ADM-05's "or direct
+service call" holds for code that never touches a route. It reads status under the same row lock the
+write will take, refuses anything that is not a DRAFT, and audits the attempt.
+
+One consequence is documented rather than glossed: that guard's audit record is written in whatever
+transaction the caller has open, so a caller that rolls back rolls the record back too. The refusal
+itself is unaffected. `publish()` handles this correctly for its own refusals -- see below.
+
+### A real defect the tests caught
+
+The first implementation wrote every refusal's audit record inside the publish transaction, and then
+raised, which rolled the transaction back -- taking the audit record with it. A refused publish left
+no trace at all, which is precisely what ADM-05 asks for and precisely what was missing.
+
+Two cases failed against that implementation, red before green:
+
+```
+FAILED  testDefinitionsDriftIsRefusedAndNothingChanges
+        :: and the refusal is audited Expected [1] but got [0].
+FAILED  testPublishingAPublishedVersionIsRefusedAndAudited
+        :: and the refusal is on the record Expected [1] but got [0].
+```
+
+Corrected by deferring the record: a refusing branch marks what it decided (`markRefusal` mutates a
+struct that outlives the closure) and raises; the audit is written in the `catch`, after the
+rollback, where it survives. Only refusals this service decided on are recorded there -- a deadlock,
+a constraint violation or a driver fault propagates unannotated. All 8 cases pass against the
+correction.
+
+### Files changed (Phase 6 foundation)
+
+| File | Why |
+| --- | --- |
+| `src/instrument/InstrumentPublishService.cfc` | New. The publish transaction and the `assertDraftForWrite` guard. |
+| `src/instrument/DefinitionRepository.cfc` | `findVersionByIdForUpdate` (the locking read) and `markPublished` (the one-statement publish write, read back inside the transaction rather than trusting a driver row count). |
+| `src/core/Errors.cfc` | `ICFWalk.Publish.NotDraft` (409) and `ICFWalk.Publish.Validation` (422), with their status mappings. |
+| `src/controllers/AdminInstrumentController.cfc` | `publishVersion` action. |
+| `src/http/Router.cfc` | `POST /api/admin/instrument/versions/{id}/publish`, permission `instrument.manage`. |
+| `src/Bootstrap.cfc` | Wires `instrumentPublishService`. |
+| `tests/cfml/specs/InstrumentPublishServiceTest.cfc` | New. 8 cases. |
+| `docs/ACCEPTANCE_TRACKING.md` | ADM-03 PARTIAL, ADM-04 and ADM-05 PASS at the service/endpoint level; ADM-02/06/07/08 still PENDING. |
+
+### Tests and results (Phase 6 foundation)
+
+Environment as for the Phase 5 final verification: SQL Server 2022 (16.0.4295.3), Lucee 6.2.8.20,
+Node 22.22.2, Playwright 1.56.1 with Chromium 141.0.7390.37, all actually running.
+
+| Command | Result |
+| --- | --- |
+| `?filter=InstrumentPublish` | 8 cases, **8 pass, 0 fail, 0 skip** |
+| `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **155 pass, 0 fail, 0 skip**; CFML **178 pass, 0 fail, 0 skip** |
+| `npm run validate:handoff` | ok, 51 checks, 0 errors |
+| `node --check` on every `.js` and `.mjs` | 34 files, 0 failures |
+
+CFML rises from 170 to **178**: the eight new publish cases. No existing case was removed, weakened
+or turned into a skip, and the Phase 5 totals are unchanged within the same run.
+
+### Unresolved and not verified (Phase 6 foundation)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified**, unchanged from Phase 5. The
+   publish path adds a second `UPDLOCK, ROWLOCK` user, so it inherits that limitation directly: the
+   serialization it depends on is proved on SQL Server 2022 only.
+2. **Concurrent publish is argued from the lock, not yet forced.** `WalkSummaryCoherenceTest` forces
+   its interleaving deterministically through an interception seam; publishing has no equivalent
+   spec yet. The `WHERE status = N'DRAFT'` on the publish write and the read-back are what make a
+   double publish safe if two ever did race.
+3. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any admin UI.
+4. **The Phase 5 freeze tag could not be published.** The tag `phase-5-freeze` was created locally on
+   `e55ec08`, but `git push origin refs/tags/phase-5-freeze` is refused with HTTP 403 by the session
+   credential, which permits branch refs (including new ones) and not tag refs. The verified baseline
+   is unaffected -- it is the commit, not the label -- but the tag itself has to be pushed by a
+   credential that may write tags.
+
+## Exact recommended starting point for the rest of Phase 6
+
+Superseded in part: the section above ("Phase 6 foundation") has since built the publish transaction
+and published immutability (ADM-03 partial, ADM-04 and ADM-05 at the service and endpoint level).
+What remains of Phase 6 is **ADM-02 preview, ADM-06 new DRAFT from a published version with compare,
+ADM-07 retire, ADM-08 placeholder review queue, and the admin UI for all of it**. The guidance below
+was written before that foundation existed and still applies to the remainder; where it says Phase 6
+has not been started, read it as the remainder above.
 
 1. Read `docs/IMPLEMENTATION_PLAN.md` Phase 6, `docs/ARCHITECTURE.md` ("What Phase 6 builds on" and
    the Phase 5 section), and `docs/ACCEPTANCE_TRACKING.md` rows ADM-01..08.

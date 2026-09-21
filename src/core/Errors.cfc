@@ -12,6 +12,8 @@
  *   ICFWalk.Conflict             409  Optimistic-concurrency or state conflict
  *   ICFWalk.Import.Validation    422  Instrument configuration is invalid
  *   ICFWalk.Import.PublishedVersion 409  Import targeted a PUBLISHED/RETIRED version
+ *   ICFWalk.Publish.NotDraft        409  Publish or edit targeted a version that is not a DRAFT
+ *   ICFWalk.Publish.Validation      422  A DRAFT was not publishable; nothing was changed
  *   ICFWalk.Import.VersionInUse  409  A DRAFT already referenced by walks cannot be rewritten
  *   ICFWalk.Configuration        500  Deployment configuration is invalid
  */
@@ -59,6 +61,23 @@ component output="false" {
 		);
 	}
 
+	/**
+	 * Publishing (Phase 6). A version that is not a DRAFT is already frozen: publishing it again,
+	 * or editing it, is refused rather than silently ignored.
+	 */
+	public void function publishNotDraft(required string versionLabel, required string status) {
+		raise(
+			"ICFWalk.Publish.NotDraft",
+			"Instrument version '" & arguments.versionLabel & "' is " & arguments.status & " and cannot be published. Only a DRAFT can be published.",
+			"INSTRUMENT_VERSION_NOT_DRAFT",
+			{ "versionLabel": arguments.versionLabel, "status": arguments.status }
+		);
+	}
+
+	public void function publishValidation(required string message, required array issues) {
+		raise("ICFWalk.Publish.Validation", arguments.message, "INSTRUMENT_VERSION_NOT_PUBLISHABLE", { "issues": arguments.issues });
+	}
+
 	public void function configuration(required string message, string code = "CONFIGURATION_INVALID") {
 		raise("ICFWalk.Configuration", arguments.message, arguments.code);
 	}
@@ -86,6 +105,8 @@ component output="false" {
 			case "ICFWalk.Import.PublishedVersion": return 409;
 			case "ICFWalk.Import.VersionInUse": return 409;
 			case "ICFWalk.Import.Validation": return 422;
+			case "ICFWalk.Publish.NotDraft": return 409;
+			case "ICFWalk.Publish.Validation": return 422;
 			case "ICFWalk.Configuration": return 500;
 		}
 		return 500;

@@ -13,4 +13,18 @@ component output="false" {
 	public struct function listVersions(required struct req) {
 		return { "status": 200, "body": { "versions": variables.c.definitionRepository.listVersions() } };
 	}
+
+	/**
+	 * POST /api/admin/instrument/versions/{versionId}/publish (ADM-04).
+	 *
+	 * The route's permission check (instrument.manage) has already run; the publishing user is
+	 * recorded as the publisher. Every refusal is raised by the service and mapped to its status by
+	 * Errors.statusFor, so this action has no failure branch of its own.
+	 */
+	public struct function publishVersion(required struct req) {
+		return {
+			"status": 200,
+			"body": variables.c.instrumentPublishService.publish(arguments.req.params[1], arguments.req.principal.userId)
+		};
+	}
 }
