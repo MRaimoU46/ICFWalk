@@ -101,9 +101,10 @@ const WALK_ID = "11111111-2222-4333-8444-555555555555";
  * Starts the stub on an ephemeral port.
  *
  * The save route's behavior for each request is taken from `plan`, a queue the test fills: an entry
- * may delay the answer, or answer with an HTTP status instead of committing. Everything else is a
- * faithful minimal server: it holds one walk, commits whole states, bumps a row version, and
- * refuses a stale one with 409 the way the real route does.
+ * may delay the answer, answer with an HTTP status instead of committing, answer 200 with a body of
+ * the test's choosing (valid JSON or not), or answer 200 with a body the browser cannot read at
+ * all. Everything else is a faithful minimal server: it holds one walk, commits whole states, bumps
+ * a row version, and refuses a stale one with 409 the way the real route does.
  */
 export async function startStub() {
   const INITIAL_WALK = Object.freeze({
@@ -121,7 +122,9 @@ export async function startStub() {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
     const body = await readBody(req);
-    state.log.push({ method: req.method, path: url.pathname, at: state.log.length });
+    // The body is logged with the request: a retry has to be provably the *same* request, which is
+    // a claim about its clientMutationId and its payload, not about how many requests there were.
+    state.log.push({ method: req.method, path: url.pathname, at: state.log.length, body });
 
     if (url.pathname === "/" || url.pathname === "/index.cfm") return sendShell(res);
     if (url.pathname.startsWith("/assets/")) return sendAsset(res, url.pathname);
@@ -159,16 +162,28 @@ export async function startStub() {
     origin,
     walkId: WALK_ID,
     /**
-     * Queue one answer for the next save: { delayMs } holds it open, { status, code } refuses it.
+     * Queue one answer for the next save:
+     *
+     *   { delayMs }        holds the answer open that long before committing normally
+     *   { status, code }   refuses it with that HTTP status
+     *   { raw }            answers 200 with that exact body, valid JSON or not
+     *   { body }           answers 200 with that object serialized, so a well-formed but unusable
+     *                      response (no walk, a walk that is not a walk) can be produced
+     *   { bodyFails }      answers 200 with headers the browser accepts and a body it cannot read
+     *
      * { sticky: true } makes that answer the standing behavior for every save after it, so a test
      * can hold the server in one condition instead of scripting a request count.
      */
     planSave(entry) { state.plan.push(entry); },
+    /** Drops whatever is queued, so the next save is served normally. Leaves the walk and the log. */
+    clearPlan() { state.plan.length = 0; },
     serverState: () => structuredClone(state.walk.state),
     serverWalk: () => structuredClone(state.walk),
     requests: () => state.log.slice(),
     /** Requests of one shape, in arrival order, as indices into the request log. */
     indicesOf: (method, suffix) => state.log.filter((r) => r.method === method && r.path.endsWith(suffix)).map((r) => r.at),
+    /** The body of every save the browser sent, in arrival order. */
+    saves: () => state.log.filter((r) => r.method === "PUT" && r.path === `/api/walks/${WALK_ID}`).map((r) => structuredClone(r.body)),
     reset() {
       state.log.length = 0;
       state.plan.length = 0;
@@ -186,6 +201,25 @@ export async function startStub() {
     if (entry.delayMs) await new Promise((resolve) => setTimeout(resolve, entry.delayMs));
     if (entry.status) {
       return json(res, entry.status, { error: { code: entry.code || "TEST_REFUSED", message: entry.message || "refused by the harness", details: entry.details || null } });
+    }
+    // A 200 whose headers arrive intact and whose body cannot be read: the response declares gzip
+    // and the bytes are not gzip, so the browser accepts the response and then fails decoding it.
+    // fetch() resolves, response.text() rejects. That is the "body failed after the headers" case,
+    // and it is produced by malformed content rather than by timing, so it is deterministic.
+    //
+    // Destroying the socket mid-body is NOT this case: Chromium fails the whole request and
+    // fetch() itself rejects, which means no response reached the page at all -- a real transport
+    // failure, correctly classified as one. Verified in this environment before choosing this
+    // mechanism.
+    if (entry.bodyFails) {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Content-Encoding": "gzip" });
+      return res.end("this is declared as gzip and is not gzip");
+    }
+    // HTTP 200 with a body of the test's choosing. `raw` is sent verbatim, so it can be malformed
+    // JSON; `body` is serialized, so it can be well-formed JSON that is not a walk response.
+    if (entry.raw !== undefined || entry.body !== undefined) {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      return res.end(entry.raw !== undefined ? entry.raw : JSON.stringify(entry.body));
     }
     if (body.rowVersion !== s.walk.rowVersion) {
       return json(res, 409, { error: { code: "STALE_ROW_VERSION", message: "changed elsewhere", details: { walkId: WALK_ID, serverRowVersion: s.walk.rowVersion } } });

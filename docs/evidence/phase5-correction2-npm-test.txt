@@ -1,0 +1,1917 @@
+ICFWalk Phase 5 final correction pass -- full Node/HTTP/Playwright regression
+Recorded 2026-09-21T01:10:08Z on branch claude/icfwalk-phase-5-corrections-nunm7i.
+
+Environment: Node v22.22.2, Playwright 1.56.1, pre-installed Chromium.
+No application runtime and no SQL Server. See docs/evidence/phase5-correction2-environment.md.
+
+$ npm test
+
+
+> icfwalk@0.1.0 test
+> node --test --test-concurrency=1 "tests/node/*.test.mjs"
+
+TAP version 13
+# Subtest: fixtures: org units, users, and roles through maintenance endpoints
+ok 1 - fixtures: org units, users, and roles through maintenance endpoints # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.626906
+  type: 'test'
+  ...
+# Subtest: AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+ok 2 - AUTH-01 authenticated endpoints deny anonymous requests without leaking data # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.144693
+  type: 'test'
+  ...
+# Subtest: signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+ok 3 - signed-in user gets identity, permissions, CSRF token, and a secure session cookie # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.126326
+  type: 'test'
+  ...
+# Subtest: AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+ok 4 - AUTH-06 admin route is separate from walk roles; users without roles are forbidden # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.071283
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints stay token-guarded even for signed-in admins
+ok 5 - maintenance endpoints stay token-guarded even for signed-in admins # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.074832
+  type: 'test'
+  ...
+# Subtest: SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 6 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.916571
+  type: 'test'
+  ...
+# Subtest: SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 7 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.128829
+  type: 'test'
+  ...
+# Subtest: SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+ok 8 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 2.709124
+  type: 'test'
+  ...
+# Subtest: SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+ok 9 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.125481
+  type: 'test'
+  ...
+# Subtest: SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 10 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.101187
+  type: 'test'
+  ...
+# Subtest: exporting follows the read decision: a reader may, a report-only role may not
+ok 11 - exporting follows the read decision: a reader may, a report-only role may not # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.118405
+  type: 'test'
+  ...
+# Subtest: SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 12 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.10061
+  type: 'test'
+  ...
+# Subtest: SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 13 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.19062
+  type: 'test'
+  ...
+# Subtest: SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 14 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto: # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.262397
+  type: 'test'
+  ...
+# Subtest: SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 15 - SUM-09: Clear empties the generated text and leaves every other answer alone # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.214506
+  type: 'test'
+  ...
+# Subtest: read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 16 - read-only: the server refuses a reader's save, and every composer control is one the editor disables # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.067512
+  type: 'test'
+  ...
+# Subtest: A11Y-01: the composer is fully operable from the keyboard
+ok 17 - A11Y-01: the composer is fully operable from the keyboard # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.045297
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violation in either composer state
+ok 18 - A11Y-03: axe-core finds no serious or critical violation in either composer state # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.04315
+  type: 'test'
+  ...
+# Subtest: a save in flight and an edit behind it are both flushed before the summary is fetched
+ok 19 - a save in flight and an edit behind it are both flushed before the summary is fetched
+  ---
+  duration_ms: 1860.536109
+  type: 'test'
+  ...
+# Subtest: a definitive 4xx save rejection produces no download and an accurate message
+ok 20 - a definitive 4xx save rejection produces no download and an accurate message
+  ---
+  duration_ms: 3557.018056
+  type: 'test'
+  ...
+# Subtest: a conflict produces no download and leaves the conflict workflow open
+ok 21 - a conflict produces no download and leaves the conflict workflow open
+  ---
+  duration_ms: 3517.373022
+  type: 'test'
+  ...
+# Subtest: an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+ok 22 - an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  ---
+  duration_ms: 3594.784488
+  type: 'test'
+  ...
+# Subtest: a genuine transport failure produces a browser-generated file from the screen state
+ok 23 - a genuine transport failure produces a browser-generated file from the screen state
+  ---
+  duration_ms: 607.563023
+  type: 'test'
+  ...
+# Subtest: a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+ok 24 - a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+  ---
+  duration_ms: 3522.648023
+  type: 'test'
+  ...
+# Subtest: an unresolved save stays retryable under its own mutation id and frozen request
+ok 25 - an unresolved save stays retryable under its own mutation id and frozen request
+  ---
+  duration_ms: 3627.007615
+  type: 'test'
+  ...
+# Subtest: an unexpected failure while reading the save response blocks the export
+ok 26 - an unexpected failure while reading the save response blocks the export
+  ---
+  duration_ms: 3590.396089
+  type: 'test'
+  ...
+# Subtest: a response that breaks after its headers blocks the export rather than falling back
+ok 27 - a response that breaks after its headers blocks the export rather than falling back
+  ---
+  duration_ms: 3465.794631
+  type: 'test'
+  ...
+# Subtest: a clean export with nothing unsent uses the authenticated summary GET
+ok 28 - a clean export with nothing unsent uses the authenticated summary GET
+  ---
+  duration_ms: 509.464324
+  type: 'test'
+  ...
+# Subtest: a read-only viewer exports straight from the server route
+ok 29 - a read-only viewer exports straight from the server route
+  ---
+  duration_ms: 491.928838
+  type: 'test'
+  ...
+# Subtest: SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+ok 30 - SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 4.03025
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+ok 31 - WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.142925
+  type: 'test'
+  ...
+# Subtest: SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+ok 32 - SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.14822
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+ok 33 - SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.073647
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+ok 34 - WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.154429
+  type: 'test'
+  ...
+# Subtest: WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+ok 35 - WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.10335
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+ok 36 - A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.072078
+  type: 'test'
+  ...
+# Subtest: CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+ok 37 - CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.195535
+  type: 'test'
+  ...
+# Subtest: CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+ok 38 - CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.314661
+  type: 'test'
+  ...
+# Subtest: CORR: beforeunload protects in-flight and queued saves, not only dirty state
+ok 39 - CORR: beforeunload protects in-flight and queued saves, not only dirty state # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.164859
+  type: 'test'
+  ...
+# Subtest: CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+ok 40 - CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.050211
+  type: 'test'
+  ...
+# Subtest: CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+ok 41 - CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.040055
+  type: 'test'
+  ...
+# Subtest: CORR2: a VOID committed but lost is retried from its record, not from the edited input
+ok 42 - CORR2: a VOID committed but lost is retried from its record, not from the edited input # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.036571
+  type: 'test'
+  ...
+# Subtest: CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+ok 43 - CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.04442
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+ok 44 - CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.035998
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+ok 45 - CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.042618
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+ok 46 - CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.034116
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+ok 47 - CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.033573
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+ok 48 - CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.037126
+  type: 'test'
+  ...
+# Subtest: CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+ok 49 - CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.03319
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+ok 50 - CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.032959
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+ok 51 - CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.037568
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+ok 52 - CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.033417
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+ok 53 - CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.032927
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+ok 54 - CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.067731
+  type: 'test'
+  ...
+# Subtest: CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+ok 55 - CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.040866
+  type: 'test'
+  ...
+# Subtest: CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+ok 56 - CORR4: a resolved VOID never leaves a dirty editor without an explicit decision # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.034965
+  type: 'test'
+  ...
+# Subtest: WALK-01 empty My Walks state with the prototype wording and a New walk action
+ok 57 - WALK-01 empty My Walks state with the prototype wording and a New walk action # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.926346
+  type: 'test'
+  ...
+# Subtest: editor renders every section, item, and option from the served instrument model
+ok 58 - editor renders every section, item, and option from the served instrument model # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.160995
+  type: 'test'
+  ...
+# Subtest: COND-01..05 grade choices follow the school of the walk's org unit
+ok 59 - COND-01..05 grade choices follow the school of the walk's org unit # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.163207
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+ok 60 - COND-06 Period shows for grades 6-12 only and its value is retained while hidden # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 3.507737
+  type: 'test'
+  ...
+# Subtest: COND-07..10 conditional classroom sections and retained hidden answers
+ok 61 - COND-07..10 conditional classroom sections and retained hidden answers # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.127024
+  type: 'test'
+  ...
+# Subtest: COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+ok 62 - COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.116749
+  type: 'test'
+  ...
+# Subtest: COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+ok 63 - COND-14 definition toggles show labels 1-5 and the exact per-question definitions # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.080184
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+ok 64 - A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.20429
+  type: 'test'
+  ...
+# Subtest: A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+ok 65 - A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.264404
+  type: 'test'
+  ...
+# Subtest: My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+ok 66 - My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.155717
+  type: 'test'
+  ...
+# Subtest: A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ok 67 - A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.048406
+  type: 'test'
+  ...
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 68 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.818623
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 69 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.379726
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 70 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.164192
+  type: 'test'
+  ...
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 71 - health endpoint reports database and schema state with a correlation id # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.599869
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 72 - only index.cfm is served; other templates and unknown routes are JSON 404s # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.106543
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 73 - maintenance endpoints are hidden without a valid token # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.127052
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 74 - CFML test suite passes (unit specs and DB-04..09 integration specs) # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.118645
+  type: 'test'
+  ...
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 75 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.111162
+  type: 'test'
+  ...
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 76 - DB-01..03 supplied scripts against an empty SQL Server database # SKIP ICFWALK_DB_* not configured
+  ---
+  duration_ms: 0.604454
+  type: 'test'
+  ...
+# Subtest: no mail-delivery construct exists anywhere in the shipped source
+ok 77 - no mail-delivery construct exists anywhere in the shipped source
+  ---
+  duration_ms: 17.950262
+  type: 'test'
+  ...
+# Subtest: the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+ok 78 - the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+  ---
+  duration_ms: 0.622898
+  type: 'test'
+  ...
+# Subtest: mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+ok 79 - mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+  ---
+  duration_ms: 18.612925
+  type: 'test'
+  ...
+# Subtest: no route, controller action, or configuration key accepts a recipient
+ok 80 - no route, controller action, or configuration key accepts a recipient
+  ---
+  duration_ms: 0.715892
+  type: 'test'
+  ...
+# Subtest: the summary export is the only new endpoint and it is read-only
+ok 81 - the summary export is the only new endpoint and it is read-only # SKIP application not reachable at http://127.0.0.1:8888 and ICFWALK_REQUIRE_APP is not set, so no live no-mail route probe was performed
+  ---
+  duration_ms: 0.169802
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 82 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 157.428783
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 83 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.152506
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 84 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.359595
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 85 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.769129
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 86 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 6.022654
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 87 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.606076
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 88 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.225337
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 89 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.115941
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 90 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.366987
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 91 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.578066
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 92 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 2.107023
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 93 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.249461
+  type: 'test'
+  ...
+# Subtest: fixtures
+ok 94 - fixtures # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.577921
+  type: 'test'
+  ...
+# Subtest: AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+ok 95 - AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs) # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.146309
+  type: 'test'
+  ...
+# Subtest: users without any capability are forbidden; walk, report, and admin roles may load the instrument
+ok 96 - users without any capability are forbidden; walk, report, and admin roles may load the instrument # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.125969
+  type: 'test'
+  ...
+# Subtest: shell page is served to signed-in users with a strict CSP and no embedded content
+ok 97 - shell page is served to signed-in users with a strict CSP and no embedded content # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.069461
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 98 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 22.759342
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 99 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 15.458362
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 100 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 11.96711
+  type: 'test'
+  ...
+# Subtest: JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+ok 101 - JS formatter reproduces every shared vector (parity contract with the CFML formatter) # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.844249
+  type: 'test'
+  ...
+# Subtest: the stored states are already normalized, so a vector describes a real persisted walk
+ok 102 - the stored states are already normalized, so a vector describes a real persisted walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.116154
+  type: 'test'
+  ...
+# Subtest: averageText matches JavaScript toFixed(1) on every shared rounding vector
+ok 103 - averageText matches JavaScript toFixed(1) on every shared rounding vector # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.099099
+  type: 'test'
+  ...
+# Subtest: SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+ok 104 - SUM-02/COND-15 component averages use answered scores only; a blank is never a zero # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.13271
+  type: 'test'
+  ...
+# Subtest: SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+ok 105 - SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.093414
+  type: 'test'
+  ...
+# Subtest: SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+ok 106 - SUM-04 hidden sections and a hidden Period are excluded but not destroyed # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.148492
+  type: 'test'
+  ...
+# Subtest: SUM-05 file names carry only safe characters and no path can be steered through them
+ok 107 - SUM-05 file names carry only safe characters and no path can be steered through them # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.088206
+  type: 'test'
+  ...
+# Subtest: the file name is driven by behavior.export.fileNamePattern, not by a restated list
+ok 108 - the file name is driven by behavior.export.fileNamePattern, not by a restated list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.174589
+  type: 'test'
+  ...
+# Subtest: SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+ok 109 - SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.341305
+  type: 'test'
+  ...
+# Subtest: every selectable part the instrument offers resolves to a section, and a bad one throws
+ok 110 - every selectable part the instrument offers resolves to a section, and a bad one throws # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.165421
+  type: 'test'
+  ...
+# Subtest: brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+ok 111 - brief 14.1 conditional cards print in prototype order: the content card before the class-type card # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.057186
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+ok 112 - SEC-02 stored markup is exported verbatim as text, never escaped and never dropped # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.052362
+  type: 'test'
+  ...
+# Subtest: the text shape is stable: LF only, no trailing newline, no BOM
+ok 113 - the text shape is stable: LF only, no trailing newline, no BOM # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.042302
+  type: 'test'
+  ...
+# Subtest: the composer's document serializes to the server's canonical form and survives a round trip
+ok 114 - the composer's document serializes to the server's canonical form and survives a round trip # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.047385
+  type: 'test'
+  ...
+# Subtest: the formatter is pure: it never mutates the state or the model it is given
+ok 115 - the formatter is pure: it never mutates the state or the model it is given # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.04068
+  type: 'test'
+  ...
+# Subtest: JS engine reproduces every shared vector (parity contract with the CFML engine)
+ok 116 - JS engine reproduces every shared vector (parity contract with the CFML engine) # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.7034
+  type: 'test'
+  ...
+# Subtest: COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+ok 117 - COND-01..04 grade choices follow the selected school's group; Other shows PreK-12 # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.116329
+  type: 'test'
+  ...
+# Subtest: COND-05 an invalid grade is cleared and dependent visibility recalculates
+ok 118 - COND-05 an invalid grade is cleared and dependent visibility recalculates # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.081391
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+ok 119 - COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.078985
+  type: 'test'
+  ...
+# Subtest: COND-07..09 conditional classroom sections
+ok 120 - COND-07..09 conditional classroom sections # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.134681
+  type: 'test'
+  ...
+# Subtest: COND-10 hidden conditional answers are retained and reappear
+ok 121 - COND-10 hidden conditional answers are retained and reappear # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.162009
+  type: 'test'
+  ...
+# Subtest: COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+ok 122 - COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.08086
+  type: 'test'
+  ...
+# Subtest: COND-15 answered requires a valid option; unanswered never becomes zero
+ok 123 - COND-15 answered requires a valid option; unanswered never becomes zero # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.205813
+  type: 'test'
+  ...
+# Subtest: engine rejects unsupported operators instead of guessing
+ok 124 - engine rejects unsupported operators instead of guessing # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.348712
+  type: 'test'
+  ...
+# Subtest: walk-state helpers: a blank state presets no School value; display text; rating summary
+ok 125 - walk-state helpers: a blank state presets no School value; display text; rating summary # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.165561
+  type: 'test'
+  ...
+# Subtest: AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+ok 126 - AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 1.006248
+  type: 'test'
+  ...
+# Subtest: AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+ok 127 - AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.158028
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+ok 128 - WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.171862
+  type: 'test'
+  ...
+# Subtest: WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+ok 129 - WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.090214
+  type: 'test'
+  ...
+# Subtest: AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+ok 130 - AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.103185
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+ok 131 - SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.106871
+  type: 'test'
+  ...
+# Subtest: COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+ok 132 - COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.07783
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+ok 133 - WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.236102
+  type: 'test'
+  ...
+# Subtest: WALK-11: the walk instrument route serves the walk's pinned version render model
+ok 134 - WALK-11: the walk instrument route serves the walk's pinned version render model # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.262497
+  type: 'test'
+  ...
+# Subtest: CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+ok 135 - CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.168748
+  type: 'test'
+  ...
+# Subtest: CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+ok 136 - CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.055682
+  type: 'test'
+  ...
+# Subtest: CORR: a create mutation id from a school the caller lost never discloses that walk
+ok 137 - CORR: a create mutation id from a school the caller lost never discloses that walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.084824
+  type: 'test'
+  ...
+# Subtest: CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+ok 138 - CORR2: an idempotent SAVE replay never hands stale session state a newer row version # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.100525
+  type: 'test'
+  ...
+# Subtest: CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+ok 139 - CORR2: CREATE and COMPLETE replays are refused once the walk has moved on # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.04308
+  type: 'test'
+  ...
+# Subtest: CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+ok 140 - CORR2: a legacy mutation row with no request fingerprint is never replayed as a success # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.04146
+  type: 'test'
+  ...
+# Subtest: CORR2: the School dimension follows an explicit mapping and fails closed without one
+ok 141 - CORR2: the School dimension follows an explicit mapping and fails closed without one # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.075593
+  type: 'test'
+  ...
+# Subtest: CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+ok 142 - CORR2: the alignment endpoint considers exact code matches only, and only as candidates # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.037985
+  type: 'test'
+  ...
+# Subtest: CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+ok 143 - CORR2: an ambiguous outcome retries the exact same mutation id and body on every route # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.038839
+  type: 'test'
+  ...
+# Subtest: CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+ok 144 - CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.051121
+  type: 'test'
+  ...
+# Subtest: CORR3: the School dimension's free-text value is never stored as a school's identity
+ok 145 - CORR3: the School dimension's free-text value is never stored as a school's identity # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.041909
+  type: 'test'
+  ...
+# Subtest: SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+ok 146 - SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.07643
+  type: 'test'
+  ...
+# Subtest: SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+ok 147 - SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.041397
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+ok 148 - SEC-02 stored markup reaches the export as inert text, never escaped and never executed # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.039505
+  type: 'test'
+  ...
+# Subtest: SUM-05 a punctuated label cannot steer the Content-Disposition file name
+ok 149 - SUM-05 a punctuated label cannot steer the Content-Disposition file name # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.167071
+  type: 'test'
+  ...
+# Subtest: AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+ok 150 - AUTH-04/05 the summary route authorizes every request exactly as opening the walk does # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.054648
+  type: 'test'
+  ...
+# Subtest: a voided walk still exports for a reader, and the export never mutates the walk
+ok 151 - a voided walk still exports for a reader, and the export never mutates the walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.0416
+  type: 'test'
+  ...
+# Subtest: SEC-05 the export audit event carries identifiers and counts only, never narrative text
+ok 152 - SEC-05 the export audit event carries identifiers and counts only, never narrative text # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.039245
+  type: 'test'
+  ...
+# Subtest: SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+ok 153 - SUM-07/09 the email draft round-trips through the ordinary save path in canonical form # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.036367
+  type: 'test'
+  ...
+# Subtest: SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+ok 154 - SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.071364
+  type: 'test'
+  ...
+# Subtest: SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+ok 155 - SAVE-07 the email draft schema is enforced on the server, whatever the browser sends # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.038626
+  type: 'test'
+  ...
+1..155
+# tests 155
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 122
+# todo 0
+# duration_ms 31728.197791
+
+================================================================================
+$ ICFWALK_REQUIRE_APP=1 npm test        (release-verification profile)
+
+
+> icfwalk@0.1.0 test
+> node --test --test-concurrency=1 "tests/node/*.test.mjs"
+
+TAP version 13
+# Subtest: fixtures: org units, users, and roles through maintenance endpoints
+ok 1 - fixtures: org units, users, and roles through maintenance endpoints # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.910244
+  type: 'test'
+  ...
+# Subtest: AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+ok 2 - AUTH-01 authenticated endpoints deny anonymous requests without leaking data # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.258777
+  type: 'test'
+  ...
+# Subtest: signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+ok 3 - signed-in user gets identity, permissions, CSRF token, and a secure session cookie # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.195874
+  type: 'test'
+  ...
+# Subtest: AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+ok 4 - AUTH-06 admin route is separate from walk roles; users without roles are forbidden # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.111088
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints stay token-guarded even for signed-in admins
+ok 5 - maintenance endpoints stay token-guarded even for signed-in admins # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.10443
+  type: 'test'
+  ...
+# Subtest: SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 6 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.999846
+  type: 'test'
+  ...
+# Subtest: SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 7 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.14194
+  type: 'test'
+  ...
+# Subtest: SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+ok 8 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 2.770287
+  type: 'test'
+  ...
+# Subtest: SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+ok 9 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.164318
+  type: 'test'
+  ...
+# Subtest: SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 10 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.144331
+  type: 'test'
+  ...
+# Subtest: exporting follows the read decision: a reader may, a report-only role may not
+ok 11 - exporting follows the read decision: a reader may, a report-only role may not # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.212756
+  type: 'test'
+  ...
+# Subtest: SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 12 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.134459
+  type: 'test'
+  ...
+# Subtest: SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 13 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.272964
+  type: 'test'
+  ...
+# Subtest: SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 14 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto: # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.297619
+  type: 'test'
+  ...
+# Subtest: SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 15 - SUM-09: Clear empties the generated text and leaves every other answer alone # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.171362
+  type: 'test'
+  ...
+# Subtest: read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 16 - read-only: the server refuses a reader's save, and every composer control is one the editor disables # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.060326
+  type: 'test'
+  ...
+# Subtest: A11Y-01: the composer is fully operable from the keyboard
+ok 17 - A11Y-01: the composer is fully operable from the keyboard # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.045976
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violation in either composer state
+ok 18 - A11Y-03: axe-core finds no serious or critical violation in either composer state # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.037986
+  type: 'test'
+  ...
+# Subtest: a save in flight and an edit behind it are both flushed before the summary is fetched
+ok 19 - a save in flight and an edit behind it are both flushed before the summary is fetched
+  ---
+  duration_ms: 1808.929766
+  type: 'test'
+  ...
+# Subtest: a definitive 4xx save rejection produces no download and an accurate message
+ok 20 - a definitive 4xx save rejection produces no download and an accurate message
+  ---
+  duration_ms: 3593.530714
+  type: 'test'
+  ...
+# Subtest: a conflict produces no download and leaves the conflict workflow open
+ok 21 - a conflict produces no download and leaves the conflict workflow open
+  ---
+  duration_ms: 3713.368138
+  type: 'test'
+  ...
+# Subtest: an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+ok 22 - an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  ---
+  duration_ms: 3565.086211
+  type: 'test'
+  ...
+# Subtest: a genuine transport failure produces a browser-generated file from the screen state
+ok 23 - a genuine transport failure produces a browser-generated file from the screen state
+  ---
+  duration_ms: 675.606973
+  type: 'test'
+  ...
+# Subtest: a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+ok 24 - a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+  ---
+  duration_ms: 3555.452923
+  type: 'test'
+  ...
+# Subtest: an unresolved save stays retryable under its own mutation id and frozen request
+ok 25 - an unresolved save stays retryable under its own mutation id and frozen request
+  ---
+  duration_ms: 3607.397021
+  type: 'test'
+  ...
+# Subtest: an unexpected failure while reading the save response blocks the export
+ok 26 - an unexpected failure while reading the save response blocks the export
+  ---
+  duration_ms: 3542.940141
+  type: 'test'
+  ...
+# Subtest: a response that breaks after its headers blocks the export rather than falling back
+ok 27 - a response that breaks after its headers blocks the export rather than falling back
+  ---
+  duration_ms: 3534.574379
+  type: 'test'
+  ...
+# Subtest: a clean export with nothing unsent uses the authenticated summary GET
+ok 28 - a clean export with nothing unsent uses the authenticated summary GET
+  ---
+  duration_ms: 417.157733
+  type: 'test'
+  ...
+# Subtest: a read-only viewer exports straight from the server route
+ok 29 - a read-only viewer exports straight from the server route
+  ---
+  duration_ms: 499.969821
+  type: 'test'
+  ...
+# Subtest: SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+ok 30 - SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 4.40407
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+ok 31 - WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.158301
+  type: 'test'
+  ...
+# Subtest: SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+ok 32 - SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.150686
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+ok 33 - SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.077284
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+ok 34 - WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.085169
+  type: 'test'
+  ...
+# Subtest: WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+ok 35 - WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.106387
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+ok 36 - A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.073199
+  type: 'test'
+  ...
+# Subtest: CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+ok 37 - CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.209458
+  type: 'test'
+  ...
+# Subtest: CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+ok 38 - CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.249875
+  type: 'test'
+  ...
+# Subtest: CORR: beforeunload protects in-flight and queued saves, not only dirty state
+ok 39 - CORR: beforeunload protects in-flight and queued saves, not only dirty state # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.144664
+  type: 'test'
+  ...
+# Subtest: CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+ok 40 - CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.047489
+  type: 'test'
+  ...
+# Subtest: CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+ok 41 - CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.039677
+  type: 'test'
+  ...
+# Subtest: CORR2: a VOID committed but lost is retried from its record, not from the edited input
+ok 42 - CORR2: a VOID committed but lost is retried from its record, not from the edited input # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.035096
+  type: 'test'
+  ...
+# Subtest: CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+ok 43 - CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.034086
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+ok 44 - CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.033124
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+ok 45 - CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.0413
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+ok 46 - CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.03289
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+ok 47 - CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.033556
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+ok 48 - CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.072743
+  type: 'test'
+  ...
+# Subtest: CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+ok 49 - CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.040748
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+ok 50 - CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.03611
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+ok 51 - CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.036494
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+ok 52 - CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.0328
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+ok 53 - CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.032988
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+ok 54 - CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.036573
+  type: 'test'
+  ...
+# Subtest: CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+ok 55 - CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.033547
+  type: 'test'
+  ...
+# Subtest: CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+ok 56 - CORR4: a resolved VOID never leaves a dirty editor without an explicit decision # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.033131
+  type: 'test'
+  ...
+# Subtest: WALK-01 empty My Walks state with the prototype wording and a New walk action
+ok 57 - WALK-01 empty My Walks state with the prototype wording and a New walk action # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.959933
+  type: 'test'
+  ...
+# Subtest: editor renders every section, item, and option from the served instrument model
+ok 58 - editor renders every section, item, and option from the served instrument model # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.14948
+  type: 'test'
+  ...
+# Subtest: COND-01..05 grade choices follow the school of the walk's org unit
+ok 59 - COND-01..05 grade choices follow the school of the walk's org unit # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.262794
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+ok 60 - COND-06 Period shows for grades 6-12 only and its value is retained while hidden # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 4.02134
+  type: 'test'
+  ...
+# Subtest: COND-07..10 conditional classroom sections and retained hidden answers
+ok 61 - COND-07..10 conditional classroom sections and retained hidden answers # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.177377
+  type: 'test'
+  ...
+# Subtest: COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+ok 62 - COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.18179
+  type: 'test'
+  ...
+# Subtest: COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+ok 63 - COND-14 definition toggles show labels 1-5 and the exact per-question definitions # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.172105
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+ok 64 - A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.212473
+  type: 'test'
+  ...
+# Subtest: A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+ok 65 - A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.276291
+  type: 'test'
+  ...
+# Subtest: My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+ok 66 - My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.152933
+  type: 'test'
+  ...
+# Subtest: A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ok 67 - A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.110639
+  type: 'test'
+  ...
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 68 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.692593
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 69 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.305323
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 70 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.21489
+  type: 'test'
+  ...
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 71 - health endpoint reports database and schema state with a correlation id # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.669057
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 72 - only index.cfm is served; other templates and unknown routes are JSON 404s # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.135847
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 73 - maintenance endpoints are hidden without a valid token # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.175489
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 74 - CFML test suite passes (unit specs and DB-04..09 integration specs) # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.130483
+  type: 'test'
+  ...
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 75 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint # SKIP application not reachable at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.09593
+  type: 'test'
+  ...
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 76 - DB-01..03 supplied scripts against an empty SQL Server database # SKIP ICFWALK_DB_* not configured
+  ---
+  duration_ms: 0.646416
+  type: 'test'
+  ...
+# Subtest: no mail-delivery construct exists anywhere in the shipped source
+ok 77 - no mail-delivery construct exists anywhere in the shipped source
+  ---
+  duration_ms: 16.195591
+  type: 'test'
+  ...
+# Subtest: the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+ok 78 - the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+  ---
+  duration_ms: 0.481093
+  type: 'test'
+  ...
+# Subtest: mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+ok 79 - mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+  ---
+  duration_ms: 18.090116
+  type: 'test'
+  ...
+# Subtest: no route, controller action, or configuration key accepts a recipient
+ok 80 - no route, controller action, or configuration key accepts a recipient
+  ---
+  duration_ms: 0.781111
+  type: 'test'
+  ...
+# Subtest: the summary export is the only new endpoint and it is read-only
+not ok 81 - the summary export is the only new endpoint and it is read-only
+  ---
+  duration_ms: 0.798193
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/no-mail.test.mjs:176:1'
+  failureType: 'testCodeFailure'
+  error: 'ICFWALK_REQUIRE_APP is set, so the live no-mail route probe must run, but the application is not reachable at http://127.0.0.1:8888. Start it (tools/runtime/lucee-up.sh) or clear ICFWALK_REQUIRE_APP for an optional local run.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/no-mail.test.mjs:180:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 82 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 171.462035
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 83 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.210272
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 84 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.462401
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 85 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.782944
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 86 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 8.327685
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 87 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.541305
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 88 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.200065
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 89 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.120472
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 90 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.25806
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 91 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.622658
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 92 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 2.130076
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 93 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.22234
+  type: 'test'
+  ...
+# Subtest: fixtures
+ok 94 - fixtures # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.601175
+  type: 'test'
+  ...
+# Subtest: AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+ok 95 - AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs) # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.096545
+  type: 'test'
+  ...
+# Subtest: users without any capability are forbidden; walk, report, and admin roles may load the instrument
+ok 96 - users without any capability are forbidden; walk, report, and admin roles may load the instrument # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.10735
+  type: 'test'
+  ...
+# Subtest: shell page is served to signed-in users with a strict CSP and no embedded content
+ok 97 - shell page is served to signed-in users with a strict CSP and no embedded content # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.063675
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 98 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 21.045588
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 99 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 17.852022
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 100 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 11.477181
+  type: 'test'
+  ...
+# Subtest: JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+ok 101 - JS formatter reproduces every shared vector (parity contract with the CFML formatter) # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.695132
+  type: 'test'
+  ...
+# Subtest: the stored states are already normalized, so a vector describes a real persisted walk
+ok 102 - the stored states are already normalized, so a vector describes a real persisted walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.119506
+  type: 'test'
+  ...
+# Subtest: averageText matches JavaScript toFixed(1) on every shared rounding vector
+ok 103 - averageText matches JavaScript toFixed(1) on every shared rounding vector # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.087352
+  type: 'test'
+  ...
+# Subtest: SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+ok 104 - SUM-02/COND-15 component averages use answered scores only; a blank is never a zero # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.086819
+  type: 'test'
+  ...
+# Subtest: SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+ok 105 - SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.097421
+  type: 'test'
+  ...
+# Subtest: SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+ok 106 - SUM-04 hidden sections and a hidden Period are excluded but not destroyed # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.152256
+  type: 'test'
+  ...
+# Subtest: SUM-05 file names carry only safe characters and no path can be steered through them
+ok 107 - SUM-05 file names carry only safe characters and no path can be steered through them # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.081998
+  type: 'test'
+  ...
+# Subtest: the file name is driven by behavior.export.fileNamePattern, not by a restated list
+ok 108 - the file name is driven by behavior.export.fileNamePattern, not by a restated list # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.184328
+  type: 'test'
+  ...
+# Subtest: SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+ok 109 - SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.262589
+  type: 'test'
+  ...
+# Subtest: every selectable part the instrument offers resolves to a section, and a bad one throws
+ok 110 - every selectable part the instrument offers resolves to a section, and a bad one throws # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.15249
+  type: 'test'
+  ...
+# Subtest: brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+ok 111 - brief 14.1 conditional cards print in prototype order: the content card before the class-type card # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.054526
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+ok 112 - SEC-02 stored markup is exported verbatim as text, never escaped and never dropped # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.115295
+  type: 'test'
+  ...
+# Subtest: the text shape is stable: LF only, no trailing newline, no BOM
+ok 113 - the text shape is stable: LF only, no trailing newline, no BOM # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.078164
+  type: 'test'
+  ...
+# Subtest: the composer's document serializes to the server's canonical form and survives a round trip
+ok 114 - the composer's document serializes to the server's canonical form and survives a round trip # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.046923
+  type: 'test'
+  ...
+# Subtest: the formatter is pure: it never mutates the state or the model it is given
+ok 115 - the formatter is pure: it never mutates the state or the model it is given # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.045929
+  type: 'test'
+  ...
+# Subtest: JS engine reproduces every shared vector (parity contract with the CFML engine)
+ok 116 - JS engine reproduces every shared vector (parity contract with the CFML engine) # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.726565
+  type: 'test'
+  ...
+# Subtest: COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+ok 117 - COND-01..04 grade choices follow the selected school's group; Other shows PreK-12 # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.109012
+  type: 'test'
+  ...
+# Subtest: COND-05 an invalid grade is cleared and dependent visibility recalculates
+ok 118 - COND-05 an invalid grade is cleared and dependent visibility recalculates # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.082982
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+ok 119 - COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.08371
+  type: 'test'
+  ...
+# Subtest: COND-07..09 conditional classroom sections
+ok 120 - COND-07..09 conditional classroom sections # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.143617
+  type: 'test'
+  ...
+# Subtest: COND-10 hidden conditional answers are retained and reappear
+ok 121 - COND-10 hidden conditional answers are retained and reappear # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.16078
+  type: 'test'
+  ...
+# Subtest: COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+ok 122 - COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.080875
+  type: 'test'
+  ...
+# Subtest: COND-15 answered requires a valid option; unanswered never becomes zero
+ok 123 - COND-15 answered requires a valid option; unanswered never becomes zero # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.180665
+  type: 'test'
+  ...
+# Subtest: engine rejects unsupported operators instead of guessing
+ok 124 - engine rejects unsupported operators instead of guessing # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.318848
+  type: 'test'
+  ...
+# Subtest: walk-state helpers: a blank state presets no School value; display text; rating summary
+ok 125 - walk-state helpers: a blank state presets no School value; display text; rating summary # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.165167
+  type: 'test'
+  ...
+# Subtest: AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+ok 126 - AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 1.031855
+  type: 'test'
+  ...
+# Subtest: AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+ok 127 - AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.116147
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+ok 128 - WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.206216
+  type: 'test'
+  ...
+# Subtest: WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+ok 129 - WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.104982
+  type: 'test'
+  ...
+# Subtest: AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+ok 130 - AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.113017
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+ok 131 - SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.119565
+  type: 'test'
+  ...
+# Subtest: COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+ok 132 - COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.077086
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+ok 133 - WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.327345
+  type: 'test'
+  ...
+# Subtest: WALK-11: the walk instrument route serves the walk's pinned version render model
+ok 134 - WALK-11: the walk instrument route serves the walk's pinned version render model # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.262073
+  type: 'test'
+  ...
+# Subtest: CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+ok 135 - CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.163404
+  type: 'test'
+  ...
+# Subtest: CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+ok 136 - CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.104589
+  type: 'test'
+  ...
+# Subtest: CORR: a create mutation id from a school the caller lost never discloses that walk
+ok 137 - CORR: a create mutation id from a school the caller lost never discloses that walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.050918
+  type: 'test'
+  ...
+# Subtest: CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+ok 138 - CORR2: an idempotent SAVE replay never hands stale session state a newer row version # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.116674
+  type: 'test'
+  ...
+# Subtest: CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+ok 139 - CORR2: CREATE and COMPLETE replays are refused once the walk has moved on # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.051016
+  type: 'test'
+  ...
+# Subtest: CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+ok 140 - CORR2: a legacy mutation row with no request fingerprint is never replayed as a success # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.040517
+  type: 'test'
+  ...
+# Subtest: CORR2: the School dimension follows an explicit mapping and fails closed without one
+ok 141 - CORR2: the School dimension follows an explicit mapping and fails closed without one # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.07411
+  type: 'test'
+  ...
+# Subtest: CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+ok 142 - CORR2: the alignment endpoint considers exact code matches only, and only as candidates # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.041665
+  type: 'test'
+  ...
+# Subtest: CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+ok 143 - CORR2: an ambiguous outcome retries the exact same mutation id and body on every route # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.03887
+  type: 'test'
+  ...
+# Subtest: CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+ok 144 - CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.03878
+  type: 'test'
+  ...
+# Subtest: CORR3: the School dimension's free-text value is never stored as a school's identity
+ok 145 - CORR3: the School dimension's free-text value is never stored as a school's identity # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.037506
+  type: 'test'
+  ...
+# Subtest: SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+ok 146 - SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.074579
+  type: 'test'
+  ...
+# Subtest: SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+ok 147 - SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.0421
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+ok 148 - SEC-02 stored markup reaches the export as inert text, never escaped and never executed # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.037326
+  type: 'test'
+  ...
+# Subtest: SUM-05 a punctuated label cannot steer the Content-Disposition file name
+ok 149 - SUM-05 a punctuated label cannot steer the Content-Disposition file name # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.069981
+  type: 'test'
+  ...
+# Subtest: AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+ok 150 - AUTH-04/05 the summary route authorizes every request exactly as opening the walk does # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.036893
+  type: 'test'
+  ...
+# Subtest: a voided walk still exports for a reader, and the export never mutates the walk
+ok 151 - a voided walk still exports for a reader, and the export never mutates the walk # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.036873
+  type: 'test'
+  ...
+# Subtest: SEC-05 the export audit event carries identifiers and counts only, never narrative text
+ok 152 - SEC-05 the export audit event carries identifiers and counts only, never narrative text # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.038925
+  type: 'test'
+  ...
+# Subtest: SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+ok 153 - SUM-07/09 the email draft round-trips through the ordinary save path in canonical form # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.067483
+  type: 'test'
+  ...
+# Subtest: SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+ok 154 - SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.113323
+  type: 'test'
+  ...
+# Subtest: SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+ok 155 - SAVE-07 the email draft schema is enforced on the server, whatever the browser sends # SKIP application not reachable in development mode at http://127.0.0.1:8888
+  ---
+  duration_ms: 0.06896
+  type: 'test'
+  ...
+1..155
+# tests 155
+# suites 0
+# pass 33
+# fail 1
+# cancelled 0
+# skipped 121
+# todo 0
+# duration_ms 31933.453896

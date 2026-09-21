@@ -40,9 +40,29 @@ component output="false" {
 
 	// ---- hooked seams --------------------------------------------------------------------------
 
+	/**
+	 * Fires before the dimension half of the aggregate is read. Used by WalkReplayCoherenceTest both
+	 * to start a writer as a replay begins loading the aggregate and to prove a refused replay never
+	 * loads it at all; its semantics are unchanged and must stay that way.
+	 */
 	public struct function loadDimensionValues(required string walkId) {
 		trigger("loadDimensionValues");
 		return variables.inner.loadDimensionValues(arguments.walkId);
+	}
+
+	/**
+	 * Fires before the response half of the aggregate is read, which is the seam *between* the two
+	 * child reads: by the time this runs the dimensions are already in hand and the responses are
+	 * not. A writer started here is the mixed-read interleaving itself -- if it can commit, the
+	 * aggregate that comes back pairs one committed state's dimensions with another's responses.
+	 *
+	 * Arming loadDimensionValues instead puts the writer *before* both reads, where committing
+	 * merely yields the newer state coherently. That is a weaker scenario, and it is why this seam
+	 * exists (WalkSummaryCoherenceTest).
+	 */
+	public struct function loadResponses(required string walkId) {
+		trigger("loadResponses");
+		return variables.inner.loadResponses(arguments.walkId);
 	}
 
 	public struct function findWalk(required string walkId, boolean lock = false) {
@@ -73,7 +93,6 @@ component output="false" {
 	public array function listWalks(required string userId, required array readUnitIds, required array editUnitIds, string scope = "mine") { return variables.inner.listWalks(argumentCollection = arguments); }
 	public void function upsertDimensionValue(required string walkId, required string versionId, required string dimensionId, required struct value, required boolean exists) { variables.inner.upsertDimensionValue(argumentCollection = arguments); }
 	public void function deleteDimensionValue(required string walkId, required string dimensionId) { variables.inner.deleteDimensionValue(argumentCollection = arguments); }
-	public struct function loadResponses(required string walkId) { return variables.inner.loadResponses(argumentCollection = arguments); }
 	public void function upsertResponse(required string walkId, required string versionId, required string itemId, required string state, string optionId = "", any textValue, required boolean exists) { variables.inner.upsertResponse(argumentCollection = arguments); }
 	public struct function responseCounts(required string walkId) { return variables.inner.responseCounts(argumentCollection = arguments); }
 	public numeric function insertRevision(required string walkId, required string actorUserId, required string reason, required string priorSnapshotJson) { return variables.inner.insertRevision(argumentCollection = arguments); }

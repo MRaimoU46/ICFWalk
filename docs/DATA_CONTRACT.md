@@ -230,10 +230,20 @@ wire, because only the first is the browser's alone to replace:
 | --- | --- | --- |
 | `UNSENT` | minted; no request carrying this id has left the browser | Yes -- nothing on the server can correspond to it |
 | `IN_FLIGHT` | its request was sent and no answer has come back | No |
-| `AMBIGUOUS` | its answer was lost, or was an HTTP 5xx | No |
+| `AMBIGUOUS` | its answer was lost, was an HTTP 5xx, or could not be used | No |
 
-- A retry after a transport failure or an HTTP 5xx reuses the record: the same id, the same row
-  version, and the same body, so the server either replays what it committed or commits it now.
+- A retry after a transport failure, an HTTP 5xx, or an unusable answer reuses the record: the same
+  id, the same row version, and the same body, so the server either replays what it committed or
+  commits it now.
+- **What counts as a transport failure is a type, not a default.** `app/assets/js/api.js` raises
+  `NetworkError` only where `fetch()` itself rejects -- no response, no status line, no headers --
+  and `ResponseError` when a response arrived and could not be read or parsed. Anything else the
+  save path can throw (a walk document that is not a walk, a bug in the response handling) is
+  neither. The browser classifies by type and treats every unrecognised failure as unresolved:
+  ambiguous, so the record is kept and the retry is offered, but never reported to the person as an
+  unreachable server and never allowed to stand in for one. A response-shaped failure means the
+  request was delivered, so the mutation behind it is exactly as likely to be committed as one whose
+  answer was a 500.
 - **An editor change never deletes a record whose request has been sent.** An edit made while a save
   is in flight replaces nothing: the in-flight record keeps its id and its frozen body, the newer
   state is queued, and if that save's answer is lost the browser retries the *original* request

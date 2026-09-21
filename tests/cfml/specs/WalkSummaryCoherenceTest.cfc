@@ -28,12 +28,21 @@
  * is proved for the others by the lock they share rather than by assertion about SAVE alone.
  *
  * HOW THE INTERLEAVING IS FORCED. Deterministically, never by sleeping or racing.
- * support/InterceptingWalkRepository fires at loadDimensionValues, the exact boundary between the
- * export's dimension read and its response read, and starts a real second session running a real
- * SAVE through the real service against the real database. Under the correction that writer is
- * still blocked on the walk mutation lock when the bounded join expires. Against the uncorrected
- * code it was never blocked at all: it committed there, and the export went on to read its
- * responses.
+ * support/InterceptingWalkRepository fires at loadResponses, and it fires before delegating, so the
+ * callback runs at the seam *between* the export's two child reads: the dimensions are already in
+ * hand and the responses have not been read yet. A real second session, running a real SAVE through
+ * the real service against the real database, is started exactly there. If it can commit, the
+ * aggregate the export goes on to assemble is state A's dimensions beside state B's responses --
+ * the mixed state itself, not merely a newer one.
+ *
+ * The seam matters, and an earlier version of this spec had it wrong: it armed loadDimensionValues,
+ * which also fires before delegating and therefore put the writer *ahead of both* child reads.
+ * Against the unlocked implementation a writer there can commit before either read, and the export
+ * then sees state B coherently. That still detects the missing lock, but it does not reproduce the
+ * mixed read the defect is about. loadResponses is the boundary the comments always described.
+ *
+ * Under the correction the writer is still blocked on the walk mutation lock when the bounded join
+ * expires, whichever seam it is started from.
  *
  * Fixtures are synthetic and removed in afterAll.
  */
@@ -187,9 +196,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var b = stateB();
 		var observed = { "duringExport": "", "rowVersionDuringExport": "" };
 
-		// The boundary: the export has taken the walk lock and read its dimensions, and is about to
-		// read its responses. This is the precise window the defect lived in.
-		interceptor.arm("loadDimensionValues", function() {
+		// The boundary, exactly: the export has taken the walk lock, has read state A's dimensions,
+		// and has not yet read its responses. A commit landing here is the mixed read itself.
+		interceptor.arm("loadResponses", function() {
 			observed.rowVersionDuringExport = storedRowVersion(walkId);
 			thread name="summaryCoherenceWriter" svc=realSvc who=writer wid=walkId rv=writerRowVersion mid=writerMutationId payload=b {
 				try {
@@ -212,7 +221,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		try {
 			exportA = exportSvc.summary(writer, walkId);
 
-			assertTrue(interceptor.fired("loadDimensionValues"), "the concurrent save really was started inside the export");
+			assertTrue(interceptor.fired("loadResponses"), "the concurrent save was started between the dimension read and the response read");
 			// 4. It could not commit there.
 			assertNotEquals("COMPLETED", observed.duringExport, "the concurrent SAVE was blocked while the summary held the walk mutation lock");
 			assertEquals(w.rowVersion, observed.rowVersionDuringExport, "and the walk had not moved while the export was materializing");
@@ -253,6 +262,68 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// 9. Stated once over both files: no export produced the mixed state.
 		for (var e in [exportA, exportB]) assertFalse(isMixed(e), "no export contains the state A / state B combination");
+	}
+
+	// ---- the seam itself ------------------------------------------------------------------------
+
+	/**
+	 * Where the concurrent writer starts is the whole scenario, so the seam is asserted rather than
+	 * assumed.
+	 *
+	 * The decorator is exercised against a recording delegate -- this spec itself, which implements
+	 * the two aggregate reads below and logs the order they happen in -- so the check needs no
+	 * database, no service and no instrument. It is about the interceptor's wiring and nothing else.
+	 *
+	 * The fact under test: a callback armed on loadResponses runs after the dimension read has
+	 * returned and before the response read is delegated. That is the only point at which a commit
+	 * produces a mixed aggregate. A callback armed on loadDimensionValues -- which is what this spec
+	 * used to arm -- runs ahead of both reads, where a commit yields the newer state coherently
+	 * instead of a mixture. This case fails against an interceptor that has no loadResponses seam,
+	 * because nothing fires at all.
+	 */
+	public void function testTheConcurrencySeamFiresBetweenTheTwoAggregateReads() {
+		variables.calls = [];
+		var interceptor = createObject("component", "icfwalktests.support.InterceptingWalkRepository").init(this);
+		interceptor.arm("loadResponses", function() { arrayAppend(variables.calls, "writer-starts"); });
+
+		// Exactly the order WalkService.summary() performs them in, inside its locked transaction.
+		interceptor.loadDimensionValues("11111111-1111-4111-8111-111111111111");
+		interceptor.loadResponses("11111111-1111-4111-8111-111111111111");
+
+		assertTrue(interceptor.fired("loadResponses"), "the loadResponses seam exists and fired");
+		assertEquals(
+			["read-dimensions", "writer-starts", "read-responses"],
+			variables.calls,
+			"the writer starts between the two aggregate reads, not before them"
+		);
+
+		// And the seam the replay specs depend on is still the earlier one, unchanged.
+		variables.calls = [];
+		var earlier = createObject("component", "icfwalktests.support.InterceptingWalkRepository").init(this);
+		earlier.arm("loadDimensionValues", function() { arrayAppend(variables.calls, "writer-starts"); });
+		earlier.loadDimensionValues("11111111-1111-4111-8111-111111111111");
+		earlier.loadResponses("11111111-1111-4111-8111-111111111111");
+		assertEquals(
+			["writer-starts", "read-dimensions", "read-responses"],
+			variables.calls,
+			"loadDimensionValues still fires ahead of both reads, which is what WalkReplayCoherenceTest arms"
+		);
+	}
+
+	// ---- recording delegate for the seam case ----------------------------------------------------
+	//
+	// The spec stands in for WalkRepository in that one case. These are not test methods (the runner
+	// collects only names beginning with "test") and nothing else in this spec calls them: the
+	// scenarios above decorate the real repository.
+
+	public struct function loadDimensionValues(required string walkId) {
+		arrayAppend(variables.calls, "read-dimensions");
+		return {};
+	}
+
+	public struct function loadResponses(required string walkId) {
+		arrayAppend(variables.calls, "read-responses");
+		return {};
 	}
 
 	/**

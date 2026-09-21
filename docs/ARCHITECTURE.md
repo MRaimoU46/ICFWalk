@@ -317,6 +317,14 @@ expectations that both suites compare byte for byte (`compare()` in CFML, never 
 formats a summary: the browser's fallback export, the email draft, and the server's download all
 come from these two files.
 
+The browser's fallback is narrow on purpose. `#export-btn` flushes the editor state to the server
+and downloads `GET /api/walks/{id}/summary`; it uses the browser formatter **only** when that flush
+failed with an actual `NetworkError` -- the one failure that means no response was produced and the
+server was not reached. A 4xx, a 5xx, a conflict, and any answer the browser could not use all block
+the export instead, because in every one of them the request reached the server and a
+browser-generated file could describe a state the server already holds (`docs/DATA_CONTRACT.md`,
+"Pending mutation operations in the browser").
+
 The vectors are not self-certifying. `scripts/generate-summary-vectors.mjs` produces them from the
 **served** render model with the JavaScript formatter, and `scripts/prototype-summary-oracle.mjs`
 then replays every vector through `source/current-prototype.html` itself and classifies each

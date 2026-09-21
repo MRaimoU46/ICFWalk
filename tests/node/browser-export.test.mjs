@@ -311,6 +311,133 @@ test("a genuine transport failure produces a browser-generated file from the scr
   assert.deepEqual(pageErrors, []);
 });
 
+// ---- the server answered, but not with something the browser could use --------------------------
+
+/**
+ * The classification these three cases exist for.
+ *
+ * `api.js` raises exactly two kinds of its own: `ApiError` when the server answered with a status
+ * the call could not use, and `NetworkError` when `fetch()` itself rejected and no response was
+ * produced at all. Everything else that can go wrong after `fetch()` resolves is neither: the body
+ * arrives and is not JSON, or is JSON that is not a walk, or the connection breaks after the
+ * headers. In every one of those the request reached the server, the server answered 200, and the
+ * mutation may well be committed.
+ *
+ * Classifying "not an ApiError" as a transport failure therefore hands the person a
+ * browser-generated file of a state the server may already hold, under a message saying the server
+ * could not be reached. These cases pin the opposite: only a real `NetworkError` is a transport
+ * failure, and an unusable answer blocks the export as an unresolved save while leaving the Phase 4
+ * recovery record exactly as it was.
+ */
+
+test("a 200 whose body is not JSON blocks the export and never claims the server was unreachable", { skip }, async () => {
+  await openEditor();
+  stub.planSave({ raw: "<html>proxy ate the response</html>", sticky: true });
+
+  await type("an edit whose answer comes back unusable");
+  await page.click("#save-btn");
+  await page.waitForFunction(() => !document.getElementById("save-retry").hidden, null, { timeout: 20000 });
+
+  await exportExpectingNothing();
+
+  const shown = await message();
+  assert.match(shown, /last save did not finish/i, shown);
+  assert.doesNotMatch(shown, /could not be reached/i, "the server answered 200: this is not a network failure");
+  assert.doesNotMatch(await status(), /could not reach the server/i, "and the save status does not say so either");
+  assert.equal(stub.indicesOf("GET", SUMMARY_ROUTE).length, 0, "the authoritative summary is not fetched for an unresolved state");
+  assert.deepEqual(pageErrors, []);
+});
+
+test("an unresolved save stays retryable under its own mutation id and frozen request", { skip }, async () => {
+  await openEditor();
+  // Every answer is unusable while the export decision is being made, so the state really is
+  // unresolved rather than merely slow.
+  stub.planSave({ raw: "not json at all", sticky: true });
+
+  await type("an edit whose first answer was unusable");
+  await page.click("#save-btn");
+  await page.waitForFunction(() => !document.getElementById("save-retry").hidden, null, { timeout: 20000 });
+  await exportExpectingNothing();
+
+  // The recovery control is the one Phase 4 offers for an ambiguous outcome, and it is still there.
+  assert.equal(await page.isHidden("#save-retry"), false, "the safe retry is still offered");
+
+  // The server starts answering properly again, so the retry is a real retry with a real outcome.
+  stub.clearPlan();
+  await page.click("#save-retry");
+  await waitStatus(STATUS_SAVED);
+
+  // Every attempt, from the first through the one that finally committed, carried the same mutation
+  // id, the same row version and the same frozen body. That is what lets the server replay rather
+  // than duplicate, and it is the Phase 4 guarantee an unresolved outcome must not spend.
+  const saves = stub.saves();
+  assert.ok(saves.length >= 2, `expected the original and at least one retry, got ${saves.length}`);
+  const first = saves[0];
+  for (const [i, sent] of saves.entries()) {
+    assert.equal(sent.clientMutationId, first.clientMutationId, `attempt ${i} reuses the original mutation id`);
+    assert.equal(sent.rowVersion, first.rowVersion, `attempt ${i} is issued against the original row version`);
+    assert.deepEqual(sent.responses, first.responses, `attempt ${i} carries the frozen request body`);
+    assert.deepEqual(sent.dimensions, first.dimensions, `attempt ${i} carries the frozen dimensions`);
+  }
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * A well-formed 200 that is not a walk response. `api.js` is satisfied -- status ok, body parsed --
+ * and the failure happens afterwards, in `ApiWalkStore.save()` reading a walk out of it. The
+ * exception is a plain `TypeError`: neither `ApiError` nor `NetworkError`, thrown in the
+ * response-processing path rather than the transport.
+ */
+test("an unexpected failure while reading the save response blocks the export", { skip }, async () => {
+  await openEditor();
+  stub.planSave({ body: { notAWalkResponse: true }, sticky: true });
+
+  await type("an edit whose answer has no walk in it");
+  await page.click("#save-btn");
+  await page.waitForFunction(() => !document.getElementById("save-retry").hidden, null, { timeout: 20000 });
+
+  await exportExpectingNothing();
+
+  const shown = await message();
+  assert.match(shown, /last save did not finish/i, shown);
+  assert.doesNotMatch(shown, /could not be reached/i, "an exception in the browser is not a transport failure");
+  assert.equal(stub.indicesOf("GET", SUMMARY_ROUTE).length, 0);
+  assert.equal(await page.isHidden("#save-retry"), false, "and the ambiguous save is still offered for retry");
+  assert.deepEqual(pageErrors, []);
+});
+
+/**
+ * The response body fails after the headers have arrived. The harness answers 200 declaring gzip
+ * with bytes that are not gzip, so the browser accepts the response and then fails to decode it:
+ * `fetch()` resolves, `response.text()` rejects. Deterministic -- it turns on malformed content,
+ * not on when a socket closes.
+ *
+ * This is the case the audit named as producing the same misclassification by a different route.
+ * `fetch()` resolved, so no `NetworkError` was ever constructed, yet the failure reached `app.js`
+ * as a bare exception and was read as an unreachable server. It is now a `ResponseError`.
+ *
+ * Destroying the socket mid-body is deliberately not used here: Chromium fails the whole request
+ * and `fetch()` itself rejects, so no response reaches the page and `NetworkError` is the correct
+ * classification for it.
+ */
+test("a response that breaks after its headers blocks the export rather than falling back", { skip }, async () => {
+  await openEditor();
+  stub.planSave({ bodyFails: true, sticky: true });
+
+  await type("an edit whose answer could not be read");
+  await page.click("#save-btn");
+  await page.waitForFunction(() => !document.getElementById("save-retry").hidden, null, { timeout: 20000 });
+
+  await exportExpectingNothing();
+
+  const shown = await message();
+  assert.match(shown, /last save did not finish/i, shown);
+  assert.doesNotMatch(shown, /could not be reached/i, "the headers arrived, so the server was reached");
+  assert.equal(stub.indicesOf("GET", SUMMARY_ROUTE).length, 0);
+  assert.equal(await page.isHidden("#save-retry"), false);
+  assert.deepEqual(pageErrors, []);
+});
+
 // ---- the ordinary paths still work ------------------------------------------------------------------
 
 test("a clean export with nothing unsent uses the authenticated summary GET", { skip }, async () => {

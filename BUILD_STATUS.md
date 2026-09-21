@@ -1849,6 +1849,165 @@ correction. No temporary mutation remains in the tree.
 5. **Phase 5 is not declared ready to freeze here.** This session reports a correction candidate and
    its evidence; whether the candidate is sound is for a fresh independent audit to determine.
 
+## Phase 5 final correction pass (NetworkError-only fallback, concurrency seam)
+
+Scope: the one MEDIUM and one LOW defect the second independent audit left open, and nothing else.
+That audit confirmed the HIGH summary-coherence correction, the no-mail test gating and the
+corrected Phase 5 totals, and none of them is touched here. No redesign, no change to the summary
+text or file-name contract, no schema change, no migration, no mail. Phase 6 was not started.
+
+`d8f3736` (frozen Phase 0-4 baseline) and `2522e79` (Phase 5) are both in this branch's ancestry;
+`30f46be` (the first correction pass) is the parent of this work.
+
+### Only a genuine NetworkError may permit the browser fallback (CORR-P5B-01, MEDIUM)
+
+`api.js` defines `ApiError` and `NetworkError`; `app.js` imported only `ApiError` and classified by
+elimination -- anything that was not an `ApiError` became a transport failure, and a transport
+failure is the one outcome that permits a browser-generated summary.
+
+Two real paths reach that branch without ever producing a `NetworkError`:
+
+1. **An HTTP 200 whose body is not JSON.** `api.js` swallowed the parse failure and returned `null`;
+   `ApiWalkStore.save()` then read a walk out of `null` and threw a plain `TypeError`.
+2. **An HTTP 200 whose body fails after the headers arrived.** `await response.text()` rejected, and
+   that rejection was outside the `try` that builds `NetworkError`, so it escaped untyped.
+
+Both were classified as an unreachable server. In both the server was reached, answered 200, and may
+already have committed the mutation -- so the browser produced an unaudited local file of a state the
+server may hold, and told the person the server could not be reached. Two falsehoods in one action.
+
+**The correction.** `api.js` gains a third type, `ResponseError`, for an answer that arrived and
+could not be used: `unreadable-body` when `response.text()` rejects, `malformed-body` when an OK
+response's body is not JSON. A failing status still raises `ApiError` for its status even when its
+body is unparseable, so nothing about the 4xx and 5xx paths moves. `app.js` imports `NetworkError`
+and `ResponseError` and classifies once, by type, in `classifySaveFailure`:
+
+| Failure | Outcome | Ambiguous? | Export |
+| --- | --- | --- | --- |
+| `NetworkError` | `transport` | yes | **browser formatter** -- the only path that gets one |
+| `ApiError` >= 500 | `server` | yes | blocked, "the last save did not finish" |
+| `ApiError` 409 stale/superseded | `conflict` | no | blocked, conflict workflow untouched |
+| `ApiError`, anything else | `rejected` | no | blocked, "the server did not accept the latest changes" |
+| `ResponseError` | `unknown` | yes | blocked, "the last save did not finish" |
+| anything else at all | `unknown` | yes | blocked, "the last save did not finish" |
+
+The rule is default-deny by construction: `transport` requires an actual `NetworkError`, which
+`api.js` constructs in exactly one place -- the `catch` around `fetch()` itself -- so nothing new
+that the save path can throw becomes a transport outcome by accident. `isAmbiguousFailure` is now
+derived from the same classifier and its answers are unchanged for every input, so the Phase 4
+recovery lifecycle is byte-for-byte what it was: an `unknown` outcome keeps the operation record,
+its mutation id, its row version and its frozen body, stays `AMBIGUOUS`, and is offered for retry.
+A response-shaped failure means the request was delivered, so the mutation behind it is exactly as
+likely to be committed as one whose answer was a 500, and it is treated the same way.
+
+The same "not an `ApiError`, therefore unreachable" inference appeared in the user-facing text of
+the create, complete, void and pending-operation-retry paths. Those four messages now ask
+`isUnreachable(e)` instead. Only the sentence shown changes; no recovery gating moves. The two
+read-only load messages (`/api/walks`, `/api/me`) were left alone: they are outside this defect and
+carry no mutation.
+
+### The concurrency hook was not at the mixed-read boundary (CORR-P5B-02, LOW)
+
+`WalkSummaryCoherenceTest` said its concurrent writer started after the export read dimensions and
+before it read responses. It armed `loadDimensionValues`, and `InterceptingWalkRepository` fires
+before delegating -- so the writer actually started *ahead of both* child reads. Against the
+unlocked implementation a writer there can commit before either read, and the export then sees
+state B coherently. That still detects the missing lock; it does not reproduce the mixed read the
+comments describe.
+
+**The correction.** `InterceptingWalkRepository` gains a `loadResponses` seam, firing before it
+delegates, and the spec arms that instead. `loadDimensionValues` is untouched, because
+`WalkReplayCoherenceTest` arms it both to start a writer as a replay loads the aggregate and to
+prove a refused replay never loads it at all. At the new seam the dimensions are in hand and the
+responses are not, so a commit landing there produces state A's dimensions beside state B's
+responses -- the mixed aggregate itself. The spec's comments now describe the seam that executes.
+
+A fourth case, `testTheConcurrencySeamFiresBetweenTheTwoAggregateReads`, asserts the placement
+directly: it drives the decorator against a recording delegate and checks the callback runs after
+the dimension read returns and before the response read is delegated, and that the older seam still
+fires ahead of both. It needs no database, which is what makes the seam correction verifiable
+without SQL Server.
+
+### Files changed (Phase 5 final correction pass)
+
+| File | Change |
+| --- | --- |
+| `app/assets/js/api.js` | `ResponseError`; the body read and the JSON parse raise it instead of escaping untyped or being swallowed |
+| `app/assets/js/app.js` | imports `NetworkError`/`ResponseError`; `classifySaveFailure`, `AMBIGUOUS_KINDS`, `isUnreachable`; the save catch and four lifecycle messages read the classifier |
+| `tests/cfml/support/InterceptingWalkRepository.cfc` | new `loadResponses` seam; `loadDimensionValues` unchanged |
+| `tests/cfml/specs/WalkSummaryCoherenceTest.cfc` | armed on `loadResponses`; corrected comments; new seam case (3 -> 4 cases) |
+| `tests/node/browser-export.test.mjs` | 4 new cases (7 -> 11) |
+| `tests/node/export-harness.mjs` | request bodies logged; `raw` / `body` / `bodyFails` / `clearPlan` controls |
+| `docs/DATA_CONTRACT.md` | what counts as a transport failure is a type, not a default |
+| `docs/ENDPOINTS.md` | an unusable answer is ambiguous like a 5xx |
+| `docs/ARCHITECTURE.md` | the narrow fallback rule |
+| `docs/LOCAL_SETUP.md` | the export suite's new cases |
+| `manifest.json` | one refreshed entry, `docs/DATA_CONTRACT.md`, via `scripts/refresh-manifest.mjs` |
+| `BUILD_STATUS.md` | this section |
+| `docs/evidence/phase5-correction2-*.{txt,md}` | new: suite transcript, red-before-green, environment |
+
+No schema change, no migration, no new table or column; `database/` is untouched. No outbound-mail
+capability was added. No Phase 0-4 file was reopened and no Phase 6 work was started.
+
+### Tests and results (Phase 5 final correction pass)
+
+Environment: Node 22.22.2, Playwright 1.56.1 with the pre-installed Chromium, Lucee 6.2.8.20 on
+Jetty 9.4.58 for CFML compilation and the database-free CFML cases. **No SQL Server and no
+application runtime**; `docs/evidence/phase5-correction2-environment.md` records why and what it
+costs, item by item.
+
+| Command | Result |
+| --- | --- |
+| `node --test tests/node/browser-export.test.mjs` | **11/11 pass** |
+| `npm test` (optional profile, `docs/evidence/phase5-correction2-npm-test.txt`) | 155 cases, 33 pass, **0 fail**, 122 skipped |
+| `ICFWALK_REQUIRE_APP=1 npm test` (release-verification profile) | 155 cases, 33 pass, **1 fail**, 121 skipped |
+| `node --test tests/node/no-mail.test.mjs` | 5 cases, 4 pass, 1 explicit skip |
+| `ICFWALK_REQUIRE_APP=1 node --test tests/node/no-mail.test.mjs` | 5 cases, 4 pass, **1 fail** |
+| `npm run validate:handoff` | ok, 51 checks, 0 errors |
+| `npm run test:package` | 18/18 pass |
+| `npm run test:summary` | 20 cases, 4 pass, 16 skipped |
+| `npm run oracle:summary` | 10/10 vectors accounted for, 0 unexplained |
+| `node --check` on every `.js` and `.mjs` | 34 files, 0 failures |
+| CFML compilation, Lucee 6.2.8.20 | 67 components, 0 failures |
+| `WalkSummaryCoherenceTest`, database-free cases | 2 of 4 run, both pass |
+| CFML suite (all 170 cases) | **not run** -- needs SQL Server |
+| Migration apply/reapply on a clean database | **not run** -- needs SQL Server |
+
+The single failure under the required-application profile is the no-mail live route probe refusing
+to report a check it could not perform. That is the CORR-P5-03 gate behaving as designed, not a
+regression, and it is why this run is not a passing freeze gate.
+
+**Totals and where the increases come from.** Node/HTTP/Playwright: **155** declared, up from 151 --
+the four new export regressions (a 200 that is not JSON; the retryability of an unresolved save; a
+200 that is not a walk; a body that fails after its headers). CFML: **170** declared, up from 169 --
+the one new seam case. Counted from the spec sources by the rule `TestRunner` itself uses. No case
+was removed, weakened, or turned into a skip.
+
+**Red-before-green** (`docs/evidence/phase5-correction2-red-before-fix.txt`). Each regression was
+written and run before the production change. The four new export cases failed against `app.js` and
+`api.js` as committed at `30f46be`, every one of them by producing a browser-generated Blob under a
+false "server could not be reached", and all eleven pass against the correction. The new seam case
+failed against `InterceptingWalkRepository.cfc` as committed at `30f46be` with "the loadResponses
+seam exists and fired", and passes against the correction. No temporary mutation remains in the tree.
+
+### Unresolved and not verified (Phase 5 final correction pass)
+
+1. **`testASummaryExportCannotStraddleAConcurrentSave` still has not been executed** -- and it is
+   the case the Defect 2 seam correction exists to serve. It needs SQL Server's UPDLOCK/ROWLOCK
+   semantics. The seam's *placement* is now proved by a case that does run; the interleaving it
+   forces is not, and the corrected regression has not been demonstrated to fail against the
+   unlocked Phase 5 `summary()`.
+2. **The CFML suite total of 170 is a count of declared cases, not a run.**
+3. **Migration apply/reapply was not re-run.** `database/` is byte-identical to the baseline, so
+   nothing changed; that is not the same as re-verified and is not offered as such.
+4. **Adobe ColdFusion 2023 and SQL Server 2016 remain target-platform verification items.** Neither
+   was available and neither was used. The CF2023 items listed for Phase 5 and the earlier
+   correction sessions are unchanged, plus the locked `summary()` transaction and the closure-based
+   `classifySaveFailure` path should both be exercised there.
+5. **The Phase 5 freeze gate is not satisfied by this run.** A complete `ICFWALK_REQUIRE_APP=1 npm
+   test` with zero failures and zero skips is the gate; this environment produces 1 failure and 121
+   skips for want of a database. Phase 5 is not declared ready to freeze here.
+
 ## Exact recommended starting point for Phase 6
 
 Phase 6 is publishing and administration and **has not been started**. Nothing in this session

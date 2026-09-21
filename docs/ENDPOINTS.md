@@ -105,10 +105,13 @@ A replay is answered by five checks in a fixed order, each a precondition of the
    newer work. An idempotent replay therefore never pairs stale client state with a row version
    representing newer server state.
 
-Browsers must therefore treat a transport failure or any HTTP 5xx as **ambiguous** -- the mutation
-may already have committed -- and retry the same operation with the same `clientMutationId` and the
-**same semantic body**, held in an immutable per-operation record rather than rebuilt from the UI as
-it now stands (docs/DATA_CONTRACT.md, "Pending mutation operations in the browser"). An operation id
+Browsers must therefore treat as **ambiguous** -- the mutation may already have committed -- a
+transport failure, any HTTP 5xx, and *any answer they cannot use*: a 200 whose body is not JSON, a
+200 whose JSON is not the expected document, a body that fails after its headers arrived, or any
+other unexpected failure once the request has left. Only a definitive server answer says for certain
+that nothing was committed. Every ambiguous outcome is retried with the same `clientMutationId` and
+the **same semantic body**, held in an immutable per-operation record rather than rebuilt from the
+UI as it now stands (docs/DATA_CONTRACT.md, "Pending mutation operations in the browser"). An operation id
 is spent only on a definitive success or a definitive, non-retryable 4xx --
 `MUTATION_REPLAY_SUPERSEDED` and `MUTATION_LEGACY_UNVERIFIABLE` among them, both of which mean
 reload and reconcile.

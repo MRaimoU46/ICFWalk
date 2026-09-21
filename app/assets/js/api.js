@@ -1,8 +1,19 @@
 /**
  * Minimal JSON API client. Same-origin cookies carry the session; state-changing calls send the
- * synchronizer CSRF token from /api/me. Server errors are surfaced as ApiError with the server's
- * code and details; transport failures (offline, reset, timeout) as NetworkError so callers can
- * offer a safe retry with the same client mutation id.
+ * synchronizer CSRF token from /api/me.
+ *
+ * Three failure kinds leave here, and the difference between them is the difference between
+ * "nothing was sent" and "something may already be committed", so each is its own type:
+ *
+ *   NetworkError    fetch() itself rejected. No response was produced, so no status line, no
+ *                   headers, nothing. This is the only kind that means the server was not reached.
+ *   ApiError        the server answered with a status the call cannot use. It carries the status
+ *                   and the server's own error code.
+ *   ResponseError   the server answered, and the answer could not be read or parsed. The request
+ *                   reached the server either way.
+ *
+ * Callers must not treat "not an ApiError" as a transport failure: a response-shaped failure is not
+ * an unreachable server, and a mutation behind one may well have committed.
  */
 export class ApiError extends Error {
   constructor(status, body) {
@@ -23,6 +34,24 @@ export class NetworkError extends Error {
   }
 }
 
+/**
+ * The server answered and the answer was unusable: the body could not be read after the headers
+ * arrived (`unreadable-body`), or it arrived and was not JSON (`malformed-body`).
+ *
+ * Deliberately not a NetworkError. A response existed, which means the request was delivered and a
+ * mutation it carried may be committed, so the safe response is to keep the operation record and
+ * let the person retry it under its own mutation id -- never to treat the state as never-sent.
+ */
+export class ResponseError extends Error {
+  constructor(status, reason, cause) {
+    super("The server answered, but the answer could not be read.");
+    this.status = status;
+    this.code = "INVALID_RESPONSE";
+    this.reason = reason;
+    this.cause = cause;
+  }
+}
+
 export function createApi(baseUrl) {
   let csrfToken = "";
   async function call(method, path, body) {
@@ -35,9 +64,25 @@ export function createApi(baseUrl) {
     } catch (e) {
       throw new NetworkError(e);
     }
-    const text = await response.text();
+    // Past this point a response exists. Reading its body can still fail, and that failure is not a
+    // transport failure: the status line and the headers already arrived.
+    let text;
+    try {
+      text = await response.text();
+    } catch (e) {
+      throw new ResponseError(response.status, "unreadable-body", e);
+    }
     let json = null;
-    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        // On a failing status the status itself is the more useful fact and the one every 4xx/5xx
+        // path is built on, so an unparseable error body is still an ApiError for that status.
+        if (!response.ok) throw new ApiError(response.status, null);
+        throw new ResponseError(response.status, "malformed-body", e);
+      }
+    }
     if (!response.ok) throw new ApiError(response.status, json);
     return json;
   }

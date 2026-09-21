@@ -7,7 +7,7 @@
  * conflict-resolution panel, explicit completion with field-level errors, and void instead of
  * delete. Historical walks render against their own pinned instrument version.
  */
-import { createApi, ApiError } from "./api.js";
+import { createApi, ApiError, NetworkError, ResponseError } from "./api.js";
 import { ApiWalkStore, newId } from "./walk-store.js";
 import { renderEditor } from "./renderer.js";
 import { createBlankState, dimensionDisplay } from "./walk-state.js";
@@ -385,9 +385,9 @@ async function resolveAmbiguousOp(op) {
     if (isAmbiguousFailure(e)) {
       // Back to AMBIGUOUS, which restores the retry and discard controls for this record.
       markOpAmbiguous(op);
-      showMessage(e instanceof ApiError
-        ? `That still did not finish (${e.code}). Try again; it cannot happen twice.`
-        : "The server could not be reached. Try again; it cannot happen twice.", "error");
+      showMessage(isUnreachable(e)
+        ? "The server could not be reached. Try again; it cannot happen twice."
+        : `That still did not finish (${classifySaveFailure(e).code}). Try again; it cannot happen twice.`, "error");
       return;
     }
     settleOp(op);
@@ -633,9 +633,9 @@ function confirmDelete(card, walk, title) {
       yes.disabled = false;
       if (isAmbiguousFailure(e)) {
         markOpAmbiguous(op);
-        err.textContent = e instanceof ApiError
-          ? `That did not finish (${e.code}). Try again; it will not void the walk twice.`
-          : "The server could not be reached. Try again; it will not void the walk twice.";
+        err.textContent = isUnreachable(e)
+          ? "The server could not be reached. Try again; it will not void the walk twice."
+          : `That did not finish (${classifySaveFailure(e).code}). Try again; it will not void the walk twice.`;
         err.hidden = false;
         return;
       }
@@ -687,9 +687,9 @@ async function startNewWalk(unit) {
   } catch (e) {
     if (isAmbiguousFailure(e)) {
       markOpAmbiguous(op);
-      showMessage(e instanceof ApiError
-        ? `Starting the walk did not finish (${e.code}). Try again; it will not create a second walk.`
-        : "Could not start a walk: the server could not be reached. Try again; it will not create a second walk.", "error");
+      showMessage(isUnreachable(e)
+        ? "Could not start a walk: the server could not be reached. Try again; it will not create a second walk."
+        : `Starting the walk did not finish (${classifySaveFailure(e).code}). Try again; it will not create a second walk.`, "error");
     } else {
       settleOp(op);
       if (e instanceof ApiError && e.code === "MUTATION_REPLAY_SUPERSEDED" && e.details && e.details.walkId) {
@@ -877,45 +877,45 @@ function saveCurrent() {
       if (resend && JSON.stringify(walk.state) === JSON.stringify(op.body.state)) app.dirty = false;
       setSaveStatus(app.dirty ? STATUS.unsaved : STATUS.saved);
     } catch (e) {
-      if (isAmbiguousFailure(e)) {
-        // Ambiguous, but not in one way: an ApiError means the server answered (an HTTP 5xx), and
-        // anything else means the request never produced a response at all. Only the second is a
-        // transport failure, and only the second may be answered with a browser-generated file.
-        app.saveOutcome = e instanceof ApiError ? { kind: "server", status: e.status, code: e.code } : { kind: "transport" };
-        // The server may have committed before the answer was lost: the record keeps the same
+      // Classified once, by type, and every later branch reads that outcome rather than re-deriving
+      // it. Re-deriving is how "not an ApiError" became "the server could not be reached".
+      const outcome = classifySaveFailure(e);
+      app.saveOutcome = outcome;
+      if (AMBIGUOUS_KINDS.has(outcome.kind)) {
+        // The server may have committed before the outcome was known: the record keeps the same
         // mutation id and the same frozen body so the retry replays rather than duplicating or
         // dropping the change. Marking it here rather than behind the editor check is what keeps
-        // it offered in the recovery bar when the editor is no longer on this walk.
+        // it offered in the recovery bar when the editor is no longer on this walk. This is the
+        // same guarantee for an unusable answer as for a lost one -- a response existed, so the
+        // mutation is exactly as likely to be committed.
         markOpAmbiguous(op);
         if (!stillOpen()) return;
         if (!resend) app.dirty = true;
-        setSaveStatus(e instanceof ApiError ? `${STATUS.ambiguous} (${e.code})` : STATUS.network, { retry: true });
-        announce(e instanceof ApiError ? "Save did not finish" : "Save failed: the server could not be reached");
+        // Only a real transport failure is described as one.
+        setSaveStatus(outcome.kind === "transport" ? STATUS.network : `${STATUS.ambiguous} (${outcome.code})`, { retry: true });
+        announce(outcome.kind === "transport" ? "Save failed: the server could not be reached" : "Save did not finish");
         return;
       }
       // Definitive outcomes below: the operation id is spent and a new payload gets a new record.
       // The server was reached and answered definitively in every one of them.
       settleOp(op);
-      app.saveOutcome = e instanceof ApiError && e.status === 409 && (e.code === "STALE_ROW_VERSION" || e.code === "MUTATION_REPLAY_SUPERSEDED")
-        ? { kind: "conflict", status: e.status, code: e.code }
-        : { kind: "rejected", status: e instanceof ApiError ? e.status : 0, code: e instanceof ApiError ? e.code : "UNKNOWN_ERROR" };
       if (!stillOpen()) {
-        showMessage(`A save for another walk could not be completed (${e instanceof ApiError ? e.code : "network error"}).`, "error");
+        showMessage(`A save for another walk could not be completed (${outcome.code}).`, "error");
         return;
       }
       app.dirty = true;
-      if (e instanceof ApiError && e.status === 409 && (e.code === "STALE_ROW_VERSION" || e.code === "MUTATION_REPLAY_SUPERSEDED")) {
+      if (outcome.kind === "conflict") {
         // MUTATION_REPLAY_SUPERSEDED: this save did commit, but the walk has moved on since, so the
         // server refused to hand a stale editor a token for the newer state. That is a conflict like
         // any other: reload the saved version and reconcile.
         await beginConflict(e);
-      } else if (e instanceof ApiError && e.code === "WALK_COMPLETION_INVALID") {
+      } else if (outcome.code === "WALK_COMPLETION_INVALID") {
         app.failed = true;
         setSaveStatus("Not saved: a completed walk must keep every required response.", { retry: true });
         showCompletionErrors(e.details && e.details.errors ? e.details.errors : []);
       } else {
         app.failed = true;
-        setSaveStatus(`${STATUS.failed} (${e instanceof ApiError ? `${e.code}: ${e.message}` : "unknown error"})`, { retry: true });
+        setSaveStatus(`${STATUS.failed} (${outcome.code}: ${e.message})`, { retry: true });
         announce("Save failed");
       }
     } finally {
@@ -937,24 +937,65 @@ function saveCurrent() {
  * app.failed cannot tell apart. Exactly one is recorded per attempt, in app.saveOutcome:
  *
  *   saved      the server committed the payload this attempt carried.
- *   transport  no response was produced at all: the browser could not reach the server (offline,
- *              connection reset, DNS failure, timeout before any status line). Ambiguous.
- *   server     the server answered with an HTTP 5xx. Also ambiguous, but the server was reached,
- *              so nothing here may be reported to the person as a network failure.
+ *   transport  fetch() rejected: no response, no status line, no headers. The browser could not
+ *              reach the server at all. Ambiguous, and the ONLY kind that means "not reached".
+ *   server     the server answered with an HTTP 5xx. Ambiguous, but the server was reached, so
+ *              nothing here may be reported to the person as a network failure.
+ *   unknown    the server answered and the answer was unusable, or something else entirely went
+ *              wrong after the request left the browser: a body that could not be read after the
+ *              headers arrived, a 200 that was not JSON, a 200 whose JSON was not a walk, a bug in
+ *              the response-handling code. Ambiguous for the same reason as `server` -- a response
+ *              existed, so the mutation may be committed -- and just as much not a network failure.
  *   conflict   409 STALE_ROW_VERSION or MUTATION_REPLAY_SUPERSEDED; the conflict workflow owns it.
  *   rejected   any other definitive answer, including every 4xx validation rejection. The server
  *              was reached and it refused the state; nothing was committed.
  */
 const SAVE_OK = Object.freeze({ kind: "saved" });
 
+/** The kinds where the server may have committed, so the operation record must be kept and retried. */
+const AMBIGUOUS_KINDS = new Set(["transport", "server", "unknown"]);
+
 /**
- * A failure is ambiguous when the request may have been committed before the answer was lost:
- * a transport failure (offline, reset, timeout) or any HTTP 5xx. Everything else -- a validation
- * rejection, a conflict, an authorization refusal -- is definitive: nothing was committed.
+ * Classifies a failed attempt, by type and never by elimination.
+ *
+ * The rule this enforces is default-deny: a failure is `transport` only when it is an actual
+ * NetworkError, which api.js constructs in exactly one place -- the catch around fetch() itself.
+ * Everything unrecognised falls to `unknown`, which is ambiguous (so recovery is preserved) but is
+ * never reported as an unreachable server and never permits a browser-generated summary.
+ *
+ * The defect this replaces read "not an ApiError, therefore transport". An HTTP 200 carrying a
+ * malformed body, or carrying JSON that is not a walk, raises neither ApiError nor NetworkError:
+ * the first surfaces as ResponseError from api.js, the second as a plain TypeError from
+ * ApiWalkStore. Both were classified as an unreachable server, and both then produced a
+ * browser-generated file of a state the server may already have committed, under a message saying
+ * it could not be reached. A response-shaped failure is not an absent server.
+ */
+function classifySaveFailure(e) {
+  if (e instanceof NetworkError) return { kind: "transport", status: 0, code: e.code };
+  if (e instanceof ApiError) {
+    if (e.status >= 500) return { kind: "server", status: e.status, code: e.code };
+    if (e.status === 409 && (e.code === "STALE_ROW_VERSION" || e.code === "MUTATION_REPLAY_SUPERSEDED")) {
+      return { kind: "conflict", status: e.status, code: e.code };
+    }
+    return { kind: "rejected", status: e.status, code: e.code };
+  }
+  if (e instanceof ResponseError) return { kind: "unknown", status: e.status, code: e.code };
+  return { kind: "unknown", status: 0, code: "UNEXPECTED_ERROR" };
+}
+
+/**
+ * A failure is ambiguous when the request may have been committed before its outcome was known: a
+ * transport failure, any HTTP 5xx, and every unusable or unexpected answer. Only a definitive
+ * server answer -- a validation rejection, a conflict, an authorization refusal -- says for certain
+ * that nothing was committed.
  */
 function isAmbiguousFailure(e) {
-  if (e instanceof ApiError) return e.status >= 500;
-  return true;
+  return AMBIGUOUS_KINDS.has(classifySaveFailure(e).kind);
+}
+
+/** True only for a real transport failure: the one case that may be called "could not be reached". */
+function isUnreachable(e) {
+  return e instanceof NetworkError;
 }
 
 // ---- conflict resolution (SAVE-04 / SAVE-05) ---------------------------------------------------
@@ -1119,8 +1160,9 @@ const EXPORT_FLUSH_PASSES = 6;
  *   { unreachable: true }    the browser could not reach the server at all.
  *   { blocked: "conflict" }  the conflict workflow owns the walk until the person resolves it.
  *   { blocked: "rejected" }  the server was reached and refused the state.
- *   { blocked: "unresolved" }the server answered 5xx, or the bound above was reached: whether it
- *                            holds the latest state is unknown, and it was reached either way.
+ *   { blocked: "unresolved" }the server answered 5xx, answered something unusable, or the bound
+ *                            above was reached: whether it holds the latest state is unknown, and
+ *                            it was reached either way.
  *   { blocked: "moved" }     the editor is no longer on this walk.
  */
 async function flushForExport(walk) {
@@ -1137,7 +1179,9 @@ async function flushForExport(walk) {
     if (outcome.kind === "transport") return { unreachable: true };
     if (outcome.kind === "conflict") return { blocked: "conflict" };
     if (outcome.kind === "rejected") return { blocked: "rejected", outcome };
-    return { blocked: "unresolved", outcome };            // kind === "server" (HTTP 5xx)
+    // "server" (an HTTP 5xx) and "unknown" (an unusable or unexpected answer). Both mean the server
+    // was reached and whether it holds the state is not known, which is one answer, not two.
+    return { blocked: "unresolved", outcome };
   }
   return { blocked: "unresolved" };
 }
@@ -1151,8 +1195,10 @@ async function flushForExport(walk) {
  * cookie. A read-only viewer has nothing to flush and goes straight there.
  *
  * THE FALLBACK RULE (Phase 5 correction). The browser formatter is used when, and only when, the
- * flush failed because the browser could not reach the server. Every other unsent-work condition
- * blocks the export instead of producing a file:
+ * flush failed with an actual NetworkError -- fetch() rejected, no response was produced, the
+ * server was not reached. That is a test of type, not of elimination: "not an ApiError" is not a
+ * transport failure, and classifySaveFailure sends everything it does not recognise to `unknown`,
+ * which blocks. Every other unsent-work condition blocks the export instead of producing a file:
  *
  *   - Work merely queued or in flight is not a reason for anything: it is flushed (see
  *     flushForExport) and the export then proceeds from the server. Previously an edit made during
@@ -1164,6 +1210,11 @@ async function flushForExport(walk) {
  *   - An HTTP 5xx is not a transport failure either. It stays ambiguous and keeps every Phase 4
  *     recovery guarantee (the operation record, its mutation id and its frozen body are untouched
  *     here), but it is reported as an unfinished save, not as an unreachable server.
+ *   - An answer the browser cannot use is not a transport failure at all: a 200 with a malformed
+ *     body, a 200 whose JSON is not a walk, a body that breaks after its headers, or any other
+ *     unexpected failure in the response path. A response existed, so the mutation may already be
+ *     committed; handing over a browser-made file of that state, under a message blaming the
+ *     network, would be wrong twice over. It blocks, with the same Phase 4 recovery record intact.
  *   - A conflict blocks the export and leaves the conflict workflow exactly as it was.
  *
  * When the fallback does run, the file is the browser formatter's text for the working state
@@ -1252,7 +1303,9 @@ async function completeCurrent() {
     } else if (isAmbiguousFailure(e)) {
       // Keep the operation record: the completion may already have committed.
       markOpAmbiguous(op);
-      showMessage(e instanceof ApiError ? `The completion did not finish (${e.code}). Try again; it will not complete the walk twice.` : "Could not complete the walk: the server could not be reached. Try again; it will not complete the walk twice.", "error");
+      showMessage(isUnreachable(e)
+        ? "Could not complete the walk: the server could not be reached. Try again; it will not complete the walk twice."
+        : `The completion did not finish (${classifySaveFailure(e).code}). Try again; it will not complete the walk twice.`, "error");
     } else if (e instanceof ApiError && e.code === "MUTATION_REPLAY_SUPERSEDED") {
       // The completion did commit; the walk has changed since, so re-open what the server holds.
       settleOp(op);

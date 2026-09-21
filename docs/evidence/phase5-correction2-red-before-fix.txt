@@ -1,0 +1,167 @@
+ICFWalk Phase 5 final correction pass -- red-before-green evidence
+==================================================================
+
+Both defects had their regressions written and run BEFORE the production change, against the tree
+exactly as committed at 30f46be. The prior files were taken from `git show 30f46be:<path>` and put
+back afterwards; no temporary mutation remains (final `git status` at the end of this file).
+
+
+-------------------------------------------------------------------------------------------------
+DEFECT 1 -- only a genuine NetworkError may permit the browser fallback
+-------------------------------------------------------------------------------------------------
+
+Four new cases in tests/node/browser-export.test.mjs, run against app/assets/js/app.js and
+app/assets/js/api.js as committed at 30f46be, with the tests and the harness at their final form
+and nothing else in the tree changed.
+
+  $ node --test --test-reporter=spec tests/node/browser-export.test.mjs
+
+  v a save in flight and an edit behind it are both flushed before the summary is fetched
+  v a definitive 4xx save rejection produces no download and an accurate message
+  v a conflict produces no download and leaves the conflict workflow open
+  v an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  v a genuine transport failure produces a browser-generated file from the screen state
+  x a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+  x an unresolved save stays retryable under its own mutation id and frozen request
+  x an unexpected failure while reading the save response blocks the export
+  x a response that breaks after its headers blocks the export rather than falling back
+  v a clean export with nothing unsent uses the authenticated summary GET
+  v a read-only viewer exports straight from the server route
+
+  tests 11 | pass 7 | fail 4 | skipped 0
+
+All four failed the same way, and it is the audited defect exactly: a browser-generated Blob was
+produced for a state the server had answered about.
+
+  [1] a 200 whose body is not JSON
+      AssertionError [ERR_ASSERTION]: no file may be downloaded, but one arrived from
+      blob:http://127.0.0.1:42403/3afb38f9-9bf1-4a23-a4bf-9add7b88d903
+      actual: { url: 'blob:...',
+                fileName: 'ICFWalk_2_2026-09-20.txt',
+                text: '... Notes: an edit whose answer comes back unusable' }
+      expected: null
+
+  [2] an unresolved save stays retryable under its own mutation id and frozen request
+      AssertionError [ERR_ASSERTION]: no file may be downloaded, but one arrived from
+      blob:http://127.0.0.1:42403/c53d4b04-5dbe-45f3-b249-f3d3d39d9e05
+      actual: { ... text: '... Notes: an edit whose first answer was unusable' }
+      expected: null
+
+  [3] an unexpected failure while reading the save response (200, valid JSON, no walk in it)
+      AssertionError [ERR_ASSERTION]: no file may be downloaded, but one arrived from
+      blob:http://127.0.0.1:42403/950f624e-91b1-46a3-aa05-32b1bc9a905c
+      actual: { ... text: '... Notes: an edit whose answer has no walk in it' }
+      expected: null
+
+  [4] a response that breaks after its headers (200, declared gzip, not gzip)
+      AssertionError [ERR_ASSERTION]: no file may be downloaded, but one arrived from
+      blob:http://127.0.0.1:42403/8dbb4d49-7db5-4e54-bd7e-e5307290b101
+      actual: { ... text: '... Notes: an edit whose answer could not be read' }
+      expected: null
+
+In every one the message on screen also read "The server could not be reached", which was false in
+all four: the server answered 200 each time.
+
+The seven pre-existing cases passed against the prior code and pass against the correction. They
+are in the run on purpose: they are what proves the correction did not move any behavior that was
+already right.
+
+GREEN, after the correction, same command, same harness:
+
+  $ node --test --test-reporter=spec tests/node/browser-export.test.mjs
+  tests 11 | pass 11 | fail 0 | skipped 0
+
+
+HOW THE "BODY FAILS AFTER HEADERS" CASE IS PRODUCED, AND WHY NOT BY TRUNCATION
+------------------------------------------------------------------------------
+
+Two mechanisms were measured in this environment before one was chosen. A probe page fetched each
+from Chromium and reported which promise rejected:
+
+  /truncate  (200, Content-Length: 4096, a few bytes written, socket destroyed)
+             -> {"stage":"fetch-rejected","name":"TypeError","message":"Failed to fetch"}
+
+  /badgzip   (200, Content-Encoding: gzip, body that is not gzip)
+             -> {"stage":"body-rejected","status":200,"name":"TypeError","message":"Failed to fetch"}
+
+Destroying the socket makes Chromium fail the whole request: fetch() itself rejects, so no response
+reaches the page and NetworkError is the *correct* classification for it. That is not the case the
+audit described and it is not used. The malformed content-encoding is: fetch() resolves with a 200
+and response.text() rejects, which is a body failure after the headers arrived, and it turns on
+malformed content rather than on when a socket closes, so it is deterministic.
+
+
+-------------------------------------------------------------------------------------------------
+DEFECT 2 -- the concurrency hook was not at the mixed-read boundary
+-------------------------------------------------------------------------------------------------
+
+The seam correction is asserted by a new case,
+WalkSummaryCoherenceTest.testTheConcurrencySeamFiresBetweenTheTwoAggregateReads, which exercises
+the interceptor against a recording delegate and needs no database, so it runs here.
+
+RED: tests/cfml/support/InterceptingWalkRepository.cfc as committed at 30f46be (loadResponses is a
+plain pass-through, so nothing fires between the two child reads). Lucee 6.2.8.20, a JVM started
+for this variant alone on its own port.
+
+  {
+    "failed": 1,
+    "engine": "6.2.8.20",
+    "cases": [
+      { "case": "testEveryMutationPathTakesTheSameWalkLock", "status": "PASSED" },
+      { "case": "testTheConcurrencySeamFiresBetweenTheTwoAggregateReads",
+        "status": "FAILED",
+        "type": "ICFWalk.Test.AssertionFailed",
+        "message": "the loadResponses seam exists and fired" }
+    ]
+  }
+
+GREEN: with the loadResponses seam added, a fresh JVM on its own port.
+
+  {
+    "failed": 0,
+    "engine": "6.2.8.20",
+    "cases": [
+      { "case": "testEveryMutationPathTakesTheSameWalkLock", "status": "PASSED" },
+      { "case": "testTheConcurrencySeamFiresBetweenTheTwoAggregateReads", "status": "PASSED" }
+    ]
+  }
+
+(An earlier attempt at this comparison reported the red variant as passing. That was a stale engine:
+Lucee caches compiled components for the life of the process, and the replacement JVM could not bind
+the port the previous one still held, so curl was answered by the old process. Each variant is now
+run on a port of its own. Recorded here because it is the kind of thing that silently turns a
+red-before-green demonstration into a green-before-green one.)
+
+NOT RUN HERE: testASummaryExportCannotStraddleAConcurrentSave, the case the seam correction exists
+to serve. It drives the real service against a real database and needs SQL Server's UPDLOCK/ROWLOCK
+semantics. SQL Server could not be installed (see docs/evidence/phase5-correction2-environment.md),
+so the corrected seam has NOT been demonstrated to fail against the unlocked Phase 5 summary(). The
+seam's placement is proved; the interleaving it forces is not. An audit should treat that case as
+unexecuted.
+
+
+-------------------------------------------------------------------------------------------------
+Tree after the red-before-green runs
+-------------------------------------------------------------------------------------------------
+
+  $ git status --porcelain
+   M BUILD_STATUS.md
+   M app/assets/js/api.js
+   M app/assets/js/app.js
+   M docs/ARCHITECTURE.md
+   M docs/DATA_CONTRACT.md
+   M docs/ENDPOINTS.md
+   M docs/LOCAL_SETUP.md
+   M manifest.json
+   M tests/cfml/specs/WalkSummaryCoherenceTest.cfc
+   M tests/cfml/support/InterceptingWalkRepository.cfc
+   M tests/node/browser-export.test.mjs
+   M tests/node/export-harness.mjs
+  ?? docs/evidence/phase5-correction2-environment.md
+  ?? docs/evidence/phase5-correction2-npm-test.txt
+  ?? docs/evidence/phase5-correction2-red-before-fix.txt
+
+app/assets/js/app.js, app/assets/js/api.js and tests/cfml/support/InterceptingWalkRepository.cfc in
+the tree are the corrected versions; the diff of each is the correction and nothing else.
+manifest.json carries one refreshed entry, for docs/DATA_CONTRACT.md, produced by
+scripts/refresh-manifest.mjs. The handoff validator is ok, 51 checks, 0 errors.
