@@ -138,6 +138,15 @@ not a supported production platform for ICFWalk. Lucee compiles components once 
 the source files: after editing a `.cfc`, restart it (`lucee-down.sh` then `lucee-up.sh`); `?reinit=1`
 on any request only rebuilds the container from the already compiled classes.
 
+`lucee-up.sh` exports `LUCEE_REQUESTTIMEOUT` (default 600 seconds, override by exporting it first).
+The entire CFML suite runs inside the single `/api/maintenance/tests/run` request, and the walk
+concurrency specs deliberately hold a writer blocked for seconds, so on a modest machine that one
+request runs past Lucee's 50 second default. When it does, Lucee stops the request mid-suite and
+interrupts the thread, and the spec that runs *next* fails with `java.nio.channels.ClosedByInterruptException`
+from the first file write it attempts, which reads like an unrelated logging fault rather than a
+timeout. The ceiling belongs to the verification runtime only: no application or production setting
+is involved, and no individual test is given longer to pass.
+
 The seeded DRAFT can be re-imported (idempotently) only while no walk references it: the fixtures of
 every test remove their walks, but walks created by hand through the browser keep the DRAFT "in
 use" (`INSTRUMENT_VERSION_IN_USE`) until they are removed or the version is published.

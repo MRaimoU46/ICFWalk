@@ -44,6 +44,13 @@ fi
 
 export LUCEE_ENABLE_BUNDLE_DOWNLOAD=false
 export LUCEE_ADMIN_ENABLED=false
+# The whole CFML suite runs inside a single /api/maintenance/tests/run request, and the walk
+# concurrency specs deliberately block a writer for seconds at a time, so that one request runs
+# well past Lucee's 50 second default and the engine stops it mid-suite (the interrupted thread
+# then fails the *next* spec with ClosedByInterruptException, which looks nothing like a timeout).
+# This raises the ceiling for the verification runtime only; no application or production setting
+# is involved, and no individual test is given longer to pass.
+export LUCEE_REQUESTTIMEOUT="${LUCEE_REQUESTTIMEOUT:-600}"
 cd "$ROOT"
 nohup java -Xmx1g -Dlucee.base.dir="$RUNTIME/lucee-server" -jar "$JARS/jetty-runner.jar" --port "$PORT" --path / "$ROOT/app" > "$RUNTIME/lucee.log" 2>&1 &
 echo $! > "$RUNTIME/lucee.pid"

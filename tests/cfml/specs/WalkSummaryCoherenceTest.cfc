@@ -153,7 +153,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private string function storedDimensionCode(required string walkId, required string dimensionCode) {
 		var q = variables.db.run(
-			"SELECT v.value_code FROM [icf].[walk_dimension_value] v JOIN [icf].[dimension_definition] d ON d.dimension_id = v.dimension_id WHERE v.walk_id = :id AND d.code = :c",
+			"SELECT dv.value_code FROM [icf].[walk_dimension_value] v JOIN [icf].[dimension_definition] d ON d.dimension_id = v.dimension_id LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = v.selected_value_id WHERE v.walk_id = :id AND d.code = :c",
 			{ "id": variables.db.guid(arguments.walkId), "c": variables.db.nvarchar(arguments.dimensionCode) });
 		return q.recordCount && !isNull(q.value_code[1]) ? q.value_code[1] : "";
 	}

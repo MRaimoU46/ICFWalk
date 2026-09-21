@@ -1,0 +1,577 @@
+# Supporting checks
+# date: 2026-09-21T14:14:57Z
+
+==============================================================
+$ npm run validate:handoff
+==============================================================
+
+> icfwalk@0.1.0 validate:handoff
+> node scripts/validate-handoff.mjs
+
+{
+  "ok": true,
+  "checks": 51,
+  "errors": 0,
+  "counts": {
+    "sections": 23,
+    "items": 144,
+    "responseSets": 29,
+    "responseOptions": 138,
+    "rules": 12,
+    "dimensions": 10,
+    "dimensionValues": 95,
+    "instrumentDimensions": 10
+  }
+}
+exit=0
+
+==============================================================
+$ npm run test:package
+==============================================================
+
+> icfwalk@0.1.0 test:package
+> node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs
+
+TAP version 13
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 1 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.837967
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 2 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.296775
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 3 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.20087
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 4 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 222.476109
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 5 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.254959
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 6 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.382526
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 7 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.758074
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 8 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 6.005037
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 9 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.910311
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 10 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.257419
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 11 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.117681
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 12 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.271813
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 13 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.568004
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 14 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 2.444434
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 15 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.231336
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 16 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 21.920457
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 17 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 16.398362
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 18 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 12.030405
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 326.690611
+exit=0
+
+==============================================================
+$ npm run test:db
+==============================================================
+
+> icfwalk@0.1.0 test:db
+> node --test tests/node/db-scripts.test.mjs
+
+TAP version 13
+# (node:5125) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 1 - DB-01..03 supplied scripts against an empty SQL Server database
+  ---
+  duration_ms: 1084.345351
+  type: 'test'
+  ...
+# SQL Server 16.0.4295.3 Developer Edition (64-bit)
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1371.826873
+exit=0
+
+==============================================================
+$ npm run test:summary
+==============================================================
+
+> icfwalk@0.1.0 test:summary
+> node --test tests/node/summary.test.mjs tests/node/no-mail.test.mjs
+
+TAP version 13
+# Subtest: no mail-delivery construct exists anywhere in the shipped source
+ok 1 - no mail-delivery construct exists anywhere in the shipped source
+  ---
+  duration_ms: 15.46163
+  type: 'test'
+  ...
+# Subtest: the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+ok 2 - the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+  ---
+  duration_ms: 0.679635
+  type: 'test'
+  ...
+# Subtest: mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+ok 3 - mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+  ---
+  duration_ms: 18.144086
+  type: 'test'
+  ...
+# Subtest: no route, controller action, or configuration key accepts a recipient
+ok 4 - no route, controller action, or configuration key accepts a recipient
+  ---
+  duration_ms: 0.734763
+  type: 'test'
+  ...
+# Subtest: the summary export is the only new endpoint and it is read-only
+ok 5 - the summary export is the only new endpoint and it is read-only
+  ---
+  duration_ms: 21.239057
+  type: 'test'
+  ...
+# Subtest: JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+ok 6 - JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+  ---
+  duration_ms: 221.054015
+  type: 'test'
+  ...
+# Subtest: the stored states are already normalized, so a vector describes a real persisted walk
+ok 7 - the stored states are already normalized, so a vector describes a real persisted walk
+  ---
+  duration_ms: 5.571047
+  type: 'test'
+  ...
+# Subtest: averageText matches JavaScript toFixed(1) on every shared rounding vector
+ok 8 - averageText matches JavaScript toFixed(1) on every shared rounding vector
+  ---
+  duration_ms: 0.315227
+  type: 'test'
+  ...
+# Subtest: SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+ok 9 - SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+  ---
+  duration_ms: 1.256501
+  type: 'test'
+  ...
+# Subtest: SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+ok 10 - SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+  ---
+  duration_ms: 0.612044
+  type: 'test'
+  ...
+# Subtest: SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+ok 11 - SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+  ---
+  duration_ms: 0.742777
+  type: 'test'
+  ...
+# Subtest: SUM-05 file names carry only safe characters and no path can be steered through them
+ok 12 - SUM-05 file names carry only safe characters and no path can be steered through them
+  ---
+  duration_ms: 1.528222
+  type: 'test'
+  ...
+# Subtest: the file name is driven by behavior.export.fileNamePattern, not by a restated list
+ok 13 - the file name is driven by behavior.export.fileNamePattern, not by a restated list
+  ---
+  duration_ms: 1.724146
+  type: 'test'
+  ...
+# Subtest: SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+ok 14 - SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+  ---
+  duration_ms: 1.279208
+  type: 'test'
+  ...
+# Subtest: every selectable part the instrument offers resolves to a section, and a bad one throws
+ok 15 - every selectable part the instrument offers resolves to a section, and a bad one throws
+  ---
+  duration_ms: 0.858187
+  type: 'test'
+  ...
+# Subtest: brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+ok 16 - brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+  ---
+  duration_ms: 0.578444
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+ok 17 - SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+  ---
+  duration_ms: 0.400486
+  type: 'test'
+  ...
+# Subtest: the text shape is stable: LF only, no trailing newline, no BOM
+ok 18 - the text shape is stable: LF only, no trailing newline, no BOM
+  ---
+  duration_ms: 0.441512
+  type: 'test'
+  ...
+# Subtest: the composer's document serializes to the server's canonical form and survives a round trip
+ok 19 - the composer's document serializes to the server's canonical form and survives a round trip
+  ---
+  duration_ms: 15.30292
+  type: 'test'
+  ...
+# Subtest: the formatter is pure: it never mutates the state or the model it is given
+ok 20 - the formatter is pure: it never mutates the state or the model it is given
+  ---
+  duration_ms: 2.342125
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 445.890265
+exit=0
+
+==============================================================
+$ npm run vectors:summary:check
+==============================================================
+
+> icfwalk@0.1.0 vectors:summary:check
+> node scripts/generate-summary-vectors.mjs --check
+
+summary-vectors.json is current.
+exit=0
+
+==============================================================
+$ npm run oracle:summary
+==============================================================
+
+> icfwalk@0.1.0 oracle:summary
+> node scripts/prototype-summary-oracle.mjs
+
+ok    fully answered high school walk: 1 difference(s) {"14.4 trailing-colon label":1}
+ok    unanswered items: 0 difference(s) 
+ok    workshop model no with notes: 0 difference(s) 
+ok    dual language answers retained while hidden: 0 difference(s) 
+ok    period retained but hidden for an elementary grade: 1 difference(s) {"14.2 hidden dimension excluded":1}
+ok    other school and other content with punctuation: 1 difference(s) {"14.4 trailing-colon label":1}
+ok    content area music: 4 difference(s) {"14.3 content-area heading":1,"14.5 yes/no option label":3}
+ok    markup in notes: 0 difference(s) 
+ok    blank new walk: 0 difference(s) 
+ok    no observer and nothing selected: 1 difference(s) {"14.5 yes/no option label":1}
+
+Every difference is a recorded Phase 5 deviation.
+exit=0
+
+==============================================================
+$ npm run test:cfml
+==============================================================
+
+> icfwalk@0.1.0 test:cfml
+> node --test tests/node/cfml-suite.test.mjs
+
+TAP version 13
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 1 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 14.370799
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 2 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 9.13566
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 3 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 20.227007
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 4 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 51670.127873
+  type: 'test'
+  ...
+# SnapshotServiceTest.testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: passed
+# SnapshotServiceTest.testInvalidAndUnknownVersionsFailClosed: passed
+# SnapshotServiceTest.testProductionSemanticsRequireAPublishedVersion: passed
+# SnapshotServiceTest.testSnapshotIsParsedOnceAndCachedByChecksum: passed
+# WalkSummaryCoherenceTest.testASummaryExportCannotStraddleAConcurrentSave: passed
+# WalkSummaryCoherenceTest.testEveryMutationPathTakesTheSameWalkLock: passed
+# WalkSummaryCoherenceTest.testTheConcurrencySeamFiresBetweenTheTwoAggregateReads: passed
+# WalkSummaryCoherenceTest.testTheLockedExportStillWritesNothingAboutTheWalk: passed
+# WalkMutationResponseTest.testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: passed
+# WalkMutationResponseTest.testANoopSaveOnACompletedWalkIsAlsoCoherent: passed
+# WalkMutationResponseTest.testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: passed
+# WalkMutationResponseTest.testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt: passed
+# WalkMutationResponseTest.testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete: passed
+# WalkSchoolScopeTest.testANonIdentifyingValueIsRefusedAsAnIdentityMapping: passed
+# WalkSchoolScopeTest.testASchoolUnitCodedOtherStaysUnmappedAndFailsClosed: passed
+# WalkSchoolScopeTest.testAWalkAuthorizedAtSchoolACannotBeSubmittedAsSchoolB: passed
+# WalkSchoolScopeTest.testCodeEqualityAloneMapsNothing: passed
+# WalkSchoolScopeTest.testDistrictUserMaySelectAnAuthorizedDescendantSchool: passed
+# WalkSchoolScopeTest.testExplicitMappingIsFilledAndLocked: passed
+# WalkSchoolScopeTest.testOneSchoolValueBelongsToOneOrgUnit: passed
+# WalkSchoolScopeTest.testUnmappedSchoolUnitsAcceptNoSchoolValue: passed
+# CanonicalJsonTest.testBracketKeysPreserveCase: passed
+# CanonicalJsonTest.testDateFormatting: passed
+# CanonicalJsonTest.testDecimalsFromDatabaseStyleValuesFormatPlainly: passed
+# CanonicalJsonTest.testExplicitNullAssignmentSerializesAsNull: passed
+# CanonicalJsonTest.testNullValuedKeysAreRetainedFromJson: passed
+# CanonicalJsonTest.testSharedVectorsProduceIdenticalCanonicalText: passed
+# WalkSummaryFormatterTest.testAnUnsafeFileNamePatternIsRefused: passed
+# WalkSummaryFormatterTest.testAverageTextMatchesTheSharedRoundingVectors: passed
+# WalkSummaryFormatterTest.testComponentAverageUsesAnsweredScoresOnly: passed
+# WalkSummaryFormatterTest.testConditionalCardsFollowThePrototypeExportOrder: passed
+# WalkSummaryFormatterTest.testEmailDraftPartsAndTemplates: passed
+# WalkSummaryFormatterTest.testFileLabelSanitizationMatchesTheSharedVectors: passed
+# WalkSummaryFormatterTest.testFileNameSanitization: passed
+# WalkSummaryFormatterTest.testHiddenSectionsAndHiddenPeriodAreExcluded: passed
+# WalkSummaryFormatterTest.testMatchesTheSharedSummaryVectorsExactly: passed
+# WalkSummaryFormatterTest.testStoredMarkupIsExportedVerbatimAsText: passed
+# WalkSummaryFormatterTest.testTextShapeIsStable: passed
+# WalkSummaryFormatterTest.testUnresolvablePartFailsLoudly: passed
+# WalkServiceTest.testAuditAndMutationLogsContainNoNarrativeContent: passed
+# WalkServiceTest.testAuth09TamperedKeysCodesAndIdentifiersAreRejectedAndAudited: passed
+# WalkServiceTest.testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained: passed
+# WalkServiceTest.testCond10HiddenSectionAnswersArePersistedAsHiddenAndReturn: passed
+# WalkServiceTest.testCond12And13SkippableComponentClearsRatingsKeepsNotesInOneTransaction: passed
+# WalkServiceTest.testCreateRequiresAnInScopeActiveOrgUnit: passed
+# WalkServiceTest.testCrossScopeAccessFailsClosedThroughTheService: passed
+# WalkServiceTest.testEmailDraftRoundTripAndSchema: passed
+# WalkServiceTest.testEmailDraftSchemaRejectionsWriteNothing: passed
+# WalkServiceTest.testPostCompletionEditAppendsARevisionAndMustStayComplete: passed
+# WalkServiceTest.testSave04StaleWriteIsRejectedWithoutOverwriting: passed
+# WalkServiceTest.testSave06RetryWithSameMutationIdCommitsOneLogicalChange: passed
+# WalkServiceTest.testSaveRoundTripPersistsTypedValuesAndSurvivesRetrieval: passed
+# WalkServiceTest.testServiceSummaryMatchesTheFormatterForAPersistedWalk: passed
+# WalkServiceTest.testSummaryAuditCarriesNoNarrative: passed
+# WalkServiceTest.testSummaryAuthorizationMatchesOpen: passed
+# WalkServiceTest.testSummaryOfAVoidedWalkExportsAndWritesNothing: passed
+# WalkServiceTest.testWalk02CreatePinsCurrentVersionOwnerAndDefaults: passed
+# WalkServiceTest.testWalk03CreateRetryWithSameMutationIdCreatesOneWalk: passed
+# WalkServiceTest.testWalk04ListSortsByUpdatedAtDescendingWithCardDimensions: passed
+# WalkServiceTest.testWalk06And08VoidLifecycleAndDeleteRefusal: passed
+# WalkServiceTest.testWalk09CompletionRejectsMissingRequiredResponsesAndKeepsTheDraft: passed
+# WalkServiceTest.testWalk10CompletionSetsStatusTimestampRevisionAndAudit: passed
+# WalkServiceTest.testWalk11OlderWalkRendersFromItsPinnedSnapshotAfterANewVersion: passed
+# AuthorizationTest.testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools: passed
+# AuthorizationTest.testAuth04SchoolRoleCannotReachWalkInUnassignedSchool: passed
+# AuthorizationTest.testAuth05ReportOnlyRolesCannotOpenOrEditWalks: passed
+# AuthorizationTest.testAuth06InstrumentAdminHasNoWalkOrReportAccess: passed
+# AuthorizationTest.testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing: passed
+# AuthorizationTest.testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch: passed
+# AuthorizationTest.testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected: passed
+# AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens: passed
+# AuthorizationTest.testEndingAnAssignmentRevokesAccessImmediately: passed
+# AuthorizationTest.testInactiveOrgUnitAssignmentGrantsNothing: passed
+# AuthorizationTest.testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable: passed
+# AuthorizationTest.testSchoolWalkRoleWorksInsideItsOwnSchool: passed
+# WalkCorrectionTest.testCorr01CreateReplayIsReauthorizedAfterAccessIsRevoked: passed
+# WalkCorrectionTest.testCorr02ReplayOfARecordedMutationOutsideScopeIsNotFound: passed
+# WalkCorrectionTest.testCorr03SameMutationIdWithAnAlteredRequestIsRefused: passed
+# WalkCorrectionTest.testCorr04CreateReplaySurvivesANewerPublishedVersion: passed
+# WalkCorrectionTest.testCorr05OmittedHiddenValueIsRetained: passed
+# WalkCorrectionTest.testCorr06HiddenValueInjectionIsIgnored: passed
+# WalkCorrectionTest.testCorr07HideThenShowRestoresTheStoredValue: passed
+# WalkCorrectionTest.testCorr08OmittingAVisibleValueClearsIt: passed
+# WalkCorrectionTest.testCorr09NotApplicableClearsRatingsAndKeepsNotes: passed
+# WalkCorrectionTest.testCorr10EveryMutationRequiresAClientMutationId: passed
+# WalkCorrectionTest.testCorr11SaveCompleteAndVoidRequireARowVersionButCreateDoesNot: passed
+# WalkCorrectionTest.testCorr12AStaleVoidIsARefusalThatChangesNothing: passed
+# WalkCorrectionTest.testCorr13IdenticalCompletedSaveIsANoOpAndAMaterialOneAppendsOneRevision: passed
+# WalkCorrectionTest.testCorr14VisitDateSetThenClearedFallsBackToTheCreationInstant: passed
+# WalkCorrectionTest.testCorr15WholeStateSaveRequiresBothRootContainers: passed
+# WalkCorrectionTest.testCorr16JsonPrimitiveTypesAreCheckedNotCoerced: passed
+# WalkCorrectionTest.testCorr17ClientAssertedResponseStateCannotControlPersistedState: passed
+# ConfigLoaderTest.testDefaultsFailClosedToProduction: passed
+# ConfigLoaderTest.testDescribeOmitsSecrets: passed
+# ConfigLoaderTest.testDevIdentityStubCannotBeEnabledInProduction: passed
+# ConfigLoaderTest.testDevIdentityStubIsOnlyForDevelopmentOrTest: passed
+# ConfigLoaderTest.testEnvFileParsing: passed
+# ConfigLoaderTest.testInvalidEnvironmentAndLogLevelAreRejected: passed
+# ConfigLoaderTest.testMaintenanceRequiresLongToken: passed
+# ConfigLoaderTest.testTestRunnerIsNeverEnabledInProduction: passed
+# ConfigLoaderTest.testUnpublishedInstrumentRenderingIsRefusedInProduction: passed
+# VisibilityEngineTest.testAnsweredRequiresAValidOptionAndUnansweredIsNeverNumeric: passed
+# VisibilityEngineTest.testBlankStateAppliesConfiguredDefaults: passed
+# VisibilityEngineTest.testConditionalClassroomSectionsFollowGradeClassTypeAndContent: passed
+# VisibilityEngineTest.testGradeFilteringFollowsSchoolGroup: passed
+# VisibilityEngineTest.testHiddenConditionalAnswersAreRetainedAndReappear: passed
+# VisibilityEngineTest.testInvalidGradeIsClearedAndDependentVisibilityRecalculates: passed
+# VisibilityEngineTest.testMatchesTheSharedVectorsExactly: passed
+# VisibilityEngineTest.testPeriodVisibilityAndHiddenRetentionPolicy: passed
+# VisibilityEngineTest.testSkippableComponentClearsRatingsKeepsNotesAndReturnsUnanswered: passed
+# VisibilityEngineTest.testUnsupportedOperatorsAreRefused: passed
+# InstrumentConfigValidatorTest.testBadParentSectionIsReported: passed
+# InstrumentConfigValidatorTest.testChoiceItemWithoutResponseSetIsRejected: passed
+# InstrumentConfigValidatorTest.testConditionMismatchIsReported: passed
+# InstrumentConfigValidatorTest.testCorruptConditionsJsonIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateItemKeyIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateOptionOrderIsReported: passed
+# InstrumentConfigValidatorTest.testMissingResponseSetIsReportedWithSpecificReference: passed
+# InstrumentConfigValidatorTest.testNonDraftStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testRetiredSipContentIsRejected: passed
+# InstrumentConfigValidatorTest.testStructuralFailureStopsEarlyWithoutCrashing: passed
+# InstrumentConfigValidatorTest.testSuppliedConfigurationIsValidWithSeventeenPlaceholderWarnings: passed
+# InstrumentConfigValidatorTest.testUnsupportedRuleEffectIsReported: passed
+# InstrumentScopeTest.testACorruptedSnapshotFailsClosedOnAnUncachedLoad: passed
+# InstrumentScopeTest.testASecondInstrumentNeverSuppliesTheCurrentVersion: passed
+# InstrumentScopeTest.testDiscardDraftCannotReachAnotherInstrumentsSameLabelDraft: passed
+# InstrumentScopeTest.testFutureAndExpiredIcfwalkVersionsAreNotSelected: passed
+# WalkReplayCoherenceTest.testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto: passed
+# WalkReplayCoherenceTest.testAnAlteredRequestAgainstALegacyRowIsTheSameRefusal: passed
+# WalkReplayCoherenceTest.testAnExactLookingRetryAgainstALegacyRowIsARefusal: passed
+# WalkReplayCoherenceTest.testAnOldSaveReplayedAfterALaterSaveCannotOverwriteIt: passed
+# WalkReplayCoherenceTest.testAReplayIsStillIdempotentWhileTheAggregateHasNotMoved: passed
+# WalkReplayCoherenceTest.testASupersededReplayNeverMaterializesTheNewerAggregate: passed
+# WalkReplayCoherenceTest.testAuthorizationAnswersBeforeTheLegacyConflict: passed
+# WalkReplayCoherenceTest.testCreateCompleteAndVoidReplaysAreAlsoRefusedOnceSuperseded: passed
+# IdentityTest.testAuthenticationProvisionsAndBuildsPrincipal: passed
+# IdentityTest.testConfigLoaderRejectsUnsafeIdentitySettings: passed
+# IdentityTest.testDevelopmentStubCannotBeConstructedWhenNotPermitted: passed
+# IdentityTest.testDevelopmentStubReadsOnlyItsOwnHeaders: passed
+# IdentityTest.testHeaderProviderRejectsMissingOrMalformedSubjects: passed
+# IdentityTest.testHeaderProviderRequiresSharedSecretWhenConfigured: passed
+# IdentityTest.testHeaderProviderTrustsOnlyListedProxies: passed
+# IdentityTest.testHeaderProviderWithNoProxyListTrustsNobody: passed
+# IdentityTest.testInactiveUserIsRejectedByAuthentication: passed
+# IdentityTest.testProvisioningIsKeyedBySubjectAndTolerantOfEmailCollisions: passed
+# SnapshotCompilerTest.testCompiledSnapshotMatchesReferenceGolden: passed
+# SnapshotCompilerTest.testRuleTargetsResolveToKeysNotLogicalIds: passed
+# SnapshotCompilerTest.testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior: passed
+# RenderModelTest.testLayoutsAndNumberingComeFromResponseSetsAndOrder: passed
+# RenderModelTest.testModelSerializesToCanonicalJsonWithoutGuids: passed
+# RenderModelTest.testPlacementsCarryDimensionMetadataInAuthoredOrder: passed
+# RenderModelTest.testPresentationIsDerivedFromStructureNotNames: passed
+# RenderModelTest.testPromptsAndPlaceholdersComeFromTheConfiguration: passed
+# RenderModelTest.testResponseOptionsAndDefinitionsMatchTheConfigurationExactly: passed
+# RenderModelTest.testRulesArePassedThroughAndUnsupportedEffectsAreRefused: passed
+# RenderModelTest.testSkippableComponentsDeriveApplicabilityFromRules: passed
+# RenderModelTest.testTreeFollowsAuthoredParentsAndDisplayOrder: passed
+# InstrumentImportServiceTest.testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot: passed
+# InstrumentImportServiceTest.testDb05ReimportIsIdempotentWithStableGuidsAndChecksum: passed
+# InstrumentImportServiceTest.testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges: passed
+# InstrumentImportServiceTest.testDb07MissingResponseSetRollsBackWithSpecificError: passed
+# InstrumentImportServiceTest.testDb08CorruptConditionsJsonRollsBack: passed
+# InstrumentImportServiceTest.testDb09ResponseOptionDefinitionsMatchTheJsonExactly: passed
+# InstrumentImportServiceTest.testDiscardDraftRemovesVersionAndChildren: passed
+# InstrumentImportServiceTest.testListVersionsIncludesImportedDraft: passed
+# InstrumentImportServiceTest.testReorderedReimportSucceedsAndReturnsToGolden: passed
+# InstrumentImportServiceTest.testTransactionRollsBackWhenDatabaseRejectsAWrite: passed
+# LoggerTest.testEntrySerializesAsSingleJsonLine: passed
+# LoggerTest.testLevelThresholds: passed
+# LoggerTest.testRedactsSensitiveKeysAndTruncatesLongText: passed
+# engine=Lucee 6.2.8.20 passed=170 failed=0 skipped=0 ms=51644
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 5 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 2820.280185
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 54672.87218
+exit=0
+
+==============================================================
+$ node --check over every .js and .mjs (excluding node_modules/.git/.runtime)
+==============================================================
+files checked: 34
+failures: 0

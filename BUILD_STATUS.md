@@ -2008,6 +2008,161 @@ seam exists and fired", and passes against the correction. No temporary mutation
    test` with zero failures and zero skips is the gate; this environment produces 1 failure and 121
    skips for want of a database. Phase 5 is not declared ready to freeze here.
 
+## Phase 5 final live verification (full release gate executed)
+
+This session executed the complete release-verification gate that every previous Phase 5 session had
+to leave undone for want of a database and an application runtime. It made no speculative change: two
+failures surfaced, both were diagnosed to root cause, and **no production code was changed**. Evidence:
+`docs/evidence/phase5-final-verification-environment.md`, `-database.txt`, `-targeted.txt`,
+`-supporting.txt`, `-release-gate.txt`, `-red-before-fix.txt`.
+
+### Environment as executed
+
+| Component | Version |
+| --- | --- |
+| Operating system | Ubuntu 24.04.4 LTS, kernel 6.18.44, x86_64 |
+| Node / npm | 22.22.2 / 10.9.7 |
+| Java | OpenJDK 21.0.10+7-Ubuntu-124.04 |
+| Lucee | 6.2.8.20 (lucee-light on jetty-runner 9.4.58.v20250814) |
+| Microsoft JDBC driver | 12.10.2.jre11 |
+| SQL Server | 16.0.4295.3 Developer Edition (64-bit), RTM-CU27, Linux (SQL Server 2022) |
+| Playwright / Chromium | 1.56.1 / 141.0.7390.37 |
+| axe-core / mssql (Node) | 4.13.0 / 12.7.2 |
+
+Dependencies installed with `npm ci` from the checked-in `package-lock.json`. No dependency was
+added, upgraded or removed; the lockfile is unchanged.
+
+### Database verification
+
+| Step | Result |
+| --- | --- |
+| Clean disposable database created (`DROP`/`CREATE icfwalk_dev`) | `icf` schema absent before apply |
+| First apply, `001`..`005` in order | all five ok, exit 0; 20 tables from `001`, 22 after `005` |
+| Reapply of the complete set | `002`-`005` ok; `001` refuses by design ("The icf schema already contains tables. No changes were made."), so the script exits 1 |
+| `002`/`003`/`004`/`005` reapplied individually | each exit 0 |
+| Idempotence proved directly | full `icf` object/column fingerprint (455 rows) identical before and after a further reapply, sha256 `15b239a3...5f02ddef` |
+| `npm run test:db` | 1 case, **1 pass, 0 fail, 0 skip** |
+| Seed | `2026-09-17 aligned prototype` DRAFT, checksum `c125b4ae...4dda9`, 23 sections / 144 items / 95 dimension values |
+
+No schema change was made and no migration was edited. None was needed.
+
+### Targeted correction verification
+
+| Check | Result |
+| --- | --- |
+| `node --test tests/node/browser-export.test.mjs` | 11 cases, **11 pass, 0 fail, 0 skip** |
+| `ICFWALK_REQUIRE_APP=1 node --test tests/node/no-mail.test.mjs` | 5 cases, **5 pass, 0 fail, 0 skip** |
+| `/api/maintenance/tests/run?filter=WalkSummaryCoherence` | 4 cases, **4 pass, 0 fail, 0 skip** |
+
+The CORR-P5-03 gate that failed in the previous session now passes for the right reason: the live
+route probe performed its check against a running application rather than refusing to report one.
+
+**The real concurrent SAVE ran.** `testASummaryExportCannotStraddleAConcurrentSave`, unexecuted in
+every prior session, executed against SQL Server in 6236 ms and passed. What that run established:
+
+- the concurrent writer started at the `loadResponses` seam, between the export's dimension read and
+  its response read (`interceptor.fired("loadResponses")`);
+- the writer was still blocked when the bounded 6000 ms join expired, while the summary transaction
+  held the walk mutation lock -- the 6.2 s duration is that block, not overhead;
+- the export described state A coherently: state A's response, state A's Dual Language section,
+  state A's grade in the file name, and the walk's own pinned version;
+- the writer committed state B after the export released the lock, on a new row version;
+- the later export described state B alone, and `dual_language_notes` was absent from it while still
+  stored in the database -- SUM-04 retained-but-hidden, proved against the real store.
+
+Item 1 of "Unresolved and not verified (Phase 5 final correction pass)" is discharged by this run.
+Items 2 and 3 are discharged by the CFML suite total and the migration results above.
+
+### Supporting checks
+
+| Command | Result |
+| --- | --- |
+| `npm run validate:handoff` | ok, **51 checks, 0 errors** |
+| `npm run test:package` | **18/18 pass**, 0 skip |
+| `npm run test:db` | **1/1 pass**, 0 skip |
+| `npm run test:cfml` | 5 Node cases pass; CFML suite **170 pass, 0 fail, 0 skip** |
+| `npm run test:summary` | **20/20 pass**, 0 skip |
+| `npm run vectors:summary:check` | `summary-vectors.json is current` |
+| `npm run oracle:summary` | **10/10 vectors accounted for, 0 unexplained** |
+| `node --check` on every `.js` and `.mjs` | **34 files, 0 failures** |
+
+### Complete release gate
+
+```
+ICFWALK_REQUIRE_APP=1 npm test
+```
+
+| Suite | Cases | Passed | Failed | Skipped |
+| --- | --- | --- | --- | --- |
+| Node / HTTP / Playwright | 155 | **155** | **0** | **0** |
+| CFML, executed live within the run | 170 | **170** | **0** | **0** |
+
+Exit 0. Wall time 234 s for the Node suite, with the CFML suite completing in 52.9 s inside it. No
+request-timeout entry was logged. This is a real gate result from one commit and one working tree,
+not a combination of runs.
+
+### Failures found, and what they were
+
+Both are recorded in full, observed-failure-first, in
+`docs/evidence/phase5-final-verification-red-before-fix.txt`.
+
+1. **Test-harness defect (corrected).** `WalkSummaryCoherenceTest`'s `storedDimensionCode()` helper
+   selected `value_code` from `[icf].[walk_dimension_value]`, which has no such column -- it holds
+   `selected_value_id`, and `value_code` lives on `[icf].[dimension_value]`. The assigned concurrency
+   case failed with `Invalid column name 'value_code'` the first time it ever reached a database.
+   The three sibling specs that read the same thing have always joined correctly. Fixed by adding
+   that join, one line, test code only. **No assertion was weakened, removed, renamed or skipped**;
+   the two assertions the helper feeds still demand `general_education` and `5`, and the change only
+   lets them execute.
+
+2. **Environmental (runtime configuration).** The whole 170-case CFML suite runs inside a single
+   `/api/maintenance/tests/run` request, which on this container takes 52-57 s -- past Lucee's 50 s
+   default. Lucee stopped the request mid-suite and interrupted the thread, and the *next* spec died
+   with `java.nio.channels.ClosedByInterruptException` on its first file write, which reads like a
+   logging fault and is not one. Proved by A/B on one variable: without the override the request is
+   killed at 50061 ms; with it the suite completes 170/170. `tools/runtime/lucee-up.sh` now exports
+   `LUCEE_REQUESTTIMEOUT` (default 600, overridable). That is the Lucee-under-Jetty verification
+   runtime only, which `docs/LOCAL_SETUP.md` already states is not a supported production platform.
+   **No application code, no `Application.cfc` setting and no production configuration is involved,
+   and no individual test is given longer to pass.**
+
+   The interrupted runs left test instrument versions behind, which then failed four version-selection
+   specs on the next attempt. Those were consequences of the interruption, not defects, and none
+   reproduces on a clean database. The database was dropped, rebuilt, re-migrated and re-seeded, and
+   the entire gate re-executed from that clean state; every number above comes from that re-run.
+
+### Files changed (final live verification session)
+
+| File | Why |
+| --- | --- |
+| `tests/cfml/specs/WalkSummaryCoherenceTest.cfc` | one-line join correction in the `storedDimensionCode()` test helper (failure 1). Test code only. |
+| `tools/runtime/lucee-up.sh` | exports `LUCEE_REQUESTTIMEOUT` (default 600) for the verification runtime (failure 2). |
+| `docs/LOCAL_SETUP.md` | documents that knob and the misleading `ClosedByInterruptException` it prevents. |
+| `docs/evidence/phase5-final-verification-*` | new evidence set, six files. |
+| `docs/evidence/screenshots/*.png` | regenerated by `npm run test:browser` inside the gate, as that suite is specified to do. |
+| `BUILD_STATUS.md` | this section. |
+
+**No production code changed.** `app/`, `src/`, `database/`, `config/`, `manifest.json`,
+`package.json` and `package-lock.json` are untouched. All historical evidence files are unchanged.
+
+### Unresolved and not verified (final live verification session)
+
+1. **Adobe ColdFusion 2023 is unverified.** All CFML execution was on Lucee 6.2.8.20, the documented
+   verification runtime. ColdFusion 2023 cannot be installed in this container, so no target-platform
+   check could be run separately. Every CF2023 verification item from Phase 5 and the correction
+   sessions stands, including the locked `summary()` transaction and the closure-based
+   `classifySaveFailure` path.
+2. **SQL Server 2016 is unverified.** All SQL execution was against SQL Server 2022 (16.0.4295.3).
+   The migrations and the `UPDLOCK, ROWLOCK` serialization the concurrency case depends on are now
+   proved on 2022 only.
+3. Nothing else. No test is skipped, no assertion is weakened, and no defect is outstanding within
+   the correction scope.
+
+### Phase 5 candidate status
+
+The complete gate was executed against this exact candidate with **zero failures and zero skips**.
+The freeze decision itself belongs to the independent auditor, not to this session.
+
 ## Exact recommended starting point for Phase 6
 
 Phase 6 is publishing and administration and **has not been started**. Nothing in this session

@@ -1,0 +1,84 @@
+# Targeted correction verification
+# commit: e63dfd9197786c4ef61ad0281628aa6efb8741e1 (working tree: this session's corrections)
+# date: 2026-09-21T14:14:06Z
+
+$ node --test --test-reporter=spec tests/node/browser-export.test.mjs
+✔ a save in flight and an edit behind it are both flushed before the summary is fetched (1932.617171ms)
+✔ a definitive 4xx save rejection produces no download and an accurate message (3648.102127ms)
+✔ a conflict produces no download and leaves the conflict workflow open (3601.446479ms)
+✔ an HTTP 5xx blocks the export as an unfinished save, not as a network failure (3675.601264ms)
+✔ a genuine transport failure produces a browser-generated file from the screen state (738.982665ms)
+✔ a 200 whose body is not JSON blocks the export and never claims the server was unreachable (3644.943995ms)
+✔ an unresolved save stays retryable under its own mutation id and frozen request (3673.917635ms)
+✔ an unexpected failure while reading the save response blocks the export (3656.942981ms)
+✔ a response that breaks after its headers blocks the export rather than falling back (3565.556296ms)
+✔ a clean export with nothing unsent uses the authenticated summary GET (553.497215ms)
+✔ a read-only viewer exports straight from the server route (621.9157ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 29690.506463
+exit=0
+
+$ ICFWALK_REQUIRE_APP=1 node --test --test-reporter=spec tests/node/no-mail.test.mjs
+✔ no mail-delivery construct exists anywhere in the shipped source (15.138124ms)
+✔ the browser never posts a draft anywhere: the only outbound action is a mailto: URL (0.463016ms)
+✔ mailtoUrl percent-encodes every value, so a recipient can never become a mail header (17.636755ms)
+✔ no route, controller action, or configuration key accepts a recipient (0.628846ms)
+✔ the summary export is the only new endpoint and it is read-only (24.459003ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 242.86939
+exit=0
+
+$ curl -sS -X POST -H "X-ICFWalk-Maintenance-Token: $ICFWALK_MAINTENANCE_TOKEN" \
+    'http://127.0.0.1:8888/index.cfm/api/maintenance/tests/run?filter=WalkSummaryCoherence'
+{
+  "elapsedMs": 6485,
+  "engine": "Lucee 6.2.8.20",
+  "ok": true,
+  "specs": [
+    {
+      "cases": [
+        {
+          "ms": 6236,
+          "name": "testASummaryExportCannotStraddleAConcurrentSave",
+          "status": "passed"
+        },
+        {
+          "ms": 2,
+          "name": "testEveryMutationPathTakesTheSameWalkLock",
+          "status": "passed"
+        },
+        {
+          "ms": 0,
+          "name": "testTheConcurrencySeamFiresBetweenTheTwoAggregateReads",
+          "status": "passed"
+        },
+        {
+          "ms": 190,
+          "name": "testTheLockedExportStillWritesNothingAboutTheWalk",
+          "status": "passed"
+        }
+      ],
+      "failed": 0,
+      "name": "WalkSummaryCoherenceTest",
+      "passed": 4,
+      "skipped": 0
+    }
+  ],
+  "totals": {
+    "failed": 0,
+    "passed": 4,
+    "skipped": 0
+  }
+}

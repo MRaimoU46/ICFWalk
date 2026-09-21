@@ -1,0 +1,153 @@
+# Phase 5 final verification: the two failures this run exposed, and what each turned out to be
+
+The first execution of the complete gate against e63dfd9 produced two distinct failures. Neither was
+an application defect; no production code was changed for either. Both are recorded here with the
+observed failure first, so the correction can be judged against it.
+
+
+================================================================================
+FAILURE 1 -- test-harness defect in WalkSummaryCoherenceTest (real, reproducible)
+================================================================================
+
+The assigned Phase 5 concurrency case had never actually executed against a database. It failed at
+its first contact with SQL Server:
+
+    $ curl -sS -X POST -H "X-ICFWalk-Maintenance-Token: $TOKEN" \
+        'http://127.0.0.1:8888/index.cfm/api/maintenance/tests/run?filter=WalkSummaryCoherence'
+
+    {"ok":false,
+     "specs":[{"name":"WalkSummaryCoherenceTest","passed":3,"failed":1,"skipped":0,
+       "cases":[
+         {"name":"testASummaryExportCannotStraddleAConcurrentSave","status":"failed","ms":6545,
+          "type":"database","message":"Invalid column name 'value_code'.",
+          "at":"/home/user/ICFWalk/src/core/Db.cfc:19"},
+         {"name":"testEveryMutationPathTakesTheSameWalkLock","status":"passed","ms":3},
+         {"name":"testTheConcurrencySeamFiresBetweenTheTwoAggregateReads","status":"passed","ms":1},
+         {"name":"testTheLockedExportStillWritesNothingAboutTheWalk","status":"passed","ms":247}]}],
+     "totals":{"passed":3,"failed":1,"skipped":0}}
+
+ROOT CAUSE. The spec's own `storedDimensionCode()` helper selected `value_code` from
+`[icf].[walk_dimension_value]`. That table has no such column: it records a chosen dimension value as
+`selected_value_id`, and `value_code` lives on `[icf].[dimension_value]`.
+
+    icf.walk_dimension_value : walk_id, version_id, dimension_id, selected_value_id, text_value,
+                               number_value, date_value, boolean_value, created_at, updated_at, row_version
+    icf.dimension_value      : value_id, dimension_id, value_code, label, display_order,
+                               effective_start, effective_end, active, created_at, updated_at, row_version
+
+The three sibling specs that read the same thing all join correctly and have always passed
+(WalkServiceTest:104, WalkSchoolScopeTest:85, WalkCorrectionTest:84), e.g.
+
+    LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = x.selected_value_id
+
+So this is a defect in one test helper, not in the schema and not in the application. It was invisible
+to every previous review because the case reaches that helper only in step 7, after the export has
+completed and the deferred writer has committed -- which requires a live SQL Server. This is precisely
+the class of defect the live gate exists to catch.
+
+CORRECTION (test code only, one line, tests/cfml/specs/WalkSummaryCoherenceTest.cfc:156):
+
+    - "SELECT v.value_code FROM [icf].[walk_dimension_value] v
+    -    JOIN [icf].[dimension_definition] d ON d.dimension_id = v.dimension_id
+    -  WHERE v.walk_id = :id AND d.code = :c"
+    + "SELECT dv.value_code FROM [icf].[walk_dimension_value] v
+    +    JOIN [icf].[dimension_definition] d ON d.dimension_id = v.dimension_id
+    +    LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = v.selected_value_id
+    +  WHERE v.walk_id = :id AND d.code = :c"
+
+No assertion was weakened, removed, renamed or skipped. The two assertions this helper feed still
+demand exactly what they demanded before -- that after the export releases the walk lock the deferred
+writer's state B is what the database holds:
+
+    assertEquals("general_education", storedDimensionCode(walkId, "classType"), "the database now holds state B");
+    assertEquals("5",                 storedDimensionCode(walkId, "grade"));
+
+The change only lets those assertions execute. Both dimension codes and both value codes were
+confirmed present in the seeded instrument before the fix was written.
+
+AFTER (Lucee restarted, because it caches compiled components):
+
+    "totals":{"passed":4,"failed":0,"skipped":0}
+      testASummaryExportCannotStraddleAConcurrentSave      passed  6236 ms
+      testEveryMutationPathTakesTheSameWalkLock            passed     2 ms
+      testTheConcurrencySeamFiresBetweenTheTwoAggregateReads passed   0 ms
+      testTheLockedExportStillWritesNothingAboutTheWalk    passed   190 ms
+
+The ~6.2 s duration is the proof, not overhead: the spec starts a real second session's SAVE at the
+`loadResponses` seam and joins it for a bounded 6000 ms. The join expires with the writer still
+running, which is the assertion that the writer was blocked on the walk mutation lock the summary
+transaction holds. The writer then commits state B once the export releases the lock.
+
+
+================================================================================
+FAILURE 2 -- environmental: Lucee's 50 second request timeout (not a code defect)
+================================================================================
+
+With failure 1 corrected, the full CFML suite failed differently:
+
+    # LoggerTest.(construct): failed - java.nio.channels.ClosedByInterruptException
+                                       @ /home/user/ICFWalk/src/controllers/MaintenanceController.cfc:331
+    # engine=Lucee 6.2.8.20 passed=167 failed=1 skipped=0 ms=56783
+
+LoggerTest passes in isolation (3/3, twice). The message is misleading: nothing is wrong with the
+logger. The whole 170-case suite runs inside one `/api/maintenance/tests/run` request, and on this
+container that request takes ~52-57 s -- past Lucee's 50 second default. Lucee stopped the request
+mid-suite and interrupted the thread; the interrupt closed the NIO channel, so the *next* spec to
+touch a file died with ClosedByInterruptException. From
+`.runtime/lucee-server/lucee-server/context/logs/requesttimeout.log`:
+
+    "ERROR","ControllerThread:20","09/21/2026","14:00:53","controller",
+    "stop request (4) because run into a timeout. ATM we have 1 active request(s) and 0 active cfthreads
+     path: /home/user/ICFWalk/app/index.cfm (/home/user/ICFWalk/src/core/Db.cfc)"
+      at instrument.snapshotcompiler_cfc$cf.udfCall(/icfwalk/instrument/SnapshotCompiler.cfc:83)
+      at instrument.instrumentimportservice_cfc$cf.udfCall1(/icfwalk/instrument/InstrumentImportService.cfc:121)
+
+Diagnosed by A/B, not by assumption. Same commit, same database, same suite, one variable:
+
+    WITHOUT LUCEE_REQUESTTIMEOUT   ->  {"error":{"code":"INTERNAL_ERROR","details":{"exceptionMessage":
+                                        "Request [/index.cfm] has run into a timeout (timeout: 50 seconds)
+                                         and has been stopped. The thread started 50061ms ago."}}}
+    WITH    LUCEE_REQUESTTIMEOUT=600 ->  {"ok":true,"totals":{"passed":170,"failed":0,"skipped":0}}
+                                         in 56.4 s, with zero requesttimeout.log entries
+
+Lucee's stored config was confirmed to be the source:
+`.runtime/lucee-server/lucee-server/context/.CFConfig.json` -> `"requestTimeout": "0,0,0,50"`.
+
+Why it appeared only now: the suite grew to 170 cases, and the concurrency specs deliberately hold a
+writer blocked for ~6 s each. The highest previously recorded run was 166 cases in 39.9 s
+(`docs/evidence/phase5-npm-test.txt`); this container is slower, which pushed the single request past
+the ceiling for the first time.
+
+CORRECTION (verification runtime only, tools/runtime/lucee-up.sh):
+
+    + export LUCEE_REQUESTTIMEOUT="${LUCEE_REQUESTTIMEOUT:-600}"
+
+This raises the ceiling for the Lucee-under-Jetty verification runtime, which
+`docs/LOCAL_SETUP.md` already states is not a supported production platform. No application code,
+no `Application.cfc` setting, and no production configuration is involved, and no individual test is
+given longer to pass -- the specs' own bounded joins and timeouts are untouched. Documented in
+`docs/LOCAL_SETUP.md` so the next auditor is not defeated by the same 50 seconds.
+
+
+================================================================================
+CONSEQUENCE OF FAILURE 2 -- database contamination, and the clean re-run
+================================================================================
+
+The interrupted requests left instrument versions behind, because the specs that create them never
+reached their cleanup:
+
+    2026-09-17 aligned prototype | DRAFT      <- the legitimate seed
+    test-3bc51537-db04           | DRAFT      <- residue
+    test-3bc51537-db05           | DRAFT      <- residue
+    test-3bc51537-db06           | PUBLISHED  <- residue
+    test-3bc51537-db09           | DRAFT      <- residue
+
+That residue then failed four version-selection specs on the next run (passed=166 failed=4), e.g.
+`SnapshotServiceTest.testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: Expected
+[2026-09-17 aligned prototype] but got [test-3bc51537-db06]`. These were consequences of the
+interruption, not defects: none of them reproduce on a clean database.
+
+The database was therefore dropped and rebuilt from nothing, migrations 001-005 reapplied, the
+instrument re-seeded, and the entire gate re-executed from a clean state. Every result reported in
+this evidence set and in BUILD_STATUS.md comes from that clean re-run, on one commit and one working
+tree. After it, the database again held exactly one instrument version, 0 walks and 0 app_user rows.

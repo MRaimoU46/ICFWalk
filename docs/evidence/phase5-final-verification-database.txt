@@ -1,0 +1,224 @@
+# Phase 5 final verification: database
+
+Clean disposable database, migrations 001-005 applied in order, then the complete set reapplied to
+the same database to prove idempotence.
+
+Sequence executed:
+
+    docker exec icfwalk-mssql sqlcmd -Q "ALTER DATABASE [icfwalk_dev] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                                         DROP DATABASE [icfwalk_dev]; CREATE DATABASE [icfwalk_dev];"
+    # confirmed empty: SELECT COUNT(*) FROM sys.schemas WHERE name='icf'  ->  0
+    node scripts/db/apply-schema.mjs        # first apply, 001..005 in order   -> exit 0
+    node scripts/db/apply-schema.mjs        # reapply the complete set         -> exit 1, see below
+    npm run test:db
+
+## How to read the reapply exit code
+
+The reapply exits 1, and that is the designed behavior, not a failure of this candidate.
+`001_schema.sql` is a create-only script that refuses to run against a database whose `icf` schema
+already contains tables ("The icf schema already contains tables. No changes were made."), exactly
+as `docs/LOCAL_SETUP.md` and `database/README.md` specify. `apply-schema.mjs` sets a non-zero exit
+when any script in the set reports not-ok, so 001's intentional refusal alone produces exit 1.
+
+The four idempotent migrations each reapply cleanly and each exit 0 on their own:
+
+    node scripts/db/apply-schema.mjs --only 002   -> exit 0
+    node scripts/db/apply-schema.mjs --only 003   -> exit 0
+    node scripts/db/apply-schema.mjs --only 004   -> exit 0
+    node scripts/db/apply-schema.mjs --only 005   -> exit 0
+
+Idempotence was proved directly rather than inferred. A full fingerprint of every object and column
+in the `icf` schema was taken after the second application and again after a third application of
+002-005, and the two are byte-identical:
+
+    SELECT o.type_desc, s.name, o.name, c.name, TYPE_NAME(c.user_type_id), c.max_length, c.is_nullable
+      FROM sys.objects o JOIN sys.schemas s ON s.schema_id = o.schema_id
+      LEFT JOIN sys.columns c ON c.object_id = o.object_id
+     WHERE s.name = 'icf' ORDER BY 1,2,3,4;          -- 455 rows, 22 tables
+
+    sha256(after 2nd apply) = 15b239a37c2ddcf0f2b30760e765d4bad074a95e9270488afdeac64c5f02ddef
+    sha256(after 3rd apply) = 15b239a37c2ddcf0f2b30760e765d4bad074a95e9270488afdeac64c5f02ddef
+
+No schema change was made in this session. No migration was edited.
+
+########## CLEAN DATABASE: FIRST APPLY 001..005 ##########
+{
+  "script": "001_schema.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk database objects created successfully.",
+      "table_count": "20"
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "002_alignment_patch.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk alignment patch applied successfully.",
+      "response_option_definition_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "003_walk_mutation.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk walk mutation log applied successfully.",
+      "walk_mutation_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "004_mutation_fingerprint.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk mutation fingerprint patch applied successfully.",
+      "request_fingerprint_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "005_org_unit_dimension_map.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk org-unit dimension mapping patch applied successfully.",
+      "org_unit_dimension_map_available": 1,
+      "identifying_value_constraint_present": 1,
+      "non_identifying_rows_removed": 0,
+      "mapping_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+FIRST APPLY EXIT: 0
+
+########## REAPPLY THE COMPLETE SET 001..005 ##########
+{
+  "script": "001_schema.sql",
+  "database": "icfwalk_dev",
+  "ok": false,
+  "resultSet": null,
+  "error": "The icf schema already contains tables. No changes were made. Use a reviewed migration script for an existing installation.",
+  "errorNumber": 50001
+}
+{
+  "script": "002_alignment_patch.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk alignment patch applied successfully.",
+      "response_option_definition_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "003_walk_mutation.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk walk mutation log applied successfully.",
+      "walk_mutation_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "004_mutation_fingerprint.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk mutation fingerprint patch applied successfully.",
+      "request_fingerprint_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "005_org_unit_dimension_map.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk org-unit dimension mapping patch applied successfully.",
+      "org_unit_dimension_map_available": 1,
+      "identifying_value_constraint_present": 1,
+      "non_identifying_rows_removed": 0,
+      "mapping_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+REAPPLY EXIT: 1  (001 refuses by design on a populated icf schema; 002-005 are idempotent and each exit 0)
+
+==============================================================
+$ npm run test:db
+==============================================================
+$ npm run test:db
+==============================================================
+
+> icfwalk@0.1.0 test:db
+> node --test tests/node/db-scripts.test.mjs
+
+TAP version 13
+# (node:5125) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 1 - DB-01..03 supplied scripts against an empty SQL Server database
+  ---
+  duration_ms: 1084.345351
+  type: 'test'
+  ...
+# SQL Server 16.0.4295.3 Developer Edition (64-bit)
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1371.826873
+exit=0
+
+## Seed
+
+$ node scripts/seed-instrument.mjs
+versionLabel  = "2026-09-17 aligned prototype"
+versionStatus = "DRAFT"
+checksum      = c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9
+counts        = sections 23, items 144, responseSets 29, responseOptions 138, rules 12,
+                dimensions 10, dimensionValues 95, instrumentDimensions 10
+
+The seed is idempotent through the maintenance endpoint; the live suite reasserts this
+("seed import of the aligned DRAFT is idempotent through the maintenance endpoint").
+
+After the full release gate, the database was inspected again: exactly one instrument version
+(the seeded DRAFT), 0 walks and 0 app_user rows. Every spec removes its own fixtures.
