@@ -15,17 +15,26 @@
  *   1. The version still has a compiled snapshot, it parses, and its SHA-256 is the checksum stored
  *      beside it. A DRAFT whose snapshot and checksum disagree is refused rather than frozen in
  *      that state forever.
- *   2. The snapshot envelope is the one the compiler writes and the runtime reads: declared format,
- *      a definitions object, an instrument and a version, and a counts block that agrees with the
- *      definitions beside it. Its instrument code and version label must be the identity of the row
- *      it is stored on -- a snapshot that names another version is not this version's snapshot,
- *      however well it hashes.
- *   3. The definitions inside the snapshot are semantically valid: DefinitionValidator, the same
+ *   2. The stored bytes are canonical. docs/DATA_CONTRACT.md defines compiled_snapshot_json as a
+ *      canonical document and checksums it as one, so bytes that merely encode the right content
+ *      some other way carry a checksum that does not mean what it claims. Refused, never rewritten:
+ *      rewriting would move the checksum the DRAFT was reviewed under.
+ *   3. The snapshot envelope is the one the compiler writes and the runtime reads: declared format,
+ *      a definitions object, an instrument and a version, and a complete counts block -- all nine
+ *      members, each a whole non-negative number equal to what the definitions actually carry. Its
+ *      instrument code and version label must be the identity of the row it is stored on -- a
+ *      snapshot that names another version is not this version's snapshot, however well it hashes.
+ *   4. The definitions inside the snapshot are semantically valid: DefinitionValidator, the same
  *      component the import path runs over every document it accepts.
- *   4. The definitions SQL Server holds are semantically valid, by the same component. The two are
+ *   5. The definitions SQL Server holds are semantically valid, by the same component. The two are
  *      validated separately and on purpose: agreeing with each other is exactly what a corrupted
  *      DRAFT does.
- *   5. Those two sets still equal each other, compared by the canonical definitions checksum the
+ *   6. The runtime renderer builds this exact snapshot, completely. The rules in step 4 describe
+ *      RenderModelBuilder; this step runs it. A version that satisfies every rule and still makes
+ *      the renderer throw -- or that the renderer builds with content silently dropped -- is
+ *      refused here instead of being frozen and discovered later as a 500 or as a quietly shorter
+ *      instrument than the one that was reviewed.
+ *   7. Those two sets still equal each other, compared by the canonical definitions checksum the
  *      import used. This is the drift check: freezing a snapshot that no longer describes its own
  *      definitions is the one unrecoverable mistake here.
  *
@@ -60,7 +69,7 @@ component output="false" {
 	public InstrumentPublishService function init(
 		required struct config, required any db, required any errors, required any logger,
 		required any definitionRepository, required any auditRepository, required any canonicalJson,
-		required any snapshotCompiler, required any definitionValidator
+		required any snapshotCompiler, required any definitionValidator, required any renderContractValidator
 	) {
 		variables.config = arguments.config;
 		variables.db = arguments.db;
@@ -71,6 +80,7 @@ component output="false" {
 		variables.json = arguments.canonicalJson;
 		variables.compiler = arguments.snapshotCompiler;
 		variables.definitionValidator = arguments.definitionValidator;
+		variables.renderContract = arguments.renderContractValidator;
 		return this;
 	}
 
@@ -97,6 +107,7 @@ component output="false" {
 		var wanted = arguments.versionId;
 		var self = this;
 		var validator = variables.definitionValidator;
+		var renderContract = variables.renderContract;
 		// Every refusal below rolls its transaction back, and an audit record written inside that
 		// transaction would roll back with it -- leaving the refusal invisible, which is the one
 		// thing ADM-05 asks for. So a refusing branch records what happened here and raises; the
@@ -152,9 +163,25 @@ component output="false" {
 					);
 				}
 
-				// 2. The envelope the compiler writes and the runtime reads, including the identity
-				//    it claims against the identity of the row it is stored on.
+				// 2. The stored bytes are the canonical serialization of what they parse to.
+				//    docs/DATA_CONTRACT.md calls compiled_snapshot_json a canonical document and
+				//    hashes it as one, so a version whose bytes are merely *some* JSON encoding of
+				//    the right content has a checksum that means less than it claims: two databases
+				//    holding the same instrument would disagree about its identity. Publication
+				//    refuses such a snapshot rather than silently rewriting it, because rewriting
+				//    would change the checksum the import computed and the DRAFT was reviewed under.
 				var snapshot = deserializeJSON(snapshotJson);
+				var canonicalBytes = variables.json.serialize(snapshot);
+				if (compare(canonicalBytes, snapshotJson) != 0) {
+					self.markRefusal(refusal, version, "SNAPSHOT_NOT_CANONICAL", { "storedLength": len(snapshotJson), "canonicalLength": len(canonicalBytes) });
+					variables.errors.publishValidation(
+						"Instrument version '" & version.versionLabel & "' has a compiled snapshot that is not canonical JSON. Re-import the DRAFT before publishing.",
+						[{ "code": "SNAPSHOT_NOT_CANONICAL", "message": "compiled_snapshot_json is not the canonical serialization of the document it parses to.", "path": "$" }]
+					);
+				}
+
+				// 3. The envelope the compiler writes and the runtime reads, including the identity
+				//    it claims against the identity of the row it is stored on.
 				var envelope = validator.validateEnvelope(snapshot, {
 					"path": "$", "versionLabel": version.versionLabel, "instrumentCode": version.instrumentCode
 				});
@@ -166,7 +193,7 @@ component output="false" {
 					);
 				}
 
-				// 3. The definitions carried in the snapshot are semantically valid.
+				// 4. The definitions carried in the snapshot are semantically valid.
 				var snapshotIssues = validator.validate(snapshot.definitions, { "path": "$.definitions" });
 				if (!snapshotIssues.valid) {
 					self.markRefusal(refusal, version, "SNAPSHOT_DEFINITIONS_INVALID", { "errorCount": arrayLen(snapshotIssues.errors), "firstCode": snapshotIssues.errors[1].code });
@@ -176,7 +203,7 @@ component output="false" {
 					);
 				}
 
-				// 4. The definitions SQL Server holds are semantically valid, checked in their own
+				// 5. The definitions SQL Server holds are semantically valid, checked in their own
 				//    right. A DRAFT whose rows and snapshot agree on the same invalid content passes
 				//    every comparison and fails here, which is the whole point of checking both.
 				var persisted = variables.repo.loadNormalizedDefinitions(version.versionId);
@@ -189,7 +216,21 @@ component output="false" {
 					);
 				}
 
-				// 5. ...and the two still describe each other.
+				// 6. The runtime renderer really does build this exact snapshot, completely.
+				//    The rules above describe the renderer; this runs it. A version that satisfies
+				//    every rule but that RenderModelBuilder throws on -- or builds with content
+				//    silently missing -- is refused here rather than frozen and discovered later as
+				//    a 500 or a shorter instrument than the one that was reviewed.
+				var renderIssues = renderContract.validate(snapshot, { "path": "$" });
+				if (!renderIssues.valid) {
+					self.markRefusal(refusal, version, "RENDER_CONTRACT_FAILED", { "errorCount": arrayLen(renderIssues.errors), "firstCode": renderIssues.errors[1].code });
+					variables.errors.publishValidation(
+						"Instrument version '" & version.versionLabel & "' has a stored snapshot the runtime cannot render: " & renderIssues.errors[1].message,
+						renderIssues.errors
+					);
+				}
+
+				// 7. ...and the two still describe each other.
 				var persistedChecksum = variables.compiler.definitionsChecksum(persisted);
 				var snapshotChecksum = variables.compiler.definitionsChecksum(snapshot.definitions);
 				if (persistedChecksum != snapshotChecksum) {

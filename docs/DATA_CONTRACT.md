@@ -54,11 +54,47 @@ over **normalized definitions** -- the representation the importer produces, the
 serializes into the stored snapshot, and `DefinitionRepository.loadNormalizedDefinitions` reads back
 out of SQL Server. `src/instrument/DefinitionValidator.cfc` holds it: references, allowed types,
 unique logical keys, section hierarchy (including cycles), response-set requirements, option
-ordering, rule syntax and supported semantics, dimension and value rules, placements, and the
-retired-content guardrail. It also validates the snapshot **envelope**: declared format, a
-`definitions` object, an `instrument` and a `version`, a `counts` block that agrees with the
-definitions beside it, and -- when the caller supplies them -- an instrument code and version label
-that are the identity of the row the snapshot is stored on.
+ordering, rule syntax and supported semantics, dimension and value rules, placements, the
+retired-content guardrail, and the runtime renderability rules below. It also validates the
+snapshot **envelope** (see "The snapshot envelope").
+
+It is also the one place the shared vocabulary lives. Item types, choice types, selection modes,
+rule target types, effects and supported effects, source types, operators, data types, condition
+logics, the maximum display order, the retired-content strings, the placeholder review status and
+the supported option filters are defined once, on `DefinitionValidator`, and read from it by
+`InstrumentConfigValidator`, `SnapshotCompiler` and `RenderModelBuilder`. Two copies of a shared
+constant is how the validator and the renderer drifted apart in the first place.
+
+### Publishable implies renderable
+
+Every state the semantic rules accept must be one `RenderModelBuilder` will build, completely.
+These rules exist because the renderer has them, and each corresponds to a way it throws or
+silently drops content:
+
+| Rule | Code | What the renderer does otherwise |
+| --- | --- | --- |
+| Exactly one active section has no parent | `SECTION_ROOT_MISSING`, `SECTION_ROOT_AMBIGUOUS` | Throws `SNAPSHOT_NO_ROOT`, or keeps one root and silently drops the other's whole subtree |
+| Every active section, item and placement is reachable from that root | `SECTION_ORPHANED_FROM_ROOT`, `ITEM_ORPHANED_FROM_ROOT`, `PLACEMENT_ORPHANED_FROM_ROOT` | Builds without them; the instrument is quietly smaller than it says |
+| An active placement names a section | `PLACEMENT_SECTION_REQUIRED` | Has nowhere to put the control |
+| Every accepted item type has a layout and a storage shape | `INVALID_ENUM` | Throws `SNAPSHOT_UNSUPPORTED_ITEM_TYPE` |
+| An active item's response set is active | `RESPONSE_SET_INACTIVE` | Throws `SNAPSHOT_UNKNOWN_RESPONSE_SET`: it indexes active sets only |
+| An active choice item's set has at least one active option | `RESPONSE_SET_NO_ACTIVE_OPTIONS` | Renders a question with nothing to choose |
+| An active placement's dimension is active | `DIMENSION_INACTIVE` | Throws `SNAPSHOT_UNKNOWN_DIMENSION` |
+| An active LIST placement offers at least one active value | `DIMENSION_NO_ACTIVE_VALUES` | Renders an empty, unanswerable control |
+| `settings.optionFilter` is one the renderer implements, and its source dimension is active | `UNSUPPORTED_OPTION_FILTER`, `OPTION_FILTER_SOURCE_MISSING` | Throws `UNSUPPORTED_OPTION_FILTER`, or filters nothing |
+| An active rule's target and sources are active | `RULE_TARGET_INACTIVE`, `RULE_SOURCE_INACTIVE` | Keeps a rule pointing at content it has already filtered out |
+
+**`MULTI_CHOICE` and `SHORT_TEXT` are not accepted item types.** Both were on the old allow-list and
+implemented nowhere: neither has a renderer layout, and `icf.walk_response` stores one selected
+option per item, so `MULTI_CHOICE` could not be persisted even if it were drawn. They are refused at
+import and at publication. Supporting either means implementing it end to end first, and
+`DefinitionValidator.itemTypes()` is the single place that records the decision.
+
+Because a hand-maintained rule set can still drift from the thing it describes, both import and
+publication additionally run the **real renderer** over the compiled snapshot
+(`RenderContractValidator`). A throw becomes a structured `{ code, message, path }` issue instead of
+a runtime 500, and the built model is counted against the definitions, so a build that succeeds
+while dropping a subtree is refused as `RENDER_MODEL_INCOMPLETE`.
 
 Rules that only mean something for an inbound authoring document stay in
 `InstrumentConfigValidator`: that the document declares DRAFT, that its authoring ids are unique and
@@ -84,19 +120,25 @@ publishing validates each of them in its own right as well as against the other.
 4. Refuse a publisher who is not a real `icf.app_user`.
 5. Refuse a version with no compiled snapshot, a snapshot that does not parse, or a stored checksum
    that is not the SHA-256 of the stored snapshot.
-6. Validate the stored snapshot envelope, including that the instrument code and version label it
-   claims are the identity of the row it is stored on.
-7. Validate the definitions carried in the snapshot against the shared rule set.
-8. Validate the definitions SQL Server holds against the same rule set, independently.
-9. Confirm the two still compile to the same definitions checksum (the drift check).
-10. Record unresolved placeholders as warnings, not invented replacements. Publishing policy may
+6. Refuse a snapshot whose bytes are not the canonical serialization of the document they parse to
+   (`SNAPSHOT_NOT_CANONICAL`). Publication never rewrites them: rewriting would move the checksum
+   the DRAFT was reviewed under.
+7. Validate the stored snapshot envelope, including the full `counts` block and that the instrument
+   code and version label it claims are the identity of the row it is stored on.
+8. Validate the definitions carried in the snapshot against the shared rule set.
+9. Validate the definitions SQL Server holds against the same rule set, independently.
+10. Build the render model from the exact snapshot about to be frozen, and refuse if the runtime
+    cannot build it or builds it with content missing.
+11. Confirm the snapshot's definitions and SQL Server's still compile to the same definitions
+    checksum (the drift check).
+12. Record unresolved placeholders as warnings, not invented replacements. Publishing policy may
     decide whether warnings block publication.
-11. Write status, the **unchanged** snapshot bytes, the unchanged checksum, the publisher,
+13. Write status, the **unchanged** snapshot bytes, the unchanged checksum, the publisher,
     `published_at` and `effective_start` in one statement. Publishing never recompiles: the stored
     bytes and checksum are exactly what the import produced.
-12. Read the row back and confirm the stored publisher is the actor this call was made for.
-13. Write one audit event naming that publisher.
-14. Commit.
+14. Read the row back and confirm the stored publisher is the actor this call was made for.
+15. Write one audit event naming that publisher.
+16. Commit.
 
 Every refusal happens inside the transaction and therefore changes nothing: status, timestamps,
 publisher, snapshot, checksum, definitions, audit success events and every row version are exactly
@@ -105,13 +147,94 @@ written inside the transaction would be rolled back with it and the refusal woul
 Refusal details carry lifecycle facts only -- version, label, prior status, operation, reason code,
 actor, checksums, counts -- never definitions, snapshot text, narrative content, secrets or tokens.
 
+The same holds for `InstrumentImportService`, and for **every** refusing branch in it. Import and
+`discardDraft` each write one `INSTRUMENT_VERSION_WRITE_REFUSED` event after their rollback, with
+`operation` = `IMPORT` or `DISCARD_DRAFT` and a stable `reason`:
+
+| Reason | Raised when |
+| --- | --- |
+| `VERSION_NOT_DRAFT` | The version is PUBLISHED or RETIRED |
+| `VERSION_IN_USE` | The version is a DRAFT that walks already reference |
+| `SHARED_METADATA_CONFLICT` | The document disagrees with the shared `icf.instrument` row about `active` |
+
+`VERSION_IN_USE` is the one that was missing: both branches threw without marking the refusal, so
+the catch had nothing to persist and the attempt left no trace at all. Being DRAFTs, they had no
+status guard standing behind them either, so the refusal record was the only evidence there would
+ever have been.
+
 After commit, the version and every child definition are immutable. A change requires a new DRAFT
 version.
+
+## The snapshot envelope and the canonical-byte contract
+
+`icf.instrument_version.compiled_snapshot_json` is a **canonical** document
+(`icfwalk-canonical-json/1`: struct keys sorted by UTF-16 code unit, no whitespace, arrays in
+order, shortest round-trip numbers) and `checksum_sha256` is the SHA-256 of exactly those bytes. A
+snapshot that merely encodes the right content some other way carries a checksum that does not mean
+what it claims -- two databases holding the same instrument would disagree about its identity.
+Publication therefore parses the stored bytes, re-serializes them through the one canonicalizer and
+requires byte-for-byte equality (`SNAPSHOT_NOT_CANONICAL`). It **refuses** rather than rewriting,
+because rewriting would silently move the checksum the DRAFT was reviewed under.
+
+The envelope the compiler writes and every reader trusts:
+
+| Member | Requirement |
+| --- | --- |
+| `snapshotFormat` | `icfwalk-instrument-snapshot/1` |
+| `definitions` | An object, validated by the shared rule set |
+| `instrument` | An object with a non-blank `code`, equal to the code of the row it is stored on |
+| `version` | An object with a non-blank `versionLabel`, equal to the label of the row it is stored on |
+| `counts` | An object carrying **all nine** members below, and no others |
+
+`counts` is what readers trust instead of walking the arrays, so it is part of the contract and not
+a convenience. All nine members are required -- `sections`, `items`, `responseSets`,
+`responseOptions`, `rules`, `dimensions`, `dimensionValues`, `instrumentDimensions`, `placeholders`
+-- and each must be a whole number of zero or more that equals the value the definitions imply.
+`placeholders` is derived rather than counted from a collection: it is the number of items whose
+`reviewStatus` is the placeholder status. A missing block, an empty block, a missing member, a
+non-numeric, fractional or negative value, a value that disagrees with the definitions, or a member
+the envelope does not define are each refused with a stable code and path
+(`SNAPSHOT_COUNTS_MISSING`, `SNAPSHOT_COUNTS_INVALID`, `SNAPSHOT_COUNTS_MISMATCH`,
+`SNAPSHOT_COUNTS_UNEXPECTED`).
+
+## Shared instrument metadata
+
+`icf.instrument` is shared by every version of the instrument, so writing it is not an edit to a
+draft. Ownership is explicit:
+
+| Column | Scope | Who writes it |
+| --- | --- | --- |
+| `code` | Identity | `createInstrument`, once, at the instrument's birth. Never updated. |
+| `name`, `description` | **Version** | Compiled into each version's snapshot and served from it. The shared row's copies are operational labels that the walk runtime never reads. |
+| `active` | Shared operational state | Part of `SnapshotService.currentVersion()`'s predicate, so it decides whether an already PUBLISHED version is in service. |
+
+An import therefore writes the shared row exactly once, when the instrument does not yet exist.
+Afterwards it writes nothing there. A document whose `instrument.active` disagrees with the stored
+row is refused atomically (`SHARED_METADATA_CONFLICT`) -- not applied, and not silently dropped --
+and the refusal is audited like any other refused write. `name` and `description` are not refused,
+because they are already stored at the right scope: they go into *this* version's snapshot, so V2
+may describe the instrument differently from V1 and each walk sees its own version's wording.
+
+Changing the shared row deliberately is `InstrumentMetadataService.updateMetadata`: a named, known
+`icf.app_user` is required, the row is taken under `UPDLOCK, ROWLOCK`, and exactly one
+`INSTRUMENT_METADATA_UPDATED` audit event names the actor and what changed. This correction closes
+the write boundary and adds **no** administration UI for that operation.
+
+## Global reporting identity
+
+`icf.dimension_definition` and `icf.dimension_value` are global rows that every version's reporting
+points at. They are created once, when a code is first seen, and never updated. Creating one is
+still a version-scoped authority: `createDimensionIdentity` and `createDimensionValueIdentity` take
+the requesting version id and call `requireDraftVersion` inside the repository, before the INSERT.
+A caller that cannot name a DRAFT cannot mint identity that every future version will point at, and
+a guard the caller applied earlier is not accepted in place of that.
 
 ## The DRAFT-only write boundary
 
 "Published definitions are immutable" is structural, not procedural. Every method in
-`DefinitionRepository` that writes version content does two things, and neither is optional:
+`DefinitionRepository` that writes version content does two things, and neither is optional
+(the mutators that write shared or global rows have their own contracts, above, and are in the same
+inventory):
 
 1. **Resolve and lock the owning version first.** `requireDraftVersion` takes the
    `icf.instrument_version` row under `UPDLOCK, ROWLOCK` inside the caller's transaction and refuses
@@ -128,8 +251,18 @@ A refused write therefore changes no data and moves no `row_version`. A write th
 no rows is caught by the importer's round-trip checksum proof, which fails the whole transaction
 rather than committing a partial one.
 
-The same lock order holds for publication and for import, so a publish racing an edit queues on one
-row instead of interleaving: `instrument_version` first, children afterwards, every time.
+**One lock order, everywhere.** `icf.instrument_version` under `UPDLOCK, ROWLOCK` first, then the
+instrument row, then children. Publication, import, every version-content mutator and both global
+identity creators take it in that order, so a publish racing an edit queues on one row instead of
+interleaving, and no pair of them can deadlock by taking two rows in opposite orders. The one write
+that does not start from a version -- `createInstrument` -- happens before the instrument has any
+versions, and `updateInstrumentMetadata` takes only the instrument row.
+
+That ordering is proved, not assumed. `PublishConcurrencyBarrierTest` holds transaction A at the
+statement that takes the version lock, starts transaction B there, observes that B cannot finish,
+releases A, and then asserts the one permitted serial outcome and the final state -- for publish
+against publish, publish against import, and import against publish. The seam is a test-only
+repository decorator; no production configuration exposes a lock hook.
 
 There is **no unchecked deletion path**. `deleteDraftVersionCascade` refuses a non-DRAFT version like
 every other mutator. Test fixtures that must remove a frozen fixture version use the test-only
@@ -157,6 +290,25 @@ Migration `006` never invents a publisher for an existing row: a non-DRAFT versi
 publisher fails the migration loudly, with the count, because attributing an existing publication is
 an authorized remediation decision and not a migration's to make.
 
+### The publish request-body contract, exactly
+
+The route takes **no request body**, and that is now what it enforces. It asks whether any body
+bytes arrived -- from `Content-Length`, falling back to the parsed content for a chunked request --
+rather than whether the parsed struct is empty, because no body and a literal `{}` both parse to an
+empty struct. So:
+
+| Request body | Result |
+| --- | --- |
+| none | Accepted; the publisher is the authenticated principal |
+| `{}` or `{ }` | 400 `PUBLISH_BODY_NOT_ALLOWED` |
+| whitespace only | 400 `PUBLISH_BODY_NOT_ALLOWED` |
+| `null` | 400 `INVALID_JSON_BODY` (a JSON `null` is not an object) |
+| `[]` | 400 `INVALID_JSON_BODY` |
+| any object, including one naming an actor, publisher, checksum or snapshot | 400 `PUBLISH_BODY_NOT_ALLOWED` |
+
+`Content-Length: 0` is not a body. Every one of these refusals happens before the service is
+reached, so none of them publishes anything or moves a row version.
+
 ## Version-scoped dimensions and values
 
 `icf.dimension_definition` and `icf.dimension_value` are **reporting identity and nothing else**.
@@ -183,6 +335,20 @@ a relabelled or reordered value, a deactivated value or a dropped one silently r
 definitions said -- after V1 was published, frozen and reported on. V1's stored snapshot did not
 move, so the corruption was invisible until something compared the snapshot with the tables and
 found drift in a version nobody had touched.
+
+**Membership is authored, never inferred.** After the one-time schema transition, rows in
+`icf.instrument_dimension_value` are written only by
+`DefinitionRepository.replaceVersionDimensionValues`, under the owning version's row lock and only
+while that version is a DRAFT. Migration `006`'s legacy backfill is tied to that transition, which
+is recorded durably in `icf.schema_migration_state`, and is never re-evaluated against what is
+currently missing. Re-evaluating it was a data-corruption bug in its own right: once V2 minted a
+new global value, a re-applied `006` inferred that published V1 must have meant to offer it and
+inserted it -- changing V1's definitions and the walk values it accepted while its snapshot bytes,
+checksum and `row_version` stayed put, which `WalkRepository.definitionIndex()`'s checksum-keyed
+cache could not see. `database/README.md` has the transition states, the read-only detection
+queries for environments the earlier form already touched, and the reviewed remediation procedure
+(which requires an authorized decision wherever intended historical membership cannot be inferred
+from the version's own frozen snapshot).
 
 A consequence worth stating: a dimension value that is in the database but not in the imported
 document is simply not part of that version. It keeps its identity row, and every earlier version

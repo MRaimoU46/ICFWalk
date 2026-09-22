@@ -370,33 +370,98 @@ definitions, *and* the definitions SQL Server holds, each in its own right, befo
 by checksum. A DRAFT carrying the same invalid content in both places satisfies every comparison
 between them; only validating each one separately catches it.
 
+**Publishable means renderable.** A rule set is a description of the runtime, maintained by hand,
+and a description drifts. `DefinitionValidator` now carries a rule for every way
+`RenderModelBuilder` can fail -- exactly one active root section, no active content orphaned from
+it, only item types and option filters the runtime implements, and every reference an *active* row
+makes resolving to something that is also active and usable -- and publication *also* runs the real
+renderer, on the exact bytes it is about to freeze (`RenderContractValidator`). A renderer failure
+becomes a structured `{ code, message, path }` refusal rather than escaping as a runtime 500, and
+the built model is counted against the definitions so a renderer that builds successfully while
+silently dropping a subtree is refused too. Import runs the same preflight on the snapshot it
+compiles, so a DRAFT that imports is a DRAFT that publishes.
+
+**Item types are a runtime commitment.** `MULTI_CHOICE` and `SHORT_TEXT` were on the accepted list
+and implemented nowhere: neither has a renderer layout, and `icf.walk_response` stores one selected
+option per item, so `MULTI_CHOICE` had nowhere to be persisted even if it were drawn. Both are
+refused, at import and at publication. `DefinitionValidator.itemTypes()` is the single place that
+records the decision, and `RenderModelBuilder` and `SnapshotCompiler` read their shared constants
+(the option-filter table, the placeholder review status) from it rather than keeping copies.
+
 **One lock order.** `instrument_version` under `UPDLOCK, ROWLOCK` first, children afterwards -- for
 publication, for import, and inside every repository mutator
 (`DefinitionRepository.requireDraftVersion`). A publish racing an edit therefore queues on one row
 rather than interleaving into a partially frozen version, and neither order can deadlock by design.
 
-**A structural write boundary.** Immutability is not a helper a caller must remember. Every
-repository mutator locks and checks the owning version itself, and every statement it issues carries
-`status = N'DRAFT'` in its own predicate; a method handed only a child id resolves the owner from the
-database rather than from its arguments. There is no unchecked deletion path -- fixture teardown
-lives in `tests/cfml/support/FixtureCleanup.cfc`, which no application code references.
+**A structural write boundary, including the shared and global rows.** Immutability is not a
+helper a caller must remember. Every repository mutator that writes version content locks and checks
+the owning version itself, and every statement it issues carries `status = N'DRAFT'` in its own
+predicate; a method handed only a child id resolves the owner from the database rather than from its
+arguments. There is no unchecked deletion path -- fixture teardown lives in
+`tests/cfml/support/FixtureCleanup.cfc`, which no application code references.
 
-**Durable refusals.** Every refusal happens inside the transaction, so a record written there would
-roll back with it. The refusing branch captures a small descriptor, the transaction rolls back, and
-exactly one audit event is written afterwards, carrying identifiers, statuses, reasons, counts and
-checksums -- never definitions, snapshot text or narrative content. `InstrumentImportService` uses
-the same shape for a refused import or discard.
+The mutators that write *shared* or *global* rows are inside the boundary too, under the contract
+each actually has, rather than excluded from the inventory as they once were:
+
+| Mutator | Rows | Contract |
+| --- | --- | --- |
+| `createInstrument` | `icf.instrument` | Insert-only, at the instrument's birth, when it has no versions to protect. The unique `code` makes a second call fail rather than reach the existing row. |
+| `updateInstrumentMetadata` | `icf.instrument` | Requires a named, known `icf.app_user`; takes the instrument row under `UPDLOCK, ROWLOCK`. Reached only by `InstrumentMetadataService`, which audits it. No import path, and no route. |
+| `createDimensionIdentity` | `icf.dimension_definition` | Takes the requesting version id and calls `requireDraftVersion` before the INSERT. Global reporting identity is minted only on behalf of a DRAFT. |
+| `createDimensionValueIdentity` | `icf.dimension_value` | The same. |
+| `createDraftVersion` | `icf.instrument_version` | Creates a DRAFT under an existing instrument; there is no frozen version to protect. |
+
+**Shared instrument metadata has one owner, and it is not import.** `icf.instrument.active` is part
+of `SnapshotService.currentVersion()`'s selection predicate, so writing it decides whether an
+already PUBLISHED version is in service at all. The importer used to write the whole shared row from
+the document on every re-import, which made "import a V2 draft" a way to remove published V1 from
+the runtime with nothing changed on the version and nobody named. Now:
+
+* `code` is identity, written once and never updated.
+* `name` and `description` are **version** facts. They are compiled into each version's snapshot and
+  served from it by `RenderModelBuilder`, so V2 may describe the instrument differently from V1 and
+  each walk sees its own version's wording. Nothing in the walk runtime reads the shared row's name
+  or description; they are operational labels for the instrument as a whole.
+* `active` is a shared operational decision. An import that declares it differently from the stored
+  row is refused atomically with `SHARED_METADATA_CONFLICT` -- not applied, and not silently
+  dropped -- and the refusal is audited like any other refused write.
+* Changing any of the three deliberately is `InstrumentMetadataService.updateMetadata`, which
+  requires a named user, locks the row, and writes one `INSTRUMENT_METADATA_UPDATED` event naming
+  the actor and what changed. This pass closes the boundary and adds **no** administration UI for
+  that operation: nothing in `src/http` or `src/controllers` reaches it.
+
+**Durable refusals, from every refusing branch.** Every refusal happens inside the transaction, so a
+record written there would roll back with it. The refusing branch captures a small descriptor, the
+transaction rolls back, and exactly one audit event is written afterwards, carrying identifiers,
+statuses, reasons, counts and checksums -- never definitions, snapshot text or narrative content.
+`InstrumentImportService` uses the same shape for a refused import or discard, **including** the
+DRAFT-in-use branches (`INSTRUMENT_VERSION_IN_USE`), which previously threw without marking the
+refusal and so left no trace at all -- and which, being DRAFTs, had no status guard standing behind
+them either.
 
 **A named publisher.** The publisher is required at the service boundary, checked against
 `icf.app_user` under the lock, read back from the row before the success audit is written, and
 enforced by `CK_instrument_version_publisher_required` in the database. Over HTTP it comes from the
 authenticated principal only; the route takes no request body at all.
 
-**Version-scoped dimensions.** `icf.dimension_definition` and `icf.dimension_value` hold reporting
-identity only. What a version calls a dimension and which values it offers live on
-`icf.instrument_dimension` and `icf.instrument_dimension_value` (migration `006`), so importing V2
-cannot change what published V1 says -- while a walk's stored `value_id` still means the same thing
-across versions.
+**Version-scoped dimensions, and a one-time transition.** `icf.dimension_definition` and
+`icf.dimension_value` hold reporting identity only. What a version calls a dimension and which
+values it offers live on `icf.instrument_dimension` and `icf.instrument_dimension_value` (migration
+`006`), so importing V2 cannot change what published V1 says -- while a walk's stored `value_id`
+still means the same thing across versions. Migration `006`'s legacy membership backfill is a
+one-time schema transition recorded in `icf.schema_migration_state`, never a condition re-evaluated
+on each apply: re-evaluating it made a re-application infer a V2-only value into published V1,
+changing what V1 accepted while its snapshot, checksum and `row_version` stayed put. See
+`database/README.md`, "The legacy membership backfill is one-time", for the states, the read-only
+detection queries and the reviewed remediation procedure.
+
+**Concurrency is proved with a barrier, not with timing.** Repeated `Promise.all` races are kept as
+stress coverage, but they cannot show that two transactions ever overlapped. `PublishConcurrencyBarrierTest`
+uses `tests/cfml/support/InterceptingDefinitionRepository` to fire a callback immediately after the
+statement that takes the version's row lock, starts the competing transaction there, observes that
+it cannot finish, then lets the first commit and asserts the one permitted serial outcome and the
+final state. The decorator is test-only: the container never holds it and no route reaches it, so
+there is no configuration in which a client can activate a lock hook.
 
 ## What Phase 6 builds on
 

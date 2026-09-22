@@ -10,10 +10,17 @@
 component output="false" {
 
 	variables.SNAPSHOT_FORMAT = "icfwalk-instrument-snapshot/1";
-	variables.PLACEHOLDER_REVIEW_STATUS = "Placeholder in source";
 
-	public SnapshotCompiler function init(required any canonicalJson) {
+	/**
+	 * The placeholder review status comes from DefinitionValidator, which is the one place that
+	 * defines it. The validator re-derives this compiler's counts block to check the stored
+	 * snapshot against it, so the two deriving the same number from two copies of the constant
+	 * would be a check that cannot fail for the reason it exists.
+	 */
+	public SnapshotCompiler function init(required any canonicalJson, required any definitionValidator) {
 		variables.json = arguments.canonicalJson;
+		variables.definitionValidator = arguments.definitionValidator;
+		variables.PLACEHOLDER_REVIEW_STATUS = arguments.definitionValidator.placeholderReviewStatus();
 		return this;
 	}
 

@@ -588,6 +588,301 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertUntouchedDraft(id);
 	}
 
+	// ---- accepted-but-unrenderable states, each checksum-matching and drift-free -----------------
+	//
+	// Every case here is a version whose snapshot hashes to its checksum and whose snapshot
+	// definitions equal the definitions SQL Server holds. Neither the checksum check nor the drift
+	// check can see any of them: the corruption is in what the content *means* to the runtime, and
+	// the two copies of it agree perfectly. Before this correction each one published, and then
+	// either threw at render time or rendered an instrument quietly smaller than the one that was
+	// reviewed.
+
+	/** Nothing is the root: RenderModelBuilder throws SNAPSHOT_NO_ROOT for this version. */
+	public void function testSemanticNoActiveRootIsRefused() {
+		expectSemanticRefusal("sem-noroot", function(versionId) {
+			variables.db.run(
+				"UPDATE [icf].[section_definition] SET active = 0 WHERE version_id = :id AND parent_section_id IS NULL",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["SECTION_ROOT_MISSING"]);
+	}
+
+	/**
+	 * Two roots: the renderer keeps one and silently drops the other's whole subtree. Nothing
+	 * throws, which is what made this the most dangerous of the set.
+	 */
+	public void function testSemanticTwoActiveRootsAreRefused() {
+		expectSemanticRefusal("sem-tworoots", function(versionId) {
+			var q = variables.db.run(
+				"SELECT TOP (1) section_id FROM [icf].[section_definition]
+				  WHERE version_id = :id AND parent_section_id IS NOT NULL AND active = 1 ORDER BY section_key",
+				{ "id": variables.db.guid(versionId) }
+			);
+			variables.db.run(
+				"UPDATE [icf].[section_definition] SET parent_section_id = NULL, display_order = 900001 WHERE section_id = :sid",
+				{ "sid": variables.db.guid(uCase(q.section_id[1])) }
+			);
+		}, ["SECTION_ROOT_AMBIGUOUS"]);
+	}
+
+	/** An active subtree hanging off a deactivated parent is never reached by the tree walk. */
+	public void function testSemanticSectionOrphanedByAnInactiveParentIsRefused() {
+		expectSemanticRefusal("sem-orphansec", function(versionId) {
+			variables.db.run(
+				"UPDATE s SET s.active = 0
+				   FROM [icf].[section_definition] s
+				  WHERE s.version_id = :id AND s.parent_section_id IS NOT NULL AND s.active = 1
+				    AND EXISTS (SELECT 1 FROM [icf].[section_definition] c WHERE c.parent_section_id = s.section_id AND c.active = 1)
+				    AND s.section_id = (
+				        SELECT TOP (1) x.section_id FROM [icf].[section_definition] x
+				         WHERE x.version_id = :id AND x.parent_section_id IS NOT NULL AND x.active = 1
+				           AND EXISTS (SELECT 1 FROM [icf].[section_definition] c2 WHERE c2.parent_section_id = x.section_id AND c2.active = 1)
+				         ORDER BY x.section_key)",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["SECTION_ORPHANED_FROM_ROOT"]);
+	}
+
+	/** Active items in a deactivated section go with it, unrendered and unreported. */
+	public void function testSemanticItemOrphanedByAnInactiveSectionIsRefused() {
+		expectSemanticRefusal("sem-orphanitem", function(versionId) {
+			variables.db.run(
+				"UPDATE s SET s.active = 0
+				   FROM [icf].[section_definition] s
+				  WHERE s.section_id = (
+				        SELECT TOP (1) x.section_id FROM [icf].[section_definition] x
+				         WHERE x.version_id = :id AND x.parent_section_id IS NOT NULL AND x.active = 1
+				           AND NOT EXISTS (SELECT 1 FROM [icf].[section_definition] c WHERE c.parent_section_id = x.section_id)
+				           AND EXISTS (SELECT 1 FROM [icf].[item_definition] i WHERE i.section_id = x.section_id AND i.active = 1)
+				         ORDER BY x.section_key)",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["ITEM_ORPHANED_FROM_ROOT"]);
+	}
+
+	/** MULTI_CHOICE: on the old allow-list, implemented by no layout and by no storage shape. */
+	public void function testSemanticMultiChoiceItemTypeIsRefused() {
+		expectSemanticRefusal("sem-multi", function(versionId) {
+			variables.db.run(
+				"UPDATE TOP (1) [icf].[item_definition] SET item_type = N'MULTI_CHOICE' WHERE version_id = :id AND item_type = N'SINGLE_CHOICE'",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["INVALID_ENUM"]);
+	}
+
+	/** SHORT_TEXT, the same: accepted by the old list, drawn by nothing. */
+	public void function testSemanticShortTextItemTypeIsRefused() {
+		expectSemanticRefusal("sem-shorttext", function(versionId) {
+			variables.db.run(
+				"UPDATE TOP (1) [icf].[item_definition] SET item_type = N'SHORT_TEXT' WHERE version_id = :id AND item_type = N'LONG_TEXT'",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["INVALID_ENUM"]);
+	}
+
+	/**
+	 * An option filter the renderer has never heard of is a runtime throw at build time.
+	 *
+	 * instrument_dimension.settings_json is an envelope -- authoringId, displayOrder,
+	 * visibleByDefault, active, and the authored `settings` nested inside it -- so the filter is
+	 * merged into that nested object rather than replacing the column, which would also change
+	 * facts this case is not about.
+	 */
+	public void function testSemanticUnknownOptionFilterIsRefused() {
+		expectSemanticRefusal("sem-filter", function(versionId) {
+			var q = variables.db.run(
+				"SELECT TOP (1) dimension_id, settings_json FROM [icf].[instrument_dimension] WHERE version_id = :id ORDER BY display_order",
+				{ "id": variables.db.guid(versionId) }
+			);
+			var envelope = (len(q.settings_json[1]) && isJSON(q.settings_json[1])) ? deserializeJSON(q.settings_json[1]) : {};
+			if (!structKeyExists(envelope, "settings") || !isStruct(envelope.settings)) envelope["settings"] = {};
+			envelope.settings["optionFilter"] = "notARealFilter";
+			variables.db.run(
+				"UPDATE [icf].[instrument_dimension] SET settings_json = :settings WHERE version_id = :id AND dimension_id = :dimensionId",
+				{
+					"id": variables.db.guid(versionId),
+					"dimensionId": variables.db.guid(uCase(q.dimension_id[1])),
+					"settings": variables.db.ntext(variables.c.canonicalJson.serialize(envelope))
+				}
+			);
+		}, ["UNSUPPORTED_OPTION_FILTER"]);
+	}
+
+	/** An active item pointing at a response set the renderer has filtered out. */
+	public void function testSemanticActiveItemWithInactiveResponseSetIsRefused() {
+		expectSemanticRefusal("sem-inactiveset", function(versionId) {
+			variables.db.run(
+				"UPDATE s SET s.active = 0
+				   FROM [icf].[response_set] s
+				  WHERE s.response_set_id = (
+				        SELECT TOP (1) i.response_set_id FROM [icf].[item_definition] i
+				         WHERE i.version_id = :id AND i.active = 1 AND i.response_set_id IS NOT NULL
+				         ORDER BY i.item_key)",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["RESPONSE_SET_INACTIVE"]);
+	}
+
+	/** A choice item whose set survives with no active option renders an unanswerable question. */
+	public void function testSemanticChoiceItemWithNoActiveOptionIsRefused() {
+		expectSemanticRefusal("sem-nooptions", function(versionId) {
+			variables.db.run(
+				"UPDATE o SET o.active = 0
+				   FROM [icf].[response_option] o
+				  WHERE o.response_set_id = (
+				        SELECT TOP (1) i.response_set_id FROM [icf].[item_definition] i
+				         WHERE i.version_id = :id AND i.active = 1 AND i.response_set_id IS NOT NULL
+				         ORDER BY i.item_key)",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["RESPONSE_SET_NO_ACTIVE_OPTIONS"]);
+	}
+
+	/** A placement of a dimension this version has deactivated: the renderer throws on it. */
+	public void function testSemanticPlacementOfInactiveDimensionIsRefused() {
+		expectSemanticRefusal("sem-inactivedim", function(versionId) {
+			variables.db.run(
+				"UPDATE TOP (1) [icf].[instrument_dimension] SET dimension_active = 0 WHERE version_id = :id",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["DIMENSION_INACTIVE", "RULE_TARGET_INACTIVE", "RULE_SOURCE_INACTIVE"]);
+	}
+
+	/** A list placement offering nothing: an empty control the walker cannot answer. */
+	public void function testSemanticListPlacementWithNoActiveValuesIsRefused() {
+		expectSemanticRefusal("sem-novalues", function(versionId) {
+			variables.db.run(
+				"UPDATE iv SET iv.active = 0
+				   FROM [icf].[instrument_dimension_value] iv
+				  WHERE iv.version_id = :id AND iv.dimension_id = (
+				        SELECT TOP (1) p.dimension_id FROM [icf].[instrument_dimension] p
+				         WHERE p.version_id = :id AND p.dimension_data_type = N'LIST' AND p.dimension_active = 1
+				         ORDER BY p.display_order)",
+				{ "id": variables.db.guid(versionId) }
+			);
+		}, ["DIMENSION_NO_ACTIVE_VALUES"]);
+	}
+
+	// ---- the snapshot envelope, in full ----------------------------------------------------------
+
+	/** No counts block at all. The envelope requires one; a reader that trusts it needs it. */
+	public void function testEnvelopeWithNoCountsIsRefused() {
+		expectEnvelopeRefusal("env-nocounts", function(snapshot) {
+			structDelete(arguments.snapshot, "counts");
+		}, ["SNAPSHOT_COUNTS_MISSING"]);
+	}
+
+	/** An empty counts block is not a counts block. */
+	public void function testEnvelopeWithEmptyCountsIsRefused() {
+		expectEnvelopeRefusal("env-emptycounts", function(snapshot) {
+			arguments.snapshot["counts"] = {};
+		}, ["SNAPSHOT_COUNTS_MISSING"]);
+	}
+
+	/**
+	 * Every one of the nine members is required, proved member by member rather than by sampling
+	 * one. placeholders is included deliberately: it is the one count not derived from the length
+	 * of a collection, and it was the easiest to leave out.
+	 */
+	public void function testEnvelopeWithAnyMissingCountMemberIsRefused() {
+		var n = 0;
+		for (var name in variables.c.definitionValidator.snapshotCountKeys()) {
+			var missing = name;
+			expectEnvelopeRefusal("env-miss-" & lCase(left(missing, 10)) & "-" & n, function(snapshot) {
+				structDelete(arguments.snapshot.counts, missing);
+			}, ["SNAPSHOT_COUNTS_MISSING"]);
+			n++;
+		}
+		assertEquals(9, n, "all nine envelope counts were exercised");
+	}
+
+	/** The placeholder count specifically, named as its own case because it is derived. */
+	public void function testEnvelopeWithNoPlaceholderCountIsRefused() {
+		expectEnvelopeRefusal("env-noplaceholders", function(snapshot) {
+			structDelete(arguments.snapshot.counts, "placeholders");
+		}, ["SNAPSHOT_COUNTS_MISSING"]);
+	}
+
+	/** A count that is text rather than a number. */
+	public void function testEnvelopeWithNonNumericCountIsRefused() {
+		expectEnvelopeRefusal("env-textcount", function(snapshot) {
+			arguments.snapshot.counts["items"] = "many";
+		}, ["SNAPSHOT_COUNTS_INVALID"]);
+	}
+
+	/** A count with a fractional part is not a count of anything. */
+	public void function testEnvelopeWithFractionalCountIsRefused() {
+		expectEnvelopeRefusal("env-fraction", function(snapshot) {
+			arguments.snapshot.counts["items"] = arguments.snapshot.counts.items + 0.5;
+		}, ["SNAPSHOT_COUNTS_INVALID"]);
+	}
+
+	/** A negative count. */
+	public void function testEnvelopeWithNegativeCountIsRefused() {
+		expectEnvelopeRefusal("env-negative", function(snapshot) {
+			arguments.snapshot.counts["rules"] = -1;
+		}, ["SNAPSHOT_COUNTS_INVALID"]);
+	}
+
+	/** A member the envelope does not define: a reader would either ignore it or believe it. */
+	public void function testEnvelopeWithAnUnexpectedCountIsRefused() {
+		expectEnvelopeRefusal("env-extra", function(snapshot) {
+			arguments.snapshot.counts["sectionsish"] = 1;
+		}, ["SNAPSHOT_COUNTS_UNEXPECTED"]);
+	}
+
+	/**
+	 * Noncanonical bytes carrying a checksum that hashes them exactly.
+	 *
+	 * This is the case the checksum can never catch, because the checksum is computed over whatever
+	 * bytes are there. The data contract says compiled_snapshot_json is canonical and hashes it as
+	 * a canonical document; bytes that merely encode the same content some other way give the same
+	 * instrument two different identities in two databases. Publication refuses rather than
+	 * rewriting, because rewriting would silently move the checksum the DRAFT was reviewed under.
+	 */
+	public void function testNoncanonicalSnapshotBytesAreRefusedEvenWithAMatchingChecksum() {
+		var imported = draft("env-noncanonical");
+		var canonical = variables.repo.findVersionById(imported.versionId).snapshotJson;
+		// Whitespace only: same document, same parse, different bytes.
+		var noncanonical = " " & canonical;
+		storeRawSnapshot(imported.versionId, noncanonical);
+
+		var row = variables.repo.findVersionById(imported.versionId);
+		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the checksum hashes these exact bytes");
+		assertEquals(
+			serializeJSON(deserializeJSON(canonical)),
+			serializeJSON(deserializeJSON(row.snapshotJson)),
+			"precondition: the bytes still parse to the same document, so only canonicality differs"
+		);
+
+		var svc = variables.svc;
+		var id = imported.versionId;
+		var publisher = variables.publisher;
+		var before = versionState(id);
+		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
+		assertTrue(hasIssue(variables.c.errors.detailsOf(e).issues, ["SNAPSHOT_NOT_CANONICAL"]), "the refusal names the canonical-byte contract");
+		assertUntouchedDraft(id, before);
+		assertEquals(noncanonical, variables.repo.findVersionById(id).snapshotJson, "and publication did not quietly rewrite the bytes");
+	}
+
+	/** Reordered keys are the other way to be noncanonical, and are refused the same way. */
+	public void function testSnapshotWithNoncanonicalKeyOrderIsRefused() {
+		var imported = draft("env-keyorder");
+		var canonical = variables.repo.findVersionById(imported.versionId).snapshotJson;
+		// The canonical form sorts keys; putting counts first is a valid JSON encoding and not
+		// the canonical one.
+		var reordered = "{" & chr(10) & mid(canonical, 2, len(canonical) - 1);
+		storeRawSnapshot(imported.versionId, reordered);
+
+		var svc = variables.svc;
+		var id = imported.versionId;
+		var publisher = variables.publisher;
+		var before = versionState(id);
+		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
+		assertTrue(hasIssue(variables.c.errors.detailsOf(e).issues, ["SNAPSHOT_NOT_CANONICAL"]), "the refusal names the canonical-byte contract");
+		assertUntouchedDraft(id, before);
+	}
+
 	// ---- helpers ---------------------------------------------------------------------------------
 
 	private string function label(required string suffix) {
@@ -637,13 +932,55 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var svc = variables.svc;
 		var id = imported.versionId;
 		var publisher = variables.publisher;
+		var before = versionState(id);
 		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
 		var issues = variables.c.errors.detailsOf(e).issues;
 		assertTrue(
 			hasIssue(issues, arguments.expectedCodes),
 			"expected one of " & arrayToList(arguments.expectedCodes) & " but got " & left(serializeJSON(issues), 600)
 		);
-		assertUntouchedDraft(id);
+		assertUntouchedDraft(id, before);
+	}
+
+	/**
+	 * Imports a DRAFT, rewrites its stored *snapshot* through `corrupt`, stores it canonically with
+	 * a recomputed checksum, and requires publication to refuse it with one of `expectedCodes` and
+	 * to change nothing. The definitions in SQL Server are left alone: these are envelope defects,
+	 * not content defects, and the point is that a perfectly hashing snapshot is still refused when
+	 * the envelope around the definitions is wrong.
+	 */
+	private void function expectEnvelopeRefusal(required string suffix, required any corrupt, required array expectedCodes) {
+		var imported = draft(arguments.suffix);
+		var snapshot = deserializeJSON(variables.repo.findVersionById(imported.versionId).snapshotJson);
+		arguments.corrupt(snapshot);
+		storeRecompiledSnapshot(imported.versionId, snapshot);
+
+		var row = variables.repo.findVersionById(imported.versionId);
+		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes the stored snapshot");
+
+		var svc = variables.svc;
+		var id = imported.versionId;
+		var publisher = variables.publisher;
+		var before = versionState(id);
+		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
+		var issues = variables.c.errors.detailsOf(e).issues;
+		assertTrue(
+			hasIssue(issues, arguments.expectedCodes),
+			"expected one of " & arrayToList(arguments.expectedCodes) & " but got " & left(serializeJSON(issues), 600)
+		);
+		assertUntouchedDraft(id, before);
+	}
+
+	/** Stores snapshot text exactly as given, with the checksum that hashes those exact bytes. */
+	private void function storeRawSnapshot(required string versionId, required string text) {
+		variables.db.run(
+			"UPDATE [icf].[instrument_version] SET compiled_snapshot_json = :snapshot, checksum_sha256 = :checksum WHERE version_id = :id",
+			{
+				"id": variables.db.guid(arguments.versionId),
+				"snapshot": variables.db.ntext(arguments.text),
+				"checksum": { "value": variables.c.canonicalJson.sha256(arguments.text), "cfsqltype": "cf_sql_char" }
+			}
+		);
 	}
 
 	/** Stores a snapshot and the checksum that hashes it, bypassing the import path. */
@@ -659,12 +996,36 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		);
 	}
 
-	private void function assertUntouchedDraft(required string versionId) {
+	/**
+	 * The complete version state, as it was immediately before the attempt. Captured so a refusal
+	 * can be shown to have moved nothing at all -- not the snapshot bytes, not the checksum, not
+	 * the row version -- rather than merely to have left the status alone.
+	 */
+	private struct function versionState(required string versionId) {
+		var row = variables.repo.findVersionById(arguments.versionId);
+		return {
+			"status": row.status,
+			"publishedByUserId": row.publishedByUserId,
+			"checksum": isNull(row.checksum) ? "" : row.checksum,
+			"snapshotJson": isNull(row.snapshotJson) ? "" : row.snapshotJson,
+			"rowVersion": row.rowVersion,
+			"publishedAt": isNull(row.publishedAt) ? "" : toString(row.publishedAt),
+			"effectiveStart": isNull(row.effectiveStart) ? "" : toString(row.effectiveStart),
+			"definitionsChecksum": variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(arguments.versionId))
+		};
+	}
+
+	private void function assertUntouchedDraft(required string versionId, struct before = {}) {
 		var after = variables.repo.findVersionById(arguments.versionId);
 		assertEquals("DRAFT", after.status, "a refused publish leaves the version a DRAFT");
 		assertEquals("", after.publishedByUserId, "and names no publisher");
 		assertEquals(0, auditCount(arguments.versionId, "INSTRUMENT_VERSION_PUBLISHED"), "nothing was published");
 		assertEquals(1, auditCount(arguments.versionId, "INSTRUMENT_VERSION_PUBLISH_REFUSED"), "and exactly one refusal survived the rollback");
+		if (structIsEmpty(arguments.before)) return;
+		var now = versionState(arguments.versionId);
+		for (var field in ["status", "publishedByUserId", "checksum", "snapshotJson", "rowVersion", "publishedAt", "effectiveStart", "definitionsChecksum"]) {
+			assertEquals(arguments.before[field], now[field], "a refused publish leaves " & field & " exactly as it was");
+		}
 	}
 
 	private boolean function hasIssue(required any issues, required array codes) {

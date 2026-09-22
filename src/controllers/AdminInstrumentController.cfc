@@ -25,10 +25,17 @@ component output="false" {
 	 * an actor, a publisher, a checksum or a snapshot is told it cannot, instead of being quietly
 	 * misled into thinking it worked.
 	 *
+	 * "No body" means no body bytes, not "a body that happens to parse to nothing". This used to
+	 * test structCount(req.body), which cannot tell a request with no body from one carrying a
+	 * literal `{}` -- both parse to an empty struct -- so `{}` was accepted while the documentation
+	 * said the endpoint takes no body. req.hasBody is the raw fact from the wire, so the
+	 * implemented contract and the documented one are the same contract: `{}`, whitespace, `null`
+	 * and a populated object are all bodies, and all are refused.
+	 *
 	 * Every refusal is raised by the service and mapped to its status by Errors.statusFor.
 	 */
 	public struct function publishVersion(required struct req) {
-		if (structCount(arguments.req.body)) {
+		if (arguments.req.hasBody || structCount(arguments.req.body)) {
 			variables.c.errors.validation(
 				"This endpoint takes no request body: the version is named in the path and the publisher is the signed-in user.",
 				"PUBLISH_BODY_NOT_ALLOWED"

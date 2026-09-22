@@ -38,14 +38,64 @@
     walks by the code of X, because the identity row is untouched. What V1 called X, and where V1
     put it, now live on V1's own rows, where a V2 import cannot reach them.
 
-    Backfill is exact and non-destructive: every existing instrument_dimension row takes the
-    dimension attributes it was already reading, and every existing placement gets one
-    instrument_dimension_value row per value of that dimension -- which is precisely the set
-    loadNormalizedDefinitions returned for it before this patch. No label, order, publisher or other
-    fact is invented, and nothing is deleted. Existing versions therefore read back byte-identically
-    and keep their definitions checksums.
+    2. The legacy membership backfill is a ONE-TIME schema transition
+    -----------------------------------------------------------------
+    This is the correction to the first form of this patch, and it matters more than it looks.
 
-    2. Why the publisher had to become mandatory
+    That form backfilled icf.instrument_dimension_value with "every global value of every placed
+    dimension that this version does not already have a row for". As a description of the schema
+    transition that is exactly right: before the transition a version offered, by construction, all
+    of its dimension's global values, so copying them in reproduces what loadNormalizedDefinitions
+    was already returning.
+
+    As a condition to re-evaluate on every apply it is wrong, and dangerously so. Once V2 imports a
+    new value under a shared dimension, that value exists globally and published V1 has no row for
+    it -- so a re-apply *infers* that V1 must have meant to offer it, and inserts it. V1's
+    normalized definitions and the walk values it accepts then change, while its snapshot bytes,
+    its checksum and its row_version do not. Nothing downstream can see it: WalkRepository
+    .definitionIndex() caches by the version checksum, which did not move, so even a running
+    application keeps serving the old index until it restarts and then silently serves a different
+    one.
+
+    So eligibility is now tied to the transition itself, recorded durably in
+    icf.schema_migration_state, and never to what is currently missing:
+
+      - A database that has never carried icf.instrument_dimension_value is mid-transition: the
+        table is created, the legacy backfill runs once, and the step is recorded COMPLETED.
+      - A database that already carries the table has already been through the transition. The step
+        is recorded COMPLETED without running any backfill (see "Adoption" below).
+      - Once the step is COMPLETED the backfill never runs again, for any version, in any status.
+        A re-apply is pure DDL idempotence: it asserts the shape and changes no membership.
+
+    Membership after the transition is written only by the application, through
+    DefinitionRepository.replaceVersionDimensionValues, under the owning version's row lock and only
+    while that version is a DRAFT.
+
+    Adoption of a database where the earlier form of 006 already ran
+    ----------------------------------------------------------------
+    The earlier form created icf.instrument_dimension_value and ran its backfill inside this same
+    transaction, so the table's existence is proof the backfill committed. Such a database is
+    adopted: the step is recorded COMPLETED, with state 'ADOPTED_PRE_STATE', and nothing is
+    inserted. That is the only safe reading -- re-running the backfill there is precisely the defect
+    being corrected.
+
+    Adoption cannot tell whether an earlier re-apply already contaminated a published version,
+    because a contaminated row is indistinguishable from an authored one. It therefore never
+    deletes anything. Use the read-only detection query in database/README.md ("Detecting
+    memberships a re-applied 006 may have inferred") and the reviewed remediation procedure beside
+    it; where intended historical membership cannot be inferred, that procedure requires an
+    authorized decision rather than a guess.
+
+    Conservative on ambiguity
+    -------------------------
+    A database whose transition looks half-finished is refused rather than guessed at. If the table
+    exists, the step has never been recorded, and some placement of a dimension that has global
+    values carries no version rows at all, the patch fails with error 50054 and the count. That
+    shape means either an interrupted earlier transition or a version that genuinely offers nothing;
+    a migration cannot tell which, and inventing membership for a published version is the mistake
+    this correction exists to prevent.
+
+    3. Why the publisher had to become mandatory
     --------------------------------------------
     CK_instrument_version_publish_values already refuses a non-DRAFT row missing its snapshot,
     checksum, publication time or effective start. It says nothing about who published it, so a
@@ -59,9 +109,10 @@
 
     Idempotence
     -----------
-    Every step is guarded by a catalog check, so re-applying the patch is a no-op. Applying it to a
-    database at the Phase 5 schema (001..005) performs the backfill; applying it to a database that
-    already carries it changes nothing.
+    Every schema step is guarded by a catalog check and every data step by the recorded migration
+    state, so re-applying the patch asserts the shape and changes no row. Applying it to a database
+    at the Phase 5 schema (001..005) performs the one-time transition; applying it again, before or
+    after any number of later imports and publications, changes nothing.
 */
 
 SET NOCOUNT ON;
@@ -82,6 +133,43 @@ BEGIN TRY
             1;
     END;
 
+    /* ---- 0. durable migration state ---------------------------------------------------
+       The record that says a one-time data transition has already happened. Without it, a data
+       step has only the current contents of the database to judge by, and "this row is missing"
+       is not the same question as "was this row ever supposed to exist". */
+
+    IF OBJECT_ID(N'[icf].[schema_migration_state]', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [icf].[schema_migration_state]
+        (
+            [migration]   nvarchar(100) NOT NULL,
+            [step]        nvarchar(100) NOT NULL,
+            [state]       nvarchar(40)  NOT NULL,
+            [detail]      nvarchar(400) NULL,
+            [applied_at]  datetime2(3)  NOT NULL
+                CONSTRAINT [DF_schema_migration_state_applied] DEFAULT (SYSUTCDATETIME()),
+
+            CONSTRAINT [PK_schema_migration_state] PRIMARY KEY CLUSTERED ([migration], [step]),
+            CONSTRAINT [CK_schema_migration_state_state]
+                CHECK ([state] IN (N'COMPLETED', N'ADOPTED_PRE_STATE', N'NOT_REQUIRED'))
+        );
+    END;
+
+    /* Was the legacy membership backfill already settled, one way or another? */
+    DECLARE @backfillSettled bit = 0;
+
+    IF EXISTS (
+        SELECT 1 FROM [icf].[schema_migration_state]
+        WHERE [migration] = N'006_version_scoped_dimensions'
+          AND [step] = N'legacy_membership_backfill'
+    )
+        SET @backfillSettled = 1;
+
+    /* The table's absence is what identifies a database that has not been through the transition.
+       Captured before any DDL below creates it. */
+    DECLARE @valueTableExistedBefore bit =
+        CASE WHEN OBJECT_ID(N'[icf].[instrument_dimension_value]', N'U') IS NULL THEN 0 ELSE 1 END;
+
     /* ---- 1a. version-scoped dimension attributes on icf.instrument_dimension ----------- */
 
     IF COL_LENGTH(N'[icf].[instrument_dimension]', N'dimension_label') IS NULL
@@ -96,7 +184,13 @@ BEGIN TRY
                       [dimension_settings_json] nvarchar(max) NULL;';
     END;
 
-    /* Backfill exactly what loadNormalizedDefinitions was already reading for these rows. */
+    /* Backfill exactly what loadNormalizedDefinitions was already reading for these rows.
+
+       Unlike the membership backfill below, this one cannot invent anything: it is a column-fill
+       of attributes for rows that already exist, and it only ever touches a row whose attributes
+       are still NULL -- a state the application can no longer produce, because the columns are
+       NOT NULL from the end of this patch onwards. It is therefore a no-op on every re-apply by
+       construction, and needs no migration-state guard. */
     EXEC sp_executesql
         N'UPDATE p
              SET p.[dimension_label]         = d.[label],
@@ -226,19 +320,68 @@ BEGIN TRY
             ON [icf].[instrument_dimension_value] ([version_id], [dimension_id], [display_order]);
     END;
 
-    /* Backfill: the values every existing version was already reading for each placed dimension. */
-    EXEC sp_executesql
-        N'INSERT INTO [icf].[instrument_dimension_value]
-              ([version_id], [dimension_id], [value_id], [label], [display_order], [effective_start], [effective_end], [active])
-          SELECT p.[version_id], v.[dimension_id], v.[value_id], v.[label], v.[display_order], v.[effective_start], v.[effective_end], v.[active]
-            FROM [icf].[instrument_dimension] p
-            JOIN [icf].[dimension_value] v ON v.[dimension_id] = p.[dimension_id]
-           WHERE NOT EXISTS (
-                     SELECT 1
-                       FROM [icf].[instrument_dimension_value] x
-                      WHERE x.[version_id] = p.[version_id]
-                        AND x.[value_id] = v.[value_id]
-                 );';
+    /* ---- 1c. the ONE-TIME legacy membership backfill ----------------------------------- */
+
+    IF @backfillSettled = 0 AND @valueTableExistedBefore = 0
+    BEGIN
+        /* The transition itself. Before it, a version offered every global value of every
+           dimension it placed -- that is what loadNormalizedDefinitions returned -- so copying
+           them in reproduces the version exactly. This runs once, in the apply that creates the
+           table, and never again. */
+        EXEC sp_executesql
+            N'INSERT INTO [icf].[instrument_dimension_value]
+                  ([version_id], [dimension_id], [value_id], [label], [display_order], [effective_start], [effective_end], [active])
+              SELECT p.[version_id], v.[dimension_id], v.[value_id], v.[label], v.[display_order], v.[effective_start], v.[effective_end], v.[active]
+                FROM [icf].[instrument_dimension] p
+                JOIN [icf].[dimension_value] v ON v.[dimension_id] = p.[dimension_id];';
+
+        INSERT INTO [icf].[schema_migration_state] ([migration], [step], [state], [detail])
+        VALUES (
+            N'006_version_scoped_dimensions',
+            N'legacy_membership_backfill',
+            N'COMPLETED',
+            N'One-time transition: every placement took the global values of its dimension, which is what loadNormalizedDefinitions returned before this patch.'
+        );
+    END
+    ELSE IF @backfillSettled = 0 AND @valueTableExistedBefore = 1
+    BEGIN
+        /* Adoption. The table already exists, so an earlier form of this patch created it and,
+           in the same transaction, ran its backfill. Refuse instead of adopting if the result
+           looks half-finished: a placed dimension that has global values but no version rows at
+           all is either an interrupted transition or a version that offers nothing, and no
+           migration can tell those apart. */
+        DECLARE @emptyPlacements int;
+
+        EXEC sp_executesql
+            N'SELECT @n = COUNT(*)
+                FROM [icf].[instrument_dimension] p
+               WHERE EXISTS (SELECT 1 FROM [icf].[dimension_value] v WHERE v.[dimension_id] = p.[dimension_id])
+                 AND NOT EXISTS (
+                         SELECT 1 FROM [icf].[instrument_dimension_value] x
+                          WHERE x.[version_id] = p.[version_id] AND x.[dimension_id] = p.[dimension_id]
+                     );',
+            N'@n int OUTPUT',
+            @n = @emptyPlacements OUTPUT;
+
+        IF @emptyPlacements > 0
+        BEGIN
+            DECLARE @ambiguousMessage nvarchar(500) =
+                N'icf.instrument_dimension_value exists but this patch has no recorded transition state, and '
+                + CAST(@emptyPlacements AS nvarchar(20))
+                + N' placement(s) of a dimension that has values carry no version-scoped values at all. '
+                + N'That is either an interrupted earlier transition or a version that deliberately offers none, and this patch will not guess. '
+                + N'Review them with the detection query in database/README.md, record the intended membership under your own authorization, then re-apply.';
+            ;THROW 50054, @ambiguousMessage, 1;
+        END;
+
+        INSERT INTO [icf].[schema_migration_state] ([migration], [step], [state], [detail])
+        VALUES (
+            N'006_version_scoped_dimensions',
+            N'legacy_membership_backfill',
+            N'ADOPTED_PRE_STATE',
+            N'icf.instrument_dimension_value already existed when this form of the patch first ran; the earlier transition is adopted and no membership was inferred.'
+        );
+    END;
 
     /* ---- 2. the publisher invariant ---------------------------------------------------- */
 
@@ -292,6 +435,10 @@ BEGIN TRY
             ) THEN 1
             ELSE 0
         END AS [publisher_required_constraint_present],
+        (SELECT [state] FROM [icf].[schema_migration_state]
+          WHERE [migration] = N'006_version_scoped_dimensions'
+            AND [step] = N'legacy_membership_backfill') AS [legacy_membership_backfill_state],
+        CASE WHEN @backfillSettled = 0 AND @valueTableExistedBefore = 0 THEN 1 ELSE 0 END AS [legacy_membership_backfill_ran_now],
         (SELECT COUNT(*) FROM [icf].[instrument_dimension]) AS [version_dimension_rows],
         (SELECT COUNT(*) FROM [icf].[instrument_dimension_value]) AS [version_dimension_value_rows];
 END TRY

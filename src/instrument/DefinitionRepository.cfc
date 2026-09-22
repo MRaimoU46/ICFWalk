@@ -147,6 +147,17 @@ component output="false" {
 		return { "instrumentId": uCase(q.instrument_id[1]), "code": q.code[1], "name": q.name[1], "description": q.description[1], "active": q.active[1] };
 	}
 
+	/**
+	 * Creates an instrument that does not exist yet. INSERT ONLY, and the only write in this file
+	 * that does not take a version lock -- because at this moment the instrument has no versions at
+	 * all, so there is nothing frozen to protect. UQ/PK on `code` makes a second call for the same
+	 * code fail rather than overwrite, so this method cannot reach an existing instrument even if
+	 * a caller tried.
+	 *
+	 * The document defines the shared row exactly once, here, at the instrument's birth. After
+	 * that, shared metadata is never import-owned: see updateInstrumentMetadata below and the
+	 * conflict refusal in InstrumentImportService.
+	 */
 	public string function createInstrument(required string code, required string name, any description, boolean active = true) {
 		var id = variables.db.newGuid();
 		variables.db.run(
@@ -156,10 +167,42 @@ component output="false" {
 		return id;
 	}
 
-	public void function updateInstrument(required string instrumentId, required string name, any description, boolean active = true) {
+	/**
+	 * Changes the shared instrument row: its name, description, and whether it is in service.
+	 *
+	 * WHY THIS IS NOT updateInstrument, AND WHY IMPORT NO LONGER CALLS IT. The importer used to
+	 * write this row on every re-import, straight from the document, with no authorization beyond
+	 * "an import happened". icf.instrument.active is part of SnapshotService.currentVersion()'s
+	 * selection predicate, so importing a V2 DRAFT whose document said active = false made an
+	 * already PUBLISHED V1 vanish from the runtime -- a frozen version made unavailable by an edit
+	 * to an unfrozen one, with no audit naming who did it and no version row changed to show it.
+	 *
+	 * Instrument-level facts are now changed only here, and only by a named user this deployment
+	 * knows. The row is taken under its own UPDLOCK first so two such operations serialize, and
+	 * the caller (InstrumentMetadataService) writes the audit. There is deliberately no route:
+	 * this pass closes the boundary and does not add administration UI for it.
+	 */
+	public numeric function updateInstrumentMetadata(
+		required string instrumentId, required string name, any description,
+		required boolean active, required string authorizedByUserId
+	) {
+		if (!variables.db.isGuid(arguments.authorizedByUserId) || !userExists(arguments.authorizedByUserId)) {
+			variables.errors.validation("Changing shared instrument metadata requires a known, authorized user.", "INSTRUMENT_METADATA_ACTOR_REQUIRED");
+		}
+		var locked = variables.db.run(
+			"SELECT instrument_id FROM [icf].[instrument] WITH (UPDLOCK, ROWLOCK) WHERE instrument_id = :id",
+			{ "id": variables.db.guid(arguments.instrumentId) }
+		);
+		if (!locked.recordCount) {
+			variables.errors.notFound("Instrument not found.", "INSTRUMENT_NOT_FOUND");
+		}
 		variables.db.run(
 			"UPDATE [icf].[instrument] SET name = :name, description = :description, active = :active, updated_at = SYSUTCDATETIME() WHERE instrument_id = :id",
 			{ "id": variables.db.guid(arguments.instrumentId), "name": variables.db.nvarchar(arguments.name, 200), "description": variables.db.nvarchar(isNull(arguments.description) ? javaCast("null", "") : arguments.description, 1000), "active": variables.db.bit(arguments.active) }
+		);
+		return variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[instrument] WHERE instrument_id = :id AND name = :name AND active = :active",
+			{ "id": variables.db.guid(arguments.instrumentId), "name": variables.db.nvarchar(arguments.name, 200), "active": variables.db.bit(arguments.active) }
 		);
 	}
 
@@ -528,7 +571,14 @@ component output="false" {
 	 * nothing reads them after this and nothing ever updates them. What a version means by the
 	 * dimension lives on its own icf.instrument_dimension row.
 	 */
-	public string function createDimensionIdentity(required struct row) {
+	public string function createDimensionIdentity(required string versionId, required struct row) {
+		// STRUCTURALLY VERSION-SCOPED. The row written here is global, so it looked like it had no
+		// version to guard -- and it was therefore the one public mutator with no guard at all.
+		// But it is only ever created *on behalf of* a DRAFT being imported, and a caller that
+		// cannot name a DRAFT has no business minting reporting identity that every future version
+		// will point at. The version is now an argument rather than ambient context, and the DRAFT
+		// check happens here, inside the write boundary, not in whatever called it.
+		requireDraftVersion(arguments.versionId);
 		var id = variables.db.newGuid();
 		variables.db.run(
 			"INSERT INTO [icf].[dimension_definition] (dimension_id, code, label, data_type, reportable, sensitive, settings_json, active)
@@ -548,7 +598,9 @@ component output="false" {
 	 * is never rewritten. display_order here only satisfies UX_dimension_value_order; the order a
 	 * version presents the value in lives in icf.instrument_dimension_value.
 	 */
-	public string function createDimensionValueIdentity(required string dimensionId, required struct row) {
+	public string function createDimensionValueIdentity(required string versionId, required string dimensionId, required struct row) {
+		// Same boundary as createDimensionIdentity: global row, DRAFT-scoped authority to mint it.
+		requireDraftVersion(arguments.versionId);
 		var id = variables.db.newGuid();
 		variables.db.run(
 			"INSERT INTO [icf].[dimension_value] (value_id, dimension_id, value_code, label, display_order, active)

@@ -169,7 +169,41 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     assert.equal(scopedAgain.ok, true, scopedAgain.error?.message);
     assert.equal(scopedAgain.recordset[0].version_dimension_value_rows, 2, "re-application inserts nothing");
     const scopedTables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
-    assert.equal(scopedTables.recordset[0].n, 23, "006 adds exactly one table");
+    // icf.instrument_dimension_value, plus icf.schema_migration_state -- the durable record that
+    // says the one-time legacy membership backfill has already happened, so a re-application never
+    // infers membership again.
+    assert.equal(scopedTables.recordset[0].n, 24, "006 adds exactly two tables");
+    assert.equal(scopedAgain.recordset[0].legacy_membership_backfill_ran_now, 0, "and the second apply did not run the backfill");
+    assert.equal(scoped.recordset[0].legacy_membership_backfill_ran_now, 1, "while the first apply did");
+    assert.equal(scopedAgain.recordset[0].legacy_membership_backfill_state, "COMPLETED");
+
+    // THE CORRECTION, at the schema level: a value that appears globally AFTER the transition is
+    // never inferred into an existing version, whatever that version's status. This is the exact
+    // shape of the defect -- V2 mints a new value under a shared dimension, and a re-applied 006
+    // used to add it to published V1, changing V1's definitions and the walk values it accepts
+    // while its snapshot, checksum and row_version stayed put.
+    const v1Before = await pool.request().query(`
+      SELECT (SELECT COUNT(*) FROM icf.instrument_dimension_value WHERE version_id = '55555555-5555-5555-5555-555555555501') AS members,
+             (SELECT CAST(row_version AS bigint) FROM icf.instrument_version WHERE version_id = '55555555-5555-5555-5555-555555555501') AS rv,
+             (SELECT checksum_sha256 FROM icf.instrument_version WHERE version_id = '55555555-5555-5555-5555-555555555501') AS ck`);
+    await pool.request().batch(`
+      INSERT INTO icf.dimension_value (value_id, dimension_id, value_code, label, display_order, active)
+        VALUES ('88888888-8888-8888-8888-888888888803', '77777777-7777-7777-7777-777777777701', 'v2only', N'Introduced by a later version', 30, 1);`);
+    const afterNewValue = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
+    assert.equal(afterNewValue.ok, true, afterNewValue.error?.message);
+    assert.equal(afterNewValue.recordset[0].legacy_membership_backfill_ran_now, 0, "the backfill is settled and does not run");
+    const v1After = await pool.request().query(`
+      SELECT (SELECT COUNT(*) FROM icf.instrument_dimension_value WHERE version_id = '55555555-5555-5555-5555-555555555501') AS members,
+             (SELECT CAST(row_version AS bigint) FROM icf.instrument_version WHERE version_id = '55555555-5555-5555-5555-555555555501') AS rv,
+             (SELECT checksum_sha256 FROM icf.instrument_version WHERE version_id = '55555555-5555-5555-5555-555555555501') AS ck`);
+    assert.equal(v1After.recordset[0].members, v1Before.recordset[0].members,
+      "a re-application must not infer the later value into the published version");
+    assert.equal(v1After.recordset[0].ck, v1Before.recordset[0].ck);
+    assert.equal(String(v1After.recordset[0].rv), String(v1Before.recordset[0].rv));
+    const inferred = await pool.request().query(`
+      SELECT COUNT(*) AS n FROM icf.instrument_dimension_value iv JOIN icf.dimension_value dv ON dv.value_id = iv.value_id
+       WHERE iv.version_id = '55555555-5555-5555-5555-555555555501' AND dv.value_code = 'v2only'`);
+    assert.equal(inferred.recordset[0].n, 0, "and the published version does not offer it");
 
     // The publisher invariant is real: a non-DRAFT row with nobody named is now unstorable.
     const unattributed = await applyScript(pool, `INSERT INTO icf.instrument_version (version_id, instrument_id, version_label, status, effective_start, published_at, compiled_snapshot_json, checksum_sha256)

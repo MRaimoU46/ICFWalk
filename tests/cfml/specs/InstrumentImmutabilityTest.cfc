@@ -24,15 +24,37 @@
  */
 component extends="icfwalktests.BaseSpec" output="false" {
 
-	// Methods that write, but not version *content*, with the reason each is out of scope.
-	variables.NOT_VERSION_CONTENT = {
-		"createInstrument": "icf.instrument, not a version",
-		"updateInstrument": "icf.instrument, not a version",
-		"createDraftVersion": "creates a DRAFT; there is no frozen version to protect yet",
-		"createDimensionIdentity": "global reporting identity, insert-only, never updated",
-		"createDimensionValueIdentity": "global reporting identity, insert-only, never updated",
-		"parkOffset": "reads the parking constant; writes nothing"
+	/**
+	 * THE INVENTORY IS NOW EXHAUSTIVE, AND NOTHING IS EXCLUDED FROM IT BY ASSERTION.
+	 *
+	 * It used to carry a NOT_VERSION_CONTENT list -- createInstrument, updateInstrument,
+	 * createDimensionIdentity, createDimensionValueIdentity -- whose members were skipped on the
+	 * grounds that they write shared or global rows rather than version content. That reasoning
+	 * was wrong twice over. They are real public production writes, so "not version content" is a
+	 * statement about which contract applies, not a reason to test nothing. And one of them,
+	 * updateInstrument, was exactly where the damage was: icf.instrument.active is part of the
+	 * runtime's current-version predicate, so an ordinary DRAFT import could make an already
+	 * PUBLISHED version disappear -- through a method the inventory had declared out of scope.
+	 *
+	 * So every public mutator is now in one of the two lists below and is exercised against its
+	 * real ownership contract:
+	 *
+	 *   VERSION_OWNED    writes a version's own content. Contract: refused unless the owning
+	 *                    version is a DRAFT, under that version's row lock.
+	 *   SHARED_OR_GLOBAL writes icf.instrument or the global reporting-identity rows. Contract:
+	 *                    named per method in testEverySharedOrGlobalMutatorEnforcesItsOwnContract.
+	 *
+	 * NOT_A_WRITE holds the one public method whose name matches the write-detecting pattern and
+	 * which writes nothing at all.
+	 */
+	variables.NOT_A_WRITE = {
+		"parkOffset": "returns the parking constant; executes no statement"
 	};
+
+	variables.SHARED_OR_GLOBAL = [
+		"createInstrument", "updateInstrumentMetadata", "createDraftVersion",
+		"createDimensionIdentity", "createDimensionValueIdentity"
+	];
 
 	public string function skipReason() {
 		return schemaPresent() ? "" : "icf schema is not present in datasource '" & variables.c.db.datasourceName() & "'.";
@@ -56,7 +78,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.draftImport = variables.importSvc.importConfig(config(label("draft")));
 		variables.draft = handles(variables.draftImport.versionId);
 
-		// Which mutators this spec exercises. Read by testEveryRepositoryMutatorIsCoveredHere.
+		// Which version-content mutators this spec exercises. Read by the inventory test.
 		variables.covered = [
 			"storeSnapshot", "markPublished", "parkVersionOrders",
 			"insertSection", "updateSectionContent", "placeSection", "deleteSections",
@@ -85,11 +107,135 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		for (var f in md.functions) {
 			if (structKeyExists(f, "access") && f.access != "public") continue;
 			if (!reFindNoCase("^(insert|update|upsert|delete|place|park|store|mark|replace|create|set)", f.name)) continue;
-			if (structKeyExists(variables.NOT_VERSION_CONTENT, f.name)) continue;
+			if (structKeyExists(variables.NOT_A_WRITE, f.name)) continue;
 			if (arrayFindNoCase(variables.covered, f.name)) continue;
+			if (arrayFindNoCase(variables.SHARED_OR_GLOBAL, f.name)) continue;
 			arrayAppend(uncovered, f.name);
 		}
 		assertEquals(0, arrayLen(uncovered), "DefinitionRepository mutators with no immutability coverage: " & arrayToList(uncovered));
+	}
+
+	/**
+	 * ...and the shared/global list is not a place to hide. Every name on it must still exist as a
+	 * public method, so a mutator cannot be "covered" by a stale entry after being renamed away.
+	 */
+	public void function testTheSharedAndGlobalInventoryNamesOnlyRealMethods() {
+		var md = getMetadata(variables.repo);
+		var present = {};
+		for (var f in md.functions) {
+			if (!structKeyExists(f, "access") || f.access == "public") present[f.name] = true;
+		}
+		var missing = [];
+		for (var name in variables.SHARED_OR_GLOBAL) if (!structKeyExists(present, name)) arrayAppend(missing, name);
+		for (var name in structKeyArray(variables.NOT_A_WRITE)) if (!structKeyExists(present, name)) arrayAppend(missing, name);
+		assertEquals(0, arrayLen(missing), "the inventory names methods that no longer exist: " & arrayToList(missing));
+		assertEquals(0, arrayLen(structFindKey({ "x": variables.SHARED_OR_GLOBAL }, "updateInstrument", "all")), "updateInstrument is gone; updateInstrumentMetadata replaced it");
+	}
+
+	// ---- the shared and global write boundary ----------------------------------------------------
+
+	/**
+	 * Each shared or global mutator, against the contract it actually has. None of these is
+	 * "refused for a non-DRAFT version" in the way a version-content write is, and pretending
+	 * otherwise is how they ended up untested; each is checked against the guard that is really
+	 * supposed to hold it.
+	 */
+	public void function testEverySharedOrGlobalMutatorEnforcesItsOwnContract() {
+		var repo = variables.repo;
+		var before = sharedState();
+
+		// createInstrument: insert-only. A second call for a code that exists must fail rather
+		// than reach the existing row, so it can never rewrite shared metadata.
+		var existingCode = variables.instrumentCode;
+		var threw = false;
+		try {
+			repo.createInstrument(existingCode, "Attempted overwrite", "", true);
+		} catch (any e) {
+			threw = true;
+		}
+		assertTrue(threw, "createInstrument must not be able to reach an instrument that already exists");
+
+		// updateInstrumentMetadata: a named, known user is required.
+		var instrumentId = repo.findInstrumentByCode(existingCode).instrumentId;
+		assertThrows(
+			function() { repo.updateInstrumentMetadata(instrumentId, "Renamed by nobody", "", false, ""); },
+			"ICFWalk.Validation", "INSTRUMENT_METADATA_ACTOR_REQUIRED"
+		);
+		var strangerId = uCase(createUUID());
+		assertThrows(
+			function() { repo.updateInstrumentMetadata(instrumentId, "Renamed by a stranger", "", false, strangerId); },
+			"ICFWalk.Validation", "INSTRUMENT_METADATA_ACTOR_REQUIRED"
+		);
+
+		// createDimensionIdentity / createDimensionValueIdentity: the requesting version is an
+		// argument, and must be a DRAFT. A PUBLISHED or RETIRED version cannot mint global
+		// reporting identity that every later version will point at.
+		var dimRow = { "code": "imm_probe_" & lCase(left(replace(createUUID(), "-", "", "all"), 8)), "label": "Probe", "dataType": "LIST", "reportable": false, "sensitive": false, "settingsJson": "{}", "active": true };
+		for (var frozen in [variables.published, variables.retired]) {
+			var frozenId = frozen.versionId;
+			var frozenDimensionId = frozen.dimensionId;
+			assertThrows(
+				function() { repo.createDimensionIdentity(frozenId, dimRow); },
+				"ICFWalk.Publish.NotDraft", "INSTRUMENT_VERSION_NOT_DRAFT"
+			);
+			assertThrows(
+				function() { repo.createDimensionValueIdentity(frozenId, frozenDimensionId, { "valueCode": "probe_value", "label": "Probe value", "active": true }); },
+				"ICFWalk.Publish.NotDraft", "INSTRUMENT_VERSION_NOT_DRAFT"
+			);
+		}
+
+		// createDraftVersion: creates a DRAFT, so there is nothing frozen to protect -- but it must
+		// not be usable to attach a version to an instrument that does not exist.
+		var noSuchInstrument = uCase(createUUID());
+		var created = false;
+		try {
+			repo.createDraftVersion(noSuchInstrument, "imm-probe-" & createUUID(), variables.publisher);
+			created = true;
+		} catch (any e) {
+			created = false;
+		}
+		assertFalse(created, "createDraftVersion must not create a version under an instrument that does not exist");
+
+		assertSharedUnchanged(before, "no refused shared or global mutation changed anything");
+	}
+
+	/**
+	 * A refused global identity creation writes no row and moves no row version. The point is that
+	 * the guard runs *before* the INSERT, not that the INSERT happened to fail afterwards.
+	 */
+	public void function testARefusedGlobalIdentityCreationWritesNothing() {
+		var repo = variables.repo;
+		var probeCode = "imm_refused_" & lCase(left(replace(createUUID(), "-", "", "all"), 8));
+		var before = sharedState();
+		var frozenId = variables.published.versionId;
+		var dimRow = { "code": probeCode, "label": "Refused probe", "dataType": "LIST", "reportable": false, "sensitive": false, "settingsJson": "{}", "active": true };
+
+		assertThrows(
+			function() { repo.createDimensionIdentity(frozenId, dimRow); },
+			"ICFWalk.Publish.NotDraft", "INSTRUMENT_VERSION_NOT_DRAFT"
+		);
+
+		assertEquals(0, variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[dimension_definition] WHERE code = :code",
+			{ "code": variables.db.nvarchar(probeCode, 100) }
+		), "the refused identity row was never inserted");
+		assertSharedUnchanged(before, "a refused global identity creation changes nothing");
+	}
+
+	/** The same mutators do work when a DRAFT asks, so the guard is a boundary and not a wall. */
+	public void function testGlobalIdentityCreationStillWorksForADraft() {
+		var draftImport = variables.importSvc.importConfig(config(label("global-draft")));
+		var probeCode = "imm_ok_" & lCase(left(replace(createUUID(), "-", "", "all"), 8));
+		var dimensionId = variables.repo.createDimensionIdentity(draftImport.versionId, {
+			"code": probeCode, "label": "Draft probe", "dataType": "LIST", "reportable": false, "sensitive": false, "settingsJson": "{}", "active": true
+		});
+		assertTrue(len(dimensionId) > 0, "a DRAFT may mint reporting identity");
+		var valueId = variables.repo.createDimensionValueIdentity(draftImport.versionId, dimensionId, { "valueCode": "draft_value", "label": "Draft value", "active": true });
+		assertTrue(len(valueId) > 0, "and a value identity under it");
+		assertEquals(1, variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[dimension_value] WHERE value_id = :id",
+			{ "id": variables.db.guid(valueId) }
+		), "the value identity really was written");
 	}
 
 	// ---- every mutator, against PUBLISHED and against RETIRED -------------------------------------
@@ -189,6 +335,62 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(0, auditCount(frozen.versionId, "INSTRUMENT_VERSION_DISCARDED"), "and nothing claims it was discarded");
 	}
 
+	/**
+	 * A DRAFT that walks already reference cannot be re-imported over, and the refusal is as
+	 * durable as every other one.
+	 *
+	 * This branch used to throw INSTRUMENT_VERSION_IN_USE without marking the refusal first, so the
+	 * catch that writes the post-rollback audit had nothing to write: the attempt rolled back and
+	 * left no trace whatsoever. It is a DRAFT, so unlike the PUBLISHED cases above there is no
+	 * status guard standing behind it -- the refusal record was the only evidence there would ever
+	 * have been.
+	 */
+	public void function testRefusedImportOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit() {
+		var h = draftReferencedByAWalk("inuse-import");
+		var before = snapshotOfEverything(h.versionId);
+		assertEquals("DRAFT", before.status, "precondition: the version really is a DRAFT");
+		assertEquals(0, auditCount(h.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "precondition: no refusals yet");
+
+		var importSvc = variables.importSvc;
+		var cfg = config(label("inuse-import"));
+		cfg.items[1].prompt = "A prompt that must never reach a draft walks are using";
+		assertThrows(function() { importSvc.importConfig(cfg, variables.publisher); }, "ICFWalk.Import.VersionInUse", "INSTRUMENT_VERSION_IN_USE");
+
+		assertUnchanged(before, h.versionId, "the refused import of a DRAFT in use changed nothing");
+		assertEquals(0, variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id AND prompt = N'A prompt that must never reach a draft walks are using'",
+			{ "id": variables.db.guid(h.versionId) }
+		), "the attempted prompt was not written");
+		assertEquals(1, auditCount(h.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "exactly one refusal survived the rollback");
+		assertEquals(0, auditCount(h.versionId, "INSTRUMENT_VERSION_REIMPORTED"), "and no success event was written");
+		assertRefusalDetails(h.versionId, label("inuse-import"), "DRAFT", "IMPORT", "VERSION_IN_USE");
+
+		variables.fixtures.removeWalk(h.walkId);
+	}
+
+	/** The same for discarding a DRAFT that walks reference. */
+	public void function testRefusedDiscardOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit() {
+		var h = draftReferencedByAWalk("inuse-discard");
+		var before = snapshotOfEverything(h.versionId);
+		assertEquals(0, auditCount(h.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "precondition: no refusals yet");
+
+		var importSvc = variables.importSvc;
+		var discardLabel = label("inuse-discard");
+		var fixtureInstrument = variables.instrumentCode;
+		assertThrows(function() { importSvc.discardDraft(discardLabel, variables.publisher, fixtureInstrument); }, "ICFWalk.Import.VersionInUse", "INSTRUMENT_VERSION_IN_USE");
+
+		assertUnchanged(before, h.versionId, "the refused discard changed nothing");
+		assertEquals(1, variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE version_id = :id",
+			{ "id": variables.db.guid(h.versionId) }
+		), "and the version is still there");
+		assertEquals(1, auditCount(h.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "exactly one refusal survived the rollback");
+		assertEquals(0, auditCount(h.versionId, "INSTRUMENT_VERSION_DISCARDED"), "and nothing claims it was discarded");
+		assertRefusalDetails(h.versionId, discardLabel, "DRAFT", "DISCARD_DRAFT", "VERSION_IN_USE");
+
+		variables.fixtures.removeWalk(h.walkId);
+	}
+
 	/** The refusal record names the facts and carries no instrument content. */
 	public void function testRefusalAuditCarriesLifecycleFactsAndNoContent() {
 		var frozen = freeze("audit-detail", "PUBLISHED");
@@ -212,6 +414,44 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(find("snapshotFormat", text) > 0, "no snapshot in the audit details");
 		assertFalse(find("prompt", text) > 0, "no narrative content in the audit details");
 		assertTrue(len(text) < 500, "the record stays a lifecycle fact, not a payload: " & len(text) & " bytes");
+	}
+
+	/** The shape every refusal record must have, wherever the refusal came from. */
+	private void function assertRefusalDetails(
+		required string versionId, required string versionLabel, required string status,
+		required string operation, required string reason
+	) {
+		var q = variables.db.run(
+			"SELECT TOP (1) actor_user_id, details_json FROM [icf].[audit_event]
+			  WHERE entity_id = :id AND event_type = N'INSTRUMENT_VERSION_WRITE_REFUSED' ORDER BY event_id DESC",
+			{ "id": variables.db.guid(arguments.versionId) }
+		);
+		assertEquals(1, q.recordCount, "a refusal record exists");
+		assertEquals(variables.publisher, uCase(q.actor_user_id[1]), "the actor who attempted the write is named");
+		var details = deserializeJSON(q.details_json[1]);
+		assertEquals(arguments.versionLabel, details.versionLabel, "the version label is recorded");
+		assertEquals(arguments.status, details.status, "the prior status is recorded");
+		assertEquals(arguments.operation, details.operation, "and the operation");
+		assertEquals(arguments.reason, details.reason, "and a stable reason code");
+		var text = q.details_json[1];
+		assertFalse(find("sectionKey", text) > 0, "no definitions in the audit details");
+		assertFalse(find("snapshotFormat", text) > 0, "no snapshot in the audit details");
+		assertFalse(find("prompt", text) > 0, "no narrative content in the audit details");
+		assertTrue(len(text) < 500, "the record stays a lifecycle fact, not a payload: " & len(text) & " bytes");
+	}
+
+	/**
+	 * An imported DRAFT with one walk pinned to it, which is what makes it "in use". The walk needs
+	 * an org unit and an owner, so the fixture supplies both and hands back the walk id for
+	 * teardown.
+	 */
+	private struct function draftReferencedByAWalk(required string suffix) {
+		var imported = variables.importSvc.importConfig(config(label(arguments.suffix)));
+		var orgUnitId = variables.fixtures.ensureOrgUnit(variables.run & "-" & arguments.suffix, "SCHOOL");
+		var owner = variables.fixtures.ensureUser(variables.run & "-" & arguments.suffix & "-walker", "Draft-in-use fixture walker");
+		var walkId = variables.fixtures.insertWalk(imported.versionId, orgUnitId, owner);
+		assertEquals(1, variables.repo.countWalksForVersion(imported.versionId), "the fixture walk really pins the DRAFT");
+		return { "versionId": imported.versionId, "walkId": walkId, "orgUnitId": orgUnitId, "ownerUserId": owner };
 	}
 
 	// ---- helpers -----------------------------------------------------------------------------------
@@ -273,6 +513,31 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			return;
 		}
 		fail(arguments.what & " was NOT refused for a " & arguments.status & " version.");
+	}
+
+	/** The shared and global rows, as they stand: nothing a refused write may move. */
+	private struct function sharedState() {
+		return {
+			"instruments": variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[instrument]"),
+			"instrumentDigest": digest("SELECT instrument_id, code, name, description, active FROM [icf].[instrument] ORDER BY code"),
+			"dimensions": variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[dimension_definition]"),
+			"dimensionDigest": digest("SELECT dimension_id, code FROM [icf].[dimension_definition] ORDER BY code"),
+			"dimensionValues": variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[dimension_value]"),
+			"dimensionValueDigest": digest("SELECT value_id, dimension_id, value_code FROM [icf].[dimension_value] ORDER BY dimension_id, value_code"),
+			"instrumentRowVersion": maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[instrument]", {})
+		};
+	}
+
+	private void function assertSharedUnchanged(required struct before, required string message) {
+		var after = sharedState();
+		for (var field in structKeyArray(arguments.before)) {
+			assertEquals(arguments.before[field], after[field], arguments.message & ": " & field);
+		}
+	}
+
+	private string function digest(required string sql) {
+		var q = variables.db.run(arguments.sql);
+		return variables.c.canonicalJson.sha256(variables.c.canonicalJson.serialize(q));
 	}
 
 	/** Everything that must not move: content, and every owning table's high row_version. */

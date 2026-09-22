@@ -30,21 +30,32 @@ component output="false" {
 		// so the two cannot drift into accepting what the other refuses.
 		c["definitionValidator"] = new icfwalk.instrument.DefinitionValidator();
 		c["configValidator"] = new icfwalk.instrument.InstrumentConfigValidator(c.errors, c.configNormalizer, c.definitionValidator);
-		c["snapshotCompiler"] = new icfwalk.instrument.SnapshotCompiler(c.canonicalJson);
+		c["snapshotCompiler"] = new icfwalk.instrument.SnapshotCompiler(c.canonicalJson, c.definitionValidator);
+		// The runtime renderer, and the preflight that runs it. Both import and publish build the
+		// snapshot through the real builder before accepting it, so a version that passes the
+		// semantic rules but the renderer cannot build is refused rather than frozen.
+		c["renderModelBuilder"] = new icfwalk.instrument.RenderModelBuilder(c.definitionValidator);
+		c["renderContractValidator"] = new icfwalk.instrument.RenderContractValidator(c.renderModelBuilder);
 		c["instrumentImportService"] = new icfwalk.instrument.InstrumentImportService(
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
-			c.configNormalizer, c.configValidator, c.snapshotCompiler, c.requestContext
+			c.configNormalizer, c.configValidator, c.snapshotCompiler, c.requestContext,
+			c.renderContractValidator
 		);
 		// Publishing (Phase 6). Freezes a DRAFT into an immutable PUBLISHED version and is the
 		// single guard for "a non-DRAFT version is never written to" (ADM-05).
 		c["instrumentPublishService"] = new icfwalk.instrument.InstrumentPublishService(
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
-			c.canonicalJson, c.snapshotCompiler, c.definitionValidator
+			c.canonicalJson, c.snapshotCompiler, c.definitionValidator, c.renderContractValidator
+		);
+		// The only operation that writes the shared icf.instrument row. Deliberately not routed:
+		// this pass closes the write boundary and adds no administration UI for it.
+		c["instrumentMetadataService"] = new icfwalk.instrument.InstrumentMetadataService(
+			c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository
 		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
 
-		// Instrument engine (Phase 3): render model + visibility rules from the compiled snapshot.
-		c["renderModelBuilder"] = new icfwalk.instrument.RenderModelBuilder();
+		// Instrument engine (Phase 3): visibility rules from the compiled snapshot. The render model
+		// builder itself is constructed above, because import and publish preflight through it.
 		c["visibilityEngine"] = new icfwalk.instrument.VisibilityEngine();
 		c["maintenanceGuard"] = new icfwalk.http.MaintenanceGuard(c.config, c.logger, c.errors, c.auditRepository, c.requestContext);
 

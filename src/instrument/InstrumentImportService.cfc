@@ -26,13 +26,19 @@
  * audit record written there would roll back with it and the attempt would leave no evidence at
  * all. The refusing branch records what it decided, the transaction rolls back, and exactly one
  * INSTRUMENT_VERSION_WRITE_REFUSED event is written afterwards -- the same shape publish() uses.
+ *
+ * That applies to every refusing branch, which it did not before: the DRAFT-in-use branches of
+ * import and of discardDraft threw INSTRUMENT_VERSION_IN_USE without marking the refusal first, so
+ * the catch had nothing to persist and an attempt to rewrite a DRAFT that walks already reference
+ * left no record at all. Both now mark before they throw.
  */
 component output="false" {
 
 	public InstrumentImportService function init(
 		required struct config, required any db, required any errors, required any logger,
 		required any definitionRepository, required any auditRepository, required any configNormalizer,
-		required any configValidator, required any snapshotCompiler, required any requestContext
+		required any configValidator, required any snapshotCompiler, required any requestContext,
+		required any renderContractValidator
 	) {
 		variables.config = arguments.config;
 		variables.db = arguments.db;
@@ -44,6 +50,7 @@ component output="false" {
 		variables.validator = arguments.configValidator;
 		variables.compiler = arguments.snapshotCompiler;
 		variables.requestContext = arguments.requestContext;
+		variables.renderContract = arguments.renderContractValidator;
 		variables.mapper = arguments.definitionRepository.mapper();
 		return this;
 	}
@@ -98,6 +105,18 @@ component output="false" {
 
 		var normalized = variables.normalizer.fromConfig(arguments.config);
 		var compiled = variables.compiler.compile(normalized);
+
+		// The renderer really does build what this document compiles to. The shared semantic rules
+		// above already cover every way RenderModelBuilder can fail, but they are a description of
+		// the renderer maintained by hand, and a description drifts. Running the real builder here
+		// means a DRAFT that imports is a DRAFT that publishes: publication runs the same preflight
+		// on the same snapshot, and cannot discover something this did not.
+		var renderIssues = variables.renderContract.validate(compiled.snapshot, { "path": "$" });
+		if (!renderIssues.valid) {
+			variables.logger.warn("instrument.import.not_renderable", { "errorCount": arrayLen(renderIssues.errors), "firstCode": renderIssues.errors[1].code });
+			variables.errors.importValidation("Instrument configuration compiles to a snapshot the runtime cannot render: " & renderIssues.errors[1].message, renderIssues.errors);
+		}
+
 		var actor = arguments.actorUserId;
 		var self = this;
 		// Filled by a refusing branch inside the transaction; written after the rollback below.
@@ -130,13 +149,41 @@ component output="false" {
 				}
 				var walkCount = variables.repo.countWalksForVersion(existing.versionId);
 				if (walkCount > 0) {
+					// A DRAFT that walks already reference is refused like any other refused write,
+					// and leaves the same durable trace. This branch used to throw without marking
+					// the refusal, so the catch below had nothing to persist and the attempt
+					// vanished with the rollback -- the one defect the post-rollback audit pattern
+					// exists to prevent.
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, "IMPORT", "VERSION_IN_USE", actor);
 					variables.errors.importVersionInUse(normalized.version.versionLabel, walkCount);
 				}
 				versionId = existing.versionId;
 			}
 
+			// SHARED INSTRUMENT METADATA IS NOT IMPORT-OWNED.
+			//
+			// This used to be an unconditional updateInstrument() straight from the document. The
+			// shared row carries `active`, which is part of SnapshotService.currentVersion()'s
+			// selection predicate, so importing a V2 DRAFT that said active = false removed an
+			// already PUBLISHED V1 from the runtime -- no version row changed, no audit named the
+			// actor, and the frozen version was simply gone.
+			//
+			// The row is written exactly once, at the instrument's birth above. Afterwards the
+			// document's name and description are *version* metadata: they are compiled into this
+			// version's snapshot, which is what the runtime shows for this version, so they are
+			// stored at the right scope rather than ignored. `active` has no version-scoped effect
+			// to be stored at -- it decides which published version the runtime serves at all --
+			// so a document that disagrees about it is refused atomically here rather than
+			// silently dropped.
 			if (!structIsEmpty(instrument)) {
-				variables.repo.updateInstrument(instrumentId, normalized.instrument.name, normalized.instrument.description, normalized.instrument.active);
+				var conflicts = sharedMetadataConflicts(instrument, normalized.instrument);
+				if (arrayLen(conflicts)) {
+					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", "IMPORT", "SHARED_METADATA_CONFLICT", actor);
+					variables.errors.importValidation(
+						"The document's instrument metadata differs from the shared icf.instrument row, which an import does not own. Change it through the authorized instrument-level operation, or align the document.",
+						conflicts
+					);
+				}
 			}
 
 			var writeWarnings = writeDefinitions(versionId, normalized.definitions, created);
@@ -223,7 +270,12 @@ component output="false" {
 					variables.errors.importPublishedVersion(label, q.status[1]);
 				}
 				var walkCount = variables.repo.countWalksForVersion(versionId);
-				if (walkCount > 0) variables.errors.importVersionInUse(label, walkCount);
+				if (walkCount > 0) {
+					// Same as the import branch above: marked before the throw, so the refusal
+					// survives the rollback that is about to happen.
+					self.markRefusal(refusal, versionId, label, q.status[1], "DISCARD_DRAFT", "VERSION_IN_USE", actor);
+					variables.errors.importVersionInUse(label, walkCount);
+				}
 				variables.repo.deleteDraftVersionCascade(versionId);
 				variables.audit.record("INSTRUMENT_VERSION", versionId, "INSTRUMENT_VERSION_DISCARDED", actor, { "versionLabel": label, "instrumentCode": code });
 				return { "versionId": versionId, "versionLabel": label, "instrumentCode": code, "discarded": true };
@@ -256,6 +308,54 @@ component output="false" {
 			"operation": arguments.operation,
 			"reason": arguments.reason
 		};
+	}
+
+	/**
+	 * Which shared instrument facts the document disagrees with the stored row about -- and,
+	 * deliberately, which ones are not shared facts at all.
+	 *
+	 * The document's instrument block carries code, name, description and active. Three of them
+	 * are already stored at the right lifecycle scope and are therefore not ignored here:
+	 *
+	 *   code         the identity the row was found by. It cannot differ.
+	 *   name         compiled into THIS version's snapshot, which is what RenderModelBuilder
+	 *   description  returns as `instrument` and what the runtime shows for this version. Two
+	 *                versions may legitimately describe the instrument differently, and each walk
+	 *                sees its own version's wording. Nothing in the walk runtime reads
+	 *                icf.instrument.name or .description; they are operational labels for the
+	 *                instrument as a whole and belong to the instrument-level operation.
+	 *
+	 * That leaves `active`, which is the one the document cannot be allowed to state, because it
+	 * is not version-scoped in effect: SnapshotService.currentVersion() filters on
+	 * icf.instrument.active, so a DRAFT import declaring the instrument inactive would take an
+	 * already PUBLISHED version out of service. It is refused rather than applied, and refused
+	 * rather than quietly dropped, so an author who wrote it is told the decision is not theirs to
+	 * make here.
+	 */
+	private array function sharedMetadataConflicts(required struct stored, required struct document) {
+		var issues = [];
+		if (flag(arguments.stored.active) != flag(arguments.document.active)) {
+			arrayAppend(issues, {
+				"code": "SHARED_METADATA_CONFLICT",
+				"message": "The document says the instrument is " & (flag(arguments.document.active) ? "active" : "inactive")
+					& " but the shared icf.instrument row says it is " & (flag(arguments.stored.active) ? "active" : "inactive")
+					& ". Whether an instrument is in service decides which published version the runtime serves, so it is an"
+					& " instrument-level decision and not an import's. Align the document, or change it through the authorized"
+					& " instrument-level operation.",
+				"path": "$.instrument.active"
+			});
+		}
+		return issues;
+	}
+
+	private boolean function flag(any value) {
+		if (isNull(arguments.value)) return false;
+		if (isBoolean(arguments.value)) return arguments.value ? true : false;
+		if (isSimpleValue(arguments.value)) {
+			var t = lCase(trim(toString(arguments.value)));
+			return t == "true" || t == "yes" || t == "1";
+		}
+		return false;
 	}
 
 	/** Writes the single refusal event, after the rollback, if a branch above decided on one. */
@@ -339,14 +439,14 @@ component output="false" {
 			dimensionRows[dim.code] = dimRow;
 			dimensionIds[dim.code] = structKeyExists(existingDims, dim.code)
 				? existingDims[dim.code].id
-				: variables.repo.createDimensionIdentity(dimRow);
+				: variables.repo.createDimensionIdentity(arguments.versionId, dimRow);
 			var existingValues = variables.repo.loadDimensionValues(dimensionIds[dim.code]);
 			var valueIds = {};
 			for (var v in vals) {
 				var valueRow = variables.mapper.dimensionValueRow(v);
 				valueIds[v.valueCode] = structKeyExists(existingValues, v.valueCode)
 					? existingValues[v.valueCode].id
-					: variables.repo.createDimensionValueIdentity(dimensionIds[dim.code], valueRow);
+					: variables.repo.createDimensionValueIdentity(arguments.versionId, dimensionIds[dim.code], valueRow);
 			}
 			valueIdsByDim[dim.code] = valueIds;
 		}

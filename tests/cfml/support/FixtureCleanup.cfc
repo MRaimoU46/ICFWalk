@@ -98,6 +98,44 @@ component output="false" {
 		return variables.c.userRepository.provision(arguments.subject, name, "").userId;
 	}
 
+	/**
+	 * Creates (or reuses) a fixture org unit and returns its id. Only needed so a fixture walk has
+	 * somewhere to be: nothing here depends on its scope or its mapping.
+	 */
+	public string function ensureOrgUnit(required string code, string unitType = "SCHOOL") {
+		return variables.c.orgUnitRepository.upsert(arguments.code, arguments.unitType, "Fixture " & arguments.code, "", true);
+	}
+
+	/**
+	 * Pins a walk to a specific instrument version, which is what makes that version "in use".
+	 * Unlike Fixtures.walk() this names the version explicitly rather than taking the newest one,
+	 * because the specs that need it are proving something about one particular version.
+	 */
+	public string function insertWalk(required string versionId, required string orgUnitId, required string ownerUserId, string status = "DRAFT") {
+		var id = variables.db.newGuid();
+		variables.db.run(
+			"INSERT INTO [icf].[walk] (walk_id, version_id, org_unit_id, owner_user_id, status) VALUES (:id, :version, :org, :owner, :status)",
+			{
+				"id": variables.db.guid(id), "version": variables.db.guid(arguments.versionId),
+				"org": variables.db.guid(arguments.orgUnitId), "owner": variables.db.guid(arguments.ownerUserId),
+				"status": variables.db.nvarchar(arguments.status, 20)
+			}
+		);
+		return id;
+	}
+
+	/** Removes a fixture walk and everything hanging off it. */
+	public void function removeWalk(required string walkId) {
+		var p = { "id": variables.db.guid(arguments.walkId) };
+		variables.db.run("DELETE FROM [icf].[walk_mutation] WHERE walk_id = :id", p);
+		variables.db.run("DELETE FROM [icf].[walk_revision] WHERE walk_id = :id", p);
+		variables.db.run("DELETE s FROM [icf].[walk_response_selection] s JOIN [icf].[walk_response] r ON r.response_id = s.response_id WHERE r.walk_id = :id", p);
+		variables.db.run("DELETE FROM [icf].[walk_response] WHERE walk_id = :id", p);
+		variables.db.run("DELETE FROM [icf].[walk_dimension_value] WHERE walk_id = :id", p);
+		variables.db.run("DELETE FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id = :id", p);
+		variables.db.run("DELETE FROM [icf].[walk] WHERE walk_id = :id", p);
+	}
+
 	/** Removes fixture application users whose identity subject starts with the given prefix. */
 	public void function removeUsers(required string subjectPrefix) {
 		var like = { "value": arguments.subjectPrefix & "%", "cfsqltype": "cf_sql_nvarchar" };

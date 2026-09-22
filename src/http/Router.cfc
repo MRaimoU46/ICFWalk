@@ -166,6 +166,13 @@ component output="false" {
 			"headers": {},
 			"remoteAddress": cgi.remote_addr,
 			"body": {},
+			// Whether the client sent a body AT ALL, independent of what it parsed to. A route
+			// documented as taking no request body cannot tell that from `body` alone: no body and
+			// a literal `{}` both parse to an empty struct, so structCount() accepted `{}` from a
+			// client that believed it was sending something. This is the raw fact -- were there any
+			// body bytes on the wire -- and it is what such a route checks.
+			"hasBody": false,
+			"rawBodyLength": 0,
 			"principal": {}
 		};
 		for (var name in structKeyArray(data.headers)) {
@@ -178,12 +185,27 @@ component output="false" {
 		}
 		var content = data.content;
 		if (!isNull(content) && !isSimpleValue(content)) content = toString(content, "utf-8");
+		// DID THE CLIENT SEND A BODY? Asked of the wire, not of the parse.
+		//
+		// The engine does not hand back whitespace-only content -- getHttpRequestData() gives an
+		// empty string for it -- so `content` alone cannot answer this, and a route documented as
+		// taking no body would accept "   " while refusing "{}". Content-Length is the raw fact and
+		// is checked first; `content` covers a chunked request, which carries no Content-Length.
+		// Content-Length: 0 is not a body: the client sent no bytes.
+		var declaredLength = structKeyExists(req.headers, "content-length") && isNumeric(req.headers["content-length"])
+			? int(req.headers["content-length"]) : 0;
+		var actualLength = (!isNull(content) && isSimpleValue(content)) ? len(content) : 0;
+		req.rawBodyLength = max(declaredLength, actualLength);
+		req.hasBody = req.rawBodyLength > 0;
 		if (!isNull(content) && len(trim(content))) {
 			if (!isJSON(content)) {
 				variables.c.errors.validation("Request body must be a JSON document.", "INVALID_JSON_BODY");
 			}
+			// A body of literal `null` parses to CFML null, and reading that variable back is an
+			// error rather than a value -- so this used to escape as a 500 instead of the 400 the
+			// contract promises. isNull() is the only safe way to ask.
 			var parsed = deserializeJSON(content);
-			if (!isStruct(parsed)) {
+			if (isNull(parsed) || !isStruct(parsed)) {
 				variables.c.errors.validation("Request body must be a JSON object.", "INVALID_JSON_BODY");
 			}
 			req.body = parsed;

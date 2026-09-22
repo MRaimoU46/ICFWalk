@@ -139,13 +139,26 @@ the source files: after editing a `.cfc`, restart it (`lucee-down.sh` then `luce
 on any request only rebuilds the container from the already compiled classes.
 
 `lucee-up.sh` exports `LUCEE_REQUESTTIMEOUT` (default 600 seconds, override by exporting it first).
-The entire CFML suite runs inside the single `/api/maintenance/tests/run` request, and the walk
-concurrency specs deliberately hold a writer blocked for seconds, so on a modest machine that one
-request runs past Lucee's 50 second default. When it does, Lucee stops the request mid-suite and
-interrupts the thread, and the spec that runs *next* fails with `java.nio.channels.ClosedByInterruptException`
-from the first file write it attempts, which reads like an unrelated logging fault rather than a
-timeout. The ceiling belongs to the verification runtime only: no application or production setting
-is involved, and no individual test is given longer to pass.
+The CFML suite runs inside `/api/maintenance/tests/run`, and the walk and publish concurrency specs
+deliberately hold a writer blocked for seconds, so on a modest machine that request runs past
+Lucee's 50 second default. When it does, Lucee stops the request mid-suite and interrupts the
+thread, and the spec that runs *next* fails with `java.nio.channels.ClosedByInterruptException` from
+the first file write it attempts, which reads like an unrelated logging fault rather than a timeout.
+The ceiling belongs to the verification runtime only: no application or production setting is
+involved, and no individual test is given longer to pass.
+
+**The suite is requested in parts.** `?part=<n>&of=<m>` runs one deterministic slice: spec files are
+discovered in a stable name order and dealt out round-robin, so every spec runs in exactly one part
+and the union of the parts is the whole suite. `tests/node/cfml-suite.test.mjs` asks for three
+parts, sums the reports, and asserts that the set of specs that ran equals the set of spec files on
+disk -- so a partition that dropped a spec fails rather than looking healthy.
+
+This exists because the *client* has a ceiling too, and it is lower than Lucee's: Node's `fetch`
+abandons a request after five minutes without response headers, and none are sent until the suite
+finishes. A suite that grew past five minutes therefore failed as `fetch failed`, and the abort also
+skipped every spec's `afterAll`, leaving fixtures behind that then failed later, unrelated-looking
+tests. Parts keep each request well inside that limit without changing what runs. Omitting `part`
+and `of` still runs everything in one request, which is fine for a filtered run.
 
 The seeded DRAFT can be re-imported (idempotently) only while no walk references it: the fixtures of
 every test remove their walks, but walks created by hand through the browser keep the DRAFT "in
@@ -158,7 +171,7 @@ use" (`INSTRUMENT_VERSION_IN_USE`) until they are removed or the version is publ
 | `npm run validate:handoff` | Supplied handoff validator (PKG-01). |
 | `npm run test:package` | PKG-02..05, canonical JSON vectors, reference snapshot golden, schema/DAO contract. No database needed. |
 | `npm run test:db` | DB-01..03 against a disposable SQL Server database (needs `ICFWALK_DB_*` admin credentials). |
-| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity, authorization, and walk persistence specs, including the deterministic concurrency specs `WalkReplayCoherenceTest`, `WalkMutationResponseTest` and `WalkSummaryCoherenceTest`), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. A single spec can be run with `?filter=<SpecName>` on that endpoint. |
+| `npm run test:cfml` | Health/guard checks, the CFML suite via `/api/maintenance/tests/run` (unit specs, DB-04..09, identity, authorization, and walk persistence specs, including the deterministic concurrency specs `WalkReplayCoherenceTest`, `WalkMutationResponseTest` and `WalkSummaryCoherenceTest`), and the idempotent seed. Needs the running app, `ICFWALK_TESTS_ENABLED=true`, and the maintenance token. A single spec can be run with `?filter=<SpecName>` on that endpoint, and one slice of the suite with `?part=<n>&of=<m>`. |
 | `npm run test:auth` | HTTP identity/authorization checks (AUTH-01, CSRF, cookies, admin route separation). Needs the app in development mode with `ICFWALK_SSO_MODE=development` and `ICFWALK_DEV_IDENTITY_ENABLED=true`. |
 | `npm run test:shell` | Phase 3: authorization and headers of the HTML shell and `/api/instrument/current`; browser rules engine against the shared visibility vectors and COND-01..15 (same prerequisites as `test:auth`). |
 | `npm run test:walks` | Phase 4: HTTP checks of `/api/walks` (authentication, CSRF, role separation, cross-scope 404s, tampered keys/codes/identifiers, stale writes, idempotent retries, completion, void, delete refusal, pinned instrument). Same prerequisites as `test:auth`. |

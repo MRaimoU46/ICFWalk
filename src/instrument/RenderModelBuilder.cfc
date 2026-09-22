@@ -39,12 +39,18 @@
 component output="false" {
 
 	variables.FORMAT = "icfwalk-render-model/1";
-	variables.PLACEHOLDER_STATUS = "Placeholder in source";
-	variables.OPTION_FILTERS = {
-		"schoolTypeToGradeBand": { "sourceDimensionCode": "school", "matchField": "valueGroup" }
-	};
 
-	public RenderModelBuilder function init() {
+	/**
+	 * The renderer reads the placeholder status and the option-filter table from DefinitionValidator
+	 * rather than keeping its own copies. They are the same facts the validator refuses a version
+	 * for getting wrong, and two copies of a shared fact is how the validator and the renderer
+	 * drifted apart in the first place: the validator accepted option filters and item types this
+	 * builder had never heard of.
+	 */
+	public RenderModelBuilder function init(required any definitionValidator) {
+		variables.definitionValidator = arguments.definitionValidator;
+		variables.PLACEHOLDER_STATUS = arguments.definitionValidator.placeholderReviewStatus();
+		variables.OPTION_FILTERS = arguments.definitionValidator.optionFilters();
 		return this;
 	}
 

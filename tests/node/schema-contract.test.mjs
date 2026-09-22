@@ -134,13 +134,32 @@ test("006 patch scopes dimensions to a version and requires a publisher, idempot
   assert.match(dimensionPatch, /CONSTRAINT \[CK_instrument_version_publisher_required\]\s+CHECK \(\[status\] = N''DRAFT'' OR \[published_by_user_id\] IS NOT NULL\)/);
   assert.match(dimensionPatch, /THROW 50053/, "a non-DRAFT row with no publisher fails the migration loudly");
   assert.match(dimensionPatch, /This patch does not invent a publisher/);
-  // Non-destructive: it drops nothing and deletes nothing. The only UPDATE is the backfill of the
-  // columns it just added, and the only INSERT is the backfill of rows that do not exist yet.
+  // Non-destructive: it drops nothing and deletes nothing.
   assert.doesNotMatch(dimensionPatch, /\bDROP\b/);
   assert.doesNotMatch(dimensionPatch, /\bDELETE\b/);
   assert.doesNotMatch(dimensionPatch, /\bTRUNCATE\b/);
-  assert.match(dimensionPatch, /WHERE NOT EXISTS \(/, "the row backfill is guarded, so re-applying inserts nothing");
-  assert.doesNotMatch(dimensionPatch, /CREATE TABLE \[icf\]\.\[(?!instrument_dimension_value)/);
+
+  // The legacy membership backfill is a ONE-TIME transition, not a condition re-evaluated on each
+  // apply. That distinction is the whole of the correction: "insert every global value this
+  // version does not already have a row for" is a correct description of the transition and a
+  // data-corruption bug as a rule, because a value V2 mints later gets inferred into published V1.
+  // So the guard must be the recorded transition state, and must NOT be the absence of the row.
+  assert.match(dimensionPatch, /CREATE TABLE \[icf\]\.\[schema_migration_state\]/,
+    "the patch records its one-time steps durably");
+  assert.match(dimensionPatch, /IF @backfillSettled = 0 AND @valueTableExistedBefore = 0/,
+    "the backfill runs only in the apply that creates the table");
+  assert.match(dimensionPatch, /N'legacy_membership_backfill'/, "and the step it records is named");
+  assert.match(dimensionPatch, /N'ADOPTED_PRE_STATE'/,
+    "a database the earlier form already migrated is adopted rather than backfilled again");
+  assert.match(dimensionPatch, /THROW 50054/,
+    "a half-finished transition fails with a precondition rather than guessing membership");
+  assert.match(dimensionPatch, /will not guess/);
+  assert.doesNotMatch(
+    dimensionPatch,
+    /INSERT INTO \[icf\]\.\[instrument_dimension_value\][\s\S]{0,800}?WHERE NOT EXISTS/,
+    "the membership backfill must not be conditioned on which rows are currently missing",
+  );
+  assert.doesNotMatch(dimensionPatch, /CREATE TABLE \[icf\]\.\[(?!instrument_dimension_value|schema_migration_state)/);
   // SQL Server 2016 compatible.
   assert.doesNotMatch(dimensionPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST|CREATE OR ALTER/i);
 });

@@ -381,8 +381,15 @@ component output="false" {
 			variables.c.errors.notFound();
 		}
 		var filter = structKeyExists(arguments.req.query, "filter") ? arguments.req.query.filter : "";
+		// `part` of `of` runs one deterministic slice of the specs, so a growing suite does not have
+		// to finish inside one HTTP client's response-header timeout. See TestRunner.run.
+		var part = structKeyExists(arguments.req.query, "part") && isNumeric(arguments.req.query.part) ? int(arguments.req.query.part) : 0;
+		var of = structKeyExists(arguments.req.query, "of") && isNumeric(arguments.req.query.of) ? int(arguments.req.query.of) : 0;
+		if (of > 0 && (part < 1 || part > of)) {
+			variables.c.errors.validation("part must be between 1 and of.", "INVALID_TEST_PARTITION");
+		}
 		var runner = createObject("component", "icfwalktests.TestRunner").init(variables.c);
-		var results = runner.run(filter);
+		var results = runner.run(filter, part, of);
 		return { "status": 200, "body": results };
 	}
 }

@@ -30,8 +30,23 @@
 component output="false" {
 
 	variables.COLLECTIONS = ["sections", "items", "responseSets", "responseOptions", "rules", "dimensions", "dimensionValues", "instrumentDimensions"];
-	variables.ITEM_TYPES = ["SINGLE_CHOICE", "MULTI_CHOICE", "LONG_TEXT", "SHORT_TEXT", "DISPLAY_HEADING", "DISPLAY_GUIDANCE", "EMAIL_DRAFT_JSON"];
-	variables.CHOICE_TYPES = ["SINGLE_CHOICE", "MULTI_CHOICE"];
+	/** The snapshot's counts block: every definition collection, plus the derived placeholder count. */
+	variables.SNAPSHOT_COUNT_KEYS = ["sections", "items", "responseSets", "responseOptions", "rules", "dimensions", "dimensionValues", "instrumentDimensions", "placeholders"];
+	/**
+	 * Item types the runtime implements end to end. Every entry here has a layout branch in
+	 * RenderModelBuilder, a control in app/assets/js/renderer.js, and a storage shape in
+	 * icf.walk_response.
+	 *
+	 * MULTI_CHOICE and SHORT_TEXT used to be on this list and are deliberately not. Neither has a
+	 * renderer layout, and MULTI_CHOICE additionally has nowhere to go: icf.walk_response stores one
+	 * selected option per item, so "multi" could not be persisted even if it were drawn. Accepting a
+	 * type the runtime cannot render is exactly the gap this list now closes -- a version carrying
+	 * one is refused at import and at publication rather than frozen and then thrown on. Adding
+	 * either back means implementing it everywhere first, and this list is the single place that
+	 * records the decision.
+	 */
+	variables.ITEM_TYPES = ["SINGLE_CHOICE", "LONG_TEXT", "DISPLAY_HEADING", "DISPLAY_GUIDANCE", "EMAIL_DRAFT_JSON"];
+	variables.CHOICE_TYPES = ["SINGLE_CHOICE"];
 	variables.SELECTION_MODES = ["SINGLE", "MULTI"];
 	variables.TARGET_TYPES = ["SECTION", "ITEM", "DIMENSION"];
 	variables.EFFECTS = ["SHOW", "HIDE", "REQUIRE", "OPTIONAL"];
@@ -43,12 +58,43 @@ component output="false" {
 	variables.MAX_ORDER = 999999;
 	variables.SNAPSHOT_FORMAT = "icfwalk-instrument-snapshot/1";
 	variables.RETIRED_TEXT = ["school improvement (sip)", "sip grade"];
+	variables.PLACEHOLDER_REVIEW_STATUS = "Placeholder in source";
+	/**
+	 * Declarative option filters the renderer implements, by name. A placement naming anything else
+	 * makes RenderModelBuilder throw, so the name is validated here against the same table the
+	 * builder reads.
+	 */
+	variables.OPTION_FILTERS = {
+		"schoolTypeToGradeBand": { "sourceDimensionCode": "school", "matchField": "valueGroup" }
+	};
 
 	public DefinitionValidator function init() {
 		return this;
 	}
 
 	public string function snapshotFormat() { return variables.SNAPSHOT_FORMAT; }
+
+	// ---- the shared vocabulary -----------------------------------------------------------------
+	// One authoritative copy of every list the import path, the publish path, the compiler and the
+	// renderer all have to agree on. They are handed out as copies: a caller that mutated one would
+	// be redefining the contract for everybody.
+
+	public array function itemTypes() { return duplicate(variables.ITEM_TYPES); }
+	public array function choiceTypes() { return duplicate(variables.CHOICE_TYPES); }
+	public array function selectionModes() { return duplicate(variables.SELECTION_MODES); }
+	public array function targetTypes() { return duplicate(variables.TARGET_TYPES); }
+	public array function effects() { return duplicate(variables.EFFECTS); }
+	public array function supportedEffects() { return duplicate(variables.SUPPORTED_EFFECTS); }
+	public array function sourceTypes() { return duplicate(variables.SOURCE_TYPES); }
+	public array function operators() { return duplicate(variables.OPERATORS); }
+	public array function dataTypes() { return duplicate(variables.DATA_TYPES); }
+	public array function logics() { return duplicate(variables.LOGICS); }
+	public array function collections() { return duplicate(variables.COLLECTIONS); }
+	public array function snapshotCountKeys() { return duplicate(variables.SNAPSHOT_COUNT_KEYS); }
+	public array function retiredText() { return duplicate(variables.RETIRED_TEXT); }
+	public struct function optionFilters() { return duplicate(variables.OPTION_FILTERS); }
+	public numeric function maxOrder() { return variables.MAX_ORDER; }
+	public string function placeholderReviewStatus() { return variables.PLACEHOLDER_REVIEW_STATUS; }
 
 	/**
 	 * Validates one set of normalized definitions.
@@ -75,9 +121,243 @@ component output="false" {
 		checkRules(r, d, keys);
 		checkDimensions(r, d, keys);
 		checkPlacements(r, d, keys);
+		checkRuntimeContract(r, d, keys);
 		checkRetiredContent(r, d);
 		r.valid = arrayLen(r.errors) == 0;
 		return r;
+	}
+
+	/**
+	 * The rules that exist because the *runtime* has them, not because the schema does.
+	 *
+	 * Everything above validates the definitions as a document: keys are unique, references
+	 * resolve, enumerations are known. All of that can hold while RenderModelBuilder still refuses
+	 * the version -- or, worse, builds it with content missing. The renderer filters by `active`
+	 * before it does anything else, walks the section tree from a single root, and indexes response
+	 * sets and dimensions from the active rows only. A reference that was closed over *all* rows
+	 * can therefore be dangling over the *active* ones, and a subtree that is perfectly well formed
+	 * can hang off nothing the walk reaches.
+	 *
+	 * So this is the same closure question asked again, after the filter the runtime applies:
+	 * exactly one active root, every active thing reachable from it, and every reference an active
+	 * row makes resolving to something that is also active and usable. Each rule below corresponds
+	 * to a specific way RenderModelBuilder throws or silently drops content; together they are what
+	 * makes "this version publishes" and "this version renders" the same statement.
+	 */
+	private void function checkRuntimeContract(required struct r, required struct d, required struct keys) {
+		var activeSections = {};
+		var roots = [];
+		for (var s in arguments.d.sections) {
+			var key = keyOf(s, "sectionKey");
+			if (!truthy(s, "active") || !len(key)) continue;
+			activeSections[key] = s;
+			if (!len(keyOf(s, "parentSectionKey"))) arrayAppend(roots, key);
+		}
+
+		if (!arrayLen(roots)) {
+			err(arguments.r, "SECTION_ROOT_MISSING", "No active section is the root: the runtime builds the instrument from exactly one active section that has no parent.", path(arguments.r, "sections"));
+		} else if (arrayLen(roots) > 1) {
+			arraySort(roots, "textnocase");
+			err(arguments.r, "SECTION_ROOT_AMBIGUOUS", "More than one active section has no parent (" & arrayToList(roots, ", ") & "); the runtime builds from one root and would silently drop the others.", path(arguments.r, "sections"));
+		}
+
+		// Reachability from the one root, over active sections only -- the walk the renderer does.
+		var reachable = {};
+		if (arrayLen(roots) == 1) {
+			var childrenOf = {};
+			for (var key in structKeyArray(activeSections)) {
+				var parentKey = keyOf(activeSections[key], "parentSectionKey");
+				if (!len(parentKey)) continue;
+				if (!structKeyExists(childrenOf, parentKey)) childrenOf[parentKey] = [];
+				arrayAppend(childrenOf[parentKey], key);
+			}
+			var queue = [roots[1]];
+			while (arrayLen(queue)) {
+				var current = queue[arrayLen(queue)];
+				arrayDeleteAt(queue, arrayLen(queue));
+				if (structKeyExists(reachable, current)) continue;
+				reachable[current] = true;
+				if (structKeyExists(childrenOf, current)) {
+					for (var child in childrenOf[current]) arrayAppend(queue, child);
+				}
+			}
+		}
+
+		var i = 0;
+		for (var s in arguments.d.sections) {
+			var p = path(arguments.r, "sections") & "[" & i & "]";
+			i++;
+			var key = keyOf(s, "sectionKey");
+			if (!truthy(s, "active") || !len(key)) continue;
+			var parentKey = keyOf(s, "parentSectionKey");
+			if (!len(parentKey)) continue;
+			if (!structKeyExists(activeSections, parentKey)) {
+				// A parent that is missing entirely is already reported as MISSING_REFERENCE; this is
+				// the case the reference check cannot see, where the parent exists but is inactive.
+				if (structKeyExists(arguments.keys.sectionKeys, parentKey)) {
+					err(arguments.r, "SECTION_ORPHANED_FROM_ROOT", "Active section '" & key & "' hangs off inactive section '" & parentKey & "', so the runtime never reaches it.", p & ".parentSectionKey");
+				}
+			} else if (arrayLen(roots) == 1 && !structKeyExists(reachable, key)) {
+				err(arguments.r, "SECTION_ORPHANED_FROM_ROOT", "Active section '" & key & "' is not reachable from the root section, so the runtime never renders it.", p & ".parentSectionKey");
+			}
+		}
+
+		// Response sets and their options, as the renderer indexes them: active rows only.
+		var activeSets = {};
+		for (var rs in arguments.d.responseSets) {
+			if (truthy(rs, "active") && len(keyOf(rs, "setKey"))) activeSets[keyOf(rs, "setKey")] = rs;
+		}
+		var activeOptionCount = {};
+		for (var op in arguments.d.responseOptions) {
+			if (!truthy(op, "active")) continue;
+			var setKey = keyOf(op, "setKey");
+			if (!len(setKey)) continue;
+			activeOptionCount[setKey] = (structKeyExists(activeOptionCount, setKey) ? activeOptionCount[setKey] : 0) + 1;
+		}
+
+		i = 0;
+		for (var it in arguments.d.items) {
+			var p = path(arguments.r, "items") & "[" & i & "]";
+			i++;
+			if (!truthy(it, "active")) continue;
+			var sectionKey = keyOf(it, "sectionKey");
+			if (len(sectionKey) && structKeyExists(arguments.keys.sectionKeys, sectionKey)) {
+				if (!structKeyExists(activeSections, sectionKey)) {
+					err(arguments.r, "ITEM_ORPHANED_FROM_ROOT", "Active item '" & keyOf(it, "itemKey") & "' sits in inactive section '" & sectionKey & "', so the runtime never renders it.", p & ".sectionKey");
+				} else if (arrayLen(roots) == 1 && !structKeyExists(reachable, sectionKey)) {
+					err(arguments.r, "ITEM_ORPHANED_FROM_ROOT", "Active item '" & keyOf(it, "itemKey") & "' sits in section '" & sectionKey & "', which is not reachable from the root.", p & ".sectionKey");
+				}
+			}
+			var setKey = keyOf(it, "responseSetKey");
+			if (!len(setKey) || !structKeyExists(arguments.keys.setKeys, setKey)) continue;
+			if (!structKeyExists(activeSets, setKey)) {
+				err(arguments.r, "RESPONSE_SET_INACTIVE", "Active item '" & keyOf(it, "itemKey") & "' references inactive response set '" & setKey & "'; the runtime indexes active sets only and cannot render it.", p & ".responseSetKey");
+			} else if (arrayContains(variables.CHOICE_TYPES, keyOf(it, "itemType")) && !structKeyExists(activeOptionCount, setKey)) {
+				err(arguments.r, "RESPONSE_SET_NO_ACTIVE_OPTIONS", "Active choice item '" & keyOf(it, "itemKey") & "' uses response set '" & setKey & "', which has no active option, so it would render with nothing to choose.", p & ".responseSetKey");
+			}
+		}
+
+		// Dimensions and the values a version offers, again as the renderer indexes them.
+		var activeDimensions = {};
+		for (var dim in arguments.d.dimensions) {
+			if (truthy(dim, "active") && len(keyOf(dim, "code"))) activeDimensions[keyOf(dim, "code")] = dim;
+		}
+		var activeValueCount = {};
+		for (var v in arguments.d.dimensionValues) {
+			if (!truthy(v, "active")) continue;
+			var dimensionCode = keyOf(v, "dimensionCode");
+			if (!len(dimensionCode)) continue;
+			activeValueCount[dimensionCode] = (structKeyExists(activeValueCount, dimensionCode) ? activeValueCount[dimensionCode] : 0) + 1;
+		}
+
+		i = 0;
+		for (var pl in arguments.d.instrumentDimensions) {
+			var pa = path(arguments.r, "instrumentDimensions") & "[" & i & "]";
+			i++;
+			if (!truthy(pl, "active")) continue;
+			var dimensionCode = keyOf(pl, "dimensionCode");
+			var sectionKey = keyOf(pl, "sectionKey");
+			if (!len(sectionKey)) {
+				err(arguments.r, "PLACEMENT_SECTION_REQUIRED", "Active placement of dimension '" & dimensionCode & "' names no section; the runtime renders placements inside a section and has nowhere to put it.", pa & ".sectionKey");
+			} else if (structKeyExists(arguments.keys.sectionKeys, sectionKey)) {
+				if (!structKeyExists(activeSections, sectionKey)) {
+					err(arguments.r, "PLACEMENT_ORPHANED_FROM_ROOT", "Active placement of dimension '" & dimensionCode & "' sits in inactive section '" & sectionKey & "', so the runtime never renders it.", pa & ".sectionKey");
+				} else if (arrayLen(roots) == 1 && !structKeyExists(reachable, sectionKey)) {
+					err(arguments.r, "PLACEMENT_ORPHANED_FROM_ROOT", "Active placement of dimension '" & dimensionCode & "' sits in section '" & sectionKey & "', which is not reachable from the root.", pa & ".sectionKey");
+				}
+			}
+			if (len(dimensionCode) && structKeyExists(arguments.keys.dimensionCodes, dimensionCode)) {
+				if (!structKeyExists(activeDimensions, dimensionCode)) {
+					err(arguments.r, "DIMENSION_INACTIVE", "Active placement references inactive dimension '" & dimensionCode & "'; the runtime indexes active dimensions only and cannot render it.", pa & ".dimensionCode");
+				} else if (keyOf(activeDimensions[dimensionCode], "dataType") == "LIST" && !structKeyExists(activeValueCount, dimensionCode)) {
+					err(arguments.r, "DIMENSION_NO_ACTIVE_VALUES", "Active placement of list dimension '" & dimensionCode & "' offers no active value, so it would render with nothing to choose.", pa & ".dimensionCode");
+				}
+			}
+			checkOptionFilter(arguments.r, pl, pa, activeDimensions);
+		}
+
+		// Rules the runtime keeps (active ones) must point at content the runtime also keeps.
+		i = 0;
+		for (var rule in arguments.d.rules) {
+			var p = path(arguments.r, "rules") & "[" & i & "]";
+			i++;
+			if (!truthy(rule, "active")) continue;
+			var targetType = keyOf(rule, "targetType");
+			var targetKey = keyOf(rule, "targetKey");
+			if (len(targetKey)) {
+				if (targetType == "SECTION" && structKeyExists(arguments.keys.sectionKeys, targetKey) && !structKeyExists(activeSections, targetKey)) {
+					err(arguments.r, "RULE_TARGET_INACTIVE", "Active rule '" & keyOf(rule, "ruleKey") & "' targets inactive section '" & targetKey & "', which the runtime has already filtered out.", p & ".targetKey");
+				} else if (targetType == "ITEM" && structKeyExists(arguments.keys.itemKeys, targetKey) && !activeItemExists(arguments.d, targetKey)) {
+					err(arguments.r, "RULE_TARGET_INACTIVE", "Active rule '" & keyOf(rule, "ruleKey") & "' targets inactive item '" & targetKey & "', which the runtime has already filtered out.", p & ".targetKey");
+				} else if (targetType == "DIMENSION" && structKeyExists(arguments.keys.dimensionCodes, targetKey) && !structKeyExists(activeDimensions, targetKey)) {
+					err(arguments.r, "RULE_TARGET_INACTIVE", "Active rule '" & keyOf(rule, "ruleKey") & "' targets inactive dimension '" & targetKey & "', which the runtime has already filtered out.", p & ".targetKey");
+				}
+			}
+			checkActiveSource(arguments.r, arguments.d, keyOf(rule, "sourceType"), keyOf(rule, "sourceKey"), keyOf(rule, "ruleKey"), p & ".sourceKey", arguments.keys, activeDimensions);
+			if (has(rule, "conditions") && isStruct(rule.conditions) && has(rule.conditions, "conditions") && isArray(rule.conditions.conditions)) {
+				for (var cond in rule.conditions.conditions) {
+					if (!isStruct(cond)) continue;
+					checkActiveSource(arguments.r, arguments.d, keyOf(cond, "sourceType"), keyOf(cond, "sourceKey"), keyOf(rule, "ruleKey"), p & ".conditions", arguments.keys, activeDimensions);
+				}
+			}
+		}
+	}
+
+	/** A placement's option filter must be one the renderer implements, or it throws at build time. */
+	private void function checkOptionFilter(required struct r, required any placement, required string pa, required struct activeDimensions) {
+		if (!structKeyExists(arguments.placement, "settings") || isNull(arguments.placement.settings) || !isStruct(arguments.placement.settings)) return;
+		var settings = arguments.placement.settings;
+		if (!has(settings, "optionFilter") || !isSimpleValue(settings.optionFilter) || !len(trim(toString(settings.optionFilter)))) return;
+		var name = toString(settings.optionFilter);
+		if (!structKeyExists(variables.OPTION_FILTERS, name)) {
+			err(arguments.r, "UNSUPPORTED_OPTION_FILTER", "Placement of dimension '" & keyOf(arguments.placement, "dimensionCode") & "' asks for option filter '" & name & "', which the runtime does not implement.", arguments.pa & ".settings.optionFilter");
+			return;
+		}
+		// A filter that names a dimension this version does not offer silently filters nothing.
+		var sourceCode = variables.OPTION_FILTERS[name].sourceDimensionCode;
+		if (!structKeyExists(arguments.activeDimensions, sourceCode)) {
+			err(arguments.r, "OPTION_FILTER_SOURCE_MISSING", "Option filter '" & name & "' reads dimension '" & sourceCode & "', which this version does not offer as an active dimension.", arguments.pa & ".settings.optionFilter");
+		}
+	}
+
+	/** A rule's source must still exist once the runtime has filtered out inactive content. */
+	private void function checkActiveSource(
+		required struct r, required struct d, required string sourceType, required string sourceKey,
+		required string ruleKey, required string p, required struct keys, required struct activeDimensions
+	) {
+		if (!len(arguments.sourceKey)) return;
+		if (arguments.sourceType == "ITEM") {
+			if (!structKeyExists(arguments.keys.itemKeys, arguments.sourceKey)) return;
+			if (!activeItemExists(arguments.d, arguments.sourceKey)) {
+				err(arguments.r, "RULE_SOURCE_INACTIVE", "Active rule '" & arguments.ruleKey & "' reads inactive item '" & arguments.sourceKey & "', which the runtime has already filtered out.", arguments.p);
+			}
+			return;
+		}
+		if (arguments.sourceType == "DIMENSION") {
+			if (!structKeyExists(arguments.keys.dimensionCodes, arguments.sourceKey)) return;
+			if (!structKeyExists(arguments.activeDimensions, arguments.sourceKey)) {
+				err(arguments.r, "RULE_SOURCE_INACTIVE", "Active rule '" & arguments.ruleKey & "' reads inactive dimension '" & arguments.sourceKey & "', which the runtime has already filtered out.", arguments.p);
+			}
+		}
+	}
+
+	private boolean function activeItemExists(required struct d, required string itemKey) {
+		for (var it in arguments.d.items) {
+			if (keyOf(it, "itemKey") == arguments.itemKey && truthy(it, "active")) return true;
+		}
+		return false;
+	}
+
+	/** A row's boolean flag, read the same way whether it came from JSON or from SQL Server. */
+	private boolean function truthy(required any row, required string key) {
+		if (!has(arguments.row, arguments.key)) return false;
+		var v = arguments.row[arguments.key];
+		if (isBoolean(v)) return v ? true : false;
+		if (isSimpleValue(v)) {
+			var t = lCase(trim(toString(v)));
+			return t == "true" || t == "yes" || t == "1";
+		}
+		return false;
 	}
 
 	/**
@@ -120,23 +400,90 @@ component output="false" {
 		} else if (structKeyExists(arguments.options, "versionLabel") && len(trim(arguments.options.versionLabel)) && toString(s.version.versionLabel) != arguments.options.versionLabel) {
 			err(r, "SNAPSHOT_IDENTITY_MISMATCH", "The stored snapshot names version '" & toString(s.version.versionLabel) & "' but is stored on version '" & arguments.options.versionLabel & "'.", root & ".version.versionLabel");
 		}
-		// counts is what every reader trusts instead of walking the arrays; a counts block that
-		// disagrees with the definitions beside it is a snapshot that lies about itself.
-		if (has(s, "definitions") && isStruct(s.definitions) && has(s, "counts")) {
-			if (!isStruct(s.counts)) {
-				err(r, "SNAPSHOT_SHAPE", "The stored snapshot's counts is not an object.", root & ".counts");
-			} else {
-				for (var name in variables.COLLECTIONS) {
-					if (!has(s.definitions, name) || !isArray(s.definitions[name])) continue;
-					if (!has(s.counts, name)) continue;
-					if (!isNumeric(s.counts[name]) || s.counts[name] != arrayLen(s.definitions[name])) {
-						err(r, "SNAPSHOT_COUNTS_MISMATCH", "The stored snapshot's counts." & name & " is " & (isSimpleValue(s.counts[name]) ? toString(s.counts[name]) : "not a number") & " but it carries " & arrayLen(s.definitions[name]) & ".", root & ".counts." & name);
-					}
-				}
-			}
-		}
+		checkCounts(r, s, root);
 		r.valid = arrayLen(r.errors) == 0;
 		return r;
+	}
+
+	/**
+	 * The counts block, in full and exactly.
+	 *
+	 * counts is what every reader trusts instead of walking the arrays, so it is part of the
+	 * envelope and not a convenience. The compiler writes all nine members; accepting a snapshot
+	 * that is missing the block, missing a member, or carrying a member that is not a whole
+	 * non-negative number would mean publication froze a snapshot whose own summary of itself
+	 * cannot be relied on. Extra members are refused for the same reason: the contract names nine,
+	 * and a tenth is something a reader would either ignore or, worse, believe.
+	 *
+	 * placeholders is derived rather than counted from a collection: it is the number of items the
+	 * content review left unresolved, and PLACEHOLDER_REVIEW_STATUS here is the one definition of
+	 * what that means.
+	 */
+	private void function checkCounts(required struct r, required struct s, required string root) {
+		var s = arguments.s;
+		if (!has(s, "counts")) {
+			err(arguments.r, "SNAPSHOT_COUNTS_MISSING", "The stored snapshot has no counts object; the snapshot envelope requires one with all " & arrayLen(variables.SNAPSHOT_COUNT_KEYS) & " members.", arguments.root & ".counts");
+			return;
+		}
+		if (!isStruct(s.counts)) {
+			err(arguments.r, "SNAPSHOT_SHAPE", "The stored snapshot's counts is not an object.", arguments.root & ".counts");
+			return;
+		}
+		// Counts can only be compared with the definitions when there are definitions to compare
+		// with; a snapshot with no definitions object is already reported above.
+		var comparable = has(s, "definitions") && isStruct(s.definitions);
+		var expected = comparable ? derivedCounts(s.definitions) : {};
+
+		for (var name in variables.SNAPSHOT_COUNT_KEYS) {
+			var p = arguments.root & ".counts." & name;
+			if (!has(s.counts, name)) {
+				err(arguments.r, "SNAPSHOT_COUNTS_MISSING", "The stored snapshot's counts has no '" & name & "' member.", p);
+				continue;
+			}
+			var value = s.counts[name];
+			if (!isSimpleValue(value) || !isNumeric(value)) {
+				err(arguments.r, "SNAPSHOT_COUNTS_INVALID", "The stored snapshot's counts." & name & " is not a number.", p);
+				continue;
+			}
+			if (int(value) != value || value < 0) {
+				err(arguments.r, "SNAPSHOT_COUNTS_INVALID", "The stored snapshot's counts." & name & " is " & toString(value) & "; a count must be a whole number of zero or more.", p);
+				continue;
+			}
+			if (comparable && structKeyExists(expected, name) && value != expected[name]) {
+				err(arguments.r, "SNAPSHOT_COUNTS_MISMATCH", "The stored snapshot's counts." & name & " is " & toString(value) & " but it carries " & expected[name] & ".", p);
+			}
+		}
+
+		for (var name in structKeyArray(s.counts)) {
+			if (!arrayContains(variables.SNAPSHOT_COUNT_KEYS, name)) {
+				err(arguments.r, "SNAPSHOT_COUNTS_UNEXPECTED", "The stored snapshot's counts carries '" & name & "', which is not part of the snapshot envelope.", arguments.root & ".counts." & name);
+			}
+		}
+	}
+
+	/**
+	 * The counts the definitions themselves imply. SnapshotCompiler.countDefinitions writes exactly
+	 * these; this is the reader's independent derivation of the same numbers, which is what makes
+	 * comparing them worth anything.
+	 */
+	public struct function derivedCounts(required struct definitions) {
+		var d = arguments.definitions;
+		var out = {};
+		for (var name in variables.COLLECTIONS) {
+			out[name] = (structKeyExists(d, name) && !isNull(d[name]) && isArray(d[name])) ? arrayLen(d[name]) : 0;
+		}
+		out["placeholders"] = placeholderCount(d);
+		return out;
+	}
+
+	/** Items the content review left unresolved: the one definition of "placeholder". */
+	public numeric function placeholderCount(required struct definitions) {
+		if (!structKeyExists(arguments.definitions, "items") || isNull(arguments.definitions.items) || !isArray(arguments.definitions.items)) return 0;
+		var n = 0;
+		for (var item in arguments.definitions.items) {
+			if (has(item, "reviewStatus") && isSimpleValue(item.reviewStatus) && toString(item.reviewStatus) == variables.PLACEHOLDER_REVIEW_STATUS) n++;
+		}
+		return n;
 	}
 
 	// ---- collections -----------------------------------------------------------------------

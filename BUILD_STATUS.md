@@ -10,14 +10,15 @@ administration UI -- has **not** been started, and neither has Phase 7.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 6 publish-foundation correction candidate, awaiting independent
+**Current state: Phase 6 publish-foundation second correction candidate, awaiting independent
 verification.** Branch `claude/icfwalk-phase-6-admin-publish`, on top of the frozen Phase 5 baseline
 `e55ec08af5b8622db5823b6e353423b891918549`. Phase 6 is **not** frozen and **not** complete; the
 correction it carries has not yet been independently audited.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
-and finally the Phase 6 publish-foundation correction, which is the current state of the build.
+the Phase 6 publish-foundation correction, and finally the Phase 6 publish-foundation **second**
+correction, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -2315,7 +2316,7 @@ has not been started, read it as the remainder above.
    `exportLabel` item setting would retire `PART4_LABELS`.
 4. The admin UI takes over the import/publish operations the maintenance endpoints do today.
 
-## Phase 6 publish-foundation correction (current state)
+## Phase 6 publish-foundation correction (superseded by the second correction below)
 
 Correction-only session against an independent audit of the Phase 6 foundation
 (`5b243ed3d5a27142e65cdfbba8fc113ed65853e1`). It corrects that foundation; it does **not** add any
@@ -2455,3 +2456,247 @@ removed, weakened, skipped or renamed away.
 3. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
 4. **This correction has not been independently audited.** It is a correction candidate, ready for a
    fresh independent audit.
+
+## Phase 6 publish-foundation second correction (current state)
+
+Correction-only session against a second independent audit, this one of the first correction
+(`332f89f929ff5a9f1e81fe5273c830698fdc80af`). It corrects that candidate; it does **not** add any of
+the remaining Phase 6 scope. **This is a correction candidate awaiting independent
+re-verification: Phase 6 is not frozen and not complete.**
+
+Starting point: branch `claude/icfwalk-phase-6-admin-publish` at
+`332f89f929ff5a9f1e81fe5273c830698fdc80af`, clean tree, with the frozen Phase 5 baseline
+`e55ec08af5b8622db5823b6e353423b891918549` verified as an ancestor and no commits after the audited
+candidate. (The container's checkout was one commit stale at
+`5b243ed3d5a27142e65cdfbba8fc113ed65853e1`; that was resolved by a plain fast-forward to the
+published remote tip before any edit. Nothing was reset, discarded or rewritten. See
+`docs/evidence/phase6-second-correction-environment.md`.)
+
+### What was wrong, and what each fix is
+
+**A (HIGH). Publication validity did not imply runtime renderability.** `DefinitionValidator`
+accepted states `RenderModelBuilder` throws on, and -- worse -- states it builds while silently
+dropping content. Checksums and the drift check cannot see either: the rows and the snapshot agree
+perfectly on content the renderer will not build.
+
+The validator now carries a rule for every one of them: exactly one active root section
+(`SECTION_ROOT_MISSING`, `SECTION_ROOT_AMBIGUOUS`), no active section, item or placement orphaned
+from that root (`*_ORPHANED_FROM_ROOT`), a placement that names a section
+(`PLACEMENT_SECTION_REQUIRED`), only item types the runtime implements, only option filters it
+implements and only with a source dimension this version offers (`UNSUPPORTED_OPTION_FILTER`,
+`OPTION_FILTER_SOURCE_MISSING`), an active item's response set active (`RESPONSE_SET_INACTIVE`) and,
+for a choice item, carrying at least one active option (`RESPONSE_SET_NO_ACTIVE_OPTIONS`), an active
+placement's dimension active (`DIMENSION_INACTIVE`) and, for a list dimension, offering at least one
+active value (`DIMENSION_NO_ACTIVE_VALUES`), and an active rule's target and sources still active
+after the runtime's filter (`RULE_TARGET_INACTIVE`, `RULE_SOURCE_INACTIVE`).
+
+`MULTI_CHOICE` and `SHORT_TEXT` are **removed from the accepted item types**. Neither has a renderer
+layout, and `icf.walk_response` stores one selected option per item, so `MULTI_CHOICE` had nowhere
+to be persisted even if it were drawn. Neither appears anywhere in the shipped instrument. They are
+refused at import and at publication rather than half-supported.
+
+Because a hand-maintained rule set drifts from the thing it describes -- which is precisely this
+defect -- import and publication now also run the **real renderer** over the compiled snapshot
+(`src/instrument/RenderContractValidator.cfc`, new). A throw becomes a stable
+`{ code, message, path }` issue instead of escaping as a runtime 500, and the built model is counted
+against the definitions so a build that succeeds while dropping a subtree is refused as
+`RENDER_MODEL_INCOMPLETE`.
+
+The shared vocabulary now has one home. Item types, choice types, selection modes, target types,
+effects, source types, operators, data types, logics, the order limit, the retired-content strings,
+the placeholder review status and the option-filter table live on `DefinitionValidator` and are read
+from it by `InstrumentConfigValidator`, `SnapshotCompiler` and `RenderModelBuilder`.
+
+**B (HIGH). Migration `006` inferred membership on every re-application.** Its legacy backfill asked
+"which global values does this version not have a row for?" -- correct as a description of the
+one-time transition, wrong as a condition to re-evaluate. Once V2 minted a new value under a shared
+dimension, a re-applied `006` inferred it into **published V1**, changing V1's normalized
+definitions and the walk values it accepted while its snapshot bytes, checksum and `row_version`
+stayed put. `WalkRepository.definitionIndex()` caches by that checksum, so a running application
+kept serving the old index and a restarted one silently served a different instrument.
+
+Eligibility is now tied to the transition itself, recorded durably in the new
+`icf.schema_migration_state` table. A database with no `instrument_dimension_value` runs the
+backfill once and records `COMPLETED`. A database that already has the table -- the earlier form of
+`006` created it and backfilled in one transaction, so its existence is proof the backfill committed
+-- is **adopted**: recorded `ADOPTED_PRE_STATE`, nothing inserted. After that the backfill never
+runs again, for any version, in any status. A half-finished transition (table present, nothing
+recorded, and a placement of a dimension that has values carrying no version rows) **fails** with
+error 50054 and the count rather than guessing. Nothing is auto-deleted: `database/README.md` now
+carries two read-only detection queries and a reviewed remediation procedure that requires an
+authorized decision wherever intended historical membership cannot be read from the version's own
+frozen snapshot.
+
+**C (HIGH). The shared and global write boundary was open, and the inventory said so.** The
+immutability inventory carried an exclusion list -- `createInstrument`, `updateInstrument`,
+`createDimensionIdentity`, `createDimensionValueIdentity` -- whose members were tested not at all.
+One of them was the defect: the importer called `updateInstrument` on the shared `icf.instrument`
+row on every re-import, straight from the document, and `icf.instrument.active` is part of
+`SnapshotService.currentVersion()`'s predicate. Importing a V2 DRAFT whose document said
+`"active": false` removed an already PUBLISHED V1 from the runtime, with no version row changed and
+nobody named.
+
+Ownership is now explicit and enforced. `code` is identity, written once. `name` and `description`
+are **version** facts: they are compiled into each version's snapshot and served from it, so V2 may
+describe the instrument differently from V1 and each walk sees its own version's wording -- stored
+at the right scope, not ignored. `active` is a shared operational decision: an import that declares
+it differently from the stored row is refused atomically with `SHARED_METADATA_CONFLICT` and
+audited. `updateInstrument` is gone, replaced by `updateInstrumentMetadata`, which requires a named
+known `icf.app_user`, takes the instrument row under its own `UPDLOCK, ROWLOCK`, and is reached only
+by the new `src/instrument/InstrumentMetadataService.cfc` -- which audits one
+`INSTRUMENT_METADATA_UPDATED` event and has **no route**. `createDimensionIdentity` and
+`createDimensionValueIdentity` now take the requesting version id and call `requireDraftVersion`
+inside the repository, before the INSERT, so global reporting identity is minted only on behalf of a
+DRAFT and a caller's earlier guard is not accepted in its place. The exclusion list is gone: every
+public mutator is in the inventory, under the contract it actually has, and two inventory tests fail
+if a mutator escapes the list or the list names something that no longer exists.
+
+**D (MEDIUM). Import ran two semantic rule sets.** `InstrumentConfigValidator` kept a complete
+second copy of the semantics *and* delegated to `DefinitionValidator`, so import was judged by two
+rule sets and publish by one. It now keeps only what an inbound document can be wrong about:
+parseability and document shape, authoring-id uniqueness and resolution, `conditionsJson` as text,
+the DRAFT declaration, and the content-review placeholder warnings. Everything else is the shared
+validator, on the normalized form. Its duplicate constants are gone.
+
+**E (MEDIUM). The snapshot envelope was not enforced, and the canonical-byte claim was not
+checked.** The validator accepted a missing `counts` block, an empty one, or missing members, and
+noticed a non-numeric or negative count only as a mismatch with the array length. All nine members
+are now required, each a whole non-negative number equal to the definitions' own, with no extra
+members (`SNAPSHOT_COUNTS_MISSING`, `SNAPSHOT_COUNTS_INVALID`, `SNAPSHOT_COUNTS_MISMATCH`,
+`SNAPSHOT_COUNTS_UNEXPECTED`). And the documented canonical-byte invariant is now enforced:
+publication parses the stored snapshot, re-serializes it through the one canonicalizer and requires
+byte-for-byte equality (`SNAPSHOT_NOT_CANONICAL`). It refuses rather than rewriting, because
+rewriting would move the checksum the DRAFT was reviewed under.
+
+**F (MEDIUM). Two refusals left no trace.** The DRAFT-in-use branches of import and `discardDraft`
+threw `INSTRUMENT_VERSION_IN_USE` without marking the refusal, so the catch that writes the
+post-rollback audit had nothing to persist. Being DRAFTs, they had no status guard behind them
+either, so the refusal record was the only evidence there would ever have been. Both now mark before
+they throw, with `operation` and a stable `reason` of `VERSION_IN_USE`.
+
+**G (MEDIUM). Concurrency evidence was probabilistic.** The repeated `Promise.all` races remain, as
+stress coverage, but they cannot show that two transactions ever overlapped.
+`tests/cfml/support/InterceptingDefinitionRepository.cfc` (new, test-only) fires a callback
+immediately after the statement that takes the version's row lock.
+`PublishConcurrencyBarrierTest` uses it to hold transaction A there, start B, observe that B
+**cannot finish**, release A by letting it commit, and then assert the one permitted serial outcome
+and the final state -- for publish/publish, publish/import and import/publish. The decorator is
+constructed by the spec and handed to a service the spec constructs; the container never holds it
+and no route reaches it, so no production configuration exposes a lock hook.
+
+**H (LOW). The no-body contract was not the documented one.** The publish route tested
+`structCount(req.body)`, which cannot tell a request with no body from one carrying a literal `{}`
+-- both parse to an empty struct -- so `{}` was accepted while the documentation said the endpoint
+takes no body. The route now asks whether any body bytes arrived, from `Content-Length` falling back
+to the parsed content for a chunked request. `Content-Length: 0` is not a body.
+
+Two further defects surfaced from that case and are fixed here: Lucee returns an empty string from
+`getHttpRequestData()` for a whitespace-only body, so whitespace could not be seen at all through
+the parsed content; and a body of literal `null` parses to CFML null, so reading it back raised
+`variable [PARSED] doesn't exist` and the request escaped as a **500** instead of the documented
+400. `Router.buildRequest` now tests `isNull()` before `isStruct()`.
+
+**One harness defect, found by the release gate itself.** The whole CFML suite runs inside one
+`/api/maintenance/tests/run` request, and Lucee is configured for it (`LUCEE_REQUESTTIMEOUT=600`).
+The *client* never had the same allowance: Node's `fetch` abandons a request after five minutes
+without response headers, and none are sent until the suite finishes. At 258 cases that ceiling was
+never reached; at 330 it was, and the first full run of this correction failed as `fetch failed`
+after 300.7 seconds -- and the abort also skipped every spec's `afterAll`, leaving a fixture version
+behind that then failed an unrelated later test (`shell.test.mjs` found a fixture label where it
+expected the seeded one). The suite is now requested in three deterministic parts
+(`?part=<n>&of=<m>`, specs dealt round-robin over a stable name order), the reports are summed, and
+`cfml-suite.test.mjs` additionally asserts that the set of specs that ran equals the set of spec
+files on disk -- so a partition that silently dropped a spec fails rather than looking healthy.
+Nothing was filtered out, shortened or skipped to achieve this: all 330 cases still run, and all
+still have to pass.
+
+### What was executed, and what it proves
+
+Every command below was run personally, on the live environment described in
+`docs/evidence/phase6-second-correction-environment.md`, against the final tree. The development
+database was dropped, recreated, taken through `001` to `006` and re-seeded immediately before the
+release run, so the gate ran on a database whose whole history is known.
+
+| Command | Result |
+| --- | --- |
+| CFML suite, filter `ValidatorRendererContract` | 18 passed, 0 failed, 0 skipped |
+| CFML suite, filter `ImportPublishEquivalence` | 14 passed, 0 failed, 0 skipped |
+| CFML suite, filter `InstrumentPublishService` | 48 passed, 0 failed, 0 skipped |
+| CFML suite, filter `InstrumentImmutability` | 14 passed, 0 failed, 0 skipped |
+| CFML suite, filter `SharedInstrumentBoundary` | 7 passed, 0 failed, 0 skipped |
+| CFML suite, filter `Migration006Lifecycle` | 3 passed, 0 failed, 0 skipped |
+| CFML suite, filter `PublishConcurrencyBarrier` | 3 passed, 0 failed, 0 skipped |
+| `node --test tests/node/admin-publish.test.mjs` (`ICFWALK_REQUIRE_APP=1`) | 14 passed, 0 failed, 0 skipped |
+| `node --test tests/node/migration-006-transition.test.mjs` | 4 passed, 0 failed, 0 skipped |
+| `node --test tests/node/db-scripts.test.mjs` | 1 passed, 0 failed, 0 skipped |
+| `npm run validate:handoff` | ok, 51 checks, 0 errors |
+| `npm run test:package` | 19 passed, 0 failed, 0 skipped |
+| `node --check` over every `.js`/`.mjs` | 36 files, 0 failures |
+| `ICFWALK_REQUIRE_APP=1 npm test` (the full live gate) | see below |
+
+Migration `006`, by state:
+
+| State | Command | Result |
+| --- | --- | --- |
+| Clean database (Phase 5 schema, no data) | `migration-006-transition.test.mjs` | Applies; `legacy_membership_backfill_ran_now = 1`, `state = COMPLETED`, 0 value rows |
+| Phase 5 schema **with representative data** | `db-scripts.test.mjs` | Applies; backfills exactly what `loadNormalizedDefinitions` already returned (labels, orders and activity asserted row by row) |
+| Immediate re-application | both | No-op; `ran_now = 0`, no duplicate rows, no second table |
+| Re-application **after a later version mints a new global value** | `db-scripts.test.mjs` | The published version does **not** gain it; checksum and `row_version` unmoved |
+| A database the earlier form already migrated | `migration-006-transition.test.mjs` | Adopted: `state = ADOPTED_PRE_STATE`, nothing inserted, and a further re-apply is still a no-op |
+| A half-finished transition | `migration-006-transition.test.mjs` | Refused with error 50054 and the count; whole transaction rolled back; nothing recorded |
+| A dimension with no global values at all | `migration-006-transition.test.mjs` | Not treated as ambiguous |
+| The full V1/V2 lifecycle, cached and uncached | `Migration006LifecycleTest` | V1's version-scoped rows, normalized definitions, snapshot bytes, checksum, row version, allowed walk values and render model all unchanged, from the primed cache **and** from a fresh uncached load; V2 keeps its own value |
+| Publisher precondition | `db-scripts.test.mjs` | Refuses with 50053 and the count when a non-DRAFT row has no publisher, rolls back, and applies unchanged once resolved |
+
+
+### The release gate
+
+```
+ICFWALK_REQUIRE_APP=1 npm test
+```
+
+Run on the final tree, against the live stack, after the development database had been dropped,
+recreated, taken through `001` to `006` and re-seeded:
+
+```
+# tests 174
+# pass 174
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+exit 0
+engine=Lucee 6.2.8.20 passed=330 failed=0 skipped=0 ms=274011 parts=3
+```
+
+**Node / HTTP / Playwright: 174 passed, 0 failed, 0 skipped.**
+**CFML, live in-run: 330 passed, 0 failed, 0 skipped.**
+
+`ICFWALK_REQUIRE_APP=1` makes an unreachable application a failure rather than a skip, so `skipped 0`
+means every application-dependent case really ran. Totals against the audited candidate: CFML
+**258 -> 330**, Node **169 -> 174**. No existing case was removed, weakened, skipped or renamed away.
+
+The new CFML specs, as reported by that run: `ValidatorRendererContractTest` 18,
+`ImportPublishEquivalenceTest` 14, `SharedInstrumentBoundaryTest` 7, `Migration006LifecycleTest` 3,
+`PublishConcurrencyBarrierTest` 3, plus 21 new semantic and envelope cases in
+`InstrumentPublishServiceTest` (27 -> 48) and 6 new cases in `InstrumentImmutabilityTest` (8 -> 14).
+
+### Unresolved and not verified
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** Everything above ran on Lucee
+   6.2.8.20 and SQL Server 2022 (16.0.4295.3). Migration `006` is written to SQL Server 2016 syntax
+   and statically checked for it, and every construct this correction adds to it is a 2016
+   construct, but *running* it on 2016 was not possible here and is not claimed. This is a
+   deployment gate, and it is not the same thing as the implementation acceptance gate above, which
+   did pass in full on Lucee and SQL Server 2022.
+2. **The `phase-5-freeze` tag does not exist**, locally or on the remote (`git tag -l` and
+   `git ls-remote --tags origin` are both empty). There was nothing to verify and nothing to push,
+   and this correction did not create, move or force-push it. Creating and pushing `phase-5-freeze`
+   at `e55ec08af5b8622db5823b6e353423b891918549` remains an open repository action for an authorized
+   operator. This is a repository-permission item, not a code or test result.
+3. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
+   ADM-02 preview, ADM-06 clone-and-compare, ADM-07 retirement and ADM-08 the placeholder review
+   queue all remain PENDING, deliberately and entirely.
+4. **This correction has not been independently audited.** It is a correction candidate, ready for a
+   fresh independent audit. Phase 6 is **not** frozen and **not** complete, and no `phase-6-freeze`
+   tag was created.

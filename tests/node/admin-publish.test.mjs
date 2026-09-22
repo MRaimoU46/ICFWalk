@@ -58,14 +58,18 @@ function jar() {
 async function client(subject) {
   const cookieJar = jar();
   let csrf = "";
-  async function call(method, path, body, { noCsrf = false, badCsrf = false, noIdentity = false } = {}) {
+  // `rawBody` sends exactly those bytes instead of JSON.stringify(body), which is the only way to
+  // put whitespace-only content on the wire -- a body no JSON encoder will produce and which the
+  // documented no-body contract still has to have an answer for.
+  async function call(method, path, body, { noCsrf = false, badCsrf = false, noIdentity = false, rawBody = undefined } = {}) {
     const headers = { Accept: "application/json" };
     if (!noIdentity) headers["X-ICFWalk-Dev-Subject"] = subject;
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (body !== undefined || rawBody !== undefined) headers["Content-Type"] = "application/json";
     if (badCsrf) headers["X-ICFWalk-CSRF-Token"] = "f".repeat(64);
     else if (csrf && !noCsrf) headers["X-ICFWalk-CSRF-Token"] = csrf;
     if (cookieJar.header() && !noIdentity) headers.Cookie = cookieJar.header();
-    const response = await fetch(`${baseUrl(env)}/index.cfm${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const payload = rawBody !== undefined ? rawBody : (body === undefined ? undefined : JSON.stringify(body));
+    const response = await fetch(`${baseUrl(env)}/index.cfm${path}`, { method, headers, body: payload });
     if (!noIdentity) cookieJar.absorb(response);
     const text = await response.text();
     let json = null;
@@ -254,6 +258,57 @@ test("publish takes no request body, and a client cannot name the publisher", { 
   const published = await versionRow(draft.versionId);
   assert.equal(published.published_by_user_id.toUpperCase(), adminUserId.toUpperCase());
   assert.notEqual(published.published_by_user_id.toUpperCase(), otherUser.toUpperCase());
+});
+
+/**
+ * The documented contract is "this endpoint takes no request body", and now the implemented one
+ * says the same thing.
+ *
+ * It used to test structCount(req.body), which cannot distinguish a request with no body from one
+ * carrying a literal `{}`: both parse to an empty struct. So `{}` was accepted, and a client
+ * sending it was told its request had succeeded on terms it had not actually agreed to. The route
+ * now asks whether any body bytes arrived, independent of what they parse to, so every one of
+ * these is a body and every one is refused with the same stable code -- and no body at all still
+ * publishes.
+ */
+test("the publish route's no-body contract is exact: {}, whitespace and null are all bodies", { skip }, async () => {
+  const draft = await newDraft("nobody");
+  const before = await versionRow(draft.versionId);
+
+  const bodies = [
+    ["an empty JSON object", { rawBody: "{}" }],
+    ["an empty object with spaces", { rawBody: "{ }" }],
+    ["whitespace only", { rawBody: "   " }],
+    ["a newline only", { rawBody: "\n" }],
+    ["a JSON null", { rawBody: "null" }],
+    ["an empty JSON array", { rawBody: "[]" }],
+  ];
+  for (const [what, options] of bodies) {
+    const r = await admin.call("POST", publishPath(draft.versionId), undefined, options);
+    assert.equal(r.status, 400, `${what} must be refused: ${r.text}`);
+    assert.ok(
+      ["PUBLISH_BODY_NOT_ALLOWED", "INVALID_JSON_BODY"].includes(r.json.error.code),
+      `${what} -> ${r.json.error.code}`,
+    );
+    const during = await versionRow(draft.versionId);
+    assert.equal(during.status, "DRAFT", `${what} published nothing`);
+    assert.equal(during.row_version, before.row_version, `${what} moved no row version`);
+  }
+
+  // A body that names a publisher is refused by the body rule, not by the publisher rule: the
+  // request never gets far enough for anyone to be named.
+  const named = await admin.call("POST", publishPath(draft.versionId), { publishedByUserId: adminUserId });
+  assert.equal(named.status, 400, named.text);
+  assert.equal(named.json.error.code, "PUBLISH_BODY_NOT_ALLOWED");
+
+  assert.equal((await auditCount(draft.versionId, "INSTRUMENT_VERSION_PUBLISHED")), 0, "nothing was published by any of them");
+
+  // And with genuinely no body, the same version publishes.
+  const ok = await admin.call("POST", publishPath(draft.versionId));
+  assert.equal(ok.status, 200, ok.text);
+  const after = await versionRow(draft.versionId);
+  assert.equal(after.status, "PUBLISHED");
+  assert.equal(after.published_by_user_id.toUpperCase(), adminUserId.toUpperCase());
 });
 
 // ---- the success path --------------------------------------------------------------------------

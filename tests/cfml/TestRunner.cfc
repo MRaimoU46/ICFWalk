@@ -14,13 +14,35 @@ component output="false" {
 		return this;
 	}
 
-	public struct function run(string filter = "") {
+	/**
+	 * Runs the discovered specs and reports JSON.
+	 *
+	 * `part` of `of` runs one deterministic slice of the specs instead of all of them: files are
+	 * discovered in a stable name order and dealt out round-robin, so every spec belongs to exactly
+	 * one part and the union of all parts is the whole suite.
+	 *
+	 * WHY PARTITIONING EXISTS. The whole suite runs inside a single /api/maintenance/tests/run
+	 * request by design, and Lucee is configured for it (LUCEE_REQUESTTIMEOUT=600 in
+	 * tools/runtime/lucee-up.sh). The *client* was never given the same allowance: Node's fetch
+	 * gives up after 5 minutes waiting for response headers, and none are sent until the suite
+	 * finishes. That ceiling was reached as the suite grew, and it aborted the request mid-run --
+	 * which also skipped every spec's afterAll, leaving fixtures behind that then failed later
+	 * tests. Running the suite in parts keeps each request well inside the client's limit. It
+	 * changes nothing about what runs: every spec still runs exactly once, and the caller sums the
+	 * parts.
+	 */
+	public struct function run(string filter = "", numeric part = 0, numeric of = 0) {
 		var started = getTickCount();
 		var report = { "ok": true, "engine": variables.c.healthController.engineDescription(), "specs": [], "totals": { "passed": 0, "failed": 0, "skipped": 0 } };
 		var files = directoryList(variables.specDir, false, "name", "*Test.cfc", "name asc");
+		var index = 0;
 		for (var file in files) {
 			var name = listFirst(file, ".");
 			if (len(arguments.filter) && !findNoCase(arguments.filter, name)) continue;
+			// Counted over the specs this run would otherwise have executed, so a filtered run
+			// partitions the filtered set rather than the whole directory.
+			index++;
+			if (arguments.of > 0 && ((index - 1) % arguments.of) != (arguments.part - 1)) continue;
 			var specReport = { "name": name, "cases": [], "passed": 0, "failed": 0, "skipped": 0 };
 			var spec = "";
 			try {

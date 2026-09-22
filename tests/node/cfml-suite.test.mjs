@@ -56,21 +56,59 @@ test("maintenance endpoints are hidden without a valid token", { skip }, async (
   assert.equal(badBody.json.error.code, "INVALID_JSON_BODY");
 });
 
+/**
+ * The whole CFML suite, run in parts.
+ *
+ * It runs inside /api/maintenance/tests/run, and Lucee is configured to let it
+ * (LUCEE_REQUESTTIMEOUT=600 in tools/runtime/lucee-up.sh) because several specs deliberately block
+ * a writer for seconds at a time. The client was never given the same allowance: Node's fetch
+ * abandons a request after five minutes without response headers, and none are sent until the
+ * suite finishes, so a suite that grew past five minutes failed as "fetch failed" -- and, worse,
+ * the abort skipped every spec's afterAll, leaving fixtures behind that then failed later tests.
+ *
+ * So the suite is requested in PARTS. Specs are dealt out round-robin over a stable name order, so
+ * every spec runs exactly once across the parts and none runs twice. The reports are summed and
+ * the same assertions are made on the totals: nothing is filtered out, nothing is skipped, and a
+ * failure in any part fails this test.
+ */
+const SUITE_PARTS = 3;
+
 test("CFML test suite passes (unit specs and DB-04..09 integration specs)", { skip: skip || (token ? false : "ICFWALK_MAINTENANCE_TOKEN not set") }, async (t) => {
-  const r = await api(env, "POST", "/api/maintenance/tests/run", { token });
-  assert.equal(r.status, 200, r.text);
-  const report = r.json;
-  for (const spec of report.specs) {
-    for (const c of spec.cases) {
-      const line = `${spec.name}.${c.name}: ${c.status}${c.message ? ` - ${c.message}` : ""}${c.at ? ` @ ${c.at}` : ""}`;
-      t.diagnostic(line);
+  const totals = { passed: 0, failed: 0, skipped: 0 };
+  const seen = new Set();
+  let engine = "";
+  let elapsedMs = 0;
+
+  for (let part = 1; part <= SUITE_PARTS; part++) {
+    const r = await api(env, "POST", `/api/maintenance/tests/run?part=${part}&of=${SUITE_PARTS}`, { token });
+    assert.equal(r.status, 200, `part ${part}/${SUITE_PARTS}: ${r.text}`);
+    const report = r.json;
+    for (const spec of report.specs) {
+      assert.equal(seen.has(spec.name), false, `${spec.name} ran in more than one part`);
+      seen.add(spec.name);
+      for (const c of spec.cases) {
+        const line = `${spec.name}.${c.name}: ${c.status}${c.message ? ` - ${c.message}` : ""}${c.at ? ` @ ${c.at}` : ""}`;
+        t.diagnostic(line);
+      }
     }
+    totals.passed += report.totals.passed;
+    totals.failed += report.totals.failed;
+    totals.skipped += report.totals.skipped;
+    engine = report.engine;
+    elapsedMs += report.elapsedMs;
+    assert.equal(report.ok, true, `part ${part}/${SUITE_PARTS} reported failures`);
   }
-  t.diagnostic(`engine=${report.engine} passed=${report.totals.passed} failed=${report.totals.failed} skipped=${report.totals.skipped} ms=${report.elapsedMs}`);
-  assert.equal(report.totals.failed, 0, "CFML failures reported above");
-  assert.equal(report.totals.skipped, 0, "no spec should be skipped when the schema is applied");
-  assert.equal(report.ok, true);
-  assert.ok(report.totals.passed >= 40);
+
+  // Every spec on disk ran, in exactly one part. Without this the partitioning could silently
+  // drop a spec and the totals would still look healthy.
+  const onDisk = fs.readdirSync(path.join(root, "tests", "cfml", "specs"))
+    .filter((f) => f.endsWith("Test.cfc")).map((f) => f.replace(/\.cfc$/, ""));
+  assert.deepEqual([...seen].sort(), onDisk.sort(), "every spec file ran exactly once across the parts");
+
+  t.diagnostic(`engine=${engine} passed=${totals.passed} failed=${totals.failed} skipped=${totals.skipped} ms=${elapsedMs} parts=${SUITE_PARTS}`);
+  assert.equal(totals.failed, 0, "CFML failures reported above");
+  assert.equal(totals.skipped, 0, "no spec should be skipped when the schema is applied");
+  assert.ok(totals.passed >= 40);
 });
 
 test("seed import of the aligned DRAFT is idempotent through the maintenance endpoint", { skip: skip || (token ? false : "ICFWALK_MAINTENANCE_TOKEN not set") }, async () => {
