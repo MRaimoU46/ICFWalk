@@ -47,11 +47,6 @@ component output="false" {
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository,
 			c.canonicalJson, c.snapshotCompiler, c.definitionValidator, c.renderContractValidator
 		);
-		// The only operation that writes the shared icf.instrument row. Deliberately not routed:
-		// this pass closes the write boundary and adds no administration UI for it.
-		c["instrumentMetadataService"] = new icfwalk.instrument.InstrumentMetadataService(
-			c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository
-		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
 
 		// Instrument engine (Phase 3): visibility rules from the compiled snapshot. The render model
@@ -64,6 +59,15 @@ component output="false" {
 		c["orgUnitRepository"] = new icfwalk.authorization.OrgUnitRepository(c.db);
 		c["roleScopeRepository"] = new icfwalk.authorization.RoleScopeRepository(c.db);
 		c["authorizationService"] = new icfwalk.authorization.AuthorizationService(c.db, c.orgUnitRepository, c.roleScopeRepository, c.auditRepository, c.logger, c.errors);
+		// The only operation that writes the shared icf.instrument row, constructed HERE rather than
+		// beside the other instrument services because its authorization dependency is real: it asks
+		// AuthorizationService for global instrument.manage before any mutation, so it cannot be
+		// built before the authorization model exists. Deliberately not routed -- this pass closes
+		// the write boundary and adds no administration UI for it -- and the lack of a route is a
+		// scope decision, not the security control.
+		c["instrumentMetadataService"] = new icfwalk.instrument.InstrumentMetadataService(
+			c.db, c.errors, c.logger, c.definitionRepository, c.auditRepository, c.authorizationService
+		);
 		c["sessionService"] = new icfwalk.identity.SessionService(c.config);
 		c["identityProvider"] = new icfwalk.identity.IdentityProviderFactory(c.config, c.logger).build();
 		c["authenticationService"] = new icfwalk.identity.AuthenticationService(c.config, c.logger, c.identityProvider, c.userRepository, c.sessionService, c.authorizationService, c.auditRepository, c.errors);

@@ -19,6 +19,11 @@
  *      canonical document and checksums it as one, so bytes that merely encode the right content
  *      some other way carry a checksum that does not mean what it claims. Refused, never rewritten:
  *      rewriting would move the checksum the DRAFT was reviewed under.
+ *   2b. The parsed document is a JSON OBJECT. `null`, an array, a string, a number and a boolean are
+ *      all valid JSON and none of them is an instrument snapshot; a top-level null in particular
+ *      leaves the parsed variable null on Lucee, so this is established before anything
+ *      dereferences or serializes it, and is refused as a documented 422 with a durable audit
+ *      rather than escaping as an engine error with none.
  *   3. The snapshot envelope is the one the compiler writes and the runtime reads: declared format,
  *      a definitions object, an instrument and a version, and a complete counts block -- all nine
  *      members, each a whole non-negative number equal to what the definitions actually carry. Its
@@ -170,7 +175,37 @@ component output="false" {
 				//    holding the same instrument would disagree about its identity. Publication
 				//    refuses such a snapshot rather than silently rewriting it, because rewriting
 				//    would change the checksum the import computed and the DRAFT was reviewed under.
-				var snapshot = deserializeJSON(snapshotJson);
+				// THE DOCUMENT MUST BE A JSON OBJECT, ESTABLISHED BEFORE ANYTHING DEREFERENCES IT.
+				//
+				// isJSON() is a syntax check, and `null`, `144`, `"text"` and `true` are all valid
+				// JSON. A top-level JSON null in particular leaves the variable NULL on the
+				// documented Lucee behaviour, and reading it back is an engine error rather than a
+				// value -- which used to happen inside the canonical serializer below, before any
+				// refusal had been marked. The caller got a 500 and the refusal left no durable
+				// trace at all, which is the one outcome the post-rollback audit pattern exists to
+				// prevent. Router.cfc guards the request-body path with isNull(parsed) for exactly
+				// this engine behaviour; the stored-snapshot path guards it the same way.
+				//
+				// Only the known invalid shapes are handled here. A parse failure the engine raises
+				// for some other reason is not turned into a validation error: it propagates.
+				var snapshot = javaCast("null", "");
+				try {
+					snapshot = deserializeJSON(snapshotJson);
+				} catch (any parseError) {
+					self.markRefusal(refusal, version, "SNAPSHOT_NOT_JSON", {});
+					variables.errors.publishValidation(
+						"Instrument version '" & version.versionLabel & "' has a compiled snapshot that could not be parsed as JSON.",
+						[{ "code": "SNAPSHOT_NOT_JSON", "message": "compiled_snapshot_json could not be parsed.", "path": "$" }]
+					);
+				}
+				if (isNull(snapshot) || !isStruct(snapshot)) {
+					self.markRefusal(refusal, version, "SNAPSHOT_SHAPE", {});
+					variables.errors.publishValidation(
+						"Instrument version '" & version.versionLabel & "' has a compiled snapshot that is not a JSON object.",
+						[{ "code": "SNAPSHOT_SHAPE", "message": "compiled_snapshot_json does not parse to a JSON object.", "path": "$" }]
+					);
+				}
+
 				var canonicalBytes = variables.json.serialize(snapshot);
 				if (compare(canonicalBytes, snapshotJson) != 0) {
 					self.markRefusal(refusal, version, "SNAPSHOT_NOT_CANONICAL", { "storedLength": len(snapshotJson), "canonicalLength": len(canonicalBytes) });

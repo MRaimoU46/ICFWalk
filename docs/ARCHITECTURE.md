@@ -406,9 +406,10 @@ each actually has, rather than excluded from the inventory as they once were:
 | Mutator | Rows | Contract |
 | --- | --- | --- |
 | `createInstrument` | `icf.instrument` | Insert-only, at the instrument's birth, when it has no versions to protect. The unique `code` makes a second call fail rather than reach the existing row. |
-| `updateInstrumentMetadata` | `icf.instrument` | Requires a named, known `icf.app_user`; takes the instrument row under `UPDLOCK, ROWLOCK`. Reached only by `InstrumentMetadataService`, which audits it. No import path, and no route. |
-| `createDimensionIdentity` | `icf.dimension_definition` | Takes the requesting version id and calls `requireDraftVersion` before the INSERT. Global reporting identity is minted only on behalf of a DRAFT. |
-| `createDimensionValueIdentity` | `icf.dimension_value` | The same. |
+| `updateInstrumentMetadata` | `icf.instrument` | Performs the UPDATE only. The caller takes the row under `UPDLOCK, HOLDLOCK, ROWLOCK` (`lockInstrumentByCode` / `lockInstrumentById`) and derives every value from **that** read, inside the same transaction. Its `userExists` call is an **integrity** check for the audit foreign key, not authorization: every row in `icf.app_user` satisfies it. Reached only by `InstrumentMetadataService`, which authorizes (`instrument.manage`) and audits. No import path, and no route. |
+| `lockInstrumentByCode` / `lockInstrumentById` | `icf.instrument` (read) | The locked read the shared-row write derives from. `UPDLOCK, HOLDLOCK, ROWLOCK`, so the values read are still the values being replaced at the moment of the write. Import calls the second one **after** its version lock, preserving the one lock order. |
+| `createDimensionIdentity` | `icf.dimension_definition` | One statement: `INSERT ... SELECT` whose source is the owning `icf.instrument_version` row under `UPDLOCK, ROWLOCK`, predicated on `status = N'DRAFT'`, with `OUTPUT INSERTED` returning the row actually inserted. Atomic, so a caller that owns no transaction has no window between the authority decision and the write. No eligible row means nothing is inserted and the caller gets a typed non-DRAFT refusal. |
+| `createDimensionValueIdentity` | `icf.dimension_value` | The same single qualified statement; the next display order is a correlated subquery, so the statement's source stays the one version row and exactly zero or one value is ever minted. |
 | `createDraftVersion` | `icf.instrument_version` | Creates a DRAFT under an existing instrument; there is no frozen version to protect. |
 
 **Shared instrument metadata has one owner, and it is not import.** `icf.instrument.active` is part
@@ -425,10 +426,30 @@ the runtime with nothing changed on the version and nobody named. Now:
 * `active` is a shared operational decision. An import that declares it differently from the stored
   row is refused atomically with `SHARED_METADATA_CONFLICT` -- not applied, and not silently
   dropped -- and the refusal is audited like any other refused write.
-* Changing any of the three deliberately is `InstrumentMetadataService.updateMetadata`, which
-  requires a named user, locks the row, and writes one `INSTRUMENT_METADATA_UPDATED` event naming
-  the actor and what changed. This pass closes the boundary and adds **no** administration UI for
-  that operation: nothing in `src/http` or `src/controllers` reaches it.
+* Changing any of the three deliberately is `InstrumentMetadataService.updateMetadata`. It takes
+  the **current principal** and asks `AuthorizationService` for global `instrument.manage` before
+  any mutation; the audit actor is that principal's `userId`, and there is no argument by which a
+  caller can name or substitute another actor. `DefinitionRepository.userExists` is still called,
+  as an **integrity** check for `icf.audit_event.actor_user_id`'s foreign key -- every row in
+  `icf.app_user` satisfies it, so it is not, and must not be described as, a permission check.
+  This pass closes the boundary and adds **no** administration UI for the operation: nothing in
+  `src/http` or `src/controllers` reaches it. That absence is a scope decision, not the security
+  control.
+* **The row is locked before it is read, not after.** The operation derives a complete replacement
+  row, so a patch that changes one field restates the stored value of every field it omits. Those
+  values now come from `lockInstrumentByCode`, which takes the row under `UPDLOCK, HOLDLOCK` and
+  reads it in the same statement; the merge, the update and the audit all happen inside that one
+  transaction. Deriving them from an unlocked read and taking the lock later -- which is what this
+  used to do -- is a lost update: two concurrent partial patches both restate what they read before
+  the other ran, and whichever commits second silently undoes the first. Because `active` decides
+  whether a published version is in service, the change that got undone could be a deliberate
+  deactivation, and the audit trail recorded a `before` image that was never the row replaced.
+* **Import decides the shared conflict on the locked current row.** Import reads `icf.instrument`
+  to resolve the instrument id; that read is unlocked and an authorized metadata change can commit
+  after it. So import re-reads the row under `UPDLOCK, HOLDLOCK` **after** taking the version lock,
+  and evaluates `SHARED_METADATA_CONFLICT` against that. One lock order throughout --
+  `icf.instrument_version` first, `icf.instrument` second -- and the metadata operation requests no
+  version lock at all, so none of these three can deadlock with each other.
 
 **Durable refusals, from every refusing branch.** Every refusal happens inside the transaction, so a
 record written there would roll back with it. The refusing branch captures a small descriptor, the

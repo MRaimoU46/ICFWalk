@@ -53,6 +53,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Published fixtures cannot be removed by any production method any more, by design.
 		variables.fixtures.removeInstrumentsCoded(variables.instrumentCode);
 		variables.fixtures.removeUsers(variables.run & "-");
+		// The snapshot-shape cases re-add CK_instrument_version_snapshot_json WITH NOCHECK, because
+		// the deliberately malformed row is still present at that moment. Their fixtures are gone
+		// now, so the constraint is re-validated and the database is left fully trusted.
+		variables.db.run("ALTER TABLE [icf].[instrument_version] WITH CHECK CHECK CONSTRAINT [CK_instrument_version_snapshot_json]");
 	}
 
 	// ---- ADM-04: the publish transaction ---------------------------------------------------------
@@ -883,7 +887,170 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertUntouchedDraft(id, before);
 	}
 
+	// ---- a stored snapshot that is valid JSON but is not a JSON OBJECT ---------------------------
+
+	/**
+	 * A stored snapshot of literal `null`.
+	 *
+	 * THE DEFECT THIS EXISTS FOR. `isJSON("null")` is true, so the JSON-syntax guard passed and
+	 * publication went straight on to deserializeJSON(). On the documented Lucee behaviour a
+	 * top-level JSON null leaves the variable null, and reading it back is an engine error rather
+	 * than a value -- which happened inside CanonicalJson.serialize(), BEFORE any refusal had been
+	 * marked. So the caller got a 500 and the refusal left no durable trace at all, which is the
+	 * one thing the post-rollback audit pattern exists to prevent. Router.cfc already guards the
+	 * request-body path with isNull(parsed) for exactly this engine behaviour; the stored-snapshot
+	 * path now does the same.
+	 *
+	 * The checksum stored here really does hash the stored bytes, so nothing earlier in the
+	 * sequence can refuse this snapshot: it reaches the shape guard, and the shape guard has to
+	 * hold it.
+	 */
+	public void function testATopLevelNullSnapshotIsARefusalAndNotAnEngineError() {
+		expectRawSnapshotShapeRefusal("shape-null", "null");
+	}
+
+	/** A top-level JSON array is valid JSON and is not an instrument snapshot. */
+	public void function testATopLevelArraySnapshotIsRefused() {
+		expectRawSnapshotShapeRefusal("shape-array", "[]");
+		expectRawSnapshotShapeRefusal("shape-array2", '[{"snapshotFormat":"icfwalk.snapshot.v1"}]');
+	}
+
+	/** So are a top-level string, number and boolean. */
+	public void function testATopLevelScalarSnapshotIsRefused() {
+		expectRawSnapshotShapeRefusal("shape-string", '"icfwalk.snapshot.v1"');
+		expectRawSnapshotShapeRefusal("shape-number", "144");
+		expectRawSnapshotShapeRefusal("shape-true", "true");
+		expectRawSnapshotShapeRefusal("shape-false", "false");
+	}
+
+	// ---- counts that are numeric strings ---------------------------------------------------------
+
+	/**
+	 * A counts member stored as the exact matching JSON STRING.
+	 *
+	 * The snapshot hashes to its stored checksum and is canonical, its definitions are valid and
+	 * match the tables, and the renderer builds it. The only thing wrong is that `counts.items` is
+	 * `"144"` rather than `144` -- which CFML's isNumeric() and loose comparison accepted, so the
+	 * version was publishable with a counts block that does not meet the snapshot contract every
+	 * reader trusts instead of walking the arrays.
+	 */
+	public void function testACountStoredAsTheExactMatchingStringIsRefused() {
+		var imported = draft("counts-string");
+		var snapshot = deserializeJSON(variables.repo.findVersionById(imported.versionId).snapshotJson);
+		var actual = snapshot.counts.items;
+		snapshot.counts["items"] = javaCast("string", toString(actual));
+		storeRecompiledSnapshot(imported.versionId, snapshot);
+
+		var stored = deserializeJSON(variables.repo.findVersionById(imported.versionId).snapshotJson);
+		assertEquals("java.lang.String", stored.counts.items.getClass().getName(), "precondition: the stored counts.items really is a JSON string");
+		assertEquals(toString(actual), stored.counts.items, "precondition: and it names the right number");
+
+		var svc = variables.svc;
+		var id = imported.versionId;
+		var publisher = variables.publisher;
+		var before = versionState(id);
+		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
+		var issues = variables.c.errors.detailsOf(e).issues;
+		assertTrue(hasIssue(issues, ["SNAPSHOT_COUNTS_INVALID"]), "refused as a type error: " & left(serializeJSON(issues), 400));
+		assertTrue(hasIssuePath(issues, "$.counts.items"), "at $.counts.items");
+		assertUntouchedDraft(id, before);
+	}
+
+	/** A negative, a fraction and an oversized count are refused at publication too. */
+	public void function testNegativeFractionalAndOversizedCountsAreRefused() {
+		var n = 0;
+		for (var bad in [-1, 1.5, 2147483648]) {
+			n++;
+			var imported = draft("counts-range-" & n);
+			var snapshot = deserializeJSON(variables.repo.findVersionById(imported.versionId).snapshotJson);
+			snapshot.counts["items"] = bad;
+			storeRecompiledSnapshot(imported.versionId, snapshot);
+
+			var svc = variables.svc;
+			var id = imported.versionId;
+			var publisher = variables.publisher;
+			var before = versionState(id);
+			var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
+			assertTrue(hasIssue(variables.c.errors.detailsOf(e).issues, ["SNAPSHOT_COUNTS_INVALID"]), "counts.items = " & bad & " is refused");
+			assertUntouchedDraft(id, before);
+		}
+		assertEquals(3, n, "all three out-of-contract count values were exercised");
+	}
+
 	// ---- helpers ---------------------------------------------------------------------------------
+
+	/**
+	 * Stores `text` as the version's snapshot with the checksum that really hashes those bytes, so
+	 * the checksum guard cannot be what refuses it, then requires publication to refuse it as a
+	 * typed 422 with a stable SNAPSHOT_SHAPE issue at `$`, to leave the DRAFT byte-identical, and
+	 * to leave exactly one durable refusal audit and no success audit.
+	 *
+	 * TWO DEFENCES, TESTED SEPARATELY. SQL Server's ISJSON() -- and therefore
+	 * CK_instrument_version_snapshot_json -- accepts only objects and arrays, so a schema-conformant
+	 * database already refuses to STORE a top-level null, string, number or boolean. That is a real
+	 * defence and it is asserted first. It is not the application's defence, though: the constraint
+	 * is a 2016-era ISJSON whose behaviour differs by engine version (SQL Server 2022 added
+	 * ISJSON(x, VALUE), which accepts scalars), and an environment that has altered or dropped it
+	 * must still get a documented 422 and a durable refusal rather than a 500 and silence. So the
+	 * constraint is dropped for the length of the store, restored immediately, and the assertion is
+	 * that it is back -- exactly the shape db-scripts.test.mjs uses for the publisher constraint.
+	 */
+	private void function expectRawSnapshotShapeRefusal(required string suffix, required string text) {
+		var imported = draft(arguments.suffix);
+		storeRawSnapshotPastTheSchemaGuard(imported.versionId, arguments.text);
+
+		var row = variables.repo.findVersionById(imported.versionId);
+		assertEquals(arguments.text, row.snapshotJson, "precondition: the exact bytes are stored");
+		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes them, so nothing earlier can refuse this");
+
+		var svc = variables.svc;
+		var id = imported.versionId;
+		var publisher = variables.publisher;
+		var before = versionState(id);
+		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish.Validation", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
+		assertEquals(422, variables.c.errors.statusFor(e.type), "a documented 422, not a 500");
+		var issues = variables.c.errors.detailsOf(e).issues;
+		assertTrue(hasIssue(issues, ["SNAPSHOT_SHAPE"]), "with a stable SNAPSHOT_SHAPE issue: " & left(serializeJSON(issues), 400));
+		assertTrue(hasIssuePath(issues, "$"), "reported at the document root");
+		assertUntouchedDraft(id, before);
+	}
+
+	/**
+	 * Stores exactly these bytes, with their real checksum, even when
+	 * CK_instrument_version_snapshot_json would refuse them -- and puts the constraint back.
+	 *
+	 * The constraint's own refusal is asserted here too, so the database defence is proved rather
+	 * than merely worked around.
+	 */
+	private void function storeRawSnapshotPastTheSchemaGuard(required string versionId, required string text) {
+		var refusedByTheSchema = false;
+		try {
+			storeRawSnapshot(arguments.versionId, arguments.text);
+		} catch (any e) {
+			refusedByTheSchema = findNoCase("CK_instrument_version_snapshot_json", e.message) > 0;
+			if (!refusedByTheSchema) rethrow;
+		}
+		if (!refusedByTheSchema) return;   // ISJSON accepted these bytes (objects and arrays).
+
+		variables.db.run("ALTER TABLE [icf].[instrument_version] DROP CONSTRAINT [CK_instrument_version_snapshot_json]");
+		try {
+			storeRawSnapshot(arguments.versionId, arguments.text);
+		} finally {
+			variables.db.run(
+				"ALTER TABLE [icf].[instrument_version] WITH NOCHECK ADD CONSTRAINT [CK_instrument_version_snapshot_json]
+				   CHECK ([compiled_snapshot_json] IS NULL OR ISJSON([compiled_snapshot_json]) = 1)"
+			);
+		}
+		assertEquals(1, variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM sys.check_constraints WHERE [name] = N'CK_instrument_version_snapshot_json' AND [parent_object_id] = OBJECT_ID(N'[icf].[instrument_version]', N'U')"
+		), "the schema guard was put back immediately");
+	}
+
+	private boolean function hasIssuePath(required any issues, required string path) {
+		if (!isArray(arguments.issues)) return false;
+		for (var issue in arguments.issues) if (structKeyExists(issue, "path") && issue.path == arguments.path) return true;
+		return false;
+	}
 
 	private string function label(required string suffix) {
 		return variables.run & "-" & arguments.suffix;

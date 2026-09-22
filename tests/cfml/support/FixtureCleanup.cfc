@@ -90,6 +90,26 @@ component output="false" {
 		variables.db.run("DELETE FROM [icf].[instrument] WHERE code LIKE :prefix", { "prefix": { "value": arguments.codePrefix & "%", "cfsqltype": "cf_sql_nvarchar" } });
 	}
 
+	/**
+	 * Grants a fixture user a real, currently effective role assignment and returns the principal
+	 * the application would build for them.
+	 *
+	 * Specs that exercise an authorized operation need a principal that carries the permission
+	 * because the deployment's own role data says so -- not a hand-assembled struct. So this goes
+	 * through icf.user_role_scope and AuthorizationService exactly as a signed-in request does,
+	 * and removeUsers() takes the assignment back out with the user.
+	 */
+	public string function grantRole(required string userId, required string roleCode, required string orgUnitId, boolean includeDescendants = true) {
+		var role = variables.c.roleScopeRepository.findRoleByCode(arguments.roleCode);
+		if (structIsEmpty(role)) throw(type = "ICFWalk.Test.Fixture", message = "No role with code '" & arguments.roleCode & "' exists.");
+		return variables.c.roleScopeRepository.assign(arguments.userId, role.roleId, arguments.orgUnitId, arguments.includeDescendants, "", "", "");
+	}
+
+	/** The principal the application would build for a fixture user, from their real assignments. */
+	public struct function principalFor(required string userId) {
+		return variables.c.authorizationService.principalFor(variables.c.userRepository.findById(arguments.userId));
+	}
+
 	/** Creates (or reuses) a fixture application user and returns its user id. */
 	public string function ensureUser(required string subject, string displayName = "") {
 		var existing = variables.c.userRepository.findBySubject(arguments.subject);

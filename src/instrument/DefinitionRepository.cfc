@@ -141,10 +141,66 @@ component output="false" {
 		return out;
 	}
 
+	/**
+	 * An ordinary, UNLOCKED read of the shared row. Safe for resolving an id or reporting; never
+	 * safe as the source of values a later write will restate. Use lockInstrumentByCode or
+	 * lockInstrumentById for that.
+	 */
 	public struct function findInstrumentByCode(required string code) {
 		var q = variables.db.run("SELECT instrument_id, code, name, description, active FROM [icf].[instrument] WHERE code = :code", { "code": variables.db.nvarchar(arguments.code, 60) });
 		if (!q.recordCount) return {};
 		return { "instrumentId": uCase(q.instrument_id[1]), "code": q.code[1], "name": q.name[1], "description": q.description[1], "active": q.active[1] };
+	}
+
+	/**
+	 * The shared instrument row, taken under UPDLOCK with transaction-duration protection, and read
+	 * in the same statement that takes the lock.
+	 *
+	 * WHY BOTH HINTS. UPDLOCK alone is released at the end of the statement unless the transaction
+	 * holds it; HOLDLOCK (SERIALIZABLE) keeps it until the transaction ends. Together they mean
+	 * "nobody else may take this row to update it until I commit", which is what makes the values
+	 * read here still true at the moment they are written back.
+	 *
+	 * WHY IT EXISTS AT ALL. InstrumentMetadataService derives a COMPLETE replacement row: a patch
+	 * that changes one field keeps the stored value of every field it omits. Deriving those omitted
+	 * values from an unlocked read and writing them after taking a lock is a lost update -- two
+	 * partial patches both restate what they read, and whichever commits second silently undoes the
+	 * other. icf.instrument.active is part of SnapshotService.currentVersion()'s predicate, so the
+	 * change that gets undone can be "take this published version out of service".
+	 *
+	 * CALL INSIDE THE TRANSACTION THAT WILL WRITE. Outside one the lock is released immediately and
+	 * proves nothing.
+	 *
+	 * LOCK ORDER. This takes only icf.instrument. Import takes icf.instrument_version first and
+	 * then this row; publish takes icf.instrument_version and never holds this one. There is no
+	 * path that takes icf.instrument before icf.instrument_version, so these queue rather than
+	 * deadlock.
+	 */
+	public struct function lockInstrumentByCode(required string code) {
+		return instrumentRow(
+			"SELECT instrument_id, code, name, description, active FROM [icf].[instrument] WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE code = :key",
+			variables.db.nvarchar(arguments.code, 60)
+		);
+	}
+
+	/** The same locked read, by id, for a caller that has already resolved the instrument. */
+	public struct function lockInstrumentById(required string instrumentId) {
+		return instrumentRow(
+			"SELECT instrument_id, code, name, description, active FROM [icf].[instrument] WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE instrument_id = :key",
+			variables.db.guid(arguments.instrumentId)
+		);
+	}
+
+	private struct function instrumentRow(required string sql, required struct key) {
+		var q = variables.db.run(arguments.sql, { "key": arguments.key });
+		if (!q.recordCount) return {};
+		return {
+			"instrumentId": uCase(q.instrument_id[1]),
+			"code": q.code[1],
+			"name": q.name[1],
+			"description": isNull(q.description[1]) ? javaCast("null", "") : q.description[1],
+			"active": (isBoolean(q.active[1]) && q.active[1]) ? true : false
+		};
 	}
 
 	/**
@@ -177,23 +233,38 @@ component output="false" {
 	 * already PUBLISHED V1 vanish from the runtime -- a frozen version made unavailable by an edit
 	 * to an unfrozen one, with no audit naming who did it and no version row changed to show it.
 	 *
-	 * Instrument-level facts are now changed only here, and only by a named user this deployment
-	 * knows. The row is taken under its own UPDLOCK first so two such operations serialize, and
-	 * the caller (InstrumentMetadataService) writes the audit. There is deliberately no route:
-	 * this pass closes the boundary and does not add administration UI for it.
+	 * Instrument-level facts are now changed only here. AUTHORIZATION IS NOT DONE HERE: the
+	 * userExists() call below is an INTEGRITY check -- icf.audit_event.actor_user_id is a foreign
+	 * key to icf.app_user, so an id this deployment has never heard of would make the audit trail
+	 * name nobody -- and it is not, and must never be described as, a permission check. Any row in
+	 * icf.app_user satisfies it. Whether the caller may change shared instrument metadata is
+	 * decided by AuthorizationService (global `instrument.manage`) in InstrumentMetadataService,
+	 * before this is reached.
+	 *
+	 * THE ROW MUST ALREADY BE LOCKED. This performs the UPDATE only. The caller takes the row under
+	 * lockInstrumentByCode/lockInstrumentById first and derives `name`, `description` and `active`
+	 * from THAT read, inside the same transaction, because a partial patch restates the fields it
+	 * omits and a lock taken after the read those values came from protects nothing. The statement
+	 * is re-asserted against the instrument id it was given, so a caller that skipped the lock
+	 * still cannot write a row that does not exist -- but it can lose an update, which is why the
+	 * lock is the caller's contract and is documented as such.
+	 *
+	 * There is deliberately no route: this pass closes the boundary and does not add
+	 * administration UI for it.
 	 */
 	public numeric function updateInstrumentMetadata(
 		required string instrumentId, required string name, any description,
 		required boolean active, required string authorizedByUserId
 	) {
+		// Integrity, not authorization: the audit actor must be a row icf.app_user really has.
 		if (!variables.db.isGuid(arguments.authorizedByUserId) || !userExists(arguments.authorizedByUserId)) {
-			variables.errors.validation("Changing shared instrument metadata requires a known, authorized user.", "INSTRUMENT_METADATA_ACTOR_REQUIRED");
+			variables.errors.validation("The audit actor for a shared instrument metadata change must be a known application user.", "INSTRUMENT_METADATA_ACTOR_REQUIRED");
 		}
-		var locked = variables.db.run(
-			"SELECT instrument_id FROM [icf].[instrument] WITH (UPDLOCK, ROWLOCK) WHERE instrument_id = :id",
+		var present = variables.db.run(
+			"SELECT instrument_id FROM [icf].[instrument] WITH (UPDLOCK, HOLDLOCK, ROWLOCK) WHERE instrument_id = :id",
 			{ "id": variables.db.guid(arguments.instrumentId) }
 		);
-		if (!locked.recordCount) {
+		if (!present.recordCount) {
 			variables.errors.notFound("Instrument not found.", "INSTRUMENT_NOT_FOUND");
 		}
 		variables.db.run(
@@ -261,7 +332,15 @@ component output="false" {
 		};
 	}
 
-	/** True when the id names an existing application user (the publisher check, ADM-04). */
+	/**
+	 * True when the id names an existing application user.
+	 *
+	 * INTEGRITY, NOT AUTHORIZATION. This answers "does icf.app_user have this row", which is what
+	 * icf.audit_event.actor_user_id's foreign key requires and what stops an audit event naming
+	 * somebody the deployment has never heard of. It says nothing whatever about what that user may
+	 * do: every user in the table satisfies it. Permission is decided by AuthorizationService, from
+	 * the principal's effective role assignments, before any caller reaches this file.
+	 */
 	public boolean function userExists(required string userId) {
 		if (!variables.db.isGuid(arguments.userId)) return false;
 		return variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[app_user] WHERE user_id = :id", { "id": variables.db.guid(arguments.userId) }) == 1;
@@ -570,26 +649,51 @@ component output="false" {
 	 * flags recorded here are the first version's, kept only so the NOT NULL columns have a value;
 	 * nothing reads them after this and nothing ever updates them. What a version means by the
 	 * dimension lives on its own icf.instrument_dimension row.
+	 *
+	 * ATOMICALLY DRAFT-QUALIFIED, AND THAT IS THE WHOLE POINT.
+	 *
+	 * The row written here is GLOBAL: icf.walk_dimension_value points at a dimension value forever
+	 * and reporting groups across versions by these codes. There is no version column to guard, so
+	 * the only thing that can authorize minting one is the DRAFT it is minted on behalf of.
+	 *
+	 * This used to call requireDraftVersion() and then issue an unconditional INSERT. Inside the
+	 * import's transaction that is sound, because the transaction holds the version's UPDLOCK from
+	 * the check through the insert. But this is a PUBLIC repository method and it is called
+	 * directly, outside any transaction. There the UPDLOCK lives only for the length of the SELECT,
+	 * so a publish could take the row and freeze the version in the gap, and the INSERT then ran
+	 * anyway -- permanent global identity minted on the authority of a version that was no longer a
+	 * DRAFT. A lock released before the write it protects is not a write boundary.
+	 *
+	 * So the authority decision lives INSIDE the minting statement. The source of the INSERT is the
+	 * owning instrument_version row, read under UPDLOCK/ROWLOCK and predicated on
+	 * `status = N'DRAFT'`; one statement is atomic, so there is no gap for any caller to lose,
+	 * whether or not they own a transaction, and the same lock is taken in the same order as every
+	 * other write in this file. Inside an import's transaction it simply joins the lock the
+	 * transaction already holds.
+	 *
+	 * OUTPUT INSERTED returns the row the database reports inserting. When the predicate matches
+	 * nothing, nothing is inserted and nothing comes back, and the caller gets a typed non-DRAFT
+	 * refusal instead of a GUID for a row that does not exist. (OUTPUT without INTO is SQL Server
+	 * 2005+; the table has no triggers and is not the referencing side of a cascading foreign key,
+	 * so the restrictions on it do not apply.)
 	 */
 	public string function createDimensionIdentity(required string versionId, required struct row) {
-		// STRUCTURALLY VERSION-SCOPED. The row written here is global, so it looked like it had no
-		// version to guard -- and it was therefore the one public mutator with no guard at all.
-		// But it is only ever created *on behalf of* a DRAFT being imported, and a caller that
-		// cannot name a DRAFT has no business minting reporting identity that every future version
-		// will point at. The version is now an argument rather than ambient context, and the DRAFT
-		// check happens here, inside the write boundary, not in whatever called it.
-		requireDraftVersion(arguments.versionId);
 		var id = variables.db.newGuid();
-		variables.db.run(
+		var inserted = variables.db.run(
 			"INSERT INTO [icf].[dimension_definition] (dimension_id, code, label, data_type, reportable, sensitive, settings_json, active)
-			 VALUES (:id, :code, :label, :dataType, :reportable, :sensitive, :settings, :active)",
+			 OUTPUT INSERTED.[dimension_id] AS created_id
+			 SELECT :id, :code, :label, :dataType, :reportable, :sensitive, :settings, :active
+			   FROM [icf].[instrument_version] v WITH (UPDLOCK, ROWLOCK)
+			  WHERE v.version_id = :versionId AND v.status = N'DRAFT'",
 			{
-				"id": variables.db.guid(id), "code": variables.db.nvarchar(arguments.row.code, 100), "label": variables.db.nvarchar(arguments.row.label, 200),
+				"id": variables.db.guid(id), "versionId": variables.db.guid(arguments.versionId),
+				"code": variables.db.nvarchar(arguments.row.code, 100), "label": variables.db.nvarchar(arguments.row.label, 200),
 				"dataType": variables.db.nvarchar(arguments.row.dataType, 20), "reportable": variables.db.bit(arguments.row.reportable),
 				"sensitive": variables.db.bit(arguments.row.sensitive), "settings": variables.db.ntext(arguments.row.settingsJson), "active": variables.db.bit(arguments.row.active)
 			}
 		);
-		return id;
+		if (!inserted.recordCount) refuseIdentityMint(arguments.versionId);
+		return uCase(inserted.created_id[1]);
 	}
 
 	/**
@@ -597,22 +701,53 @@ component output="false" {
 	 * icf.walk_dimension_value.selected_value_id points at this row forever, so the code it carries
 	 * is never rewritten. display_order here only satisfies UX_dimension_value_order; the order a
 	 * version presents the value in lives in icf.instrument_dimension_value.
+	 *
+	 * Same boundary, same single statement, for the same reason as createDimensionIdentity above:
+	 * the owning version is read under UPDLOCK/ROWLOCK and `status = N'DRAFT'` inside the INSERT
+	 * that mints the row, and the identity returned is the one the database reports inserting. The
+	 * next display order is a correlated subquery rather than the statement's source, so the source
+	 * stays the one version row and exactly zero or one value is ever minted.
 	 */
 	public string function createDimensionValueIdentity(required string versionId, required string dimensionId, required struct row) {
-		// Same boundary as createDimensionIdentity: global row, DRAFT-scoped authority to mint it.
-		requireDraftVersion(arguments.versionId);
 		var id = variables.db.newGuid();
-		variables.db.run(
+		var inserted = variables.db.run(
 			"INSERT INTO [icf].[dimension_value] (value_id, dimension_id, value_code, label, display_order, active)
-			 SELECT :id, :dimensionId, :code, :label, ISNULL(MAX(v.display_order), 0) + 1, :active
-			   FROM [icf].[dimension_value] v WHERE v.dimension_id = :dimensionId",
+			 OUTPUT INSERTED.[value_id] AS created_id
+			 SELECT :id, :dimensionId, :code, :label,
+			        ISNULL((SELECT MAX(x.display_order) FROM [icf].[dimension_value] x WHERE x.dimension_id = :dimensionId), 0) + 1,
+			        :active
+			   FROM [icf].[instrument_version] v WITH (UPDLOCK, ROWLOCK)
+			  WHERE v.version_id = :versionId AND v.status = N'DRAFT'",
 			{
-				"id": variables.db.guid(id), "dimensionId": variables.db.guid(arguments.dimensionId),
+				"id": variables.db.guid(id), "versionId": variables.db.guid(arguments.versionId),
+				"dimensionId": variables.db.guid(arguments.dimensionId),
 				"code": variables.db.nvarchar(arguments.row.valueCode, 100), "label": variables.db.nvarchar(arguments.row.label, 300),
 				"active": variables.db.bit(arguments.row.active)
 			}
 		);
-		return id;
+		if (!inserted.recordCount) refuseIdentityMint(arguments.versionId);
+		return uCase(inserted.created_id[1]);
+	}
+
+	/**
+	 * Nothing was minted, so the statement's own DRAFT predicate matched no row. Reports why, with
+	 * the same typed errors every other refusal in this file raises.
+	 *
+	 * This read is deliberately unlocked: the write has provably not happened, and this is only
+	 * deciding which refusal to name. It never returns.
+	 */
+	private void function refuseIdentityMint(required string versionId) {
+		var q = variables.db.run(
+			"SELECT version_label, status FROM [icf].[instrument_version] WHERE version_id = :id",
+			{ "id": variables.db.guid(arguments.versionId) }
+		);
+		if (!q.recordCount) {
+			variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
+		}
+		variables.errors.publishNotDraft(q.version_label[1], q.status[1]);
+		// Unreachable: publishNotDraft always throws. Asserted so a future change to it cannot turn
+		// a refusal into a silent success that returns a GUID for a row that was never inserted.
+		throw(type = "ICFWalk.Validation", message = "Global identity was not minted and no reason could be established.", errorcode = "INSTRUMENT_IDENTITY_NOT_MINTED");
 	}
 
 	// ---- dimensions: what one version authors (version-scoped) -------------------------------

@@ -2457,7 +2457,7 @@ removed, weakened, skipped or renamed away.
 4. **This correction has not been independently audited.** It is a correction candidate, ready for a
    fresh independent audit.
 
-## Phase 6 publish-foundation second correction (current state)
+## Phase 6 publish-foundation second correction (superseded by the third correction below)
 
 Correction-only session against a second independent audit, this one of the first correction
 (`332f89f929ff5a9f1e81fe5273c830698fdc80af`). It corrects that candidate; it does **not** add any of
@@ -2700,3 +2700,202 @@ The new CFML specs, as reported by that run: `ValidatorRendererContractTest` 18,
 4. **This correction has not been independently audited.** It is a correction candidate, ready for a
    fresh independent audit. Phase 6 is **not** frozen and **not** complete, and no `phase-6-freeze`
    tag was created.
+
+## Phase 6 publish-foundation third correction (current state)
+
+Correction-only session against a third independent audit, this one of the second correction
+(`bff53f53eaacfed977eefd4648577ed5cbba196c`), whose verdict was **NOT READY TO ACCEPT THE PHASE 6
+PUBLISH FOUNDATION**. It corrects that candidate; it does **not** add any of the remaining Phase 6
+scope. **This is a correction candidate awaiting independent verification: Phase 6 is not frozen,
+not complete, and not accepted.**
+
+Starting point: branch `claude/icfwalk-phase-6-admin-publish` at
+`bff53f53eaacfed977eefd4648577ed5cbba196c`, clean tree, with the frozen Phase 5 baseline
+`e55ec08af5b8622db5823b6e353423b891918549` verified as an ancestor and no commits after the audited
+candidate. (The container's checkout was two commits stale at
+`5b243ed3d5a27142e65cdfbba8fc113ed65853e1`; that was resolved by a plain fast-forward to the
+published remote tip before any edit. Nothing was reset, discarded, force-pushed or rewritten. See
+`docs/evidence/phase6-third-correction-environment.md`.)
+
+Everything the audited candidate got right is preserved: the shared normalized semantic validator,
+import and publish preflighting through the real render model builder, migration `006`'s one-time
+membership transition state, version-scoped dimension and dimension-value semantics, the removal of
+ordinary import writes to an existing `icf.instrument` row, durable post-rollback refusal audits,
+canonical snapshot byte verification, the nine-member snapshot count envelope, and the raw no-body
+distinction on the publish endpoint.
+
+### What was wrong, and what each fix is
+
+**1 (HIGH). Shared metadata read the row before it locked it.**
+`InstrumentMetadataService.updateMetadata` read `icf.instrument` with an ordinary unlocked
+`findInstrumentByCode`, derived a **complete** replacement row from it -- a patch that changes one
+field restates the stored value of every field it omits -- and only then called
+`DefinitionRepository.updateInstrumentMetadata`, where the row lock was finally taken. A lock
+acquired after a read does not protect that read. Two concurrent partial patches both restated what
+they had read before the other ran, so whichever committed second silently undid the first; because
+`icf.instrument.active` is part of `SnapshotService.currentVersion()`'s predicate, the change that
+got undone could be a deliberate "take this published version out of service", and the audit trail
+recorded a `before` image that was never the row that request replaced. Import had the same shape:
+it read `icf.instrument` before locking the version and then judged `SHARED_METADATA_CONFLICT`
+against that earlier object, so an authorized change committing in the gap was invisible.
+
+*Fix.* `DefinitionRepository.lockInstrumentByCode` / `lockInstrumentById` take the row under
+`UPDLOCK, HOLDLOCK, ROWLOCK` and read it in the same statement. The metadata operation's locked
+read, merge, update and audit are now one transaction, and `updateInstrumentMetadata` performs the
+UPDATE only, with the lock as its documented caller contract. Import re-reads the shared row under
+that lock **after** its version lock -- preserving the declared version-then-instrument order -- and
+decides the conflict on it. The metadata operation requests no version lock at all, so it cannot
+invert the order. The guarantee is the database transaction and its row locks, never an
+application-process lock: the deployment can run more than one process or node.
+
+**2 (HIGH). A known user was being treated as an authorized administrator.**
+The operation required a GUID actor and the repository checked `userExists`. That is an **integrity**
+check for `icf.audit_event.actor_user_id`'s foreign key -- every row in `icf.app_user` satisfies it --
+and it was standing in for authorization, so any existing user could be supplied as the alleged
+authorizer by any internal caller. The existing suite's "successful" actor had never been granted
+`instrument.manage`. The absence of an HTTP route is not authorization either.
+
+*Fix.* `updateMetadata` takes the **current principal** and asks the central `AuthorizationService`
+for global `instrument.manage` before any mutation. There is no actor argument: the audit actor is
+the principal's `userId` and cannot be named, substituted or overridden from the call site.
+`Bootstrap` constructs the service after the authorization model so the dependency is real, not
+nominal. `userExists` stays, documented in source, `ARCHITECTURE.md` and `DATA_CONTRACT.md` as an
+integrity check and not as authorization. The patch itself is validated strictly before any
+mutation: only `name`, `description`, `active`; an unknown member refused rather than ignored;
+`name` a non-blank JSON string within `nvarchar(200)`; `description` a JSON string within
+`nvarchar(1000)`; `active` an **actual** JSON boolean, never coerced (in CFML `isBoolean("144")`,
+`isBoolean(0)` and `isBoolean("no")` are all true, and a coerced `false` removes a published version
+from the runtime); at least one supported member. A patch with no material difference is a
+documented **no-op** (`docs/OPEN_DECISIONS.md`): no write, no audit, no `row_version` movement. The
+operation is still unrouted, and that is now stated as a scope decision rather than a control.
+
+**3 (HIGH). Global identity creation was not atomically DRAFT-qualified.**
+`createDimensionIdentity` and `createDimensionValueIdentity` called `requireDraftVersion` and then
+issued an **unconditional** INSERT. Inside the import's transaction that is sound. But these are
+public repository methods called directly, outside any transaction, where the `UPDLOCK` lives only
+for the length of the SELECT: a publish could freeze the version in the gap and the INSERT ran
+anyway, minting permanent global reporting identity on the authority of a version that was no
+longer a DRAFT.
+
+*Fix.* The authority decision now lives inside the minting statement. Each creator issues one
+`INSERT ... SELECT` whose source is the owning `icf.instrument_version` row under `UPDLOCK, ROWLOCK`
+and predicated on `status = N'DRAFT'`, with `OUTPUT INSERTED` returning the row the database reports
+inserting. One statement is atomic, so no caller has a window to lose, with or without a
+transaction; when the predicate matches nothing, nothing is inserted and the caller receives a typed
+non-DRAFT refusal rather than a GUID for a row that does not exist. SQL Server 2016 compatible.
+
+**4 (MEDIUM). The concurrency tests inferred the competing request's arrival.**
+`PublishConcurrencyBarrierTest` held transaction A, started B, joined B with `threadJoin(..., 6000)`
+and treated `status != "COMPLETED"` as proof that B had reached the competing row lock. A scheduler
+delay, a datasource-pool wait or setup work produces the same reading, and so does an implementation
+whose lock does nothing on a run where B merely started late.
+
+*Fix.* A two-sided barrier. `tests/cfml/support/ConcurrencyBarrier.cfc` carries two announcements
+across the thread boundary on `java.util.concurrent` structures: A emits `A_LOCKED` from inside its
+transaction once it holds the production lock and has done nothing else, and B emits
+`B_AT_COMPETING_BOUNDARY` immediately **before** the database call that will contend for it, through
+a new `armBefore` seam on the decorating repository. The spec blocks on a real `LinkedBlockingQueue`
+poll -- no CFML sleep -- and releases A only after hearing B. Non-completion is still asserted, but
+only as a supplemental fact after B's arrival has been independently observed. Seven deterministic
+cases: publish/publish, publish/import, import/publish, publish/new dimension identity, publish/new
+dimension-value identity, metadata/metadata, and import's shared-state check/authorized metadata
+update. The interception components remain test-only: nothing in `src/` references them, the
+container never holds them, and no route, environment flag or remotely activatable hook reaches
+them.
+
+**5 (MEDIUM). Snapshot counts accepted numeric strings, and top-level `null` escaped the refusal
+path.** `DefinitionValidator.checkCounts` used `isNumeric` and loose comparison; in CFML the
+java.lang.String `"144"` is numeric for coercion and compares equal to `144`, so a counts block that
+did not meet the contract every reader trusts was publishable. The existing `"many"` case proved
+only that non-numeric text was rejected. Separately, publication accepted `isJSON("null")`,
+deserialized it and handed the result straight to the canonical serializer; on Lucee a top-level
+JSON null leaves the variable null and reading it back is an engine error, which fired **before**
+`markRefusal`, so the caller received a 500 and the attempt left no durable refusal audit at all.
+
+*Fix.* A shared `src/core/JsonTypes.cfc` decides JSON type from the value's Java class. Counts must
+be actual JSON numbers -- strings, booleans, arrays and objects are type errors -- and whole, not
+negative, finite and within the supported integer range, with the equality comparison made between
+known whole numbers. Publication now establishes that the parsed snapshot is a JSON **object**
+before anything dereferences or serializes it, refusing `null`, arrays, strings, numbers and
+booleans as a documented 422 `INSTRUMENT_VERSION_NOT_PUBLISHABLE` with a stable `SNAPSHOT_SHAPE`
+issue at `$`, one durable refusal audit and no success audit -- the same defensive principle
+`Router.cfc` already applies to the request body. Corrupt bytes are never rewritten.
+
+**6 (MEDIUM). The historical remediation DELETE was not scoped to a dimension.**
+`database/README.md`'s sample deleted version membership by `version_id` and `value_code`.
+`icf.dimension_value.value_code` is unique only *within* a dimension, and the supplied instrument
+uses `other` under `school`, `content` and `classType`, so an operator who approved one
+`(dimension_code, value_code)` pair removed three. `@@ROWCOUNT` reports 3 either way, so a row-count
+check does not catch it.
+
+*Fix.* An exact-identity procedure: a signed-off pair list whose own primary key rejects a repeated
+pair, resolution of each pair to an exact `(version_id, dimension_id, value_id)` triple displayed
+before any mutation, a typed refusal (error 50060) for anything missing or ambiguous, a transaction
+with rollback as the default, a delete of only the resolved rows, `OUTPUT ... INTO` capture of what
+was really deleted, an `EXCEPT` comparison of the deleted and approved sets in both directions
+(error 50061), and a commit only after that check and an explicit `@signedOff`. SQL Server 2016
+compatible.
+
+**7 (LOW). An import document could omit its DRAFT declaration.**
+`checkInstrument` rejected a non-DRAFT status only when `instrument.version.status` existed, so a
+document that omitted it imported -- silence read as consent on the one field that says which of
+three lifecycle states the author believes they are writing. CFML's `!=` is case-insensitive
+besides, so `draft` passed as a DRAFT declaration.
+
+*Fix.* The status is required, must be a JSON string, and must equal `DRAFT` case-sensitively
+(`compare`), with three distinct stable codes at `$.instrument.version.status`:
+`VERSION_STATUS_REQUIRED`, `VERSION_STATUS_INVALID`, `VERSION_STATUS_NOT_DRAFT`. Persisted-version
+lifecycle checks are not duplicated here; they stay under the version's row lock.
+
+**Also corrected, because this correction's own verification depended on it.** The CFML suite driver
+skipped silently when the application was unreachable even under `ICFWALK_REQUIRE_APP=1`, and that
+file carries the entire CFML suite including every new concurrency barrier. It now fails loudly, the
+way `admin-publish.test.mjs` and `no-mail.test.mjs` already did. The suite's client ceiling is also
+explicit now rather than inherited from undici's 300-second `headersTimeout`, which a healthy but
+slower run was reaching and reporting as "fetch failed" -- and which, by aborting mid-suite, skipped
+every spec's `afterAll` and left fixtures behind that failed later tests. Neither change gives any
+test more room to pass; both make a real result distinguishable from a harness limit.
+
+### Files changed (third correction)
+
+| File | Change |
+| --- | --- |
+| `src/core/JsonTypes.cfc` | **New.** JSON type decisions from the value's Java class, because CFML's `isNumeric`/`isBoolean` answer a coercion question. Defines no envelope and no canonical form; constructed by its users so no constructor signature changed. |
+| `src/instrument/DefinitionValidator.cfc` | Counts must be actual JSON numbers, whole, non-negative, finite and in range; equality compared between known whole numbers. |
+| `src/instrument/InstrumentPublishService.cfc` | The parsed snapshot must be a JSON object, established before any dereference or serialization; `SNAPSHOT_SHAPE` refusal with a durable audit. |
+| `src/instrument/InstrumentConfigValidator.cfc` | `instrument.version.status` required, a JSON string, exactly `DRAFT` (case-sensitive); three stable codes at one path. |
+| `src/instrument/DefinitionRepository.cfc` | `lockInstrumentByCode` / `lockInstrumentById`; `updateInstrumentMetadata` performs the UPDATE only and documents `userExists` as an integrity check; both identity creators are one status-qualified `INSERT ... SELECT` with `OUTPUT INSERTED` and a typed refusal when nothing was minted. |
+| `src/instrument/InstrumentMetadataService.cfc` | Takes the principal and requires `instrument.manage`; locked read, merge, update and audit in one transaction; strict patch validation; documented no-op; `descriptionChanged` instead of description text in the audit. |
+| `src/instrument/InstrumentImportService.cfc` | Re-reads `icf.instrument` under its own lock after the version lock and decides `SHARED_METADATA_CONFLICT` on that row. |
+| `src/Bootstrap.cfc` | `instrumentMetadataService` constructed after `authorizationService`, so the authorization dependency is real. |
+| `database/README.md` | The exact-identity remediation procedure replaces the dimension-blind DELETE. |
+| `tests/cfml/support/ConcurrencyBarrier.cfc` | **New.** Test-only two-sided barrier over `java.util.concurrent`. |
+| `tests/cfml/support/InterceptingDefinitionRepository.cfc` | `armBefore` as well as `armAfter`; seams for the instrument locks, the identity creators and the pre-correction unlocked read. |
+| `tests/cfml/support/FixtureCleanup.cfc` | `grantRole` / `principalFor`, so a spec's authorized actor holds the permission because the role data says so. |
+| `tests/cfml/specs/PublishConcurrencyBarrierTest.cfc` | Rewritten on the two-sided barrier; two new cases for the global identity creators. |
+| `tests/cfml/specs/SharedMetadataConcurrencyBarrierTest.cfc` | **New.** Lost updates in both arrival orders, audit before-images, and import's conflict decision both by ordering and under real lock contention. |
+| `tests/cfml/specs/InstrumentMetadataServiceTest.cfc` | **New.** Authorization, strict patch validation, the documented no-op, actor attribution, and the absence of any route. |
+| `tests/cfml/specs/GlobalIdentityBoundaryTest.cfc` | **New.** The structural qualification of the minting DML, DRAFT/PUBLISHED/RETIRED behaviour outside any transaction, and both serial outcomes against a concurrent publish. |
+| `tests/cfml/specs/InstrumentPublishServiceTest.cfc` | Top-level `null`, array and scalar snapshots; a count stored as the exact matching string; negative, fractional and oversized counts. |
+| `tests/cfml/specs/DefinitionValidatorTest.cfc` | Table-driven type cases over all nine count members. |
+| `tests/cfml/specs/InstrumentConfigValidatorTest.cfc` | Missing, null, non-string, blank, lower-case, PUBLISHED, RETIRED and valid DRAFT status cases. |
+| `tests/cfml/specs/SharedInstrumentBoundaryTest.cfc` | Updated to the principal contract; an actor id is no longer an authorization. |
+| `tests/node/remediation-exact-identity.test.mjs` | **New.** Runs the procedure published in `database/README.md` against a real SQL Server, with the repeated `other` code. |
+| `tests/node/cfml-suite.test.mjs`, `tests/node/helpers.mjs` | `ICFWALK_REQUIRE_APP` honoured for the CFML suite; an explicit client ceiling instead of undici's inherited default. |
+| `docs/*`, `manifest.json` | Documentation corrected to describe what exists, and the manifest refreshed for the supplied files that changed. |
+
+### Unresolved and not verified (third correction)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** All CFML execution was on Lucee
+   6.2.8.20 and all SQL on SQL Server 2022; neither target is installable in this container. The new
+   SQL constructs (`OUTPUT INSERTED` on an `INSERT ... SELECT`, `OUTPUT ... INTO` on a `DELETE`,
+   `EXCEPT`, table variables with a primary key, `;THROW`) are all SQL Server 2016 constructs and are
+   checked statically by `schema-contract.test.mjs`, but *running* them on SQL Server 2016 is not
+   claimed. The Lucee-specific cases (top-level JSON null, the Java-class type checks) are listed in
+   the Adobe ColdFusion 2023 verification checklist and have not been run there.
+2. **The `phase-5-freeze` tag still does not exist**, locally or on the remote. This correction did
+   not create, move or force-push it. It remains an open repository action for an authorized
+   operator.
+3. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
+4. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
+   **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.

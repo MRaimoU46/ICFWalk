@@ -68,10 +68,82 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(hasError(r, "RETIRED_CONTENT_PRESENT", ""));
 	}
 
+	/**
+	 * An inbound document must DECLARE that it is a DRAFT.
+	 *
+	 * THE DEFECT THIS EXISTS FOR. checkInstrument() rejected a non-DRAFT status only when
+	 * `instrument.version.status` was present. A document that simply omitted it passed -- while
+	 * the component header and docs/DATA_CONTRACT.md both say an inbound document declares DRAFT,
+	 * and every other reader treats the declaration as required. So "silence" was accepted as
+	 * "DRAFT", which is the one reading a contract with three lifecycle states must not take.
+	 *
+	 * The status is now required, must be a JSON string, and must equal DRAFT exactly. The contract
+	 * is case-sensitive: icf.instrument_version.status is constrained to the three upper-case
+	 * literals, so `draft` is not the same declaration as `DRAFT` and is not treated as one.
+	 */
 	public void function testNonDraftStatusIsRejected() {
 		variables.config.instrument.version.status = "PUBLISHED";
 		var r = variables.c.configValidator.validate(variables.config);
 		assertTrue(hasError(r, "VERSION_STATUS_NOT_DRAFT", ""));
+		assertTrue(hasPath(r, "$.instrument.version.status"), "reported at $.instrument.version.status");
+
+		variables.config.instrument.version.status = "RETIRED";
+		assertTrue(hasError(variables.c.configValidator.validate(variables.config), "VERSION_STATUS_NOT_DRAFT", ""));
+	}
+
+	/** An omitted status is refused: silence is not a DRAFT declaration. */
+	public void function testAMissingStatusIsRejected() {
+		structDelete(variables.config.instrument.version, "status");
+		var r = variables.c.configValidator.validate(variables.config);
+		assertFalse(r.valid, "a document that declares no status is not importable");
+		assertTrue(hasError(r, "VERSION_STATUS_REQUIRED", ""), "with a stable code: " & errorSummary(r));
+		assertTrue(hasPath(r, "$.instrument.version.status"), "at $.instrument.version.status");
+	}
+
+	/** A null status is an absent declaration. */
+	public void function testANullStatusIsRejected() {
+		variables.config.instrument.version.status = javaCast("null", "");
+		var r = variables.c.configValidator.validate(variables.config);
+		assertFalse(r.valid);
+		assertTrue(hasError(r, "VERSION_STATUS_REQUIRED", ""), "with a stable code: " & errorSummary(r));
+	}
+
+	/** A status that is not a JSON string is a type error, not a value error. */
+	public void function testANonStringStatusIsRejected() {
+		for (var bad in [1, 0, true, false, ["DRAFT"], { "value": "DRAFT" }]) {
+			variables.config.instrument.version.status = bad;
+			var r = variables.c.configValidator.validate(variables.config);
+			assertFalse(r.valid, "a non-string status must be refused");
+			assertTrue(hasError(r, "VERSION_STATUS_INVALID", ""), "as a type error: " & errorSummary(r));
+			assertTrue(hasPath(r, "$.instrument.version.status"), "at $.instrument.version.status");
+		}
+	}
+
+	/** A blank status declares nothing. */
+	public void function testABlankStatusIsRejected() {
+		for (var bad in ["", "   "]) {
+			variables.config.instrument.version.status = bad;
+			var r = variables.c.configValidator.validate(variables.config);
+			assertFalse(r.valid, "a blank status must be refused");
+			assertTrue(hasPath(r, "$.instrument.version.status"), "at $.instrument.version.status: " & errorSummary(r));
+		}
+	}
+
+	/** The contract is case-sensitive, so a lower-case declaration is not a DRAFT declaration. */
+	public void function testALowerCaseStatusIsRejected() {
+		for (var bad in ["draft", "Draft", "dRaFt"]) {
+			variables.config.instrument.version.status = bad;
+			var r = variables.c.configValidator.validate(variables.config);
+			assertFalse(r.valid, "'" & bad & "' is not the DRAFT the data contract names");
+			assertTrue(hasError(r, "VERSION_STATUS_NOT_DRAFT", ""), "reported as the wrong value: " & errorSummary(r));
+		}
+	}
+
+	/** And the declaration the supplied document actually makes is accepted. */
+	public void function testAnExactDraftStatusIsAccepted() {
+		variables.config.instrument.version.status = "DRAFT";
+		var r = variables.c.configValidator.validate(variables.config);
+		assertTrue(r.valid, "a document declaring DRAFT is valid: " & errorSummary(r));
 	}
 
 	public void function testChoiceItemWithoutResponseSetIsRejected() {
@@ -99,6 +171,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var keptOptions = [];
 		for (var op in variables.config.responseOptions) if (op.responseSetId != arguments.id) arrayAppend(keptOptions, op);
 		variables.config.responseOptions = keptOptions;
+	}
+
+	private boolean function hasPath(required struct r, required string path) {
+		for (var e in arguments.r.errors) if (structKeyExists(e, "path") && e.path == arguments.path) return true;
+		return false;
+	}
+
+	private string function errorSummary(required struct r) {
+		var codes = [];
+		for (var e in arguments.r.errors) arrayAppend(codes, e.code & "@" & (structKeyExists(e, "path") ? e.path : ""));
+		return arrayToList(codes, ", ");
 	}
 
 	private boolean function hasError(required struct r, required string code, required string needle) {

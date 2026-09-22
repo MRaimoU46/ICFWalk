@@ -69,6 +69,9 @@ component output="false" {
 	};
 
 	public DefinitionValidator function init() {
+		// The shared JSON type helper. Constructed here rather than injected so that adopting it
+		// changes no constructor signature and no container wiring.
+		variables.types = new icfwalk.core.JsonTypes();
 		return this;
 	}
 
@@ -415,6 +418,14 @@ component output="false" {
 	 * cannot be relied on. Extra members are refused for the same reason: the contract names nine,
 	 * and a tenth is something a reader would either ignore or, worse, believe.
 	 *
+	 * EVERY MEMBER IS A JSON NUMBER, and that is a type rule rather than a coercion rule. CFML's
+	 * isNumeric() says yes to the string "144" and its loose comparison says that string equals
+	 * 144, so a counts block of {"items": "144"} used to pass the envelope and be frozen -- while
+	 * docs/DATA_CONTRACT.md defines the member as a number and every reader parses it as one.
+	 * core/JsonTypes answers the type question from the value's Java class, so a numeric-looking
+	 * string, a boolean, an array and an object are all refused as SNAPSHOT_COUNTS_INVALID, and so
+	 * are negatives, fractions, non-finite values and anything outside the supported integer range.
+	 *
 	 * placeholders is derived rather than counted from a collection: it is the number of items the
 	 * content review left unresolved, and PLACEHOLDER_REVIEW_STATUS here is the one definition of
 	 * what that means.
@@ -441,15 +452,24 @@ component output="false" {
 				continue;
 			}
 			var value = s.counts[name];
-			if (!isSimpleValue(value) || !isNumeric(value)) {
-				err(arguments.r, "SNAPSHOT_COUNTS_INVALID", "The stored snapshot's counts." & name & " is not a number.", p);
+			// A JSON NUMBER, and nothing CFML is merely willing to read as one. isNumeric() is a
+			// coercion question: it says yes to the java.lang.String "144", and the loose comparison
+			// below then said that string equalled the derived count 144 -- so a snapshot whose
+			// counts block did not meet the contract every reader trusts was publishable. Booleans
+			// and numeric-looking strings are type errors here, not mismatches.
+			if (!variables.types.isJsonNumber(value)) {
+				err(arguments.r, "SNAPSHOT_COUNTS_INVALID", "The stored snapshot's counts." & name & " is " & variables.types.describe(value) & "; the snapshot envelope requires a JSON number.", p);
 				continue;
 			}
-			if (int(value) != value || value < 0) {
-				err(arguments.r, "SNAPSHOT_COUNTS_INVALID", "The stored snapshot's counts." & name & " is " & toString(value) & "; a count must be a whole number of zero or more.", p);
+			// Whole, finite, not negative, and inside the range the schema's int columns and the
+			// runtime's counters actually hold.
+			if (!variables.types.isCount(value)) {
+				err(arguments.r, "SNAPSHOT_COUNTS_INVALID", "The stored snapshot's counts." & name & " is " & toString(value) & "; a count must be a whole number between 0 and " & variables.types.maxCount() & ".", p);
 				continue;
 			}
-			if (comparable && structKeyExists(expected, name) && value != expected[name]) {
+			// Both sides are now known whole numbers, so this comparison is an equality of numbers
+			// rather than of whatever CFML would coerce them to.
+			if (comparable && structKeyExists(expected, name) && int(value) != int(expected[name])) {
 				err(arguments.r, "SNAPSHOT_COUNTS_MISMATCH", "The stored snapshot's counts." & name & " is " & toString(value) & " but it carries " & expected[name] & ".", p);
 			}
 		}

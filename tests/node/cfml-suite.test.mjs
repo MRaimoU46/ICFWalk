@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { api, baseUrl, loadRuntimeEnv, root } from "./helpers.mjs";
+import { api, baseUrl, loadRuntimeEnv, requireApp, root } from "./helpers.mjs";
 
 const golden = JSON.parse(fs.readFileSync(path.join(root, "tests", "golden", "instrument-snapshot.golden.json"), "utf8"));
 
@@ -21,6 +21,17 @@ async function reachable() {
   }
 }
 const up = await reachable();
+// A release run (ICFWALK_REQUIRE_APP=1) must not silently skip these. This file carries the WHOLE
+// CFML suite -- every unit spec, every database integration spec and every deterministic
+// concurrency barrier -- so an absent application here means none of it ran, which is not the same
+// as it having passed. The gate's own `skipped 0` assertion catches it too; this fails earlier and
+// says why. admin-publish.test.mjs and no-mail.test.mjs guard themselves the same way.
+if (requireApp(env) && !up) {
+  throw new Error(`ICFWALK_REQUIRE_APP is set but the application is not reachable at ${baseUrl(env)}`);
+}
+if (requireApp(env) && !token) {
+  throw new Error("ICFWALK_REQUIRE_APP is set but ICFWALK_MAINTENANCE_TOKEN is not");
+}
 const skip = up ? false : `application not reachable at ${baseUrl(env)}`;
 
 test("health endpoint reports database and schema state with a correlation id", { skip }, async () => {
@@ -70,8 +81,19 @@ test("maintenance endpoints are hidden without a valid token", { skip }, async (
  * every spec runs exactly once across the parts and none runs twice. The reports are summed and
  * the same assertions are made on the totals: nothing is filtered out, nothing is skipped, and a
  * failure in any part fails this test.
+ *
+ * The parts also each carry an EXPLICIT client ceiling now. Partitioning alone only made the
+ * inherited 300-second undici default less likely to be hit; on a slower machine a single heavy
+ * spec still reached it and a healthy run was reported as "fetch failed". The ceiling is a harness
+ * setting, so it is stated here rather than inherited -- it bounds a hang, and gives no test any
+ * more room to pass.
  */
-const SUITE_PARTS = 3;
+const SUITE_PARTS = 6;
+// Response headers are not sent until a part finishes, and a part legitimately runs for minutes:
+// several specs hold a production row lock while a second transaction queues on it. This is the
+// client-side ceiling for that, set explicitly rather than inherited from undici's 300-second
+// default -- see helpers.mjs. It bounds a hang; it does not give any test longer to pass.
+const SUITE_PART_TIMEOUT_MS = 900000;
 
 test("CFML test suite passes (unit specs and DB-04..09 integration specs)", { skip: skip || (token ? false : "ICFWALK_MAINTENANCE_TOKEN not set") }, async (t) => {
   const totals = { passed: 0, failed: 0, skipped: 0 };
@@ -80,7 +102,7 @@ test("CFML test suite passes (unit specs and DB-04..09 integration specs)", { sk
   let elapsedMs = 0;
 
   for (let part = 1; part <= SUITE_PARTS; part++) {
-    const r = await api(env, "POST", `/api/maintenance/tests/run?part=${part}&of=${SUITE_PARTS}`, { token });
+    const r = await api(env, "POST", `/api/maintenance/tests/run?part=${part}&of=${SUITE_PARTS}`, { token, timeoutMs: SUITE_PART_TIMEOUT_MS });
     assert.equal(r.status, 200, `part ${part}/${SUITE_PARTS}: ${r.text}`);
     const report = r.json;
     for (const spec of report.specs) {

@@ -116,20 +116,145 @@ Do not run this unattended. Each step produces something a person signs off.
    authorized decision is required: the instrument owner must state, in writing, which values that
    version offered. Record that decision before touching a row. Do not fall back to "whatever is
    there now" and do not copy another version's membership.
-5. **Remove only the rows the signed-off list excludes**, one version at a time, inside a
-   transaction, with the count checked before committing:
+5. **Remove only the rows the signed-off list excludes, by exact identity.**
+
+   `icf.dimension_value.value_code` is unique only *within a dimension*. The supplied instrument
+   uses the code `other` under `school`, under `content` and under `classType`, so a removal keyed
+   on `(version_id, value_code)` alone deletes all three when the review approved one. A row-count
+   check does not catch it: three rows were approved to be "one removal each" nowhere, and
+   `@@ROWCOUNT` reports 3 whether that is three approved pairs or one approved pair applied to
+   three dimensions. Identity, not arithmetic, is what has to match.
+
+   The procedure below resolves each signed-off `(dimension_code, value_code)` pair to the exact
+   `version_id` / `dimension_id` / `value_id` triple it names, refuses to proceed if any pair is
+   missing or ambiguous, deletes only the resolved rows, captures what it actually deleted with
+   `OUTPUT`, and compares the deleted set with the approved set in both directions before anything
+   can be committed. Rollback is the default: `@signedOff` stays `0` until a person has read the
+   `REVIEW` output and decided.
+
+   Fill in the three marked places and nothing else. It is SQL Server 2016 compatible.
+
    ```sql
+   /* ICFWalk exact-identity membership remediation. Run one version at a time, attended. */
+   SET XACT_ABORT ON;
+   SET NOCOUNT ON;
+
+   /* ---- 1. what was signed off ------------------------------------------------------------ */
+   /* REPLACE: the reviewed version. */
+   DECLARE @versionId uniqueidentifier = N'00000000-0000-0000-0000-000000000000';
+   /* REPLACE: 1 only after the REVIEW output below has been read and signed off. */
+   DECLARE @signedOff bit = 0;
+
+   DECLARE @approved TABLE
+   (
+       [dimension_code] nvarchar(100) NOT NULL,
+       [value_code]     nvarchar(100) NOT NULL,
+       PRIMARY KEY ([dimension_code], [value_code])   /* a repeated pair fails here, not silently */
+   );
+
+   /* REPLACE: one row per signed-off pair, and only those. Naming the dimension is what makes
+      this exact: (N'school', N'other') is not (N'content', N'other'). */
+   INSERT INTO @approved ([dimension_code], [value_code]) VALUES
+       (N'REPLACE_DIMENSION_CODE', N'REPLACE_VALUE_CODE');
+
+   /* ---- 2. resolve each approved pair to the exact rows it names --------------------------- */
+   DECLARE @resolved TABLE
+   (
+       [dimension_code] nvarchar(100) NOT NULL,
+       [value_code]     nvarchar(100) NOT NULL,
+       [dimension_id]   uniqueidentifier NULL,
+       [value_id]       uniqueidentifier NULL,
+       [matches]        int NOT NULL
+   );
+
+   INSERT INTO @resolved ([dimension_code], [value_code], [dimension_id], [value_id], [matches])
+   SELECT  a.[dimension_code],
+           a.[value_code],
+           MIN(m.[dimension_id]),
+           MIN(m.[value_id]),
+           COUNT(m.[value_id])
+   FROM    @approved a
+   LEFT JOIN
+   (
+       SELECT  iv.[dimension_id],
+               iv.[value_id],
+               d.[code]        AS [dimension_code],
+               dv.[value_code] AS [value_code]
+       FROM    [icf].[instrument_dimension_value] iv
+       JOIN    [icf].[dimension_definition]  d  ON d.[dimension_id] = iv.[dimension_id]
+       JOIN    [icf].[dimension_value]      dv  ON dv.[value_id]    = iv.[value_id]
+                                               AND dv.[dimension_id] = iv.[dimension_id]
+       WHERE   iv.[version_id] = @versionId
+   ) m ON m.[dimension_code] = a.[dimension_code]
+      AND m.[value_code]     = a.[value_code]
+   GROUP BY a.[dimension_code], a.[value_code];
+
+   /* Show the resolution before anything is mutated. */
+   SELECT  @versionId AS [version_id], [dimension_code], [value_code],
+           [dimension_id], [value_id], [matches]
+   FROM    @resolved
+   ORDER BY [dimension_code], [value_code];
+
+   /* ---- 3. refuse anything ambiguous, missing or duplicated -------------------------------- */
+   IF EXISTS (SELECT 1 FROM @resolved WHERE [matches] <> 1)
+   BEGIN
+       SELECT  N'REFUSED' AS [outcome], [dimension_code], [value_code], [matches]
+       FROM    @resolved WHERE [matches] <> 1;
+       ;THROW 50060, N'Remediation refused: an approved (dimension_code, value_code) pair did not resolve to exactly one version-scoped row.', 1;
+   END;
+
+   /* ---- 4. the mutation, with rollback as the default --------------------------------------- */
    BEGIN TRANSACTION;
+
+   DECLARE @deleted TABLE
+   (
+       [dimension_id] uniqueidentifier NOT NULL,
+       [value_id]     uniqueidentifier NOT NULL
+   );
+
+   /* ---- 5/6. delete only the exact resolved rows, capturing their identities ----------------- */
    DELETE iv
-     FROM [icf].[instrument_dimension_value] iv
-     JOIN [icf].[dimension_value] dv ON dv.[value_id] = iv.[value_id]
-    WHERE iv.[version_id] = @versionId
-      AND dv.[value_code] IN (/* the value codes the review excluded, listed explicitly */);
-   /* Expect exactly the number the review named. Anything else means the review is stale. */
-   SELECT @@ROWCOUNT AS removed;
-   -- COMMIT TRANSACTION;  -- only after `removed` matches the reviewed count
-   -- ROLLBACK TRANSACTION;
+   OUTPUT deleted.[dimension_id], deleted.[value_id] INTO @deleted ([dimension_id], [value_id])
+   FROM   [icf].[instrument_dimension_value] iv
+   JOIN   @resolved r ON r.[dimension_id] = iv.[dimension_id]
+                     AND r.[value_id]     = iv.[value_id]
+   WHERE  iv.[version_id] = @versionId;
+
+   /* ---- 7. the removed set must be the approved set, in both directions --------------------- */
+   IF EXISTS (SELECT [dimension_id], [value_id] FROM @resolved
+              EXCEPT SELECT [dimension_id], [value_id] FROM @deleted)
+      OR EXISTS (SELECT [dimension_id], [value_id] FROM @deleted
+                 EXCEPT SELECT [dimension_id], [value_id] FROM @resolved)
+   BEGIN
+       SELECT N'REFUSED' AS [outcome], N'approved but not removed' AS [side], [dimension_id], [value_id]
+       FROM   (SELECT [dimension_id], [value_id] FROM @resolved
+               EXCEPT SELECT [dimension_id], [value_id] FROM @deleted) x
+       UNION ALL
+       SELECT N'REFUSED', N'removed but not approved', [dimension_id], [value_id]
+       FROM   (SELECT [dimension_id], [value_id] FROM @deleted
+               EXCEPT SELECT [dimension_id], [value_id] FROM @resolved) y;
+       ROLLBACK TRANSACTION;
+       ;THROW 50061, N'Remediation rolled back: the rows removed are not exactly the rows approved.', 1;
+   END;
+
+   /* ---- 8. commit only after the exact-set check AND human sign-off ------------------------- */
+   SELECT  N'REVIEW' AS [outcome], d.[code] AS [dimension_code], dv.[value_code],
+           x.[dimension_id], x.[value_id]
+   FROM    @deleted x
+   JOIN    [icf].[dimension_definition] d  ON d.[dimension_id] = x.[dimension_id]
+   JOIN    [icf].[dimension_value]     dv  ON dv.[value_id]    = x.[value_id]
+   ORDER BY d.[code], dv.[value_code];
+
+   IF @signedOff = 1
+       COMMIT TRANSACTION;
+   ELSE
+       ROLLBACK TRANSACTION;   /* the safe default: read the REVIEW output, then set @signedOff */
    ```
+
+   The global identity rows are untouched by design: `icf.dimension_definition` and
+   `icf.dimension_value` are the reporting identity every version and every already-recorded walk
+   points at, and the contamination this remediates is *version membership*, not identity.
+
 6. **Re-verify**: re-run both detection queries (expect no rows for that version) and confirm the
    version's snapshot still hashes to its stored checksum:
    ```sql
@@ -137,6 +262,7 @@ Do not run this unattended. Each step produces something a person signs off.
    ```
    The checksum must be unchanged -- remediation corrects the rows to agree with the frozen
    snapshot, and never the other way round.
+
 7. **Restart the application** (or otherwise clear its caches). `WalkRepository.definitionIndex()`
    and `SnapshotService` cache by version checksum, which remediation does not move, so a running
    process keeps serving the pre-remediation index until it is restarted.

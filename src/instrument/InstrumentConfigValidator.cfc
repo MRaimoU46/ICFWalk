@@ -40,6 +40,8 @@ component output="false" {
 
 	public InstrumentConfigValidator function init(required any errors, required any configNormalizer, required any definitionValidator) {
 		variables.errors = arguments.errors;
+		// The shared JSON type helper: a declared status has to BE a string, not merely read as one.
+		variables.types = new icfwalk.core.JsonTypes();
 		variables.normalizer = arguments.configNormalizer;
 		variables.definitionValidator = arguments.definitionValidator;
 		// The one definition of "unresolved placeholder", shared with the compiler and the renderer.
@@ -115,14 +117,44 @@ component output="false" {
 	 * The instrument and version identity the document declares. Only an import can be refused for
 	 * declaring the wrong status: a persisted version's status is a lifecycle fact, not a claim in
 	 * a document, and is checked under the version's row lock instead.
+	 *
+	 * THE DECLARATION IS REQUIRED. This used to refuse a non-DRAFT status only when the member was
+	 * present, so a document that simply omitted it was imported -- silence read as consent, on the
+	 * one field that says which of three lifecycle states the author believes they are writing.
+	 * docs/DATA_CONTRACT.md says an inbound document declares DRAFT, so it must, and three distinct
+	 * failures are reported distinctly at the same stable path:
+	 *
+	 *   VERSION_STATUS_REQUIRED   absent, or present and null
+	 *   VERSION_STATUS_INVALID    present but not a JSON string (a number, a boolean, an array...)
+	 *   VERSION_STATUS_NOT_DRAFT  a string that is not exactly DRAFT
+	 *
+	 * The comparison is CASE-SENSITIVE, because the contract's enumeration is: SQL Server's
+	 * CK_instrument_version_status constrains the column to the three upper-case literals, and
+	 * CFML's own `!=` is case-insensitive, so `draft` used to be accepted as a DRAFT declaration
+	 * and then stored as something the schema never named. compare() is the only equality here that
+	 * matches the contract being enforced.
 	 */
 	private void function checkInstrument(required struct r, required struct cfg) {
 		var inst = arguments.cfg.instrument;
 		requireText(arguments.r, inst, "code", "$.instrument.code", 60);
 		requireText(arguments.r, inst, "name", "$.instrument.name", 200);
 		requireText(arguments.r, inst.version, "versionLabel", "$.instrument.version.versionLabel", 100);
-		if (has(inst.version, "status") && inst.version.status != "DRAFT") {
-			err(arguments.r, "VERSION_STATUS_NOT_DRAFT", "Only DRAFT versions can be imported; the document declares status '" & inst.version.status & "'.", "$.instrument.version.status");
+		checkDeclaredStatus(arguments.r, inst.version);
+	}
+
+	private void function checkDeclaredStatus(required struct r, required struct version) {
+		var path = "$.instrument.version.status";
+		if (!structKeyExists(arguments.version, "status") || isNull(arguments.version.status)) {
+			err(arguments.r, "VERSION_STATUS_REQUIRED", "The document must declare instrument.version.status, and it must be 'DRAFT'.", path);
+			return;
+		}
+		var declared = arguments.version.status;
+		if (!variables.types.isJsonString(declared)) {
+			err(arguments.r, "VERSION_STATUS_INVALID", "instrument.version.status is " & variables.types.describe(declared) & "; it must be the string 'DRAFT'.", path);
+			return;
+		}
+		if (compare(declared, "DRAFT") != 0) {
+			err(arguments.r, "VERSION_STATUS_NOT_DRAFT", "Only DRAFT versions can be imported; the document declares status '" & declared & "'.", path);
 		}
 	}
 

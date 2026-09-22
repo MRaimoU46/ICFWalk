@@ -98,7 +98,18 @@ while dropping a subtree is refused as `RENDER_MODEL_INCOMPLETE`.
 
 Rules that only mean something for an inbound authoring document stay in
 `InstrumentConfigValidator`: that the document declares DRAFT, that its authoring ids are unique and
-resolve to each other, that `conditionsJson` parses as text. None of them can be applied to a
+resolve to each other, that `conditionsJson` parses as text.
+
+**Declaring DRAFT is required, and it is a declaration of exactly `DRAFT`.** `instrument.version.status`
+must be present, must be a JSON string, and must equal `DRAFT` case-sensitively -- the enumeration
+in `CK_instrument_version_status` is the three upper-case literals, and CFML's own `!=` is
+case-insensitive, so `draft` used to pass as a DRAFT declaration. Absence used to pass too: the
+check only ran when the member existed, so silence was read as consent on the one field that says
+which of three lifecycle states the author believes they are writing. The three failures are
+reported distinctly at `$.instrument.version.status`: `VERSION_STATUS_REQUIRED` (absent or null),
+`VERSION_STATUS_INVALID` (present but not a string), `VERSION_STATUS_NOT_DRAFT` (a string that is
+not exactly `DRAFT`). A *persisted* version's status is a lifecycle fact and is never checked here:
+it is read under the version's row lock. None of them can be applied to a
 version already in SQL Server, which has keys instead of authoring ids and a parsed conditions
 document instead of a string.
 
@@ -120,6 +131,13 @@ publishing validates each of them in its own right as well as against the other.
 4. Refuse a publisher who is not a real `icf.app_user`.
 5. Refuse a version with no compiled snapshot, a snapshot that does not parse, or a stored checksum
    that is not the SHA-256 of the stored snapshot.
+5b. Refuse a snapshot that parses to anything other than a **JSON object** (`SNAPSHOT_SHAPE` at
+   `$`). `null`, an array, a string, a number and a boolean are all valid JSON and none of them is
+   an instrument snapshot. A top-level `null` in particular leaves the parsed variable null on
+   Lucee, and reading it back is an engine error rather than a value -- which used to happen inside
+   the canonical serializer, *before* any refusal had been marked, so the caller received a 500 and
+   the attempt left no durable record. This is established before anything dereferences or
+   serializes the document, exactly as `Router.cfc` guards the request-body path.
 6. Refuse a snapshot whose bytes are not the canonical serialization of the document they parse to
    (`SNAPSHOT_NOT_CANONICAL`). Publication never rewrites them: rewriting would move the checksum
    the DRAFT was reviewed under.
@@ -189,13 +207,20 @@ The envelope the compiler writes and every reader trusts:
 `counts` is what readers trust instead of walking the arrays, so it is part of the contract and not
 a convenience. All nine members are required -- `sections`, `items`, `responseSets`,
 `responseOptions`, `rules`, `dimensions`, `dimensionValues`, `instrumentDimensions`, `placeholders`
--- and each must be a whole number of zero or more that equals the value the definitions imply.
-`placeholders` is derived rather than counted from a collection: it is the number of items whose
-`reviewStatus` is the placeholder status. A missing block, an empty block, a missing member, a
-non-numeric, fractional or negative value, a value that disagrees with the definitions, or a member
-the envelope does not define are each refused with a stable code and path
-(`SNAPSHOT_COUNTS_MISSING`, `SNAPSHOT_COUNTS_INVALID`, `SNAPSHOT_COUNTS_MISMATCH`,
-`SNAPSHOT_COUNTS_UNEXPECTED`).
+-- and each must be a **JSON number** that is whole, not negative, and no greater than 2147483647,
+and that equals the value the definitions imply. `placeholders` is derived rather than counted from
+a collection: it is the number of items whose `reviewStatus` is the placeholder status.
+
+**The number rule is a type rule, not a coercion rule.** CFML's `isNumeric` answers a coercion
+question: it says yes to the string `"144"`, and a loose comparison then says that string equals
+`144`. So a counts block of `{"items": "144", ...}` used to satisfy the envelope and be frozen,
+although the contract above defines the member as a number and every reader parses it as one.
+`core/JsonTypes` decides the type from the value's Java class instead, so a numeric-looking string,
+a boolean, an array and an object are all type errors. A missing block, an empty block, a missing
+member, a value of the wrong type, a fractional, negative, non-finite or out-of-range number, a
+value that disagrees with the definitions, or a member the envelope does not define are each
+refused with a stable code and path (`SNAPSHOT_COUNTS_MISSING`, `SNAPSHOT_COUNTS_INVALID`,
+`SNAPSHOT_COUNTS_MISMATCH`, `SNAPSHOT_COUNTS_UNEXPECTED`).
 
 ## Shared instrument metadata
 
@@ -215,19 +240,60 @@ and the refusal is audited like any other refused write. `name` and `description
 because they are already stored at the right scope: they go into *this* version's snapshot, so V2
 may describe the instrument differently from V1 and each walk sees its own version's wording.
 
-Changing the shared row deliberately is `InstrumentMetadataService.updateMetadata`: a named, known
-`icf.app_user` is required, the row is taken under `UPDLOCK, ROWLOCK`, and exactly one
-`INSTRUMENT_METADATA_UPDATED` audit event names the actor and what changed. This correction closes
-the write boundary and adds **no** administration UI for that operation.
+**That conflict is decided on the locked current row.** Import's first read of `icf.instrument`
+resolves the instrument id and is unlocked, so an authorized metadata change can commit after it.
+Deciding the conflict from that earlier object made such a change invisible: the document said
+"active", the stale object agreed, and the import was accepted against a row that by then said
+otherwise. Import now re-reads the row under `UPDLOCK, HOLDLOCK` **after** taking the version lock,
+and the decision -- and the rest of the transaction -- sees that row.
+
+Changing the shared row deliberately is `InstrumentMetadataService.updateMetadata`:
+
+* **Authorization** is the central model. The operation takes the current principal and asks
+  `AuthorizationService` for global `instrument.manage` before any mutation. There is no actor
+  argument: the audit actor is the principal's `userId` and cannot be named or substituted from the
+  call site. `DefinitionRepository.userExists` is an **integrity** check for
+  `icf.audit_event.actor_user_id`'s foreign key, satisfied by every row in `icf.app_user`, and is
+  not authorization. Neither is the absence of an HTTP route, which is a scope decision.
+* **The row is locked before it is read.** A patch restates the stored value of every field it
+  omits, so the locked read, the merge, the update and the audit are one transaction
+  (`lockInstrumentByCode`, `UPDLOCK, HOLDLOCK`). Two contending partial patches therefore both
+  survive, in either arrival order, and each audit event's `before` image is the row that request
+  actually replaced.
+* **The patch is validated strictly** before anything is written: only `name`, `description` and
+  `active`; an unknown member is refused (`INSTRUMENT_METADATA_UNKNOWN_FIELD`) rather than ignored;
+  `name` a non-blank JSON string within `nvarchar(200)`; `description` a JSON string within
+  `nvarchar(1000)`, where blank means NULL; `active` an **actual** JSON boolean, never a coerced
+  string or number (`isBoolean("144")`, `isBoolean(0)` and `isBoolean("no")` are all true in CFML,
+  and a coerced `false` takes a published version out of service); and at least one supported
+  member (`INSTRUMENT_METADATA_NO_CHANGES`).
+* **A patch with no material difference is a no-op** (`docs/OPEN_DECISIONS.md`): no write, no audit
+  event, no `row_version` movement, and `noOp: true` in the result.
+* Exactly one `INSTRUMENT_METADATA_UPDATED` audit event names the actor and what changed. Narrative
+  content never enters it: the description is reported as `descriptionChanged`, never as its text.
+
+This correction closes the write boundary and adds **no** administration UI for that operation.
 
 ## Global reporting identity
 
 `icf.dimension_definition` and `icf.dimension_value` are global rows that every version's reporting
 points at. They are created once, when a code is first seen, and never updated. Creating one is
-still a version-scoped authority: `createDimensionIdentity` and `createDimensionValueIdentity` take
-the requesting version id and call `requireDraftVersion` inside the repository, before the INSERT.
-A caller that cannot name a DRAFT cannot mint identity that every future version will point at, and
-a guard the caller applied earlier is not accepted in place of that.
+still a version-scoped authority, and that authority is **inside the minting statement**:
+`createDimensionIdentity` and `createDimensionValueIdentity` each issue one `INSERT ... SELECT`
+whose source is the owning `icf.instrument_version` row, read under `UPDLOCK, ROWLOCK` and
+predicated on `status = N'DRAFT'`, with `OUTPUT INSERTED` returning the row the database reports
+inserting.
+
+They used to call `requireDraftVersion` and then issue an unconditional INSERT. Inside the import's
+transaction that is sound, because the transaction holds the version lock from the check through
+the write. But these are **public** repository methods and are called directly, outside any
+transaction, and there the `UPDLOCK` lives only for the length of the SELECT: a publish could take
+the row and freeze the version in the gap, and the INSERT then ran anyway, minting permanent global
+identity on the authority of a version that was no longer a DRAFT. A lock released before the write
+it protects is not a write boundary. One statement is atomic, so there is no gap left for any
+caller to lose, whether or not it owns a transaction. When the predicate matches nothing, nothing
+is inserted and nothing is returned, and the caller receives a typed non-DRAFT refusal rather than
+a GUID for a row that does not exist.
 
 ## The DRAFT-only write boundary
 
@@ -256,7 +322,10 @@ instrument row, then children. Publication, import, every version-content mutato
 identity creators take it in that order, so a publish racing an edit queues on one row instead of
 interleaving, and no pair of them can deadlock by taking two rows in opposite orders. The one write
 that does not start from a version -- `createInstrument` -- happens before the instrument has any
-versions, and `updateInstrumentMetadata` takes only the instrument row.
+versions. The shared-metadata operation takes **only** `icf.instrument`, and requests no version
+lock at all, so it cannot invert the order either; import takes the version row first and then
+re-reads `icf.instrument` under its own lock, in that order, to decide the shared-metadata
+conflict on the current row rather than on the unlocked read it used to resolve the instrument id.
 
 That ordering is proved, not assumed. `PublishConcurrencyBarrierTest` holds transaction A at the
 statement that takes the version lock, starts transaction B there, observes that B cannot finish,

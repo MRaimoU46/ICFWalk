@@ -1,5 +1,7 @@
 // Shared helpers for the Node test harness and scripts.
 import fs from "node:fs";
+import http from "node:http";
+import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,13 +105,54 @@ export function requireApp(env) {
   return value === "1" || value === "true" || value === "yes";
 }
 
-export async function api(env, method, apiPath, { body, token } = {}) {
+export async function api(env, method, apiPath, { body, token, timeoutMs } = {}) {
   const headers = { "Accept": "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers["X-ICFWalk-Maintenance-Token"] = token;
-  const response = await fetch(`${baseUrl(env)}/index.cfm${apiPath}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  if (timeoutMs) return requestWithTimeout(env, method, apiPath, headers, payload, timeoutMs);
+  const response = await fetch(`${baseUrl(env)}/index.cfm${apiPath}`, { method, headers, body: payload });
   const text = await response.text();
   let json = null;
   try { json = JSON.parse(text); } catch { json = null; }
   return { status: response.status, headers: response.headers, text, json };
+}
+
+/**
+ * The same call, for a request whose response headers legitimately take longer than the fetch
+ * client is willing to wait.
+ *
+ * WHY THIS EXISTS. The CFML suite runs inside one /api/maintenance/tests/run request and sends no
+ * response headers until it finishes, and several specs deliberately block a writer for seconds at
+ * a time. Lucee is configured to allow that (LUCEE_REQUESTTIMEOUT in tools/runtime/lucee-up.sh);
+ * the CLIENT was not. Node's fetch inherits undici's 300-second headersTimeout, so on a slower
+ * machine a perfectly healthy suite run was reported as "fetch failed" -- and the abort also
+ * skipped every spec's afterAll, leaving fixtures behind that then failed later tests. That is a
+ * harness ceiling, not a result: nothing about it says anything about the code under test.
+ *
+ * node:http has no such default, so the ceiling becomes an explicit one this helper is given. It
+ * is still a ceiling: a run that really hangs fails rather than waiting forever.
+ */
+function requestWithTimeout(env, method, apiPath, headers, payload, timeoutMs) {
+  const url = new URL(`${baseUrl(env)}/index.cfm${apiPath}`);
+  const transport = url.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = transport.request(
+      { protocol: url.protocol, hostname: url.hostname, port: url.port, path: `${url.pathname}${url.search}`, method, headers },
+      (response) => {
+        let text = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => { text += chunk; });
+        response.on("end", () => {
+          let json = null;
+          try { json = JSON.parse(text); } catch { json = null; }
+          resolve({ status: response.statusCode, headers: new Headers(Object.entries(response.headers).map(([k, v]) => [k, String(v)])), text, json });
+        });
+      },
+    );
+    request.setTimeout(timeoutMs, () => request.destroy(new Error(`no response within ${timeoutMs}ms from ${url}`)));
+    request.on("error", reject);
+    if (payload !== undefined) request.write(payload);
+    request.end();
+  });
 }

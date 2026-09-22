@@ -43,6 +43,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.metadataSvc = variables.c.instrumentMetadataService;
 		variables.fixtures = new icfwalktests.support.FixtureCleanup(variables.c);
 		variables.publisher = variables.fixtures.ensureUser(variables.run & "-publisher", "Shared boundary fixture publisher");
+		// The shared-row operation is authorized by the central model now, so the actor for it has
+		// to be a principal who really holds instrument.manage -- not merely a user who exists.
+		variables.orgUnit = variables.fixtures.ensureOrgUnit(variables.run & "-district", "DISTRICT");
+		variables.fixtures.grantRole(variables.publisher, "MASTER_INSTRUMENT_ADMIN", variables.orgUnit, true);
+		variables.admin = variables.fixtures.principalFor(variables.publisher);
 
 		// V1: imported and published, exactly as a real deployment would have it.
 		variables.v1 = variables.importSvc.importConfig(config(label("v1")));
@@ -52,6 +57,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function afterAll() {
 		variables.fixtures.removeInstrumentsCoded(variables.instrumentCode);
 		variables.fixtures.removeUsers(variables.run & "-");
+		variables.c.orgUnitRepository.deleteUnreferenced(variables.orgUnit);
 	}
 
 	// ---- the runtime defect ----------------------------------------------------------------------
@@ -185,7 +191,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var instrumentId = variables.repo.findInstrumentByCode(variables.instrumentCode).instrumentId;
 		var before = auditCount(instrumentId, "INSTRUMENT_METADATA_UPDATED");
 
-		var result = variables.metadataSvc.updateMetadata(variables.instrumentCode, { "name": "Renamed deliberately" }, variables.publisher);
+		var result = variables.metadataSvc.updateMetadata(variables.instrumentCode, { "name": "Renamed deliberately" }, variables.admin);
 		assertEquals("Renamed deliberately", result.name);
 		assertEquals("Renamed deliberately", instrumentRow().name, "the shared row really changed");
 		assertTrue(arrayContains(result.changedFields, "name"), "and the result names what changed");
@@ -201,18 +207,30 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(structKeyExists(details, "previousName"), "and what it was before");
 
 		// Put it back so the later cases see the document's own name.
-		variables.metadataSvc.updateMetadata(variables.instrumentCode, { "name": before_name() }, variables.publisher);
+		variables.metadataSvc.updateMetadata(variables.instrumentCode, { "name": before_name() }, variables.admin);
 		assertEquals(before_name(), instrumentRow().name, "restored");
 	}
 
-	/** That operation refuses an unknown actor, and changes nothing when it does. */
-	public void function testTheAuthorizedOperationRefusesAnUnknownActor() {
+	/**
+	 * That operation refuses a caller who is not the current principal, and changes nothing.
+	 *
+	 * It used to take an actor id and check only that icf.app_user had such a row, which is an
+	 * integrity check and not a permission check -- so a bare id was enough to authorize a change
+	 * to the shared row. There is no actor argument any more: an id, an empty string and an empty
+	 * struct are all refused before anything is read or written, and permission itself is proved
+	 * against the real role model in InstrumentMetadataServiceTest.
+	 */
+	public void function testTheAuthorizedOperationRefusesACallerThatIsNotAPrincipal() {
 		var before = instrumentRow();
 		var svc = variables.metadataSvc;
 		var code = variables.instrumentCode;
-		var stranger = uCase(createUUID());
-		assertThrows(function() { svc.updateMetadata(code, { "active": false }, stranger); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_ACTOR_REQUIRED");
-		assertThrows(function() { svc.updateMetadata(code, { "active": false }, ""); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_ACTOR_REQUIRED");
+		var stranger = variables.db.newGuid();
+		var knownUserId = variables.publisher;
+		assertThrows(function() { svc.updateMetadata(code, { "active": false }, stranger); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_PRINCIPAL_REQUIRED");
+		assertThrows(function() { svc.updateMetadata(code, { "active": false }, ""); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_PRINCIPAL_REQUIRED");
+		// Even the id of the user who DOES hold instrument.manage is not an authorization: the
+		// principal is what carries the permission, and an id is not a principal.
+		assertThrows(function() { svc.updateMetadata(code, { "active": false }, knownUserId); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_PRINCIPAL_REQUIRED");
 
 		var after = instrumentRow();
 		assertEquals(before.name, after.name, "a refused metadata change writes nothing");

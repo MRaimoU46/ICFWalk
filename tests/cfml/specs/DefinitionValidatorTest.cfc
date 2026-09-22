@@ -321,6 +321,77 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(hasError(variables.validator.validateEnvelope(e), "SNAPSHOT_COUNTS_MISMATCH"));
 	}
 
+	// ---- the counts block is JSON numbers, not things that merely look like numbers -------------
+
+	/**
+	 * A count stored as a JSON STRING is refused, even when the string names the right number.
+	 *
+	 * THE DEFECT THIS EXISTS FOR. checkCounts() used isNumeric() and loose comparison. In CFML a
+	 * java.lang.String of "144" is numeric for coercion purposes and compares equal to 144, so a
+	 * snapshot whose counts block was `{"items": "144", ...}` passed the envelope and was frozen --
+	 * while docs/DATA_CONTRACT.md defines every counts member as a JSON number, and every reader
+	 * that trusts the block reads it as one. The previous test proved only that NON-numeric text
+	 * ("many") was rejected, which is the easy half.
+	 *
+	 * Table-driven over all nine members, because the rule is about the block and not about items.
+	 */
+	public void function testEveryCountMemberRefusesAJsonStringEvenWhenItNamesTheRightNumber() {
+		var checked = 0;
+		for (var name in variables.validator.snapshotCountKeys()) {
+			var e = envelope();
+			// The exact right number, stored as a JSON string: only the TYPE is wrong.
+			e.counts[name] = javaCast("string", toString(e.counts[name]));
+			assertEquals("java.lang.String", e.counts[name].getClass().getName(), "precondition: counts." & name & " really is a JSON string");
+			var r = variables.validator.validateEnvelope(e);
+			assertFalse(r.valid, "counts." & name & " as the string [" & e.counts[name] & "] must not be accepted");
+			assertTrue(hasError(r, "SNAPSHOT_COUNTS_INVALID"), "counts." & name & " as a string is a type error, not a mismatch: " & errorSummary(r));
+			assertTrue(hasPath(r, "$.counts." & name), "reported at $.counts." & name & ": " & errorSummary(r));
+			checked++;
+		}
+		assertEquals(9, checked, "all nine envelope counts were exercised");
+	}
+
+	/** The same for booleans, which CFML is also happy to treat as numbers. */
+	public void function testEveryCountMemberRefusesABoolean() {
+		var checked = 0;
+		for (var name in variables.validator.snapshotCountKeys()) {
+			for (var bad in [true, false]) {
+				var e = envelope();
+				e.counts[name] = bad;
+				var r = variables.validator.validateEnvelope(e);
+				assertTrue(hasError(r, "SNAPSHOT_COUNTS_INVALID"), "counts." & name & " = " & bad & " must be a type error: " & errorSummary(r));
+			}
+			checked++;
+		}
+		assertEquals(9, checked, "all nine envelope counts were exercised");
+	}
+
+	/** Structured values are not counts either. */
+	public void function testCountsRefuseArraysAndObjects() {
+		for (var bad in [[1], {}, { "value": 1 }, []]) {
+			var e = envelope();
+			e.counts["items"] = bad;
+			assertTrue(hasError(variables.validator.validateEnvelope(e), "SNAPSHOT_COUNTS_INVALID"), "a structured counts.items is a type error");
+		}
+	}
+
+	/** Negative, fractional and out-of-range numbers are refused as values rather than as types. */
+	public void function testCountsRefuseNegativeFractionalAndOversizedNumbers() {
+		for (var bad in [-1, -0.5, 1.5, 2147483648, 4294967296, 1e18]) {
+			var e = envelope();
+			e.counts["items"] = bad;
+			var r = variables.validator.validateEnvelope(e);
+			assertTrue(hasError(r, "SNAPSHOT_COUNTS_INVALID"), "counts.items = " & bad & " must be refused: " & errorSummary(r));
+			assertTrue(hasPath(r, "$.counts.items"), "at $.counts.items");
+		}
+	}
+
+	/** And a real JSON number that equals the derived count is still accepted. */
+	public void function testARealNumericCountThatMatchesIsAccepted() {
+		var r = variables.validator.validateEnvelope(envelope(), { "versionLabel": "v1", "instrumentCode": "ICFWALK" });
+		assertTrue(r.valid, "the compiler's own counts block is valid: " & errorSummary(r));
+	}
+
 	// ---- helpers --------------------------------------------------------------------------------
 
 	private struct function envelope() {
@@ -335,6 +406,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private boolean function hasError(required struct r, required string code) {
 		for (var e in arguments.r.errors) if (e.code == arguments.code) return true;
+		return false;
+	}
+
+	private boolean function hasPath(required struct r, required string path) {
+		for (var e in arguments.r.errors) if (structKeyExists(e, "path") && e.path == arguments.path) return true;
 		return false;
 	}
 

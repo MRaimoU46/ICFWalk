@@ -175,8 +175,25 @@ component output="false" {
 			// to be stored at -- it decides which published version the runtime serves at all --
 			// so a document that disagrees about it is refused atomically here rather than
 			// silently dropped.
+			//
+			// THE CONFLICT IS DECIDED ON THE LOCKED CURRENT ROW, NOT ON THE EARLIER LOOKUP. The
+			// read at the top of this transaction resolves the instrument id; it is an ordinary
+			// unlocked read and an authorized metadata change can commit after it. Deciding the
+			// conflict from that object meant an administrator's deactivation, committed in the
+			// gap, was invisible here: the document said "active" and the stale object agreed, so
+			// the import was accepted against a row that no longer said so. The row is therefore
+			// re-read under UPDLOCK/HOLDLOCK now -- AFTER the version lock above, preserving the
+			// declared version-then-instrument order, so this can never deadlock with a publish --
+			// and the locked row is what the decision, and the rest of this transaction, sees.
 			if (!structIsEmpty(instrument)) {
-				var conflicts = sharedMetadataConflicts(instrument, normalized.instrument);
+				var current = variables.repo.lockInstrumentById(instrumentId);
+				if (structIsEmpty(current)) {
+					// The instrument existed a moment ago and does not now. Refuse rather than
+					// re-create it: an import does not own the shared row's existence either.
+					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", "IMPORT", "SHARED_METADATA_CONFLICT", actor);
+					variables.errors.notFound("No instrument with code '" & normalized.instrument.code & "' exists.", "INSTRUMENT_NOT_FOUND");
+				}
+				var conflicts = sharedMetadataConflicts(current, normalized.instrument);
 				if (arrayLen(conflicts)) {
 					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", "IMPORT", "SHARED_METADATA_CONFLICT", actor);
 					variables.errors.importValidation(
