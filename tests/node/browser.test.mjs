@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { api, baseUrl, loadRuntimeEnv, root } from "./helpers.mjs";
+import { api, baseUrl, loadRuntimeEnv, root, screenshotDir } from "./helpers.mjs";
 
 const require = createRequire(import.meta.url);
 const env = loadRuntimeEnv();
@@ -16,7 +16,7 @@ const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
 const tag = `browser-${Date.now().toString(36)}`;
 const subject = `${tag}-walker`;
 const groupSubject = `${tag}-group-walker`;
-const shotDir = path.join(root, "docs", "evidence", "screenshots");
+const shotDir = screenshotDir(env);
 
 let chromium = null;
 try { ({ chromium } = require("playwright")); } catch { chromium = null; }

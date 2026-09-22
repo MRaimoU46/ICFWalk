@@ -268,7 +268,9 @@ Changing the shared row deliberately is `InstrumentMetadataService.updateMetadat
   and a coerced `false` takes a published version out of service); and at least one supported
   member (`INSTRUMENT_METADATA_NO_CHANGES`).
 * **A patch with no material difference is a no-op** (`docs/OPEN_DECISIONS.md`): no write, no audit
-  event, no `row_version` movement, and `noOp: true` in the result.
+  event, no `row_version` movement, and `noOp: true` in the result. Materiality is exact: `name` and
+  `description` are compared case-sensitively and `active` as a boolean, so a capitalization-only
+  edit is a real change, written and audited.
 * Exactly one `INSTRUMENT_METADATA_UPDATED` audit event names the actor and what changed. Narrative
   content never enters it: the description is reported as `descriptionChanged`, never as its text.
 
@@ -327,11 +329,16 @@ lock at all, so it cannot invert the order either; import takes the version row 
 re-reads `icf.instrument` under its own lock, in that order, to decide the shared-metadata
 conflict on the current row rather than on the unlocked read it used to resolve the instrument id.
 
-That ordering is proved, not assumed. `PublishConcurrencyBarrierTest` holds transaction A at the
-statement that takes the version lock, starts transaction B there, observes that B cannot finish,
-releases A, and then asserts the one permitted serial outcome and the final state -- for publish
-against publish, publish against import, and import against publish. The seam is a test-only
-repository decorator; no production configuration exposes a lock hook.
+That ordering is proved, not assumed, by a two-sided barrier. Transaction A emits `A_LOCKED` from
+inside its transaction once it holds the lock; transaction B emits `B_AT_COMPETING_BOUNDARY`
+immediately before the database call that contends for it; A is released only after B is heard,
+and the spec asserts both signals in that order and then the one permitted serial outcome and the
+final state. That B had not finished while A held the lock is asserted only as supplemental
+evidence, never as the proof of arrival. `PublishConcurrencyBarrierTest` covers publish against
+publish, publish against import, import against publish, and publish against a new dimension
+identity and a new dimension-value identity; `SharedMetadataConcurrencyBarrierTest` covers metadata
+against metadata and import's shared-state check against an authorized metadata update. The seam is
+a test-only repository decorator; no production configuration exposes a lock hook.
 
 There is **no unchecked deletion path**. `deleteDraftVersionCascade` refuses a non-DRAFT version like
 every other mutator. Test fixtures that must remove a frozen fixture version use the test-only

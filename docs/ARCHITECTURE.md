@@ -389,9 +389,10 @@ records the decision, and `RenderModelBuilder` and `SnapshotCompiler` read their
 (the option-filter table, the placeholder review status) from it rather than keeping copies.
 
 **One lock order.** `instrument_version` under `UPDLOCK, ROWLOCK` first, children afterwards -- for
-publication, for import, and inside every repository mutator
-(`DefinitionRepository.requireDraftVersion`). A publish racing an edit therefore queues on one row
-rather than interleaving into a partially frozen version, and neither order can deadlock by design.
+publication, for import, inside every repository mutator that writes version content
+(`DefinitionRepository.requireDraftVersion`), and inside the global identity creators' own single
+`INSERT ... SELECT` (below). A publish racing an edit therefore queues on one row rather than
+interleaving into a partially frozen version, and neither order can deadlock by design.
 
 **A structural write boundary, including the shared and global rows.** Immutability is not a
 helper a caller must remember. Every repository mutator that writes version content locks and checks
@@ -477,12 +478,20 @@ changing what V1 accepted while its snapshot, checksum and `row_version` stayed 
 detection queries and the reviewed remediation procedure.
 
 **Concurrency is proved with a barrier, not with timing.** Repeated `Promise.all` races are kept as
-stress coverage, but they cannot show that two transactions ever overlapped. `PublishConcurrencyBarrierTest`
-uses `tests/cfml/support/InterceptingDefinitionRepository` to fire a callback immediately after the
-statement that takes the version's row lock, starts the competing transaction there, observes that
-it cannot finish, then lets the first commit and asserts the one permitted serial outcome and the
-final state. The decorator is test-only: the container never holds it and no route reaches it, so
-there is no configuration in which a client can activate a lock hook.
+stress coverage, but they cannot show that two transactions ever overlapped. The deterministic
+proof is a two-sided barrier (`tests/cfml/support/ConcurrencyBarrier.cfc`, driven through the
+`armBefore` / `armAfter` seams of `tests/cfml/support/InterceptingDefinitionRepository`). Transaction
+A emits `A_LOCKED` from inside its transaction once it holds the production lock; the competing
+request B emits `B_AT_COMPETING_BOUNDARY` immediately before the database call that contends for
+that lock. The spec releases A only after hearing B, asserts both signals were observed in that
+order, and then asserts the one permitted serial outcome and the final state. That B had not
+finished while A held the lock is asserted too, but only as supplemental evidence once its arrival
+has been independently observed; non-completion on its own proves nothing about arrival. Seven
+pairings are covered: publish/publish, publish/import, import/publish, publish/new dimension
+identity and publish/new dimension-value identity (`PublishConcurrencyBarrierTest`), and
+metadata/metadata and import's shared-state check against an authorized metadata update
+(`SharedMetadataConcurrencyBarrierTest`). The decorator is test-only: the container never holds it
+and no route reaches it, so there is no configuration in which a client can activate a lock hook.
 
 ## What Phase 6 builds on
 

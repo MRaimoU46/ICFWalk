@@ -22,6 +22,8 @@
  *     at least one supported change required.
  *   - A patch that produces no material difference is a NO-OP: nothing is written, no audit event
  *     is recorded, and the row version does not move (docs/OPEN_DECISIONS.md).
+ *   - "Material" is case-sensitive: a name or description that differs only in capitalization is
+ *     a real change, written, versioned and audited like any other.
  *   - The component is still unreachable from src/http and src/controllers.
  *
  * The concurrency properties of the same operation -- that the locked read, merge, update and
@@ -252,6 +254,87 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(after.active);
 	}
 
+	/**
+	 * A change of capitalization in the name is a real change.
+	 *
+	 * CFML's `!=` on strings ignores case, so "ICFWalk" -> "Icfwalk" compared equal and a legitimate
+	 * rename was classified as a no-op: nothing written, row version unmoved, no audit. Every value
+	 * assertion here uses assertExactText, because BaseSpec.assertEquals compares with the same
+	 * case-insensitive operator and would pass whichever capitalization the row held.
+	 */
+	public void function testACaseOnlyNameChangeIsMaterial() {
+		var narrative = "Name case probe narrative " & createUUID();
+		variables.svc.updateMetadata(variables.instrumentCode, { "name": "ICFWalk", "description": narrative }, variables.admin);
+		var before = instrumentRow();
+		assertExactText("ICFWalk", before.name, "precondition: the stored name");
+		variables.baselineEventId = variables.db.scalar("SELECT ISNULL(MAX(event_id), 0) AS n FROM [icf].[audit_event]");
+
+		var result = variables.svc.updateMetadata(variables.instrumentCode, { "name": "Icfwalk" }, variables.admin);
+		var after = instrumentRow();
+
+		assertExactText(variables.adminId, result.updatedByUserId, "the authorized principal is the actor");
+		assertFalse(result.noOp, "a case-only name change is material, not a no-op (changedFields=" & serializeJSON(result.changedFields) & ", stored name=" & after.name & ")");
+		assertEquals(1, arrayLen(result.changedFields), "exactly one field changed");
+		assertExactText("name", result.changedFields[1], "and it is the name");
+		assertExactText("Icfwalk", result.name, "the result reports the requested capitalization");
+		assertExactText("Icfwalk", after.name, "the requested capitalization is what is stored");
+		assertExactText(narrative, after.description, "the omitted description kept its stored value");
+		assertTrue(after.active, "and so did active");
+		assertNotEquals(before.rowVersion, after.rowVersion, "the row was written");
+
+		var event = metadataEventsSince();
+		assertEquals(1, event.recordCount, "exactly one INSTRUMENT_METADATA_UPDATED event");
+		assertExactText(variables.adminId, uCase(event.actor_user_id[1]), "the audit actor is the authorized principal");
+		var details = deserializeJSON(event.details_json[1]);
+		assertExactText(variables.instrumentCode, details.instrumentCode);
+		assertEquals(1, arrayLen(details.changedFields));
+		assertExactText("name", details.changedFields[1], "the audit names the name as changed");
+		assertExactText("ICFWalk", details.previousName, "the audit records the replaced capitalization");
+		assertExactText("Icfwalk", details.name, "and the committed one");
+		assertTrue(details.previousActive, "lifecycle facts: previously active");
+		assertTrue(details.active, "and still active");
+		assertFalse(details.descriptionChanged, "the description did not change");
+		assertFalse(findNoCase(narrative, event.details_json[1]) > 0, "description narrative never reaches the audit");
+	}
+
+	/** And so is a change of capitalization in the description, reported without its text. */
+	public void function testACaseOnlyDescriptionChangeIsMaterial() {
+		var original = "Description case probe narrative " & lCase(createUUID());
+		var recased = uCase(original);
+		variables.svc.updateMetadata(variables.instrumentCode, { "name": "Description case probe", "description": original }, variables.admin);
+		var before = instrumentRow();
+		assertExactText(original, before.description, "precondition: the stored description");
+		variables.baselineEventId = variables.db.scalar("SELECT ISNULL(MAX(event_id), 0) AS n FROM [icf].[audit_event]");
+
+		var result = variables.svc.updateMetadata(variables.instrumentCode, { "description": recased }, variables.admin);
+		var after = instrumentRow();
+
+		assertExactText(variables.adminId, result.updatedByUserId, "the authorized principal is the actor");
+		assertFalse(result.noOp, "a case-only description change is material, not a no-op (changedFields=" & serializeJSON(result.changedFields) & ", stored description=" & after.description & ")");
+		assertEquals(1, arrayLen(result.changedFields), "exactly one field changed");
+		assertExactText("description", result.changedFields[1], "and it is the description");
+		assertExactText(recased, result.description, "the result reports the requested capitalization");
+		assertExactText(recased, after.description, "the requested capitalization is what is stored");
+		assertExactText("Description case probe", after.name, "the omitted name kept its stored value");
+		assertTrue(after.active, "and so did active");
+		assertNotEquals(before.rowVersion, after.rowVersion, "the row was written");
+
+		var event = metadataEventsSince();
+		assertEquals(1, event.recordCount, "exactly one INSTRUMENT_METADATA_UPDATED event");
+		assertExactText(variables.adminId, uCase(event.actor_user_id[1]), "the audit actor is the authorized principal");
+		var details = deserializeJSON(event.details_json[1]);
+		assertExactText(variables.instrumentCode, details.instrumentCode);
+		assertEquals(1, arrayLen(details.changedFields));
+		assertExactText("description", details.changedFields[1], "the audit names the description as changed");
+		assertExactText("Description case probe", details.previousName, "lifecycle facts: the name before");
+		assertExactText("Description case probe", details.name, "and after, unchanged");
+		assertTrue(details.previousActive, "previously active");
+		assertTrue(details.active, "and still active");
+		assertTrue(details.descriptionChanged, "the description change is reported as a lifecycle fact");
+		assertFalse(findNoCase(original, event.details_json[1]) > 0, "neither the replaced description text");
+		assertFalse(findNoCase(recased, event.details_json[1]) > 0, "nor the committed one reaches the audit");
+	}
+
 	/** A missing instrument is refused, and nothing is audited as a success. */
 	public void function testAMissingInstrumentIsRefusedWithoutAuditingSuccess() {
 		var svc = variables.svc;
@@ -339,6 +422,26 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"active": q.active[1] ? true : false,
 			"rowVersion": binaryEncode(q.row_version[1], "hex")
 		};
+	}
+
+	/**
+	 * Byte-exact text equality. BaseSpec.assertEquals compares with CFML's `!=`, which ignores case,
+	 * so it cannot tell "ICFWalk" from "Icfwalk"; compare() can.
+	 */
+	private void function assertExactText(required string expected, required string actual, string message = "") {
+		if (compare(arguments.expected, arguments.actual) != 0) {
+			fail((len(arguments.message) ? arguments.message & " " : "") & "Expected exactly [" & left(arguments.expected, 300) & "] but got [" & left(arguments.actual, 300) & "].");
+		}
+	}
+
+	/** The INSTRUMENT_METADATA_UPDATED events written since this case's baseline, oldest first. */
+	private query function metadataEventsSince() {
+		return variables.db.run(
+			"SELECT actor_user_id, details_json FROM [icf].[audit_event]
+			  WHERE entity_id = :id AND event_type = N'INSTRUMENT_METADATA_UPDATED' AND event_id > :since
+			  ORDER BY event_id",
+			{ "id": variables.db.guid(instrumentId()), "since": variables.db.bigint(variables.baselineEventId) }
+		);
 	}
 
 	/** Metadata audit events written since this case's baseline was established. */

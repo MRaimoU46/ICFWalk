@@ -82,6 +82,16 @@ export async function applyScript(pool, text) {
   }
 }
 
+/**
+ * Where the browser suites write their screenshots: the tracked docs/evidence/screenshots by
+ * default. ICFWALK_SCREENSHOT_DIR redirects them. Playwright's PNG bytes differ from run to run on
+ * the same machine (font hinting, antialiasing), so an exact-commit release gate points this
+ * outside the repository; otherwise running the gate would change the tree it is proving.
+ */
+export function screenshotDir(env) {
+  return env.ICFWALK_SCREENSHOT_DIR ? path.resolve(env.ICFWALK_SCREENSHOT_DIR) : path.join(root, "docs", "evidence", "screenshots");
+}
+
 export function baseUrl(env) {
   return (env.ICFWALK_BASE_URL || `http://127.0.0.1:${env.ICFWALK_PORT || 8888}`).replace(/\/$/, "");
 }

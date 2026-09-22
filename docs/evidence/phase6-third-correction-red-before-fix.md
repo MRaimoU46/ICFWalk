@@ -94,6 +94,17 @@ above is what demonstrates the defect; this is what demonstrates the capability 
 **Green.** `POST /api/maintenance/tests/run?filter=InstrumentMetadataServiceTest` →
 `TOTALS passed=15 failed=0 skipped=0`.
 
+**One test was replaced, not removed** *(recorded by the fourth correction pass)*.
+`SharedInstrumentBoundaryTest.testTheAuthorizedOperationRefusesAnUnknownActor` (second correction)
+called `updateMetadata(code, changes, actorUserId)` with an unknown GUID and a blank string and
+expected `INSTRUMENT_METADATA_ACTOR_REQUIRED`. This correction removed the actor-id parameter from
+the service contract, so that test could no longer be written against it. It was replaced by
+`SharedInstrumentBoundaryTest.testTheAuthorizedOperationRefusesACallerThatIsNotAPrincipal`, which
+refuses an unknown GUID and a blank string as before **and** the id of the user who really holds
+`instrument.manage`, each with `INSTRUMENT_METADATA_PRINCIPAL_REQUIRED` and nothing written. The
+replacement is strictly stronger and no behaviour coverage was removed. The obsolete actor-id
+contract was not restored to keep the old name.
+
 ---
 
 ## Defect 3: global identity creation is not atomically DRAFT-qualified
@@ -248,8 +259,13 @@ thing it replaces.
 
 **Green.** `node --test tests/node/remediation-exact-identity.test.mjs` → `# pass 1 # fail 0`, with
 only `school/other` removed, `content/other` and `classType/other` intact, all three global `other`
-identities surviving, the frozen checksum unmoved, and the refusal paths (50060, 50061, 2627)
-exercised.
+identities surviving, the frozen checksum unmoved, and two refusal paths executed against the real
+database: 50060 (an unresolvable pair, and a pair naming a dimension the version does not place)
+and 2627 (a duplicated approval rejected by the list's own primary key). Error 50061 -- the
+`EXCEPT` check that the deleted set equals the approved set -- is asserted **structurally only**:
+the test requires the SQL extracted from the document to contain `THROW 50061`, but no run reaches
+that branch, so it is not behaviourally exercised. *(Corrected by the fourth correction pass; this
+record originally said 50060, 50061 and 2627 were all exercised.)*
 
 ---
 

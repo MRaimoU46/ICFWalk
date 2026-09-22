@@ -10,14 +10,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { api, baseUrl, loadRuntimeEnv, root } from "./helpers.mjs";
+import { api, baseUrl, loadRuntimeEnv, screenshotDir } from "./helpers.mjs";
 
 const require = createRequire(import.meta.url);
 const env = loadRuntimeEnv();
 const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
 const tag = `persist-${Date.now().toString(36)}`;
 const subject = `${tag}-walker`;
-const shotDir = path.join(root, "docs", "evidence", "screenshots");
+const shotDir = screenshotDir(env);
 // The application's autosave debounce; the recovery interleavings below are pinned inside it.
 const AUTOSAVE_DEBOUNCE = 700;
 

@@ -10,15 +10,15 @@ administration UI -- has **not** been started, and neither has Phase 7.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 6 publish-foundation second correction candidate, awaiting independent
+**Current state: Phase 6 publish-foundation fourth correction candidate, awaiting independent
 verification.** Branch `claude/icfwalk-phase-6-admin-publish`, on top of the frozen Phase 5 baseline
 `e55ec08af5b8622db5823b6e353423b891918549`. Phase 6 is **not** frozen and **not** complete; the
 correction it carries has not yet been independently audited.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
-the Phase 6 publish-foundation correction, and finally the Phase 6 publish-foundation **second**
-correction, which is the current state of the build.
+the Phase 6 publish-foundation correction, its second and third corrections, and finally the
+Phase 6 publish-foundation **fourth** correction, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -2701,7 +2701,7 @@ The new CFML specs, as reported by that run: `ValidatorRendererContractTest` 18,
    fresh independent audit. Phase 6 is **not** frozen and **not** complete, and no `phase-6-freeze`
    tag was created.
 
-## Phase 6 publish-foundation third correction (current state)
+## Phase 6 publish-foundation third correction (superseded in part by the fourth correction below)
 
 Correction-only session against a third independent audit, this one of the second correction
 (`bff53f53eaacfed977eefd4648577ed5cbba196c`), whose verdict was **NOT READY TO ACCEPT THE PHASE 6
@@ -2898,4 +2898,147 @@ test more room to pass; both make a real result distinguishable from a harness l
    operator.
 3. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
 4. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
+   **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.
+
+## Phase 6 publish-foundation fourth correction (current state)
+
+Correction-only session against a fourth independent audit, this one of the third correction
+(`a8e97f22ae1639faef5b6e68bf7255dea838f8e2`), whose verdict was **NOT READY TO ACCEPT THE PHASE 6
+PUBLISH FOUNDATION** with 0 HIGH, 2 MEDIUM and 2 LOW findings. The audit found all seven defects of
+the preceding cycle materially closed, and those fixes are preserved unchanged: the locked shared
+metadata read, import's version-then-instrument re-read before `SHARED_METADATA_CONFLICT`, the
+current-principal and `instrument.manage` requirement with the actor derived from the principal,
+the single status-qualified identity `INSERT ... SELECT` with `OUTPUT INSERTED`, the two-sided
+`A_LOCKED` / `B_AT_COMPETING_BOUNDARY` barrier, JSON-number snapshot counts with the typed
+non-object refusal, and the exact-identity remediation with the explicit `DRAFT` declaration. No
+schema migration, route, dependency, production hook or freeze tag was added, and none of ADM-02,
+ADM-06, ADM-07, ADM-08, the administration UI or Phase 7 was started. **This is a correction
+candidate awaiting independent verification: Phase 6 is not frozen, not complete and not accepted.**
+
+Starting point, verified before any edit: branch `claude/icfwalk-phase-6-admin-publish` at exactly
+`a8e97f22ae1639faef5b6e68bf7255dea838f8e2` (tree `7b2e175afc7668e7d19df7966a59067f7145dacf`), a
+completely clean working tree including untracked files, the Phase 5 baseline
+`e55ec08af5b8622db5823b6e353423b891918549` an ancestor of HEAD, and the local branch equal to
+`origin/claude/icfwalk-phase-6-admin-publish`. No freeze tag exists locally or on the remote.
+
+### What was wrong, and what each fix is
+
+**1 (MEDIUM). Metadata change detection ignored case.** `InstrumentMetadataService.updateMetadata`
+compared `toString(before[field]) != toString(after[field])`, and CFML's string `!=` is
+case-insensitive. A legitimate rename from `ICFWalk` to `Icfwalk`, or a capitalization-only
+description edit, was classified as a no-op: nothing written, `row_version` unmoved, no audit event.
+
+*Fix.* `name` and `description` are compared with `compare()`, which is case-sensitive, and `active`
+as a boolean (`XOR`), never through `toString`. The locked read, the transaction, authorization,
+actor attribution, validation, the narrative exclusion, the absent route and the public method
+contract are unchanged. Two regressions, `testACaseOnlyNameChangeIsMaterial` and
+`testACaseOnlyDescriptionChangeIsMaterial`, were written first and observed to fail against the
+unmodified production code (`changedFields=[]`, old capitalization still stored); they pass after
+the fix, and the existing no-op case still passes. Their text assertions use a byte-exact
+`compare()` helper, because `BaseSpec.assertEquals` uses the same case-insensitive operator and
+could not have detected the defect. Record: `docs/evidence/phase6-fourth-correction-red-before-fix.md`.
+
+**2 (MEDIUM). The primary acceptance rows described the superseded implementation.** ADM-04 still
+said B's non-completion proved it had reached the competing lock and named three pairings; ADM-05
+still said the global identity creators call `requireDraftVersion` before an INSERT and that
+`updateInstrumentMetadata` requires a named known `icf.app_user`.
+
+*Fix.* Both rows in `docs/ACCEPTANCE_TRACKING.md` were rewritten in place. ADM-04 describes the two
+independently observed barrier signals, states that non-completion is supplemental only, and names
+all seven pairings with their test methods. ADM-05 describes the single status-qualified
+`INSERT ... SELECT` with `OUTPUT INSERTED`, the current-principal requirement, central
+`instrument.manage`, and actor derivation from `principal.userId`, with current test names and
+counts. The same superseded barrier description was corrected in `docs/ARCHITECTURE.md` and
+`docs/DATA_CONTRACT.md`, ARCHITECTURE's lock-order paragraph no longer names `requireDraftVersion`
+for every mutator, and the no-op statements in `DATA_CONTRACT.md` and `OPEN_DECISIONS.md` now say
+materiality is case-sensitive. The header of this file had also gone stale (it still named the
+second correction as current) and was corrected. A new CORR7 ledger records all four findings.
+
+**3 (LOW). The evidence ledger overstated two facts.** The third correction's environment record
+said 26 CFML spec files ran; there were 31, and its raw transcript names the same 31. Its
+red-before-green record said the remediation regression exercised 50060, 50061 and 2627; the test
+executes 50060 and 2627 and only asserts structurally that the published SQL contains
+`THROW 50061`.
+
+*Fix.* The count is corrected to 31 with the reconciliation recorded (`git ls-tree` at `a8e97f2`
+and the transcript's distinct spec names both give 31, and the lists are identical). The 50061
+wording now says structurally asserted, not behaviourally exercised; no artificial 50061 path was
+added. The replacement of `testTheAuthorizedOperationRefusesAnUnknownActor` by
+`testTheAuthorizedOperationRefusesACallerThatIsNotAPrincipal` is recorded explicitly: the service no
+longer accepts an actor id, the replacement also refuses the id of a user who holds
+`instrument.manage`, and no behaviour coverage was removed. The raw third-correction transcript is
+unchanged.
+
+**4 (LOW). The previous gate did not prove the committed tree.** It ran at `bff53f5` with a dirty
+working tree and was committed afterwards.
+
+*Fix.* This correction is committed first; the working tree is then confirmed completely clean;
+the complete clean-database release gate runs from that exact commit with its transcript captured
+outside the repository; and `HEAD`, `HEAD^{tree}`, porcelain status, both diffs, baseline ancestry
+and the remote ref are recorded before and after. The raw final transcript and the final
+environment record are handoff artifacts outside the repository, because committing them after the
+gate would create a different, untested commit. The browser suites previously wrote their
+screenshots only into the tracked `docs/evidence/screenshots/`, and Playwright's PNG bytes differ
+run to run, so an honest exact-commit gate would have dirtied its own tree. They now honour a
+test-harness variable, `ICFWALK_SCREENSHOT_DIR` (default unchanged, documented in
+`docs/LOCAL_SETUP.md`), which the final gate points outside the repository.
+
+### Files changed (fourth correction)
+
+| File | Change |
+| --- | --- |
+| `src/instrument/InstrumentMetadataService.cfc` | Case-sensitive `compare()` for `name` and `description`, boolean comparison for `active`; header comment records that materiality is case-sensitive. |
+| `tests/cfml/specs/InstrumentMetadataServiceTest.cfc` | Two case-only regressions, a byte-exact `assertExactText` helper and a `metadataEventsSince` helper. 15 -> 17 cases. |
+| `tests/node/helpers.mjs` | `screenshotDir(env)`: `ICFWALK_SCREENSHOT_DIR` or the tracked default. |
+| `tests/node/browser.test.mjs`, `browser-email.test.mjs`, `browser-persistence.test.mjs` | Write screenshots to `screenshotDir(env)`. No assertion changed. |
+| `docs/ACCEPTANCE_TRACKING.md` | ADM-04 and ADM-05 rewritten in place; CORR6-02 and CORR6-06 made exact; CORR7 ledger added. |
+| `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md` | Superseded barrier and lock-order statements corrected; case-sensitive materiality stated. |
+| `docs/LOCAL_SETUP.md` | `ICFWALK_SCREENSHOT_DIR` documented for exact-commit gates. |
+| `docs/evidence/phase6-third-correction-environment.md` | 26 -> 31 spec files, with the reconciliation. |
+| `docs/evidence/phase6-third-correction-red-before-fix.md` | 50061 stated as structural only; the replaced test recorded. |
+| `docs/evidence/phase6-fourth-correction-red-before-fix.md` | **New.** The observed red and green output for CORR7-01. |
+| `manifest.json` | Refreshed for `DATA_CONTRACT.md` and `OPEN_DECISIONS.md` with `scripts/refresh-manifest.mjs`. |
+| `BUILD_STATUS.md` | Header corrected; this section. |
+
+### Verification
+
+Focused, against the live stack (Lucee 6.2.8.20, SQL Server 2022 16.0.4295.3), after the fix:
+`InstrumentMetadataServiceTest` 17/17, `SharedMetadataConcurrencyBarrierTest` 6/6,
+`GlobalIdentityBoundaryTest` 6/6, `PublishConcurrencyBarrierTest` 5/5,
+`SharedInstrumentBoundaryTest` 7/7, `InstrumentConfigValidatorTest` 18/18,
+`InstrumentImportServiceTest` 10/10, `DefinitionValidatorTest` 50/50,
+`InstrumentPublishServiceTest` 53/53, and `tests/node/remediation-exact-identity.test.mjs` 1/1, all
+with zero skips.
+
+Development run of the complete gate, before this commit existed, against the uncommitted working
+tree of this correction (a gate script kept outside the repository, in its development mode): a
+freshly dropped and recreated `icfwalk_dev` taken through `001`..`006`, `006` immediately re-applied
+(`legacy_membership_backfill_ran_now = 0`), Lucee restarted on it and the DRAFT seeded;
+`npm ci`; `validate:handoff` 51 checks, 0 errors; `test:package` 19/19, 0 skipped; all 37 tracked
+JavaScript/MJS files parse; `ICFWALK_REQUIRE_APP=1 npm test` 175/175 with 0 failed, 0 cancelled, 0
+skipped, 0 todo; CFML 377/377 (375 before, plus the two new cases) with 0 failed and 0 skipped, from
+31 spec files whose reported names equal the `*Test.cfc` files exactly. No suite or case
+disappeared. The 13 screenshots went to a directory outside the repository and no tracked PNG
+changed.
+
+**The authoritative result is the exact-commit gate**, run after this commit existed, from a
+completely clean tree, and recorded outside the repository with the final environment record. Its
+totals are reported with the handoff, not here, because writing them here would change the commit
+they describe.
+
+### Unresolved and not verified (fourth correction)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** All CFML execution was on Lucee
+   6.2.8.20 and all SQL on SQL Server 2022. `compare()` is documented as case-sensitive on Adobe
+   ColdFusion as well, but the new cases have not been run there; they are listed for that
+   platform in `docs/evidence/phase6-fourth-correction-red-before-fix.md`. This correction adds no
+   SQL.
+2. **The `phase-5-freeze` tag still does not exist**, locally or on the remote. This correction did
+   not create, move or push any tag. It remains an open repository action for an authorized
+   operator.
+3. **`BaseSpec.assertEquals` is case-insensitive.** It was not changed, because doing so would
+   alter the meaning of every existing assertion in the suite. New text assertions in this pass use
+   `compare()` directly.
+4. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
+5. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.

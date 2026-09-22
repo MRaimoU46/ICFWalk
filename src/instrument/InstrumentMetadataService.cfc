@@ -46,7 +46,9 @@
  *     active an ACTUAL boolean, never a coerced string or number; at least one supported member.
  *   - A patch that produces no material difference is a NO-OP (docs/OPEN_DECISIONS.md): the row is
  *     not written, no audit event is recorded, updated_at and row_version do not move, and the
- *     result says `noOp`. An administrative action that changed nothing is not a change.
+ *     result says `noOp`. An administrative action that changed nothing is not a change. The
+ *     comparison is case-sensitive: a name or description that differs only in capitalization is
+ *     a material change.
  *   - It writes exactly one INSTRUMENT_METADATA_UPDATED audit event on a real change, carrying the
  *     before and after of the lifecycle facts it changed. Narrative content is never copied into
  *     an audit event: the description is reported as `descriptionChanged`, never as its text.
@@ -125,10 +127,13 @@ component output="false" {
 				"active": structKeyExists(patch, "active") ? patch.active : before.active
 			};
 
+			// Case-sensitive, deliberately. CFML's string `!=` ignores case, so "ICFWalk" -> "Icfwalk"
+			// used to compare equal and a real rename was dropped as a no-op: nothing written, no
+			// audit. compare() is case-sensitive; `active` is compared as the boolean it is.
 			var changed = [];
-			for (var field in variables.SUPPORTED) {
-				if (toString(before[field]) != toString(after[field])) arrayAppend(changed, field);
-			}
+			if (compare(before.name, after.name) != 0) arrayAppend(changed, "name");
+			if (compare(before.description, after.description) != 0) arrayAppend(changed, "description");
+			if (before.active XOR after.active) arrayAppend(changed, "active");
 
 			// A patch that produces no material difference is a no-op: no write, no audit, no row
 			// version movement. The read above already told us so, under the lock, so this is a

@@ -139,8 +139,21 @@ Exact totals are in the gate transcript. At the time this record was written:
 
 The 175 figure counts Node test *cases*, one of which is the CFML suite driver; the 375 figure is
 the CFML spec cases it in turn ran, reported by the suite driver itself and appearing in the
-transcript as a `t.diagnostic` line. 26 spec files ran, each exactly once, asserted by comparing the
+transcript as a `t.diagnostic` line. 31 spec files ran, each exactly once, asserted by comparing the
 names that reported against the `*Test.cfc` files on disk.
+
+**Corrected by the fourth correction pass.** This record originally said 26 spec files ran. That
+was wrong; the transcript itself was not. Reconciled by counting both sides independently:
+
+```
+$ git ls-tree --name-only a8e97f22ae1639faef5b6e68bf7255dea838f8e2 tests/cfml/specs/ | grep -c 'Test\.cfc$'
+31
+$ grep -oE '^# [A-Za-z0-9]+Test\.test' phase6-third-correction-release-gate.txt | sed -E 's/^# //; s/\.test$//' | sort -u | wc -l
+31
+```
+
+and the two sorted name lists are identical (`diff` prints nothing). The raw transcript
+`phase6-third-correction-release-gate.txt` is kept exactly as it was produced.
 
 For comparison with the preceding archive, which claimed 174 Node/HTTP/Playwright passes and 330
 CFML passes without including the matching raw transcript: the Node count moved 174 → 175 because

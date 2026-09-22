@@ -197,6 +197,15 @@ ICFWALK_REQUIRE_APP=1 npm test
 `tests/node/no-mail.test.mjs` is the gate that enforces this today: its four static scans always
 run, and its live route probe is a skip or a failure but never a vacuous pass.
 
+The browser suites write their screenshots into `docs/evidence/screenshots/` by default, and
+Playwright's PNG bytes differ from run to run on the same machine. A release gate that has to prove
+it ran against an exact, clean commit points them outside the repository, so running the gate does
+not change the tree it is proving:
+
+```bash
+ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR=/some/dir/outside/the/repo npm test
+```
+
 ### Regenerating and reviewing the summary vectors (Phase 5 tooling, not part of `npm test`)
 
 `tests/fixtures/summary-vectors.json` is the parity contract between `src/walks/WalkSummaryFormatter.cfc`
