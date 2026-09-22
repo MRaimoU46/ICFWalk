@@ -425,23 +425,37 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 */
 	public void function testSemanticOptionInAForeignResponseSetIsRefused() {
 		var other = draft("sem-optset-other");
-		var foreignSet = variables.db.run(
-			"SELECT TOP (1) response_set_id FROM [icf].[response_set] WHERE version_id = :id",
-			{ "id": variables.db.guid(other.versionId) }
-		);
-		var foreign = uCase(foreignSet.response_set_id[1]);
 		expectSemanticRefusal("sem-optset", function(versionId) {
 			var used = variables.db.run(
 				"SELECT TOP (1) s.response_set_id FROM [icf].[response_set] s
 				   JOIN [icf].[item_definition] i ON i.response_set_id = s.response_set_id
-				  WHERE s.version_id = :id",
+				  WHERE s.version_id = :id
+				  ORDER BY s.response_set_id",
 				{ "id": variables.db.guid(versionId) }
 			);
+			var usedId = uCase(used.response_set_id[1]);
+			// The other draft is a copy of the same instrument, so an arbitrary set there can already
+			// hold one of the moved option keys or stored codes (about 70% of the possible pairings in
+			// the supplied instrument do), and the UPDATE then fails on UQ_response_option_set_key or
+			// UQ_response_option_set_code before the publish under test is reached. An unordered
+			// TOP (1) made that depend on the query plan and the generated ids. Take a set that
+			// shares neither with the moved options.
+			var foreignSet = variables.db.run(
+				"SELECT TOP (1) f.response_set_id FROM [icf].[response_set] f
+				  WHERE f.version_id = :otherId
+				    AND NOT EXISTS (
+				        SELECT 1 FROM [icf].[response_option] fo
+				          JOIN [icf].[response_option] mo ON mo.option_key = fo.option_key OR mo.stored_code = fo.stored_code
+				         WHERE fo.response_set_id = f.response_set_id AND mo.response_set_id = :setId)
+				  ORDER BY f.response_set_id",
+				{ "otherId": variables.db.guid(other.versionId), "setId": variables.db.guid(usedId) }
+			);
+			assertEquals(1, foreignSet.recordCount, "precondition: the other draft has a response set that can receive every moved option");
 			// Orders are unique per set, so the moved options take orders the target set cannot
 			// already hold.
 			variables.db.run(
 				"UPDATE [icf].[response_option] SET response_set_id = :foreign, display_order = display_order + 500000 WHERE response_set_id = :setId",
-				{ "setId": variables.db.guid(uCase(used.response_set_id[1])), "foreign": variables.db.guid(foreign) }
+				{ "setId": variables.db.guid(usedId), "foreign": variables.db.guid(uCase(foreignSet.response_set_id[1])) }
 			);
 		}, ["RESPONSE_SET_EMPTY"]);
 	}

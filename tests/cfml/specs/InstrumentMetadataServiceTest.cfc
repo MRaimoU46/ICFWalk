@@ -280,7 +280,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertExactText("Icfwalk", after.name, "the requested capitalization is what is stored");
 		assertExactText(narrative, after.description, "the omitted description kept its stored value");
 		assertTrue(after.active, "and so did active");
-		assertNotEquals(before.rowVersion, after.rowVersion, "the row was written");
+		assertTrue(compare(before.rowVersion, after.rowVersion) != 0, "the row was written: row_version " & before.rowVersion & " -> " & after.rowVersion);
 
 		var event = metadataEventsSince();
 		assertEquals(1, event.recordCount, "exactly one INSTRUMENT_METADATA_UPDATED event");
@@ -317,7 +317,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertExactText(recased, after.description, "the requested capitalization is what is stored");
 		assertExactText("Description case probe", after.name, "the omitted name kept its stored value");
 		assertTrue(after.active, "and so did active");
-		assertNotEquals(before.rowVersion, after.rowVersion, "the row was written");
+		assertTrue(compare(before.rowVersion, after.rowVersion) != 0, "the row was written: row_version " & before.rowVersion & " -> " & after.rowVersion);
 
 		var event = metadataEventsSince();
 		assertEquals(1, event.recordCount, "exactly one INSTRUMENT_METADATA_UPDATED event");
@@ -426,7 +426,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	/**
 	 * Byte-exact text equality. BaseSpec.assertEquals compares with CFML's `!=`, which ignores case,
-	 * so it cannot tell "ICFWalk" from "Icfwalk"; compare() can.
+	 * so it cannot tell "ICFWalk" from "Icfwalk"; compare() can. The same operator also compares two
+	 * numeric-looking strings as numbers, and a row_version in hex such as 000000000000E988 reads as
+	 * 0e988, i.e. zero, so row versions are compared with compare() here too.
 	 */
 	private void function assertExactText(required string expected, required string actual, string message = "") {
 		if (compare(arguments.expected, arguments.actual) != 0) {

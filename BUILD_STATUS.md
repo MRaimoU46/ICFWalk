@@ -2988,7 +2988,8 @@ test-harness variable, `ICFWALK_SCREENSHOT_DIR` (default unchanged, documented i
 | File | Change |
 | --- | --- |
 | `src/instrument/InstrumentMetadataService.cfc` | Case-sensitive `compare()` for `name` and `description`, boolean comparison for `active`; header comment records that materiality is case-sensitive. |
-| `tests/cfml/specs/InstrumentMetadataServiceTest.cfc` | Two case-only regressions, a byte-exact `assertExactText` helper and a `metadataEventsSince` helper. 15 -> 17 cases. |
+| `tests/cfml/specs/InstrumentMetadataServiceTest.cfc` | Two case-only regressions, a byte-exact `assertExactText` helper and a `metadataEventsSince` helper; the new cases compare row versions with `compare()`. 15 -> 17 cases. |
+| `tests/cfml/specs/InstrumentPublishServiceTest.cfc` | `testSemanticOptionInAForeignResponseSetIsRefused` chooses a receiving response set that can hold every moved option, instead of an arbitrary one; found by the first exact-commit gate. No assertion about publication changed. |
 | `tests/node/helpers.mjs` | `screenshotDir(env)`: `ICFWALK_SCREENSHOT_DIR` or the tracked default. |
 | `tests/node/browser.test.mjs`, `browser-email.test.mjs`, `browser-persistence.test.mjs` | Write screenshots to `screenshotDir(env)`. No assertion changed. |
 | `docs/ACCEPTANCE_TRACKING.md` | ADM-04 and ADM-05 rewritten in place; CORR6-02 and CORR6-06 made exact; CORR7 ledger added. |
@@ -3021,6 +3022,41 @@ skipped, 0 todo; CFML 377/377 (375 before, plus the two new cases) with 0 failed
 disappeared. The 13 screenshots went to a directory outside the repository and no tracked PNG
 changed.
 
+### The first exact-commit gate failed, and why
+
+The gate was first run from a clean tree at `c7f6f48a36626dc357bd36aa65db85a26083f15a` (tree
+`cf668336aae02f2f23d76696226546ca04fadae9`). HEAD and the tree were unchanged and the tree was still
+clean afterwards, but the run **failed**: Node 174/175, the failure being the CFML suite driver,
+which stops at the first failing part. Part 4 of 6 reported two failed cases (291 of 293 reported
+cases passed, across 21 of the 31 spec files; parts 5 and 6 did not run). Neither failure was a
+production defect, and neither was re-run away:
+
+1. `InstrumentMetadataServiceTest.testACaseOnlyDescriptionChangeIsMaterial`, new in this
+   correction, failed with `the row was written Expected values to differ but both were
+   [000000000000E988]`. `BaseSpec.assertNotEquals` compares with CFML's `==`, which compares two
+   numeric-looking strings as numbers, and a hex `row_version` such as `000000000000E988` parses as
+   `0e988`, which is zero, so it equalled its successor. Observed directly on Lucee 6.2.8.20 with a
+   temporary probe spec that was deleted, not committed: `"000000000000E988" == "000000000000E989"`
+   is `true`, and `compare()` returns -1. Every assertion before that one in the case had passed in
+   that run, including the stored exact capitalization. *Fix:* both new cases compare row versions
+   with `compare()`.
+2. `InstrumentPublishServiceTest.testSemanticOptionInAForeignResponseSetIsRefused`, pre-existing
+   and not otherwise touched by this correction, failed with `Violation of UNIQUE KEY constraint
+   'UQ_response_option_set_code'` on the code `behind`, inside its own setup. It moved every option
+   of one response set into a set of a second draft chosen by `SELECT TOP (1)` with no `ORDER BY`
+   and no compatibility condition. Both drafts are copies of the same instrument, and 585 of the 841
+   possible (moved set, receiving set) pairings in the supplied instrument share an option key or a
+   stored code, so whether the setup UPDATE succeeded depended on the query plan and the generated
+   ids. It had passed in every earlier run, including this correction's development gate. *Fix:* the
+   receiving set is chosen, in a stated order, from the sets that share neither `option_key` nor
+   `stored_code` with the moved options (every set the instrument uses has at least five such
+   candidates), and the existence of one is asserted as a precondition. What the case asserts
+   about publication (`RESPONSE_SET_EMPTY`, a 422, nothing written) is unchanged.
+
+Both fixes are test-only and are carried by the next commit; the exact-commit gate is then repeated
+from that commit, and its result is reported with the handoff. The failed attempt's raw transcript
+is kept with the handoff artifacts rather than discarded.
+
 **The authoritative result is the exact-commit gate**, run after this commit existed, from a
 completely clean tree, and recorded outside the repository with the final environment record. Its
 totals are reported with the handoff, not here, because writing them here would change the commit
@@ -3036,9 +3072,14 @@ they describe.
 2. **The `phase-5-freeze` tag still does not exist**, locally or on the remote. This correction did
    not create, move or push any tag. It remains an open repository action for an authorized
    operator.
-3. **`BaseSpec.assertEquals` is case-insensitive.** It was not changed, because doing so would
-   alter the meaning of every existing assertion in the suite. New text assertions in this pass use
-   `compare()` directly.
+3. **`BaseSpec.assertEquals` / `assertNotEquals` coerce.** They compare with CFML's `!=` / `==`,
+   which ignore case and compare numeric-looking strings as numbers. The second matters for row
+   versions: 87 call sites across 16 spec files pass a row version to one of them, and when both
+   hex values have the form `0...0E<digits>` an "unchanged" assertion can pass although the version
+   moved. That is a latent weakness in existing evidence, not an observed false pass; it was not
+   changed here, because changing the shared assertions alters every case in the suite. The new
+   cases in this pass use `compare()`. Recommended follow-up: byte-exact comparison for row versions
+   throughout.
 4. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
 5. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.

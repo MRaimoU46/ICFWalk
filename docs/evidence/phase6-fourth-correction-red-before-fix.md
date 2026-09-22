@@ -136,12 +136,32 @@ engine=Lucee 6.2.8.20 totals passed=17 failed=0 skipped=0 specs=1
 `testAPatchWithNoMaterialDifferenceIsAnAuditFreeNoOp` passes before and after, so the no-op contract
 for genuinely unchanged values is preserved.
 
+## Revised after the first exact-commit gate
+
+The red and green blocks above were produced by the first version of the two cases, which asserted
+that `row_version` moved with `BaseSpec.assertNotEquals`. The first exact-commit gate (at
+`c7f6f48a36626dc357bd36aa65db85a26083f15a`) then failed `testACaseOnlyDescriptionChangeIsMaterial`
+on that assertion, with the message `the row was written Expected values to differ but both were
+[000000000000E988]`. CFML's `==` compares two numeric-looking strings as numbers, and that hex
+value reads as `0e988`, which is zero, so it equalled its successor. Observed directly on Lucee
+6.2.8.20 with a temporary probe spec (deleted, never committed):
+
+```
+PROBE isNumeric(a)=true val(a)=0 | a==b true | compare(a,b)=-1 | a==c false | compare(a,c)=-1
+      where a = 000000000000E988, b = 000000000000E989, c = 000000000000E98A
+```
+
+Both cases now compare row versions with `compare()`. The red result is unaffected: in the red run
+both cases failed at `noOp`, before the row-version assertion was reached. The revised cases were
+re-run green against the fixed code, and again in the repeated exact-commit gate.
+
 ## What was not changed
 
-* `BaseSpec.assertEquals` is still case-insensitive. Changing a shared assertion would alter the
-  meaning of every existing case in the suite and is outside this correction; the new cases avoid it
-  instead. It is a limitation of the harness worth knowing when reading older assertions about
-  stored text.
+* `BaseSpec.assertEquals` / `assertNotEquals` still coerce: they ignore case and compare
+  numeric-looking strings as numbers. Changing a shared assertion would alter the meaning of every
+  existing case in the suite and is outside this correction; the new cases avoid it instead. It
+  matters when reading older assertions about stored text and about row versions (87 call sites
+  across 16 spec files pass a row version to one of them).
 * `DefinitionRepository.updateInstrumentMetadata`'s post-write check (`WHERE ... AND name = :name`)
   compares under the column's collation, which in this environment is
   `SQL_Latin1_General_CP1_CI_AS` (case-insensitive; the schema sets none, so it inherits the
