@@ -473,7 +473,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	private boolean function hasError(required struct r, required string code) {
-		for (var e in arguments.r.errors) if (e.code == arguments.code) return true;
+		for (var e in arguments.r.errors) if (compare(e.code, arguments.code) == 0) return true;
 		return false;
 	}
 

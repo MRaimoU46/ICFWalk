@@ -67,7 +67,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 * Whatever happens to the import, V1 must still be the instrument's current version.
 	 */
 	public void function testImportingV2WithAnInactiveInstrumentCannotHidePublishedV1() {
-		assertEquals(variables.v1.versionId, currentVersionId(), "precondition: published V1 is the current version");
+		assertExactTextEquals(variables.v1.versionId, currentVersionId(), "precondition: published V1 is the current version");
 		var beforeActive = instrumentRow().active;
 
 		var cfg = config(label("v2-inactive"));
@@ -81,7 +81,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		}
 
 		assertEquals(beforeActive, instrumentRow().active, "the shared instrument row's active flag did not move");
-		assertEquals(variables.v1.versionId, currentVersionId(), "published V1 is still the current version the runtime serves");
+		assertExactTextEquals(variables.v1.versionId, currentVersionId(), "published V1 is still the current version the runtime serves");
 		assertTrue(refused, "and the conflicting document was refused rather than partly applied");
 	}
 
@@ -104,14 +104,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var v2 = variables.importSvc.importConfig(cfg, variables.publisher);
 
 		var after = instrumentRow();
-		assertEquals(before.name, after.name, "the shared row's name is unchanged: an import does not own it");
-		assertEquals(before.description, after.description, "and neither is its description");
+		assertExactTextEquals(before.name, after.name, "the shared row's name is unchanged: an import does not own it");
+		assertExactTextEquals(before.description, after.description, "and neither is its description");
 		assertEquals(before.active, after.active, "and neither is its active flag");
 
 		variables.c.snapshotService.clearCache();
-		assertEquals(newName, variables.c.snapshotService.renderModelFor(v2.versionId).instrument.name, "V2 shows its own name");
-		assertEquals(v1Name, variables.c.snapshotService.renderModelFor(variables.v1.versionId).instrument.name, "and V1 still shows the name it was published with");
-		assertEquals(variables.v1.versionId, currentVersionId(), "and V1 is still the current version");
+		assertExactTextEquals(newName, variables.c.snapshotService.renderModelFor(v2.versionId).instrument.name, "V2 shows its own name");
+		assertExactTextEquals(v1Name, variables.c.snapshotService.renderModelFor(variables.v1.versionId).instrument.name, "and V1 still shows the name it was published with");
+		assertExactTextEquals(variables.v1.versionId, currentVersionId(), "and V1 is still the current version");
 	}
 
 	/**
@@ -124,26 +124,26 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// A V2 that agrees about shared metadata and is therefore accepted.
 		var v2 = variables.importSvc.importConfig(config(label("v2-clean")));
-		assertNotEquals(variables.v1.versionId, v2.versionId, "V2 really is a separate version");
+		assertExactTextNotEquals(variables.v1.versionId, v2.versionId, "V2 really is a separate version");
 
 		variables.c.snapshotService.clearCache();
 		var afterModel = variables.c.snapshotService.renderModelFor(variables.v1.versionId);
 		var afterRow = variables.repo.findVersionById(variables.v1.versionId);
 
-		assertEquals(beforeRow.snapshotJson, afterRow.snapshotJson, "V1's frozen snapshot bytes are unchanged");
-		assertEquals(beforeRow.checksum, afterRow.checksum, "and its checksum");
-		assertEquals(beforeRow.rowVersion, afterRow.rowVersion, "and its row version");
-		assertEquals(
+		assertExactTextEquals(beforeRow.snapshotJson, afterRow.snapshotJson, "V1's frozen snapshot bytes are unchanged");
+		assertExactTextEquals(beforeRow.checksum, afterRow.checksum, "and its checksum");
+		assertRowVersionEquals(beforeRow.rowVersion, afterRow.rowVersion, "and its row version");
+		assertExactTextEquals(
 			variables.c.canonicalJson.serialize(beforeModel.instrument),
 			variables.c.canonicalJson.serialize(afterModel.instrument),
 			"and the instrument identity the runtime serves for V1"
 		);
-		assertEquals(
+		assertExactTextEquals(
 			variables.c.canonicalJson.serialize(beforeModel.root),
 			variables.c.canonicalJson.serialize(afterModel.root),
 			"and V1's whole render model"
 		);
-		assertEquals(variables.v1.versionId, currentVersionId(), "and V1 is still current: importing a DRAFT does not promote it");
+		assertExactTextEquals(variables.v1.versionId, currentVersionId(), "and V1 is still current: importing a DRAFT does not promote it");
 	}
 
 	/** A refused shared-metadata conflict rolls back completely and is audited exactly once. */
@@ -161,9 +161,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { importSvc.importConfig(cfg, variables.publisher); }, "ICFWalk.Import.Validation", "INSTRUMENT_CONFIG_INVALID");
 
 		var afterRow = variables.repo.findVersionById(draft.versionId);
-		assertEquals(beforeRow.rowVersion, afterRow.rowVersion, "the DRAFT's row version did not move");
-		assertEquals(beforeRow.checksum, afterRow.checksum, "and its checksum");
-		assertEquals(beforeInstrument.name, instrumentRow().name, "and the shared row is untouched");
+		assertRowVersionEquals(beforeRow.rowVersion, afterRow.rowVersion, "the DRAFT's row version did not move");
+		assertExactTextEquals(beforeRow.checksum, afterRow.checksum, "and its checksum");
+		assertExactTextEquals(beforeInstrument.name, instrumentRow().name, "and the shared row is untouched");
 		assertEquals(beforeInstrument.active, instrumentRow().active, "including its active flag");
 		assertEquals(0, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id AND prompt = N'A prompt that must never be stored'",
@@ -176,8 +176,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			{ "id": variables.db.guid(draft.versionId) }
 		);
 		var details = deserializeJSON(q.details_json[1]);
-		assertEquals("SHARED_METADATA_CONFLICT", details.reason, "the refusal carries a stable reason code");
-		assertEquals("IMPORT", details.operation);
+		assertExactTextEquals("SHARED_METADATA_CONFLICT", details.reason, "the refusal carries a stable reason code");
+		assertExactTextEquals("IMPORT", details.operation);
 		assertFalse(find("prompt", q.details_json[1]) > 0, "and no narrative content");
 	}
 
@@ -192,8 +192,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var before = auditCount(instrumentId, "INSTRUMENT_METADATA_UPDATED");
 
 		var result = variables.metadataSvc.updateMetadata(variables.instrumentCode, { "name": "Renamed deliberately" }, variables.admin);
-		assertEquals("Renamed deliberately", result.name);
-		assertEquals("Renamed deliberately", instrumentRow().name, "the shared row really changed");
+		assertExactTextEquals("Renamed deliberately", result.name);
+		assertExactTextEquals("Renamed deliberately", instrumentRow().name, "the shared row really changed");
 		assertTrue(arrayContains(result.changedFields, "name"), "and the result names what changed");
 		assertEquals(before + 1, auditCount(instrumentId, "INSTRUMENT_METADATA_UPDATED"), "exactly one audit event");
 
@@ -201,14 +201,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"SELECT TOP (1) actor_user_id, details_json FROM [icf].[audit_event] WHERE entity_id = :id AND event_type = N'INSTRUMENT_METADATA_UPDATED' ORDER BY event_id DESC",
 			{ "id": variables.db.guid(instrumentId) }
 		);
-		assertEquals(variables.publisher, uCase(q.actor_user_id[1]), "naming the user who authorized it");
+		assertExactTextEquals(variables.publisher, uCase(q.actor_user_id[1]), "naming the user who authorized it");
 		var details = deserializeJSON(q.details_json[1]);
-		assertEquals("Renamed deliberately", details.name);
+		assertExactTextEquals("Renamed deliberately", details.name);
 		assertTrue(structKeyExists(details, "previousName"), "and what it was before");
 
 		// Put it back so the later cases see the document's own name.
 		variables.metadataSvc.updateMetadata(variables.instrumentCode, { "name": before_name() }, variables.admin);
-		assertEquals(before_name(), instrumentRow().name, "restored");
+		assertExactTextEquals(before_name(), instrumentRow().name, "restored");
 	}
 
 	/**
@@ -233,9 +233,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { svc.updateMetadata(code, { "active": false }, knownUserId); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_PRINCIPAL_REQUIRED");
 
 		var after = instrumentRow();
-		assertEquals(before.name, after.name, "a refused metadata change writes nothing");
+		assertExactTextEquals(before.name, after.name, "a refused metadata change writes nothing");
 		assertEquals(before.active, after.active);
-		assertEquals(variables.v1.versionId, currentVersionId(), "and published V1 is still current");
+		assertExactTextEquals(variables.v1.versionId, currentVersionId(), "and published V1 is still current");
 	}
 
 	/** It is not reachable over HTTP: this pass closes the boundary and adds no UI for it. */

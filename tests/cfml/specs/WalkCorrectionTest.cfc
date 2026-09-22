@@ -112,7 +112,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testCorr01CreateReplayIsReauthorizedAfterAccessIsRevoked() {
 		var mutationId = newMutationId();
 		var atSchoolA = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": mutationId });
-		assertEquals(variables.S1, atSchoolA.orgUnitId);
+		assertExactTextEquals(variables.S1, atSchoolA.orgUnitId);
 		// Access to School A is revoked; the walker keeps School B.
 		moveWalkerTo(variables.S2);
 		try {
@@ -129,8 +129,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// With access restored the exact retry replays the original committed result.
 		var replayed = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": mutationId });
 		assertTrue(replayed.replayed);
-		assertEquals(atSchoolA.id, replayed.id);
-		assertEquals(atSchoolA.rowVersion, replayed.rowVersion);
+		assertExactTextEquals(atSchoolA.id, replayed.id);
+		assertRowVersionEquals(atSchoolA.rowVersion, replayed.rowVersion);
 	}
 
 	/**
@@ -160,7 +160,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// The exact request still replays.
 		var replay = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": mutationId, "dimensions": { "observer": { "textValue": "A" } }, "responses": {} });
 		assertTrue(replay.replayed);
-		assertEquals(first.id, replay.id);
+		assertExactTextEquals(first.id, replay.id);
 		assertEquals(1, scalarFor("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id AND action = N'CREATE'", first.id));
 
 		// The same rule holds for a save, a complete, and a void.
@@ -170,7 +170,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { save(w, { "observer": { "textValue": "second" } }, {}, saveId); }, "ICFWalk.Conflict", "MUTATION_ID_REUSED");
 		var saveReplay = variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": saveId, "dimensions": { "observer": { "textValue": "first" } }, "responses": {} });
 		assertTrue(saveReplay.replayed);
-		assertEquals(saved.rowVersion, saveReplay.rowVersion);
+		assertRowVersionEquals(saved.rowVersion, saveReplay.rowVersion);
 
 		var full = save(saved, {}, requiredAnswers());
 		var completeId = newMutationId();
@@ -182,7 +182,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// A void id is bound to its reason: the same id with a different reason is a different request.
 		var voidId = newMutationId();
 		var voided = variables.svc.void(p(variables.walker), w.id, { "rowVersion": done.rowVersion, "clientMutationId": voidId, "reason": "one" });
-		assertEquals("VOIDED", voided.status);
+		assertExactTextEquals("VOIDED", voided.status);
 		var voidReplay = variables.svc.void(p(variables.walker), w.id, { "rowVersion": done.rowVersion, "clientMutationId": voidId, "reason": "one" });
 		assertTrue(voidReplay.replayed);
 		assertThrows(function() { variables.svc.void(p(variables.walker), w.id, { "rowVersion": done.rowVersion, "clientMutationId": voidId, "reason": "two" }); }, "ICFWalk.Conflict", "MUTATION_ID_REUSED");
@@ -201,8 +201,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var stale = variables.db.newGuid();
 		var replay = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": mutationId, "versionId": stale, "dimensions": {}, "responses": {} });
 		assertTrue(replay.replayed);
-		assertEquals(first.id, replay.id);
-		assertEquals(variables.current.versionId, replay.versionId);
+		assertExactTextEquals(first.id, replay.id);
+		assertExactTextEquals(variables.current.versionId, replay.versionId);
 		// A new mutation id with that stale version is still refused.
 		assertThrows(function() { variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": newMutationId(), "versionId": stale }); }, "ICFWalk.Conflict", "INSTRUMENT_VERSION_CHANGED");
 	}
@@ -213,20 +213,20 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testCorr05OmittedHiddenValueIsRetained() {
 		var w = newWalk();
 		var visible = save(w, { "grade": { "selectedValueCode": "7" }, "period": { "selectedValueCode": "third" } }, {});
-		assertEquals("third", dimensionRow(w.id, "period").value_code[1]);
+		assertExactTextEquals("third", dimensionRow(w.id, "period").value_code[1]);
 		// Grade 2 hides Period. The browser sends the whole state without it.
 		var hidden = save(visible, { "grade": { "selectedValueCode": "2" } }, {});
-		assertEquals("third", dimensionRow(w.id, "period").value_code[1], "the hidden Period value is retained");
-		assertEquals("HIDDEN", hidden.states.dimensionStates.period);
+		assertExactTextEquals("third", dimensionRow(w.id, "period").value_code[1], "the hidden Period value is retained");
+		assertExactTextEquals("HIDDEN", hidden.states.dimensionStates.period);
 
 		// The same for a conditional classroom section's answers.
 		var dual = save(hidden, { "grade": { "selectedValueCode": "2" }, "classType": { "selectedValueCode": "dual_language" } }, { "dual_language_q1": { "storedCode": "yes" }, "dual_language_notes": { "textValue": "observed" } });
-		assertEquals("ANSWERED", responseRow(w.id, "dual_language_q1").response_state[1]);
+		assertExactTextEquals("ANSWERED", responseRow(w.id, "dual_language_q1").response_state[1]);
 		var general = save(dual, { "grade": { "selectedValueCode": "2" }, "classType": { "selectedValueCode": "general_education" } }, {});
 		var row = responseRow(w.id, "dual_language_q1");
-		assertEquals("HIDDEN", row.response_state[1]);
-		assertEquals("yes", row.stored_code[1], "the hidden answer is retained without the browser echoing it");
-		assertEquals("observed", responseRow(w.id, "dual_language_notes").text_value[1]);
+		assertExactTextEquals("HIDDEN", row.response_state[1]);
+		assertExactTextEquals("yes", row.stored_code[1], "the hidden answer is retained without the browser echoing it");
+		assertExactTextEquals("observed", responseRow(w.id, "dual_language_notes").text_value[1]);
 	}
 
 	/** A crafted client cannot inject or change a value the instrument currently hides. */
@@ -236,14 +236,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var hiddenNow = save(seeded, { "grade": { "selectedValueCode": "2" }, "classType": { "selectedValueCode": "general_education" } }, {});
 		// A crafted payload asserts new values for both currently hidden targets.
 		var crafted = save(hiddenNow, { "grade": { "selectedValueCode": "2" }, "classType": { "selectedValueCode": "general_education" }, "period": { "selectedValueCode": "first" } }, { "dual_language_q1": { "storedCode": "no" } });
-		assertEquals("third", dimensionRow(w.id, "period").value_code[1], "a hidden dimension keeps its stored value");
-		assertEquals("yes", responseRow(w.id, "dual_language_q1").stored_code[1], "a hidden response keeps its stored value");
-		assertEquals("third", crafted.state.dimensions.period.selectedValueCode, "the response reports the stored value, not the crafted one");
-		assertEquals("yes", crafted.state.responses.dual_language_q1.storedCode);
+		assertExactTextEquals("third", dimensionRow(w.id, "period").value_code[1], "a hidden dimension keeps its stored value");
+		assertExactTextEquals("yes", responseRow(w.id, "dual_language_q1").stored_code[1], "a hidden response keeps its stored value");
+		assertExactTextEquals("third", crafted.state.dimensions.period.selectedValueCode, "the response reports the stored value, not the crafted one");
+		assertExactTextEquals("yes", crafted.state.responses.dual_language_q1.storedCode);
 		// An injected value for a target that has no stored value stays empty rather than landing.
 		var w2 = newWalk();
 		var injected = save(w2, { "grade": { "selectedValueCode": "2" } }, { "dual_language_q1": { "storedCode": "yes" } });
-		assertEquals("HIDDEN", responseRow(w2.id, "dual_language_q1").response_state[1]);
+		assertExactTextEquals("HIDDEN", responseRow(w2.id, "dual_language_q1").response_state[1]);
 		assertTrue(isNull(responseRow(w2.id, "dual_language_q1").stored_code[1]) || !len(responseRow(w2.id, "dual_language_q1").stored_code[1]), "nothing was injected into the hidden item");
 	}
 
@@ -252,21 +252,21 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var w = newWalk();
 		var shown = save(w, { "grade": { "selectedValueCode": "8" }, "period": { "selectedValueCode": "fifth" } }, {});
 		var hidden = save(shown, { "grade": { "selectedValueCode": "1" } }, {});
-		assertEquals("HIDDEN", hidden.states.dimensionStates.period);
+		assertExactTextEquals("HIDDEN", hidden.states.dimensionStates.period);
 		var reshown = save(hidden, { "grade": { "selectedValueCode": "8" } }, {});
-		assertEquals("ANSWERED", reshown.states.dimensionStates.period);
-		assertEquals("fifth", reshown.state.dimensions.period.selectedValueCode);
-		assertEquals("fifth", dimensionRow(w.id, "period").value_code[1]);
+		assertExactTextEquals("ANSWERED", reshown.states.dimensionStates.period);
+		assertExactTextEquals("fifth", reshown.state.dimensions.period.selectedValueCode);
+		assertExactTextEquals("fifth", dimensionRow(w.id, "period").value_code[1]);
 	}
 
 	/** A visible value the browser omits is a clear: whole-state saves still clear. */
 	public void function testCorr08OmittingAVisibleValueClearsIt() {
 		var w = newWalk();
 		var withNotes = save(w, { "observer": { "textValue": "Fixture Observer" } }, { "comp_s1_notes": { "textValue": "some notes" } });
-		assertEquals("some notes", responseRow(w.id, "comp_s1_notes").text_value[1]);
+		assertExactTextEquals("some notes", responseRow(w.id, "comp_s1_notes").text_value[1]);
 		var cleared = save(withNotes, {}, {});
 		assertEquals(0, dimensionRow(w.id, "observer").recordCount, "a visible dimension the client omits is cleared");
-		assertEquals("UNANSWERED", responseRow(w.id, "comp_s1_notes").response_state[1]);
+		assertExactTextEquals("UNANSWERED", responseRow(w.id, "comp_s1_notes").response_state[1]);
 		assertTrue(isNull(responseRow(w.id, "comp_s1_notes").text_value[1]) || !len(responseRow(w.id, "comp_s1_notes").text_value[1]));
 	}
 
@@ -274,16 +274,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testCorr09NotApplicableClearsRatingsAndKeepsNotes() {
 		var w = newWalk();
 		var yes = save(w, {}, { "comp_s3_applicable": { "storedCode": "yes" }, "comp_s3_q1": { "storedCode": "4" }, "comp_s3_notes": { "textValue": "kept" } });
-		assertEquals("ANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
+		assertExactTextEquals("ANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
 		// The client marks the component No but keeps sending the rating: the server clears it.
 		var no = save(yes, {}, { "comp_s3_applicable": { "storedCode": "no" }, "comp_s3_q1": { "storedCode": "4" }, "comp_s3_notes": { "textValue": "kept" } });
 		var rating = responseRow(w.id, "comp_s3_q1");
-		assertEquals("NOT_APPLICABLE", rating.response_state[1]);
+		assertExactTextEquals("NOT_APPLICABLE", rating.response_state[1]);
 		assertTrue(isNull(rating.stored_code[1]) || !len(rating.stored_code[1]), "a not-applicable rating is cleared, never retained");
-		assertEquals("kept", responseRow(w.id, "comp_s3_notes").text_value[1], "notes are preserved");
+		assertExactTextEquals("kept", responseRow(w.id, "comp_s3_notes").text_value[1], "notes are preserved");
 		// Switching back to Yes returns the rating as UNANSWERED, not as the cleared value.
 		var back = save(no, {}, { "comp_s3_applicable": { "storedCode": "yes" }, "comp_s3_notes": { "textValue": "kept" } });
-		assertEquals("UNANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
+		assertExactTextEquals("UNANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
 		assertFalse(structKeyExists(back.state.responses, "comp_s3_q1") && structKeyExists(back.state.responses.comp_s3_q1, "storedCode"));
 	}
 
@@ -298,8 +298,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Malformed tokens are refused too, and nothing is written.
 		assertThrows(function() { variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": "not-a-guid", "dimensions": {}, "responses": {} }); }, "ICFWalk.Validation", "CLIENT_MUTATION_ID_INVALID");
 		assertThrows(function() { variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": 12345, "dimensions": {}, "responses": {} }); }, "ICFWalk.Validation", "CLIENT_MUTATION_ID_INVALID");
-		assertEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
-		assertEquals("DRAFT", walkRow(w.id).status[1]);
+		assertRowVersionEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
+		assertExactTextEquals("DRAFT", walkRow(w.id).status[1]);
 	}
 
 	public void function testCorr11SaveCompleteAndVoidRequireARowVersionButCreateDoesNot() {
@@ -308,10 +308,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { variables.svc.complete(p(variables.walker), w.id, { "clientMutationId": newMutationId() }); }, "ICFWalk.Validation", "ROW_VERSION_REQUIRED");
 		assertThrows(function() { variables.svc.void(p(variables.walker), w.id, { "clientMutationId": newMutationId() }); }, "ICFWalk.Validation", "ROW_VERSION_REQUIRED");
 		assertThrows(function() { variables.svc.void(p(variables.walker), w.id, { "clientMutationId": newMutationId(), "rowVersion": "0xZZ" }); }, "ICFWalk.Validation", "ROW_VERSION_INVALID");
-		assertEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
+		assertRowVersionEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
 		// A create needs no prior row version.
 		var fresh = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": newMutationId() });
-		assertEquals("DRAFT", fresh.status);
+		assertExactTextEquals("DRAFT", fresh.status);
 	}
 
 	public void function testCorr12AStaleVoidIsARefusalThatChangesNothing() {
@@ -319,11 +319,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var moved = save(w, { "observer": { "textValue": "moved on" } }, {});
 		var e = assertThrows(function() { variables.svc.void(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "reason": "stale" }); }, "ICFWalk.Conflict", "STALE_ROW_VERSION");
 		var row = walkRow(w.id);
-		assertEquals("DRAFT", row.status[1], "a stale void does not void the walk");
-		assertEquals(moved.rowVersion, row.rv[1], "and does not advance the row version");
+		assertExactTextEquals("DRAFT", row.status[1], "a stale void does not void the walk");
+		assertRowVersionEquals(moved.rowVersion, row.rv[1], "and does not advance the row version");
 		// The current token works.
 		var voided = variables.svc.void(p(variables.walker), w.id, { "rowVersion": moved.rowVersion, "clientMutationId": newMutationId() });
-		assertEquals("VOIDED", voided.status);
+		assertExactTextEquals("VOIDED", voided.status);
 	}
 
 	// ---- CORR-13: completed-walk no-op saves -----------------------------------------------------
@@ -338,19 +338,19 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// An identical save writes nothing: no revision, no new row version.
 		var same = variables.svc.save(p(variables.walker), w.id, { "rowVersion": done.rowVersion, "clientMutationId": newMutationId(), "dimensions": { "observer": { "textValue": "Fixture Observer" } }, "responses": answers });
-		assertEquals(done.rowVersion, same.rowVersion, "an identical completed save does not advance the row version");
-		assertEquals(done.rowVersion, walkRow(w.id).rv[1]);
+		assertRowVersionEquals(done.rowVersion, same.rowVersion, "an identical completed save does not advance the row version");
+		assertRowVersionEquals(done.rowVersion, walkRow(w.id).rv[1]);
 		assertEquals(1, scalarFor("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", w.id), "and appends no revision");
 		assertEquals(0, scalarFor("SELECT COUNT(*) AS n FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id = :id AND event_type = N'WALK_POST_COMPLETION_EDIT'", w.id));
 
 		// A material change appends exactly one revision and one aggregate update.
 		answers["comp_s1_notes"] = { "textValue": "after completion" };
 		var edited = variables.svc.save(p(variables.walker), w.id, { "rowVersion": same.rowVersion, "clientMutationId": newMutationId(), "dimensions": { "observer": { "textValue": "Fixture Observer" } }, "responses": answers });
-		assertNotEquals(done.rowVersion, edited.rowVersion);
+		assertRowVersionChanged(done.rowVersion, edited.rowVersion);
 		assertEquals(2, scalarFor("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", w.id), "exactly one pre-edit revision for the material change");
 		assertEquals(1, scalarFor("SELECT COUNT(*) AS n FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND entity_id = :id AND event_type = N'WALK_POST_COMPLETION_EDIT'", w.id));
-		assertEquals("after completion", responseRow(w.id, "comp_s1_notes").text_value[1]);
-		assertEquals("COMPLETED", walkRow(w.id).status[1]);
+		assertExactTextEquals("after completion", responseRow(w.id, "comp_s1_notes").text_value[1]);
+		assertExactTextEquals("COMPLETED", walkRow(w.id).status[1]);
 	}
 
 	// ---- CORR-14: observed_at follows the Visit Date ---------------------------------------------
@@ -358,14 +358,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testCorr14VisitDateSetThenClearedFallsBackToTheCreationInstant() {
 		var w = newWalk();
 		var created = walkRow(w.id);
-		assertEquals(dateFormat(created.created_at[1], "yyyy-mm-dd") & " " & timeFormat(created.created_at[1], "HH:mm:ss"), dateFormat(created.observed_at[1], "yyyy-mm-dd") & " " & timeFormat(created.observed_at[1], "HH:mm:ss"), "a new walk observes at its creation instant");
+		assertExactTextEquals(dateFormat(created.created_at[1], "yyyy-mm-dd") & " " & timeFormat(created.created_at[1], "HH:mm:ss"), dateFormat(created.observed_at[1], "yyyy-mm-dd") & " " & timeFormat(created.observed_at[1], "HH:mm:ss"), "a new walk observes at its creation instant");
 		var dated = save(w, { "date": { "dateValue": "2026-05-04" } }, {});
-		assertEquals("2026-05-04", dateFormat(walkRow(w.id).observed_at[1], "yyyy-mm-dd"));
+		assertExactTextEquals("2026-05-04", dateFormat(walkRow(w.id).observed_at[1], "yyyy-mm-dd"));
 		// Clearing the Visit Date must not leave the old observation timestamp behind.
 		var cleared = save(dated, {}, {});
 		assertEquals(0, dimensionRow(w.id, "date").recordCount, "the Visit Date value is gone");
 		var after = walkRow(w.id);
-		assertEquals(dateFormat(after.created_at[1], "yyyy-mm-dd") & " " & timeFormat(after.created_at[1], "HH:mm:ss"), dateFormat(after.observed_at[1], "yyyy-mm-dd") & " " & timeFormat(after.observed_at[1], "HH:mm:ss"), "observed_at falls back to the creation instant");
+		assertExactTextEquals(dateFormat(after.created_at[1], "yyyy-mm-dd") & " " & timeFormat(after.created_at[1], "HH:mm:ss"), dateFormat(after.observed_at[1], "yyyy-mm-dd") & " " & timeFormat(after.observed_at[1], "HH:mm:ss"), "observed_at falls back to the creation instant");
 	}
 
 	// ---- CORR-15..CORR-17: strict whole-state payloads -------------------------------------------
@@ -378,7 +378,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "dimensions": {}, "responses": "" }); }, "ICFWalk.Validation", "STATE_CONTAINER_INVALID");
 		// A create may omit both (it starts from the engine's blank state) but never just one.
 		assertThrows(function() { variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": newMutationId(), "dimensions": {} }); }, "ICFWalk.Validation", "STATE_CONTAINER_REQUIRED");
-		assertEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
+		assertRowVersionEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
 	}
 
 	public void function testCorr16JsonPrimitiveTypesAreCheckedNotCoerced() {
@@ -396,10 +396,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() {
 			variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "dimensions": { "grade": { "selectedValueCode": deserializeJSON("7") } }, "responses": {} });
 		}, "ICFWalk.Validation", "INVALID_DIMENSION_VALUE");
-		assertEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
+		assertRowVersionEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
 		// The same values as JSON strings are accepted.
 		var ok = variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "dimensions": { "grade": { "selectedValueCode": "7" } }, "responses": { "part1_adopted_ac1": { "storedCode": "4" } } });
-		assertEquals("4", responseRow(w.id, "part1_adopted_ac1").stored_code[1]);
+		assertExactTextEquals("4", responseRow(w.id, "part1_adopted_ac1").stored_code[1]);
 	}
 
 	public void function testCorr17ClientAssertedResponseStateCannotControlPersistedState() {
@@ -407,15 +407,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var e = assertThrows(function() {
 			variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "dimensions": {}, "responses": { "comp_s1_q1": { "state": "ANSWERED", "storedCode": "4" } } });
 		}, "ICFWalk.Validation", "CLIENT_STATE_NOT_ACCEPTED");
-		assertEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
+		assertRowVersionEquals(w.rowVersion, walkRow(w.id).rv[1], "nothing was written");
 		// And an unanswered item asserted as ANSWERED never reaches the database.
 		assertThrows(function() {
 			variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "dimensions": {}, "responses": { "comp_s1_q1": { "state": "ANSWERED" } } });
 		}, "ICFWalk.Validation", "CLIENT_STATE_NOT_ACCEPTED");
-		assertEquals("UNANSWERED", responseRow(w.id, "comp_s1_q1").response_state[1]);
+		assertExactTextEquals("UNANSWERED", responseRow(w.id, "comp_s1_q1").response_state[1]);
 		// The server derives the state from its own engine: a hidden item is HIDDEN whatever the
 		// client would prefer it to be.
 		var hidden = variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "dimensions": { "grade": { "selectedValueCode": "2" } }, "responses": {} });
-		assertEquals("HIDDEN", responseRow(w.id, "dual_language_q1").response_state[1]);
+		assertExactTextEquals("HIDDEN", responseRow(w.id, "dual_language_q1").response_state[1]);
 	}
 }

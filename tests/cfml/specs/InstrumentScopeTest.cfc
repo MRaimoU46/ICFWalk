@@ -92,8 +92,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testASecondInstrumentNeverSuppliesTheCurrentVersion() {
 		var foreign = version(variables.foreignA, "foreign current " & variables.tag, "PUBLISHED", -60, javaCast("null", ""));
 		var current = variables.snapshots.currentVersion();
-		assertNotEquals(foreign, current.versionId, "the other instrument's published version is not selected");
-		assertEquals(variables.seeded.versionId, current.versionId);
+		assertExactTextNotEquals(foreign, current.versionId, "the other instrument's published version is not selected");
+		assertExactTextEquals(variables.seeded.versionId, current.versionId);
 		dropVersion(foreign);
 	}
 
@@ -104,21 +104,21 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var future = version(icfwalk.instrumentId, "future " & variables.tag, "PUBLISHED", 60 * 24, javaCast("null", ""));
 		var expired = version(icfwalk.instrumentId, "expired " & variables.tag, "PUBLISHED", -60 * 48, -60 * 24);
 		var selected = variables.snapshots.currentVersion();
-		assertNotEquals(future, selected.versionId, "a version that starts in the future is not selected");
-		assertNotEquals(expired, selected.versionId, "a version whose window has closed is not selected");
-		assertEquals(variables.seeded.versionId, selected.versionId, "the seeded DRAFT still answers outside production");
+		assertExactTextNotEquals(future, selected.versionId, "a version that starts in the future is not selected");
+		assertExactTextNotEquals(expired, selected.versionId, "a version whose window has closed is not selected");
+		assertExactTextEquals(variables.seeded.versionId, selected.versionId, "the seeded DRAFT still answers outside production");
 
 		// One that is in effect now does win, and is preferred over the DRAFT fallback.
 		var inEffect = version(icfwalk.instrumentId, "in effect " & variables.tag, "PUBLISHED", -5, 60 * 24);
 		var now = variables.snapshots.currentVersion();
-		assertEquals(inEffect, now.versionId);
-		assertEquals("PUBLISHED", now.status);
+		assertExactTextEquals(inEffect, now.versionId);
+		assertExactTextEquals("PUBLISHED", now.status);
 		assertFalse(now.isFallbackDraft);
 
 		dropVersion(future);
 		dropVersion(expired);
 		dropVersion(inEffect);
-		assertEquals(variables.seeded.versionId, variables.snapshots.currentVersion().versionId, "fixtures removed");
+		assertExactTextEquals(variables.seeded.versionId, variables.snapshots.currentVersion().versionId, "fixtures removed");
 	}
 
 	// ---- draft discard ------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(1, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE version_id = :id", { "id": variables.db.guid(draftB) }));
 		// Naming instrument A removes exactly A's draft; B's identically labelled draft survives.
 		var result = importer.discardDraft(label, "", "OTHER-A-" & variables.tag);
-		assertEquals(draftA, result.versionId);
+		assertExactTextEquals(draftA, result.versionId);
 		assertEquals(0, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE version_id = :id", { "id": variables.db.guid(draftA) }));
 		assertEquals(1, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE version_id = :id", { "id": variables.db.guid(draftB) }), "the other instrument's draft is untouched");
 		dropVersion(draftB);
@@ -147,7 +147,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testACorruptedSnapshotFailsClosedOnAnUncachedLoad() {
 		// The stored JSON is altered while the recorded digest stays as it was.
 		var corruptedJson = reReplace(variables.snapshotJson, "^\{", "{""tamperedByTest"":true,", "one");
-		assertNotEquals(variables.snapshotJson, corruptedJson, "the fixture actually changed the stored bytes");
+		assertExactTextNotEquals(variables.snapshotJson, corruptedJson, "the fixture actually changed the stored bytes");
 		var corrupted = version(variables.foreignA, "corrupted " & variables.tag, "DRAFT", javaCast("null", ""), javaCast("null", ""), corruptedJson, variables.checksum);
 		var snapshots = variables.snapshots;
 		snapshots.clearCache();
@@ -161,7 +161,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// The intact copy of the same bytes still loads, so the check is on the content, not the row.
 		var intact = version(variables.foreignA, "intact " & variables.tag, "DRAFT", javaCast("null", ""), javaCast("null", ""), variables.snapshotJson, variables.checksum);
-		assertEquals("icfwalk-render-model/1", snapshots.renderModelFor(intact).format);
+		assertExactTextEquals("icfwalk-render-model/1", snapshots.renderModelFor(intact).format);
 
 		dropVersion(corrupted);
 		dropVersion(unchecked);

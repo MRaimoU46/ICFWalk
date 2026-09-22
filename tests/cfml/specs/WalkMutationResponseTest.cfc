@@ -160,18 +160,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// 2. A's transaction produced R1, and B's produced a different R2 on top of it.
 		var r1 = b.r1;
 		var r2 = b.result.rowVersion;
-		assertNotEquals(r0, r1, "A's mutation moved the walk off R0");
-		assertNotEquals(r1, r2, "and B's commit moved it on again, so the interleaving was real");
+		assertRowVersionChanged(r0, r1, "A's mutation moved the walk off R0");
+		assertRowVersionChanged(r1, r2, "and B's commit moved it on again, so the interleaving was real");
 
 		// 4. A nevertheless returns the DTO captured for M1/R1, not B's state or R2.
-		assertEquals(r1, a.rowVersion, "A's response carries the rowversion its own mutation produced");
-		assertEquals(recordedRowVersion(m1), a.rowVersion, "which is exactly the rowversion M1 recorded");
-		assertEquals("A-M1", a.state.dimensions.observer.textValue, "and A's aggregate, never B's");
-		assertEquals("DRAFT", a.status);
+		assertRowVersionEquals(r1, a.rowVersion, "A's response carries the rowversion its own mutation produced");
+		assertRowVersionEquals(recordedRowVersion(m1), a.rowVersion, "which is exactly the rowversion M1 recorded");
+		assertExactTextEquals("A-M1", a.state.dimensions.observer.textValue, "and A's aggregate, never B's");
+		assertExactTextEquals("DRAFT", a.status);
 
 		// 5. The database ends with B's M2/R2.
-		assertEquals("B-M2", storedObserver(walkId));
-		assertEquals(r2, storedRowVersion(walkId));
+		assertExactTextEquals("B-M2", storedObserver(walkId));
+		assertRowVersionEquals(r2, storedRowVersion(walkId));
 
 		// 6. A subsequent attempted overwrite using the returned R1 fails with 409 STALE_ROW_VERSION.
 		var token = a.rowVersion;
@@ -186,8 +186,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(409, variables.c.errors.statusFor(conflict.type), "which is the 409 the contract names");
 
 		// 7. B's data remains unchanged after that conflict.
-		assertEquals("B-M2", storedObserver(walkId), "session A's stale state never overwrote session B");
-		assertEquals(r2, storedRowVersion(walkId));
+		assertExactTextEquals("B-M2", storedObserver(walkId), "session A's stale state never overwrote session B");
+		assertRowVersionEquals(r2, storedRowVersion(walkId));
 	}
 
 	// ---- the same scenario for COMPLETE ---------------------------------------------------------
@@ -224,17 +224,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var a = harness.svc.complete(writer, walkId, { "rowVersion": ready.rowVersion, "clientMutationId": completeId });
 
 		assertTrue(harness.db.firedAfterCommit(), "the post-completion edit really did commit at the boundary");
-		assertNotEquals(b.r1, b.result.rowVersion, "and it moved the walk on, so the interleaving was real");
+		assertRowVersionChanged(b.r1, b.result.rowVersion, "and it moved the walk on, so the interleaving was real");
 
-		assertEquals(b.r1, a.rowVersion, "COMPLETE answers with the rowversion the completion produced");
-		assertEquals(recordedRowVersion(completeId), a.rowVersion, "exactly the one that mutation recorded");
-		assertEquals("COMPLETED", a.status);
-		assertEquals("A-BEFORE", a.state.dimensions.observer.textValue, "with the aggregate completion froze");
+		assertRowVersionEquals(b.r1, a.rowVersion, "COMPLETE answers with the rowversion the completion produced");
+		assertRowVersionEquals(recordedRowVersion(completeId), a.rowVersion, "exactly the one that mutation recorded");
+		assertExactTextEquals("COMPLETED", a.status);
+		assertExactTextEquals("A-BEFORE", a.state.dimensions.observer.textValue, "with the aggregate completion froze");
 		assertEquals(b.revisions, a.revisionCount, "and the revision count as of that completion");
 
 		// The database moved on, B's revision is there, and the completion's token cannot overwrite it.
-		assertEquals("B-AFTER", storedObserver(walkId));
-		assertEquals(b.result.rowVersion, storedRowVersion(walkId));
+		assertExactTextEquals("B-AFTER", storedObserver(walkId));
+		assertRowVersionEquals(b.result.rowVersion, storedRowVersion(walkId));
 		assertEquals(b.revisions + 1, revisionCount(walkId), "B's post-completion edit added its own revision");
 		var token = a.rowVersion;
 		assertThrows(
@@ -245,7 +245,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				});
 			},
 			"ICFWalk.Conflict", "STALE_ROW_VERSION");
-		assertEquals("B-AFTER", storedObserver(walkId), "the completion's stale token never overwrote B");
+		assertExactTextEquals("B-AFTER", storedObserver(walkId), "the completion's stale token never overwrote B");
 	}
 
 	// ---- the successful no-op SAVE on an already completed walk ---------------------------------
@@ -286,13 +286,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		});
 
 		assertTrue(harness.db.firedAfterCommit(), "B really did commit at the boundary");
-		assertEquals(done.rowVersion, b.r1, "the no-op really was a no-op: it did not move the rowversion");
-		assertEquals(done.rowVersion, a.rowVersion, "so the response carries the rowversion it did not move");
-		assertEquals(recordedRowVersion(noopId), a.rowVersion, "which is the one the no-op mutation recorded");
-		assertEquals("A-BEFORE", a.state.dimensions.observer.textValue, "and the state it observed, not B's");
-		assertEquals("COMPLETED", a.status);
-		assertEquals("B-AFTER", storedObserver(walkId), "while the database moved on to B");
-		assertNotEquals(a.rowVersion, storedRowVersion(walkId));
+		assertRowVersionEquals(done.rowVersion, b.r1, "the no-op really was a no-op: it did not move the rowversion");
+		assertRowVersionEquals(done.rowVersion, a.rowVersion, "so the response carries the rowversion it did not move");
+		assertRowVersionEquals(recordedRowVersion(noopId), a.rowVersion, "which is the one the no-op mutation recorded");
+		assertExactTextEquals("A-BEFORE", a.state.dimensions.observer.textValue, "and the state it observed, not B's");
+		assertExactTextEquals("COMPLETED", a.status);
+		assertExactTextEquals("B-AFTER", storedObserver(walkId), "while the database moved on to B");
+		assertRowVersionChanged(a.rowVersion, storedRowVersion(walkId));
 	}
 
 	// ---- the shared invariant, stated once and exercised for both operations --------------------
@@ -332,12 +332,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 			var expectedObserver = operation == "SAVE" ? "OWN-" & operation & "-EDIT" : "OWN-" & operation;
 			assertTrue(harness.db.firedAfterCommit(), operation & ": the competing commit was forced at the boundary");
-			assertEquals(b.r1, dto.rowVersion, operation & ": the response carries the rowversion its own mutation produced");
-			assertEquals(recordedRowVersion(mutationId), dto.rowVersion, operation & ": which is the rowversion the mutation recorded");
-			assertEquals(expectedObserver, dto.state.dimensions.observer.textValue, operation & ": with its own aggregate");
-			assertNotEquals(dto.rowVersion, storedRowVersion(walkId), operation & ": while the database has since moved on");
-			assertEquals("OTHER-" & operation, storedObserver(walkId), operation & ": to the competing session's state");
-			assertEquals(b.result.rowVersion, storedRowVersion(walkId));
+			assertRowVersionEquals(b.r1, dto.rowVersion, operation & ": the response carries the rowversion its own mutation produced");
+			assertRowVersionEquals(recordedRowVersion(mutationId), dto.rowVersion, operation & ": which is the rowversion the mutation recorded");
+			assertExactTextEquals(expectedObserver, dto.state.dimensions.observer.textValue, operation & ": with its own aggregate");
+			assertRowVersionChanged(dto.rowVersion, storedRowVersion(walkId), operation & ": while the database has since moved on");
+			assertExactTextEquals("OTHER-" & operation, storedObserver(walkId), operation & ": to the competing session's state");
+			assertRowVersionEquals(b.result.rowVersion, storedRowVersion(walkId));
 
 			var token = dto.rowVersion;
 			assertThrows(
@@ -347,7 +347,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 						"dimensions": { "observer": { "textValue": "OVERWRITE" } }, "responses": requiredAnswers() });
 				},
 				"ICFWalk.Conflict", "STALE_ROW_VERSION");
-			assertEquals("OTHER-" & operation, storedObserver(walkId), operation & ": the returned token could not overwrite the newer work");
+			assertExactTextEquals("OTHER-" & operation, storedObserver(walkId), operation & ": the returned token could not overwrite the newer work");
 		}
 	}
 
@@ -405,17 +405,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			});
 
 			assertTrue(interceptor.fired("countRevisions"), "the writer really was started while the response was being built");
-			assertNotEquals("COMPLETED", observed.status, "it could not commit there: the walk mutation lock held it");
-			assertEquals(recordedRowVersion(m1), a.rowVersion, "so the response is the mutation's own rowversion");
-			assertEquals("A-M1", a.state.dimensions.observer.textValue, "and the mutation's own aggregate");
+			assertExactTextNotEquals("COMPLETED", observed.status, "it could not commit there: the walk mutation lock held it");
+			assertRowVersionEquals(recordedRowVersion(m1), a.rowVersion, "so the response is the mutation's own rowversion");
+			assertExactTextEquals("A-M1", a.state.dimensions.observer.textValue, "and the mutation's own aggregate");
 		} finally {
 			// Bounded, and unconditional: a failed assertion above must not strand the thread.
 			if (structKeyExists(cfthread, "mutationResponseInterference")) threadJoin("mutationResponseInterference", 30000);
 		}
 
-		assertEquals("COMPLETED", cfthread.mutationResponseInterference.status, "the deferred writer ran once the lock was released");
-		assertEquals("STALE_ROW_VERSION", cfthread.mutationResponseInterference.outcome, "and by then its token was stale, so it conflicted");
-		assertEquals("A-M1", storedObserver(walkId), "nothing overwrote the state the mutation committed");
-		assertEquals("DRAFT", storedStatus(walkId));
+		assertExactTextEquals("COMPLETED", cfthread.mutationResponseInterference.status, "the deferred writer ran once the lock was released");
+		assertExactTextEquals("STALE_ROW_VERSION", cfthread.mutationResponseInterference.outcome, "and by then its token was stale, so it conflicted");
+		assertExactTextEquals("A-M1", storedObserver(walkId), "nothing overwrote the state the mutation committed");
+		assertExactTextEquals("DRAFT", storedStatus(walkId));
 	}
 }

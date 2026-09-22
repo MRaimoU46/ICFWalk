@@ -10,15 +10,15 @@ administration UI -- has **not** been started, and neither has Phase 7.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 6 publish-foundation fourth correction candidate, awaiting independent
+**Current state: Phase 6 publish-foundation fifth correction candidate, awaiting independent
 verification.** Branch `claude/icfwalk-phase-6-admin-publish`, on top of the frozen Phase 5 baseline
 `e55ec08af5b8622db5823b6e353423b891918549`. Phase 6 is **not** frozen and **not** complete; the
 correction it carries has not yet been independently audited.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
-the Phase 6 publish-foundation correction, its second and third corrections, and finally the
-Phase 6 publish-foundation **fourth** correction, which is the current state of the build.
+the Phase 6 publish-foundation correction, its second, third and fourth corrections, and finally
+the Phase 6 publish-foundation **fifth** correction, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -2900,7 +2900,7 @@ test more room to pass; both make a real result distinguishable from a harness l
 4. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.
 
-## Phase 6 publish-foundation fourth correction (current state)
+## Phase 6 publish-foundation fourth correction (superseded in part by the fifth correction below)
 
 Correction-only session against a fourth independent audit, this one of the third correction
 (`a8e97f22ae1639faef5b6e68bf7255dea838f8e2`), whose verdict was **NOT READY TO ACCEPT THE PHASE 6
@@ -2923,7 +2923,7 @@ completely clean working tree including untracked files, the Phase 5 baseline
 
 ### What was wrong, and what each fix is
 
-**1 (MEDIUM). Metadata change detection ignored case.** `InstrumentMetadataService.updateMetadata`
+**1 (LOW; audit P6C3-03). Metadata change detection ignored case.** `InstrumentMetadataService.updateMetadata`
 compared `toString(before[field]) != toString(after[field])`, and CFML's string `!=` is
 case-insensitive. A legitimate rename from `ICFWalk` to `Icfwalk`, or a capitalization-only
 description edit, was classified as a no-op: nothing written, `row_version` unmoved, no audit event.
@@ -2938,7 +2938,7 @@ the fix, and the existing no-op case still passes. Their text assertions use a b
 `compare()` helper, because `BaseSpec.assertEquals` uses the same case-insensitive operator and
 could not have detected the defect. Record: `docs/evidence/phase6-fourth-correction-red-before-fix.md`.
 
-**2 (MEDIUM). The primary acceptance rows described the superseded implementation.** ADM-04 still
+**2 (MEDIUM; audit P6C3-02). The primary acceptance rows described the superseded implementation.** ADM-04 still
 said B's non-completion proved it had reached the competing lock and named three pairings; ADM-05
 still said the global identity creators call `requireDraftVersion` before an INSERT and that
 `updateInstrumentMetadata` requires a named known `icf.app_user`.
@@ -2954,7 +2954,7 @@ for every mutator, and the no-op statements in `DATA_CONTRACT.md` and `OPEN_DECI
 materiality is case-sensitive. The header of this file had also gone stale (it still named the
 second correction as current) and was corrected. A new CORR7 ledger records all four findings.
 
-**3 (LOW). The evidence ledger overstated two facts.** The third correction's environment record
+**3 (LOW; audit P6C3-04). The evidence ledger overstated two facts.** The third correction's environment record
 said 26 CFML spec files ran; there were 31, and its raw transcript names the same 31. Its
 red-before-green record said the remediation regression exercised 50060, 50061 and 2627; the test
 executes 50060 and 2627 and only asserts structurally that the published SQL contains
@@ -2969,7 +2969,7 @@ longer accepts an actor id, the replacement also refuses the id of a user who ho
 `instrument.manage`, and no behaviour coverage was removed. The raw third-correction transcript is
 unchanged.
 
-**4 (LOW). The previous gate did not prove the committed tree.** It ran at `bff53f5` with a dirty
+**4 (MEDIUM; audit P6C3-01). The previous gate did not prove the committed tree.** It ran at `bff53f5` with a dirty
 working tree and was committed afterwards.
 
 *Fix.* This correction is committed first; the working tree is then confirmed completely clean;
@@ -3082,4 +3082,179 @@ they describe.
    throughout.
 4. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
 5. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
+   **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.
+
+## Phase 6 publish-foundation fifth correction (current state)
+
+Correction-only session against the independent audit of the fourth correction (the supplied
+candidate `04fb1afb05edbdad96d61c160c59217a01ab06e0`), whose verdict was **NOT READY TO ACCEPT THE
+PHASE 6 PUBLISH FOUNDATION** with 0 HIGH findings, one new MEDIUM, one new LOW, and the prior MEDIUM
+P6C3-01 still open because the external final gate transcript and final environment record had not
+been supplied. The audit found P6C3-02 (the primary ADM-04 and ADM-05 rows), P6C3-03 (case-only
+metadata materiality) and P6C3-04 (evidence accounting) closed, and those corrections are preserved
+unchanged, as is everything the earlier cycles verified: the locked shared-metadata read, merge,
+update and audit; principal authorization and actor attribution; the atomic status-qualified
+identity `INSERT ... SELECT`; the two-sided concurrency barriers; JSON type and count validation
+with the top-level `null` refusal; the exact-identity remediation SQL; the exact `DRAFT`
+requirements; `ICFWALK_SCREENSHOT_DIR`; and the deterministic response-set fixture. **No production
+file changed**: this correction touches the CFML test harness, its specs and the records. No schema
+migration, route, dependency, production hook or tag was added, and none of ADM-02, ADM-06, ADM-07,
+ADM-08, the administration UI or Phase 7 was started. **This is a correction candidate awaiting
+independent verification: Phase 6 is not frozen, not complete and not accepted.**
+
+Starting point. The container was provisioned with the local branch **stale** at
+`a8e97f22ae1639faef5b6e68bf7255dea838f8e2` (the prior audited candidate; its tracking ref was stale
+too), while `git ls-remote` showed the remote branch at the supplied
+`04fb1afb05edbdad96d61c160c59217a01ab06e0`; the reflog shows the harness had checked `04fb1afb` out
+detached and then switched to the stale local branch. The working tree was clean and `a8e97f2` is
+an ancestor of `04fb1af` (two commits, `c7f6f48` and `04fb1af`), so the branch was brought to the
+supplied candidate with `git pull --ff-only origin claude/icfwalk-phase-6-admin-publish`: a
+fast-forward, with no reset, rebase, force or rewrite. Then, verified before any edit: branch
+`claude/icfwalk-phase-6-admin-publish` at exactly `04fb1afb05edbdad96d61c160c59217a01ab06e0` (tree
+`52788191fea2749570aad261103dbd4b49dd24be`), a completely clean working tree and index including
+untracked files, the Phase 5 baseline `e55ec08af5b8622db5823b6e353423b891918549` an ancestor, and
+the remote branch equal to HEAD. The supplied archive itself was not present in the container, so
+its SHA-256 (`02293173c911a8ea15f098675af463af6e3a92b1aa2d5f2ebec7b35c23b09237`) could not be
+checked here; the commit identity was verified against the remote instead.
+
+### What was wrong, and what each fix is
+
+**1 (MEDIUM). Exact-contract tests compared through coercive equality.** `BaseSpec.assertEquals`
+and `assertNotEquals` stringified both values and compared them with CFML's `!=` and `==`, which
+ignore case and compare numeric-looking strings as numbers. A row version written as 16 hex digits
+reads as a number: `000000000000E988` is `0e988`, zero, equal to its successor. So the assertions
+behind immutability, refusal atomicity, no-ops, optimistic concurrency, replay, response coherence
+and concurrency outcomes could pass although a value moved, or fail although it did (the fourth
+correction's first exact-commit gate failed on exactly that). Ninety row-version comparisons in 16
+spec files went through those helpers, besides several hundred comparisons of codes, identifiers,
+checksums, canonical JSON and authored text.
+
+*Red, before any helper existed.* A temporary probe spec (deleted, never committed) called the
+unmodified helpers with `ICFWalk` / `Icfwalk` and `000000000000E988` / `000000000000E989`:
+`assertEquals` accepted both pairs as equal and `assertNotEquals` rejected both valid inequalities,
+while two identical-value controls passed; 4 failed, 2 passed, exit 1. Command, output and probe
+source: `docs/evidence/phase6-fifth-correction-red-before-fix.md`.
+
+*Fix.* `BaseSpec` gains five exact helpers built on `compare()`, never on `==` or `!=`:
+`assertExactTextEquals`, `assertExactTextNotEquals`, `assertRowVersionEquals`,
+`assertRowVersionChanged` and `assertExactJsonEquals`. They are case-sensitive, never read text as a
+number, boolean or date, and never normalize case, a `0x` prefix, padding or representation. The
+text helpers refuse null and structures instead of stringifying them; the row-version helpers also
+refuse an empty token, so a row version that was never read cannot make "unchanged" true. Failure
+messages name both values with their lengths and the first differing character. The general
+`assertEquals` / `assertNotEquals` keep their semantics for the numeric and boolean contracts they
+still serve, are documented as not exact, name both values when `assertNotEquals` fails, and refuse
+any operand shaped like a row-version token. `assertThrows` compares the errorcode exactly (it is a
+client's `error.code`) and the type prefix with an explicit `compareNoCase` (CFML resolves exception
+types case-insensitively, and `Errors.statusFor` relies on it).
+
+*Migration.* A traced run of the unmodified suite (temporary instrumentation, never committed)
+recorded 3,999 assertion executions and found exact and coercive comparison agreeing in every one,
+so no expectation changed. Each call was then classified by the contract of the value it compares,
+with aliases (`r0`, `r1`, `r2`, `rv`), loops and struct-valued fingerprints reviewed by hand. Of the
+933 general-helper calls, 523 moved to `assertExactTextEquals`, 25 to `assertExactTextNotEquals`, 87
+to the row-version helpers and 21 to `assertExactJsonEquals`; three wrappers were split by field
+contract; and 274 numeric and boolean comparisons stay on the general helpers, with their reason in
+`docs/evidence/phase6-fifth-correction-assertion-inventory.md`. In the final suite the exact helpers
+carry 548 text, 25 text-inequality, 92 row-version and 23 structure comparisons, and the general
+helpers 275 (the split wrapper adds one numeric loop). All 92 row-version comparisons
+(the 90 above and two inline `compare()` checks) now use `assertRowVersionEquals` (78) or
+`assertRowVersionChanged` (14); high-water marks are read as exact text from SQL Server
+(`CONVERT(varchar(20), MAX(CAST(row_version AS bigint)))`), because Lucee returns SQL `bigint` as a
+`Double`. The fourth correction's spec-local `assertExactText` is gone and its 22 calls use the
+shared helper. Assertion-deciding `==` predicates on error codes, paths, migration states and
+barrier signals now use `compare()`. A traced run of the migrated suite found the general helpers
+receiving only numbers and booleans outside the focused spec.
+
+*Coverage and guard.* `tests/cfml/specs/ExactAssertionTest.cfc` (14 cases) proves both directions
+of every helper with both pairs, the traps the old operator fell into (`4`/`04`, `1E3`/`1000`,
+`true`/`YES`, case, prefix and padding of row versions, two tokens that are both zero), the
+refusals, the messages, and the exact errorcode. It also guards the result: the general helpers
+refuse a row-version-shaped value at run time, and a scan of every spec and support component
+(comments and literals masked) fails on a row-version expression or a quoted text literal passed to
+them, a row version compared with `==`, `!=`, `EQ` or `NEQ`, or a spec shadowing a shared helper.
+Run before the migration, that scan reported 500 findings; after it, none.
+
+**2 (LOW). The fourth correction's severity labels were reversed.** Its list above labelled the
+case-only metadata item (P6C3-03) MEDIUM and the exact-commit traceability item (P6C3-01) LOW; the
+audit classified them LOW and MEDIUM. *Fix.* The four items now read `1 (LOW; audit P6C3-03)`,
+`2 (MEDIUM; audit P6C3-02)`, `3 (LOW; audit P6C3-04)` and `4 (MEDIUM; audit P6C3-01)`. The aggregate
+(0 HIGH, 2 MEDIUM, 2 LOW) and the substance of every item are unchanged. The CORR7 ledger in
+`docs/ACCEPTANCE_TRACKING.md` states only the aggregate, which was already right, and the fourth
+correction's evidence records carry no per-item severity.
+
+**3 (MEDIUM; P6C3-01, carried open). The exact-commit gate's evidence was not handed over.** The
+fourth correction ran an exact-commit gate but its handoff supplied only a repository archive, not
+the raw final transcript or the final environment record, so the gate could not be tied to the
+exact pushed commit. *Fix.* This correction is committed first; the working tree and index are then
+confirmed completely clean; the complete clean-database gate runs from that exact commit with its
+raw transcript captured outside the repository and identity recorded before and after; the commit
+is pushed normally and the remote branch hash is shown equal to the tested commit; and the
+repository ZIP is made from the pushed commit. The ZIP, the transcript and the environment record
+are three separate handoff artifacts with their SHA-256 values. None is committed, because
+committing it would create a different, untested commit, and any evidence from an earlier commit is
+obsolete.
+
+### Files changed (fifth correction)
+
+| File | Change |
+| --- | --- |
+| `tests/cfml/BaseSpec.cfc` | Five exact helpers on `compare()`; the general helpers documented as not exact, refusing row-version-shaped operands, `assertNotEquals` naming both values; `assertThrows` errorcode exact and type prefix explicitly `compareNoCase`. |
+| `tests/cfml/specs/ExactAssertionTest.cfc` | **New.** 14 cases: both directions of every helper with both pairs, the traps, refusals and messages, the exact errorcode, and the run-time and source guards. |
+| `tests/cfml/specs/*Test.cfc` (all 31 existing specs) | Exact-contract comparisons moved to the exact helpers (653 renamed calls); in `InstrumentImmutabilityTest`, `InstrumentPublishServiceTest` and `InstrumentImportServiceTest` the wrappers were split by field contract and high-water marks are read as exact text; in `InstrumentMetadataServiceTest` the local `assertExactText` is removed; assertion-deciding `==` predicates use `compare()`. No case was added, removed or renamed, and no expected value changed. |
+| `tests/cfml/support/ConcurrencyBarrier.cfc` | `signalledInOrder` matches signal names with `compare()`. |
+| `docs/evidence/phase6-fifth-correction-red-before-fix.md` | **New.** The red probe (source, command, output, exit 1), operator facts, the helper design, the permanent cases. |
+| `docs/evidence/phase6-fifth-correction-assertion-inventory.md` | **New.** Method, files reviewed, every call's disposition by category and file, the 92 row-version comparisons, the migrated predicates, what was kept and why, the guard. |
+| `docs/ACCEPTANCE_TRACKING.md` | CORR8 ledger; forward pointers on CORR7-01 and CORR7-05; the fourth correction's heading marked superseded in part. |
+| `BUILD_STATUS.md` | Header; the fourth correction's severity labels (item 2 above); this section. |
+
+`manifest.json` needed no refresh: none of the files it lists changed.
+
+### Verification
+
+Development runs, before this commit existed, on Lucee 6.2.8.20 and SQL Server 2022
+(16.0.4295.3): the red probe as above; `ExactAssertionTest` 13/14 against the unmigrated suite (the
+source guard failing with 500 findings), then 14/14; the complete CFML suite 377/377 traced before
+the migration and 391/391 traced after it (377 plus the 14 new cases), 0 failed and 0 skipped each
+time. No case disappeared: the 377 test methods at the audited commit are all present, under the
+same names in the same specs, and the 14 added are all in `ExactAssertionTest`.
+
+Development run of the complete gate against the uncommitted working tree (the gate script is kept
+outside the repository; development mode): a new SQL Server container whose `icfwalk_dev` had no
+tables, taken through `001`..`006`; `002`..`006` re-applied (`legacy_membership_backfill_ran_now`
+0); `001` re-applied and refused with 50001 as documented; Lucee started, the DRAFT seeded, Lucee
+restarted and the seeded DRAFT confirmed through the maintenance route; `npm ci`;
+`validate:handoff` 51 checks, 0 errors; `test:package` 19/19; all 37 tracked JavaScript/MJS files
+parse; `ICFWALK_REQUIRE_APP=1 npm test` 175/175 with 0 failed, 0 cancelled, 0 skipped, 0 todo;
+CFML 391/391 with 0 failed and 0 skipped, from 32 spec files whose reported names equal the
+`*Test.cfc` files; the 13 screenshots written outside the repository; then the application, the
+container and every temporary artifact removed. The Node total is unchanged at 175 because no Node
+test file changed; the CFML total rose from 377 by the 14 new cases.
+
+**The authoritative result is the exact-commit gate**, run after this commit exists, from a
+completely clean tree, with its raw transcript and the final environment record kept outside the
+repository. Its totals are reported with the handoff, not here, because writing them here would
+change the commit they describe.
+
+### Unresolved and not verified (fifth correction)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** All CFML ran on Lucee 6.2.8.20
+   and all SQL on SQL Server 2022. The exact helpers rest on `compare()`, `compareNoCase()` and
+   `serializeJSON`; the first two are documented with the same semantics on Adobe ColdFusion, but
+   Adobe ColdFusion's `serializeJSON` infers types from string content, so `ExactAssertionTest` and
+   the specs that use `assertExactJsonEquals` should be run there before any claim about that
+   engine (`docs/evidence/phase6-fifth-correction-red-before-fix.md`). The one SQL construct this
+   correction adds, `CONVERT(varchar(20), MAX(CAST(row_version AS bigint)))`, is SQL Server 2005+
+   and appears only in test code.
+2. **The supplied archive's SHA-256 was not verified here**: the archive was not present in the
+   container. The starting commit was verified against the remote branch instead.
+3. **The `phase-5-freeze` tag still does not exist**, locally or on the remote. This correction did
+   not create, move or push any tag.
+4. **The general `assertEquals` / `assertNotEquals` still coerce** for the numeric and boolean
+   contracts they serve. That is deliberate and documented in `BaseSpec`; they refuse row-version
+   tokens, and the source guard keeps text literals and row-version expressions away from them. A
+   new comparison of text through a non-literal expression would still reach them unless a
+   reviewer applies the inventory's rule; the guard makes that likely to be caught, not impossible.
+5. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
+6. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.

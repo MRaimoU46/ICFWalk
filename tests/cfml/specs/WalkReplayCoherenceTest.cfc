@@ -117,10 +117,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var before = mutationCount(w.id);
 		var replay = save(w, { "observer": { "textValue": "A1" } }, id);
 		assertTrue(replay.replayed, "the lost answer is recovered by replaying the committed outcome");
-		assertEquals(committed.rowVersion, replay.rowVersion, "and the row version it returns is the one that mutation committed");
-		assertEquals(storedRowVersion(w.id), replay.rowVersion, "which is still the row version in the database");
+		assertRowVersionEquals(committed.rowVersion, replay.rowVersion, "and the row version it returns is the one that mutation committed");
+		assertRowVersionEquals(storedRowVersion(w.id), replay.rowVersion, "which is still the row version in the database");
 		assertEquals(before, mutationCount(w.id), "a replay records no second mutation");
-		assertEquals("A1", storedObserver(w.id));
+		assertExactTextEquals("A1", storedObserver(w.id));
 	}
 
 	// ---- CORRECTION 1: the audited scenario ----------------------------------------------------
@@ -143,9 +143,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// 2. Session B saves a different valid change against the row version A's save produced.
 		var committedByB = save({ "id": w.id, "rowVersion": committedByA.rowVersion }, { "observer": { "textValue": "B1" } });
-		assertEquals("B1", storedObserver(w.id));
+		assertExactTextEquals("B1", storedObserver(w.id));
 		var afterB = storedRowVersion(w.id);
-		assertEquals(committedByB.rowVersion, afterB);
+		assertRowVersionEquals(committedByB.rowVersion, afterB);
 		var mutationsAfterB = mutationCount(w.id);
 
 		// 3. Session A retries M1 with exactly the request it sent.
@@ -157,28 +157,28 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
 
 		// 4. The refusal writes nothing, records no mutation, and hands back no usable newer token.
-		assertEquals("B1", storedObserver(w.id), "session B's change stands");
-		assertEquals(afterB, storedRowVersion(w.id), "the row version did not move");
+		assertExactTextEquals("B1", storedObserver(w.id), "session B's change stands");
+		assertRowVersionEquals(afterB, storedRowVersion(w.id), "the row version did not move");
 		assertEquals(mutationsAfterB, mutationCount(w.id), "the refused replay recorded no mutation");
 		assertEquals(1, auditCount(w.id, "WALK_MUTATION_SUPERSEDED"));
 		var details = detailsOf(e);
-		assertEquals(committedByA.rowVersion, details.recordedRowVersion, "the details carry the row version M1 committed");
-		assertNotEquals(afterB, details.recordedRowVersion, "never the current one");
+		assertRowVersionEquals(committedByA.rowVersion, details.recordedRowVersion, "the details carry the row version M1 committed");
+		assertRowVersionChanged(afterB, details.recordedRowVersion, "never the current one");
 
 		// And the token it does carry cannot overwrite B: it is stale, so it conflicts.
 		var recorded = details.recordedRowVersion;
 		assertThrows(
 			function() { save(walk, { "observer": { "textValue": "A-overwrite" } }, "", recorded); },
 			"ICFWalk.Conflict", "STALE_ROW_VERSION");
-		assertEquals("B1", storedObserver(w.id), "session A's stale state never overwrote session B");
-		assertEquals(afterB, storedRowVersion(w.id));
+		assertExactTextEquals("B1", storedObserver(w.id), "session A's stale state never overwrote session B");
+		assertRowVersionEquals(afterB, storedRowVersion(w.id));
 
 		// Reconciliation is the only way forward: read the walk, then save against what it holds.
 		var reloaded = variables.svc.open(p(variables.walker), w.id);
-		assertEquals(afterB, reloaded.rowVersion);
+		assertRowVersionEquals(afterB, reloaded.rowVersion);
 		var reconciled = save(reloaded, { "observer": { "textValue": "A2" } });
-		assertEquals("A2", storedObserver(w.id));
-		assertNotEquals(afterB, storedRowVersion(w.id));
+		assertExactTextEquals("A2", storedObserver(w.id));
+		assertRowVersionChanged(afterB, storedRowVersion(w.id));
 	}
 
 	/** The same rule for CREATE, COMPLETE, and VOID: a superseded replay is a conflict, not a token. */
@@ -194,8 +194,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var createRetry = assertThrows(
 			function() { variables.svc.create(p(user), { "orgUnitId": unit, "clientMutationId": createId, "dimensions": {}, "responses": {} }); },
 			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
-		assertEquals(created.id, detailsOf(createRetry).walkId, "the client can still find the walk it created");
-		assertEquals(advanced, storedRowVersion(created.id), "and nothing was written");
+		assertExactTextEquals(created.id, detailsOf(createRetry).walkId, "the client can still find the walk it created");
+		assertRowVersionEquals(advanced, storedRowVersion(created.id), "and nothing was written");
 		assertEquals(1, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE mutation_id = :id", { "id": variables.db.guid(createId) }), "exactly one create mutation row");
 
 		// COMPLETE: completing, then editing the completed walk, supersedes the completion replay.
@@ -211,7 +211,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			function() { variables.svc.complete(p(user), walkId, { "rowVersion": readyRowVersion, "clientMutationId": completeId }); },
 			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
 		assertEquals(revisions, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", { "id": variables.db.guid(w.id) }), "no second revision");
-		assertEquals(edited.rowVersion, storedRowVersion(w.id));
+		assertRowVersionEquals(edited.rowVersion, storedRowVersion(w.id));
 
 		// VOID: a void replay after the walk moved on is refused the same way. Voiding is terminal,
 		// so the supersession is produced by voiding a second walk and replaying the first id there --
@@ -220,8 +220,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var voided = variables.svc.void(p(variables.walker), w.id, { "rowVersion": edited.rowVersion, "clientMutationId": voidId, "reason": "one" });
 		var voidReplay = variables.svc.void(p(variables.walker), w.id, { "rowVersion": edited.rowVersion, "clientMutationId": voidId, "reason": "one" });
 		assertTrue(voidReplay.replayed, "a void replay is coherent while nothing has touched the walk since");
-		assertEquals(voided.rowVersion, voidReplay.rowVersion);
-		assertEquals(voided.rowVersion, storedRowVersion(w.id));
+		assertRowVersionEquals(voided.rowVersion, voidReplay.rowVersion);
+		assertRowVersionEquals(voided.rowVersion, storedRowVersion(w.id));
 	}
 
 	// ---- CORRECTION 1 (third session): the comparison and the DTO are one atomic step -----------
@@ -248,7 +248,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var w = newWalk();
 		var m1 = newMutationId();
 		var committed = save(w, { "observer": { "textValue": "M1" } }, m1);
-		assertEquals("M1", storedObserver(w.id));
+		assertExactTextEquals("M1", storedObserver(w.id));
 
 		var interceptor = createObject("component", "icfwalktests.support.InterceptingWalkRepository").init(variables.c.walkRepository);
 		var interceptingService = createObject("component", "icfwalk.walks.WalkService").init(
@@ -291,24 +291,24 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		});
 
 		assertTrue(interceptor.fired("loadDimensionValues"), "the interference really was forced at the DTO-loading point");
-		assertNotEquals("COMPLETED", joinedStatus, "the concurrent save could not commit inside the replay: the walk mutation lock held it");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "the concurrent save could not commit inside the replay: the walk mutation lock held it");
 		assertTrue(replayed.replayed, "the replay is still the coherent recorded outcome");
-		assertEquals(committed.rowVersion, replayed.rowVersion, "and it carries the row version M1 committed, never a newer one");
-		assertEquals("M1", replayed.state.dimensions.observer.textValue, "with the aggregate as M1 left it");
+		assertRowVersionEquals(committed.rowVersion, replayed.rowVersion, "and it carries the row version M1 committed, never a newer one");
+		assertExactTextEquals("M1", replayed.state.dimensions.observer.textValue, "with the aggregate as M1 left it");
 
 		// Once the replay commits, the waiting save proceeds: the interference was real, only deferred.
 		threadJoin("replayInterference", 30000);
-		assertEquals("COMPLETED", cfthread.replayInterference.status, "the deferred save ran to completion after the replay released the lock");
+		assertExactTextEquals("COMPLETED", cfthread.replayInterference.status, "the deferred save ran to completion after the replay released the lock");
 		assertTrue(cfthread.replayInterference.committed, "and it committed: " & cfthread.replayInterference.failure);
-		assertEquals("INTERFERENCE", storedObserver(walkId));
-		assertNotEquals(committed.rowVersion, storedRowVersion(walkId), "the walk did move on -- after the replay, not inside it");
+		assertExactTextEquals("INTERFERENCE", storedObserver(walkId));
+		assertRowVersionChanged(committed.rowVersion, storedRowVersion(walkId), "the walk did move on -- after the replay, not inside it");
 
 		// And the token the replay handed back is now stale, so it cannot overwrite that save.
 		var stale = committed.rowVersion;
 		assertThrows(
 			function() { variables.svc.save(p(variables.walker), walkId, { "rowVersion": stale, "clientMutationId": newMutationId(), "dimensions": { "observer": { "textValue": "overwrite" } }, "responses": {} }); },
 			"ICFWalk.Conflict", "STALE_ROW_VERSION");
-		assertEquals("INTERFERENCE", storedObserver(walkId));
+		assertExactTextEquals("INTERFERENCE", storedObserver(walkId));
 	}
 
 	/**
@@ -342,9 +342,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			},
 			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
 		assertFalse(interceptor.fired("loadDimensionValues"), "nothing about the newer aggregate was read");
-		assertEquals(committed.rowVersion, detailsOf(e).recordedRowVersion, "the details carry the recorded token");
-		assertEquals("later", storedObserver(walkId), "and nothing was written");
-		assertEquals(before, storedRowVersion(walkId));
+		assertRowVersionEquals(committed.rowVersion, detailsOf(e).recordedRowVersion, "the details carry the recorded token");
+		assertExactTextEquals("later", storedObserver(walkId), "and nothing was written");
+		assertRowVersionEquals(before, storedRowVersion(walkId));
 	}
 
 	// ---- CORRECTION 4: legacy NULL fingerprints --------------------------------------------------
@@ -365,9 +365,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var e = assertThrows(
 			function() { save(walk, { "observer": { "textValue": "legacy" } }, mutationId); },
 			"ICFWalk.Conflict", "MUTATION_LEGACY_UNVERIFIABLE");
-		assertEquals(w.id, detailsOf(e).walkId);
-		assertEquals("legacy", storedObserver(w.id), "no application state changed");
-		assertEquals(before, storedRowVersion(w.id), "the row version did not move");
+		assertExactTextEquals(w.id, detailsOf(e).walkId);
+		assertExactTextEquals("legacy", storedObserver(w.id), "no application state changed");
+		assertRowVersionEquals(before, storedRowVersion(w.id), "the row version did not move");
 		assertEquals(mutations, mutationCount(w.id), "no mutation row was written");
 		assertEquals(1, auditCount(w.id, "WALK_MUTATION_LEGACY_UNVERIFIABLE"));
 		assertEquals(0, auditCount(w.id, "WALK_MUTATION_REPLAYED"));
@@ -385,11 +385,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Materially different content: the answer is the legacy conflict, not MUTATION_ID_REUSED,
 		// because the server cannot tell the two apart and says so instead of guessing.
 		assertThrows(function() { save(walk, { "observer": { "textValue": "tampered" } }, mutationId); }, "ICFWalk.Conflict", "MUTATION_LEGACY_UNVERIFIABLE");
-		assertEquals("legacy", storedObserver(w.id));
-		assertEquals(before, storedRowVersion(w.id));
+		assertExactTextEquals("legacy", storedObserver(w.id));
+		assertRowVersionEquals(before, storedRowVersion(w.id));
 		// A different action under the same id is still the earlier, cheaper refusal.
 		assertThrows(function() { variables.svc.complete(p(variables.walker), walk.id, { "rowVersion": walk.rowVersion, "clientMutationId": mutationId }); }, "ICFWalk.Conflict", "MUTATION_ID_REUSED");
-		assertEquals("DRAFT", variables.db.run("SELECT status FROM [icf].[walk] WHERE walk_id = :id", { "id": variables.db.guid(walk.id) }).status[1]);
+		assertExactTextEquals("DRAFT", variables.db.run("SELECT status FROM [icf].[walk] WHERE walk_id = :id", { "id": variables.db.guid(walk.id) }).status[1]);
 	}
 
 	/**
@@ -418,8 +418,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				variables.svc.save(p(stranger), walk.id, { "rowVersion": walk.rowVersion, "clientMutationId": mutationId, "dimensions": {}, "responses": {} });
 			},
 			"ICFWalk.NotFound");
-		assertNotEquals("MUTATION_LEGACY_UNVERIFIABLE", structKeyExists(notFound, "errorcode") ? notFound.errorcode : "", "the refusal is not the fingerprint conflict");
-		assertEquals("legacy", storedObserver(w.id), "and nothing was written on either path");
-		assertEquals(before, storedRowVersion(w.id));
+		assertExactTextNotEquals("MUTATION_LEGACY_UNVERIFIABLE", structKeyExists(notFound, "errorcode") ? notFound.errorcode : "", "the refusal is not the fingerprint conflict");
+		assertExactTextEquals("legacy", storedObserver(w.id), "and nothing was written on either path");
+		assertRowVersionEquals(before, storedRowVersion(w.id));
 	}
 }

@@ -73,7 +73,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		);
 		assertEquals(1, q.recordCount, "the legacy membership backfill is recorded as settled");
 		assertTrue(
-			q.state[1] == "COMPLETED" || q.state[1] == "ADOPTED_PRE_STATE",
+			compare(q.state[1], "COMPLETED") == 0 || compare(q.state[1], "ADOPTED_PRE_STATE") == 0,
 			"and in a state that means 'never infer membership again', not '" & q.state[1] & "'"
 		);
 	}
@@ -104,7 +104,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var v2Config = config(label("v2"));
 		addValueToDimension(v2Config, sharedDimension.code, newValueCode);
 		var v2 = variables.importSvc.importConfig(v2Config);
-		assertNotEquals(versionId, v2.versionId, "V2 is its own version");
+		assertExactTextNotEquals(versionId, v2.versionId, "V2 is its own version");
 
 		assertEquals(1, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[dimension_value] dv JOIN [icf].[dimension_definition] d ON d.dimension_id = dv.dimension_id
@@ -121,20 +121,20 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// 6. Nothing about V1 moved.
 		var after = stateOf(versionId);
-		assertEquals(before.membershipDigest, after.membershipDigest, "V1's version-scoped dimension rows are unchanged");
+		assertExactTextEquals(before.membershipDigest, after.membershipDigest, "V1's version-scoped dimension rows are unchanged");
 		assertEquals(before.membershipCount, after.membershipCount, "including how many there are");
 		assertEquals(0, v1MembershipFor(versionId, sharedDimension.dimensionId, newValueCode), "V1 still does not offer V2's new value");
-		assertEquals(before.definitionsChecksum, after.definitionsChecksum, "V1's normalized definitions are unchanged");
-		assertEquals(before.snapshotJson, after.snapshotJson, "V1's snapshot bytes are unchanged");
-		assertEquals(before.checksum, after.checksum, "V1's checksum is unchanged");
-		assertEquals(before.rowVersion, after.rowVersion, "V1's row version is unchanged");
-		assertEquals("PUBLISHED", after.status, "and it is still published");
+		assertExactTextEquals(before.definitionsChecksum, after.definitionsChecksum, "V1's normalized definitions are unchanged");
+		assertExactTextEquals(before.snapshotJson, after.snapshotJson, "V1's snapshot bytes are unchanged");
+		assertExactTextEquals(before.checksum, after.checksum, "V1's checksum is unchanged");
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "V1's row version is unchanged");
+		assertExactTextEquals("PUBLISHED", after.status, "and it is still published");
 
 		// 7a. The already-primed caches still describe V1 exactly as they did.
 		var cachedIndex = variables.walkRepo.definitionIndex(versionId);
 		var cachedModel = variables.snapshots.renderModelFor(versionId);
-		assertEquals(digestOf(primedIndex), digestOf(cachedIndex), "the primed walk definition index is unchanged");
-		assertEquals(digestOf(primedModel), digestOf(cachedModel), "the primed render model is unchanged");
+		assertExactTextEquals(digestOf(primedIndex), digestOf(cachedIndex), "the primed walk definition index is unchanged");
+		assertExactTextEquals(digestOf(primedModel), digestOf(cachedModel), "the primed render model is unchanged");
 		assertFalse(
 			structKeyExists(cachedIndex.values[sharedDimension.dimensionId], newValueCode),
 			"and the cached index still refuses V2's value for a V1 walk"
@@ -149,16 +149,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var freshIndex = variables.walkRepo.definitionIndex(versionId);
 		var freshModel = variables.snapshots.renderModelFor(versionId);
 		var freshSnapshot = variables.snapshots.snapshotFor(versionId);
-		assertEquals(digestOf(primedIndex), digestOf(freshIndex), "a fresh uncached index is identical to the primed one");
-		assertEquals(digestOf(primedModel), digestOf(freshModel), "a fresh uncached render model is identical to the primed one");
-		assertEquals(digestOf(primedSnapshot), digestOf(freshSnapshot), "and so is the parsed snapshot");
+		assertExactTextEquals(digestOf(primedIndex), digestOf(freshIndex), "a fresh uncached index is identical to the primed one");
+		assertExactTextEquals(digestOf(primedModel), digestOf(freshModel), "a fresh uncached render model is identical to the primed one");
+		assertExactTextEquals(digestOf(primedSnapshot), digestOf(freshSnapshot), "and so is the parsed snapshot");
 		assertFalse(
 			structKeyExists(freshIndex.values[sharedDimension.dimensionId], newValueCode),
 			"the allowed walk values for V1 are the same uncached as cached"
 		);
 
 		// And the walk values V1 accepts are exactly the ones it offered before V2 existed.
-		assertEquals(before.allowedValues, allowedWalkValues(versionId), "V1's allowed walk values are unchanged");
+		assertExactTextEquals(before.allowedValues, allowedWalkValues(versionId), "V1's allowed walk values are unchanged");
 	}
 
 	/** V2 keeps its own new value: the correction restricts inference, it does not break imports. */

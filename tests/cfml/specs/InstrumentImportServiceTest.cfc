@@ -32,10 +32,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var label = label("db04");
 		var result = variables.svc.importConfig(config(label));
 		assertTrue(result.created, "First import must create the DRAFT.");
-		assertEquals("DRAFT", result.status);
+		assertExactTextEquals("DRAFT", result.status);
 		// The synthetic version label changes the full snapshot; the definitions checksum must equal
 		// the reference golden (the real seed label is checked in tests/node/cfml-suite.test.mjs).
-		assertEquals(variables.golden.definitionsChecksum, result.definitionsChecksum, "Definitions checksum must equal the reference golden.");
+		assertExactTextEquals(variables.golden.definitionsChecksum, result.definitionsChecksum, "Definitions checksum must equal the reference golden.");
 		assertEquals(64, len(result.checksum));
 		assertEquals(17, arrayLen(result.placeholders));
 		assertEquals(17, arrayLen(result.warnings), "Only placeholder warnings expected.");
@@ -51,9 +51,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(counts.dimensionValues >= 95);
 
 		var version = variables.repo.findVersionById(result.versionId);
-		assertEquals("DRAFT", version.status);
-		assertEquals(result.checksum, version.checksum, "Stored checksum.");
-		assertEquals(result.checksum, variables.c.canonicalJson.sha256(version.snapshotJson), "Stored snapshot must hash to the stored checksum.");
+		assertExactTextEquals("DRAFT", version.status);
+		assertExactTextEquals(result.checksum, version.checksum, "Stored checksum.");
+		assertExactTextEquals(result.checksum, variables.c.canonicalJson.sha256(version.snapshotJson), "Stored snapshot must hash to the stored checksum.");
 		assertContains('"versionLabel":"' & label & '"', version.snapshotJson);
 
 		// Every parent, response set, and section GUID resolved (no orphan references).
@@ -74,19 +74,19 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var itemsBefore = variables.repo.loadVersionChildren(first.versionId);
 		var second = variables.svc.importConfig(config(label));
 		assertFalse(second.created);
-		assertEquals(first.versionId, second.versionId);
-		assertEquals(first.checksum, second.checksum);
-		assertEquals(variables.golden.definitionsChecksum, second.definitionsChecksum);
+		assertExactTextEquals(first.versionId, second.versionId);
+		assertExactTextEquals(first.checksum, second.checksum);
+		assertExactTextEquals(variables.golden.definitionsChecksum, second.definitionsChecksum);
 		var countsAfter = variables.repo.countChildren(second.versionId);
 		assertEquals(144, countsAfter.items);
 		assertEquals(138, countsAfter.responseOptions);
 		assertEquals(23, countsAfter.sections);
 		var itemsAfter = variables.repo.loadVersionChildren(second.versionId);
 		for (var key in structKeyArray(itemsBefore.items)) {
-			assertEquals(itemsBefore.items[key].id, itemsAfter.items[key].id, "Item GUID for '" & key & "' must be reused.");
+			assertExactTextEquals(itemsBefore.items[key].id, itemsAfter.items[key].id, "Item GUID for '" & key & "' must be reused.");
 		}
 		for (var key in structKeyArray(itemsBefore.options)) {
-			assertEquals(itemsBefore.options[key].id, itemsAfter.options[key].id, "Option GUID for '" & key & "' must be reused.");
+			assertExactTextEquals(itemsBefore.options[key].id, itemsAfter.options[key].id, "Option GUID for '" & key & "' must be reused.");
 		}
 		assertEquals(1, variables.c.db.scalar("SELECT COUNT(*) AS n FROM [icf].[audit_event] WHERE entity_id = :id AND event_type = N'INSTRUMENT_VERSION_REIMPORTED'", { "id": variables.c.db.guid(second.versionId) }));
 	}
@@ -108,10 +108,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		}
 		tmp = s1.displayOrder; s1.displayOrder = s2.displayOrder; s2.displayOrder = tmp;
 		var reordered = variables.svc.importConfig(cfg);
-		assertNotEquals(variables.golden.definitionsChecksum, reordered.definitionsChecksum, "Reordered document must produce a different definitions checksum.");
+		assertExactTextNotEquals(variables.golden.definitionsChecksum, reordered.definitionsChecksum, "Reordered document must produce a different definitions checksum.");
 		assertEquals(144, variables.repo.countChildren(reordered.versionId).items);
 		var restored = variables.svc.importConfig(config(label));
-		assertEquals(variables.golden.definitionsChecksum, restored.definitionsChecksum, "Restoring the original order returns the golden definitions checksum.");
+		assertExactTextEquals(variables.golden.definitionsChecksum, restored.definitionsChecksum, "Restoring the original order returns the golden definitions checksum.");
 	}
 
 	// ---- DB-06 ------------------------------------------------------------------------------
@@ -127,19 +127,19 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			{ "id": variables.c.db.guid(result.versionId), "publisher": variables.c.db.guid(publisher) }
 		);
 		var before = variables.repo.findVersionById(result.versionId);
-		var itemRowVersion = variables.c.db.run("SELECT MAX(CAST(row_version AS bigint)) AS rv, COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id", { "id": variables.c.db.guid(result.versionId) });
+		var items = variables.c.db.run("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS high_row_version, COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id", { "id": variables.c.db.guid(result.versionId) });
 
 		var cfg = config(label);
 		cfg.items[1].prompt = "Tampered prompt";
 		assertThrows(function() { variables.svc.importConfig(cfg); }, "ICFWalk.Import.PublishedVersion", "INSTRUMENT_VERSION_IMMUTABLE");
 
 		var after = variables.repo.findVersionById(result.versionId);
-		assertEquals("PUBLISHED", after.status);
-		assertEquals(before.rowVersion, after.rowVersion, "Version row must be untouched.");
-		assertEquals(before.checksum, after.checksum);
-		var itemRowVersionAfter = variables.c.db.run("SELECT MAX(CAST(row_version AS bigint)) AS rv, COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id", { "id": variables.c.db.guid(result.versionId) });
-		assertEquals(itemRowVersion.rv[1], itemRowVersionAfter.rv[1], "Published item rows must be untouched.");
-		assertEquals(itemRowVersion.n[1], itemRowVersionAfter.n[1]);
+		assertExactTextEquals("PUBLISHED", after.status);
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "Version row must be untouched.");
+		assertExactTextEquals(before.checksum, after.checksum);
+		var itemsAfter = variables.c.db.run("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS high_row_version, COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id", { "id": variables.c.db.guid(result.versionId) });
+		assertRowVersionEquals(items.high_row_version[1], itemsAfter.high_row_version[1], "Published item rows must be untouched.");
+		assertEquals(items.n[1], itemsAfter.n[1]);
 		assertEquals(0, variables.c.db.scalar("SELECT COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id AND prompt = N'Tampered prompt'", { "id": variables.c.db.guid(result.versionId) }));
 
 		// Discarding a published version is refused as well.
@@ -161,7 +161,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var e = assertThrows(function() { variables.svc.importConfig(cfg); }, "ICFWalk.Import.Validation", "INSTRUMENT_CONFIG_INVALID");
 		var details = variables.c.errors.detailsOf(e);
 		var found = false;
-		for (var issue in details.issues) if (issue.code == "MISSING_REFERENCE" && find("rs_scale_comp_s1_q1", issue.message)) found = true;
+		for (var issue in details.issues) if (compare(issue.code, "MISSING_REFERENCE") == 0 && find("rs_scale_comp_s1_q1", issue.message)) found = true;
 		assertTrue(found, "Expected a MISSING_REFERENCE issue naming rs_scale_comp_s1_q1.");
 		assertTrue(structIsEmpty(findVersionByLabel(label)), "No version row may exist after a refused import.");
 	}
@@ -223,9 +223,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		for (var r = 1; r <= q.recordCount; r++) {
 			var key = q.response_set_key[r] & "|" & q.option_key[r];
 			assertTrue(structKeyExists(expected, key), "Unexpected option " & key);
-			assertEquals(expected[key].definition, q.definition[r], "Definition for " & key & ".");
-			assertEquals(expected[key].label, q.label[r], "Label for " & key & ".");
-			assertEquals(expected[key].code, q.stored_code[r], "Stored code for " & key & ".");
+			assertExactTextEquals(expected[key].definition, q.definition[r], "Definition for " & key & ".");
+			assertExactTextEquals(expected[key].label, q.label[r], "Label for " & key & ".");
+			assertExactTextEquals(expected[key].code, q.stored_code[r], "Stored code for " & key & ".");
 			if (len(expected[key].score)) assertEquals(expected[key].score, val(q.numeric_score[r]), "Score for " & key & ".");
 			if (len(q.definition[r])) withDefinition++;
 		}
@@ -233,7 +233,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// The persisted definitions compile to the same definitions checksum as the document.
 		var persisted = variables.repo.loadNormalizedDefinitions(result.versionId);
-		assertEquals(variables.golden.definitionsChecksum, variables.c.snapshotCompiler.definitionsChecksum(persisted), "Round-trip definitions checksum.");
+		assertExactTextEquals(variables.golden.definitionsChecksum, variables.c.snapshotCompiler.definitionsChecksum(persisted), "Round-trip definitions checksum.");
 	}
 
 	public void function testDiscardDraftRemovesVersionAndChildren() {
@@ -252,7 +252,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var result = variables.svc.importConfig(config(label));
 		var found = false;
 		for (var v in variables.repo.listVersions()) {
-			if (v.versionLabel == label) { found = true; assertEquals("DRAFT", v.status); assertEquals(result.checksum, v.checksum); assertEquals(0, v.walkCount); }
+			if (compare(v.versionLabel, label) == 0) { found = true; assertExactTextEquals("DRAFT", v.status); assertExactTextEquals(result.checksum, v.checksum); assertEquals(0, v.walkCount); }
 		}
 		assertTrue(found, "Imported version must be listed.");
 	}

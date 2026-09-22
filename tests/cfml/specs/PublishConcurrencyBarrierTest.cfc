@@ -112,22 +112,22 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(barrier.observed("A_LOCKED"), "the first publish really held the version row lock");
 		assertTrue(barrier.observed("B_AT_COMPETING_BOUNDARY"), "and the second publish really reached the same lock");
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "in that order: A held it before B arrived");
-		assertNotEquals("COMPLETED", joinedStatus, "B was still queued on the lock while A held it");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "B was still queued on the lock while A held it");
 
 		threadJoin(threadName, 60000);
-		assertEquals("COMPLETED", cfthread[threadName].status, "the second publish ran once the lock was released");
-		assertEquals("INSTRUMENT_VERSION_NOT_DRAFT", cfthread[threadName].outcome, "and found a version that was no longer a DRAFT");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the second publish ran once the lock was released");
+		assertExactTextEquals("INSTRUMENT_VERSION_NOT_DRAFT", cfthread[threadName].outcome, "and found a version that was no longer a DRAFT");
 
 		var row = variables.repo.findVersionById(versionId);
-		assertEquals("PUBLISHED", row.status, "exactly one transition happened");
-		assertEquals(variables.publisher, row.publishedByUserId, "and the publisher on the row is the one that won");
-		assertEquals(winner.checksum, row.checksum, "the checksum is the winner's");
-		assertEquals(expectedSnapshot, row.snapshotJson, "the frozen bytes are the ones the import compiled");
+		assertExactTextEquals("PUBLISHED", row.status, "exactly one transition happened");
+		assertExactTextEquals(variables.publisher, row.publishedByUserId, "and the publisher on the row is the one that won");
+		assertExactTextEquals(winner.checksum, row.checksum, "the checksum is the winner's");
+		assertExactTextEquals(expectedSnapshot, row.snapshotJson, "the frozen bytes are the ones the import compiled");
 		assertEquals(1, auditCount(versionId, "INSTRUMENT_VERSION_PUBLISHED"), "one success event");
 		assertEquals(1, auditCount(versionId, "INSTRUMENT_VERSION_PUBLISH_REFUSED"), "and one refusal event");
 
 		var settled = variables.repo.findVersionById(versionId);
-		assertEquals(row.rowVersion, settled.rowVersion, "and nothing moved after the winner committed");
+		assertRowVersionEquals(row.rowVersion, settled.rowVersion, "and nothing moved after the winner committed");
 	}
 
 	/**
@@ -172,23 +172,23 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var published = aPublish.publish(versionId, variables.publisher);
 
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "the publish held the lock before the import reached it");
-		assertNotEquals("COMPLETED", joinedStatus, "and the import was still queued there");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "and the import was still queued there");
 
 		threadJoin(threadName, 60000);
-		assertEquals("COMPLETED", cfthread[threadName].status, "the import ran once the lock was released");
-		assertEquals("INSTRUMENT_VERSION_IMMUTABLE", cfthread[threadName].outcome, "and was refused: the version was published by then");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the import ran once the lock was released");
+		assertExactTextEquals("INSTRUMENT_VERSION_IMMUTABLE", cfthread[threadName].outcome, "and was refused: the version was published by then");
 
 		var row = variables.repo.findVersionById(versionId);
-		assertEquals("PUBLISHED", row.status);
-		assertEquals(published.checksum, row.checksum, "the frozen checksum is untouched");
-		assertEquals(variables.publisher, row.publishedByUserId);
+		assertExactTextEquals("PUBLISHED", row.status);
+		assertExactTextEquals(published.checksum, row.checksum, "the frozen checksum is untouched");
+		assertExactTextEquals(variables.publisher, row.publishedByUserId);
 		assertEquals(0, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id AND prompt = N'A prompt a concurrent import must never land on a published version'",
 			{ "id": variables.db.guid(versionId) }
 		), "and the concurrent import wrote nothing at all");
 		assertEquals(1, auditCount(versionId, "INSTRUMENT_VERSION_PUBLISHED"), "one success event");
 		assertEquals(1, auditCount(versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "and the refused import left exactly one durable record");
-		assertEquals(
+		assertExactTextEquals(
 			variables.c.snapshotCompiler.definitionsChecksum(deserializeJSON(row.snapshotJson).definitions),
 			variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(versionId)),
 			"the published version's definitions still equal its frozen snapshot"
@@ -232,19 +232,19 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var reimported = aImport.importConfig(config(label("imp-pub")), variables.other);
 
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "the import held the version lock before the publish reached it");
-		assertNotEquals("COMPLETED", joinedStatus, "and the publish queued rather than interleaving");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "and the publish queued rather than interleaving");
 
 		threadJoin(threadName, 60000);
-		assertEquals("COMPLETED", cfthread[threadName].status, "the publish ran once the import released the lock");
-		assertEquals("published", cfthread[threadName].outcome, "and succeeded: the import left a valid DRAFT behind it");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the publish ran once the import released the lock");
+		assertExactTextEquals("published", cfthread[threadName].outcome, "and succeeded: the import left a valid DRAFT behind it");
 		assertFalse(
 			findNoCase("deadlock", toString(cfthread[threadName].outcome)) > 0,
 			"neither side deadlocked: import and publish take the version row in the same order"
 		);
 
 		var row = variables.repo.findVersionById(versionId);
-		assertEquals("PUBLISHED", row.status, "the serial order ended with the version published");
-		assertEquals(reimported.checksum, row.checksum, "on the snapshot the import that went first had stored");
+		assertExactTextEquals("PUBLISHED", row.status, "the serial order ended with the version published");
+		assertExactTextEquals(reimported.checksum, row.checksum, "on the snapshot the import that went first had stored");
 		assertEquals(1, auditCount(versionId, "INSTRUMENT_VERSION_PUBLISHED"), "exactly one publication");
 	}
 
@@ -293,18 +293,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		aPublish.publish(versionId, variables.publisher);
 
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "the publish held the version lock before the mint reached it");
-		assertNotEquals("COMPLETED", joinedStatus, "and the mint queued on it");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "and the mint queued on it");
 
 		threadJoin(threadName, 60000);
-		assertEquals("COMPLETED", cfthread[threadName].status, "the mint ran once the lock was released");
-		assertEquals("INSTRUMENT_VERSION_NOT_DRAFT", cfthread[threadName].outcome, "publish won, so the mint was refused: its authority was a version that is now frozen");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the mint ran once the lock was released");
+		assertExactTextEquals("INSTRUMENT_VERSION_NOT_DRAFT", cfthread[threadName].outcome, "publish won, so the mint was refused: its authority was a version that is now frozen");
 
-		assertEquals("PUBLISHED", variables.repo.findVersionById(versionId).status);
+		assertExactTextEquals("PUBLISHED", variables.repo.findVersionById(versionId).status);
 		assertEquals(0, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[dimension_definition] WHERE code = :code",
 			{ "code": variables.db.nvarchar(probeCode, 100) }
 		), "no global dimension identity appeared");
-		assertEquals(globalBefore, globalIdentityCounts(), "and the global identity tables are exactly as they were");
+		assertExactJsonEquals(globalBefore, globalIdentityCounts(), "and the global identity tables are exactly as they were");
 	}
 
 	/** The same, for a genuinely new global dimension-VALUE identity. */
@@ -344,18 +344,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		aPublish.publish(versionId, variables.publisher);
 
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "the publish held the version lock before the value mint reached it");
-		assertNotEquals("COMPLETED", joinedStatus, "and the value mint queued on it");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "and the value mint queued on it");
 
 		threadJoin(threadName, 60000);
-		assertEquals("COMPLETED", cfthread[threadName].status, "the value mint ran once the lock was released");
-		assertEquals("INSTRUMENT_VERSION_NOT_DRAFT", cfthread[threadName].outcome, "publish won, so the value mint was refused");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the value mint ran once the lock was released");
+		assertExactTextEquals("INSTRUMENT_VERSION_NOT_DRAFT", cfthread[threadName].outcome, "publish won, so the value mint was refused");
 
-		assertEquals("PUBLISHED", variables.repo.findVersionById(versionId).status);
+		assertExactTextEquals("PUBLISHED", variables.repo.findVersionById(versionId).status);
 		assertEquals(0, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[dimension_value] WHERE value_code = :code",
 			{ "code": variables.db.nvarchar(probeValue, 100) }
 		), "no global dimension-value identity appeared");
-		assertEquals(globalBefore, globalIdentityCounts(), "and the global identity tables are exactly as they were");
+		assertExactJsonEquals(globalBefore, globalIdentityCounts(), "and the global identity tables are exactly as they were");
 	}
 
 	// ---- helpers ---------------------------------------------------------------------------------

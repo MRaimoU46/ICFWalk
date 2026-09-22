@@ -60,7 +60,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(variables.authz.can(p, "report.view", variables.D));
 		assertFalse(variables.authz.can(p, "instrument.manage"));
 		var access = variables.authz.authorizeWalk(p, variables.w1, "read");
-		assertEquals(variables.S1, access.orgUnitId);
+		assertExactTextEquals(variables.S1, access.orgUnitId);
 		assertFalse(access.isOwner);
 		var own = variables.authz.authorizeWalk(p, variables.w2, "edit");
 		assertTrue(own.isOwner);
@@ -181,7 +181,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { variables.authz.authorizeWalk(p, unknown, "read"); }, "ICFWalk.NotFound");
 		assertThrows(function() { variables.authz.authorizeWalk(p, "not-a-guid", "read"); }, "ICFWalk.Validation", "INVALID_WALK_ID");
 		assertThrows(function() { variables.authz.resolveScopedOrgUnit(p, "walk.create", sx); }, "ICFWalk.NotFound");
-		assertEquals(variables.S1, variables.authz.resolveScopedOrgUnit(p, "walk.create", lCase(variables.S1)), "Canonical id returned for an in-scope unit.");
+		assertExactTextEquals(variables.S1, variables.authz.resolveScopedOrgUnit(p, "walk.create", lCase(variables.S1)), "Canonical id returned for an in-scope unit.");
 		assertThrows(function() { variables.authz.requirePermission(p, "made.up"); }, "ICFWalk.Configuration", "UNKNOWN_PERMISSION");
 	}
 

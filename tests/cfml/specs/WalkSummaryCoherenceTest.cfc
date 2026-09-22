@@ -223,8 +223,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 			assertTrue(interceptor.fired("loadResponses"), "the concurrent save was started between the dimension read and the response read");
 			// 4. It could not commit there.
-			assertNotEquals("COMPLETED", observed.duringExport, "the concurrent SAVE was blocked while the summary held the walk mutation lock");
-			assertEquals(w.rowVersion, observed.rowVersionDuringExport, "and the walk had not moved while the export was materializing");
+			assertExactTextNotEquals("COMPLETED", observed.duringExport, "the concurrent SAVE was blocked while the summary held the walk mutation lock");
+			assertRowVersionEquals(w.rowVersion, observed.rowVersionDuringExport, "and the walk had not moved while the export was materializing");
 		} finally {
 			// Bounded and unconditional: a failed assertion above must not strand the thread.
 			if (structKeyExists(cfthread, "summaryCoherenceWriter")) threadJoin("summaryCoherenceWriter", 30000);
@@ -236,16 +236,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertContains("DUAL-LANGUAGE-NOTE-FROM-STATE-A", exportA.text, "state A's classType makes the Dual Language section visible");
 		assertContains("_2_", exportA.fileName, "the file name is built from state A's grade: " & exportA.fileName);
 		assertDoesNotContain("_5_", exportA.fileName, "never the concurrent save's grade: " & exportA.fileName);
-		assertEquals("DRAFT", exportA.status);
-		assertEquals(w.versionId, exportA.versionId, "and the walk's own pinned instrument version");
+		assertExactTextEquals("DRAFT", exportA.status);
+		assertExactTextEquals(w.versionId, exportA.versionId, "and the walk's own pinned instrument version");
 		assertFalse(isMixed(exportA), "the export is not a mixture of state A and state B");
 
 		// 7. The writer ran to completion once the export released the lock, and it committed.
-		assertEquals("COMPLETED", cfthread.summaryCoherenceWriter.status, "the deferred writer ran after the summary transaction finished");
-		assertEquals("committed", cfthread.summaryCoherenceWriter.outcome, "and it committed: the export blocked it, it did not fail it");
-		assertEquals("general_education", storedDimensionCode(walkId, "classType"), "the database now holds state B");
-		assertEquals("5", storedDimensionCode(walkId, "grade"));
-		assertNotEquals(w.rowVersion, storedRowVersion(walkId), "on a new row version");
+		assertExactTextEquals("COMPLETED", cfthread.summaryCoherenceWriter.status, "the deferred writer ran after the summary transaction finished");
+		assertExactTextEquals("committed", cfthread.summaryCoherenceWriter.outcome, "and it committed: the export blocked it, it did not fail it");
+		assertExactTextEquals("general_education", storedDimensionCode(walkId, "classType"), "the database now holds state B");
+		assertExactTextEquals("5", storedDimensionCode(walkId, "grade"));
+		assertRowVersionChanged(w.rowVersion, storedRowVersion(walkId), "on a new row version");
 
 		// 8. A second export, after B committed, describes state B alone.
 		var exportB = variables.svc.summary(p(), walkId);
@@ -257,7 +257,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// file -- while still being in the database, which is what makes this a visibility decision
 		// and not a deletion.
 		assertDoesNotContain("DUAL-LANGUAGE-NOTE-FROM-STATE-A", exportB.text, "a value state B's dimensions hide is never exported");
-		assertEquals("DUAL-LANGUAGE-NOTE-FROM-STATE-A", storedResponseText(walkId, "dual_language_notes"), "though it is retained in the database");
+		assertExactTextEquals("DUAL-LANGUAGE-NOTE-FROM-STATE-A", storedResponseText(walkId, "dual_language_notes"), "though it is retained in the database");
 		assertFalse(isMixed(exportB), "the later export is not a mixture either");
 
 		// 9. Stated once over both files: no export produced the mixed state.
@@ -291,7 +291,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		interceptor.loadResponses("11111111-1111-4111-8111-111111111111");
 
 		assertTrue(interceptor.fired("loadResponses"), "the loadResponses seam exists and fired");
-		assertEquals(
+		assertExactJsonEquals(
 			["read-dimensions", "writer-starts", "read-responses"],
 			variables.calls,
 			"the writer starts between the two aggregate reads, not before them"
@@ -303,7 +303,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		earlier.arm("loadDimensionValues", function() { arrayAppend(variables.calls, "writer-starts"); });
 		earlier.loadDimensionValues("11111111-1111-4111-8111-111111111111");
 		earlier.loadResponses("11111111-1111-4111-8111-111111111111");
-		assertEquals(
+		assertExactJsonEquals(
 			["writer-starts", "read-dimensions", "read-responses"],
 			variables.calls,
 			"loadDimensionValues still fires ahead of both reads, which is what WalkReplayCoherenceTest arms"
@@ -402,11 +402,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var first = variables.svc.summary(p(), w.id);
 		var second = variables.svc.summary(p(), w.id);
 
-		assertEquals(before, storedRowVersion(w.id), "an export does not move the walk's row version");
+		assertRowVersionEquals(before, storedRowVersion(w.id), "an export does not move the walk's row version");
 		assertEquals(revisionsBefore, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", { "id": variables.db.guid(w.id) }), "nor append a revision");
 		assertEquals(mutationsBefore, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", { "id": variables.db.guid(w.id) }), "nor record a mutation");
-		assertEquals(first.text, second.text, "and it is repeatable: the same committed state exports the same bytes");
-		assertEquals(first.fileName, second.fileName);
+		assertExactTextEquals(first.text, second.text, "and it is repeatable: the same committed state exports the same bytes");
+		assertExactTextEquals(first.fileName, second.fileName);
 		assertEquals(first.bytes, second.bytes);
 	}
 }

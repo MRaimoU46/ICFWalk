@@ -63,10 +63,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	/** V1's stored snapshot and checksum are exactly what publication froze. */
 	public void function testPublishedSnapshotIsByteForByteUnchangedAfterTheNextImport() {
 		var after = materialization(variables.v1.versionId);
-		assertEquals(variables.v1Before.snapshotJson, after.snapshotJson, "V1's stored snapshot is byte-for-byte unchanged");
-		assertEquals(variables.v1Before.checksum, after.checksum, "V1's checksum is unchanged");
-		assertEquals("PUBLISHED", after.status);
-		assertEquals(variables.v1Before.rowVersion, after.rowVersion, "V1's version row did not move");
+		assertExactTextEquals(variables.v1Before.snapshotJson, after.snapshotJson, "V1's stored snapshot is byte-for-byte unchanged");
+		assertExactTextEquals(variables.v1Before.checksum, after.checksum, "V1's checksum is unchanged");
+		assertExactTextEquals("PUBLISHED", after.status);
+		assertRowVersionEquals(variables.v1Before.rowVersion, after.rowVersion, "V1's version row did not move");
 	}
 
 	/**
@@ -75,8 +75,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 */
 	public void function testNormalizedDefinitionsForV1AreUnchangedAfterTheNextImport() {
 		var after = materialization(variables.v1.versionId);
-		assertEquals(variables.v1Before.definitionsChecksum, after.definitionsChecksum, "loadNormalizedDefinitions(V1) is unchanged");
-		assertEquals(
+		assertExactTextEquals(variables.v1Before.definitionsChecksum, after.definitionsChecksum, "loadNormalizedDefinitions(V1) is unchanged");
+		assertExactTextEquals(
 			after.definitionsChecksum,
 			variables.compiler.definitionsChecksum(deserializeJSON(after.snapshotJson).definitions),
 			"V1's tables and V1's snapshot still describe each other"
@@ -86,13 +86,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	/** Field by field, so a regression says which property leaked rather than only that one did. */
 	public void function testV1KeepsItsOwnDimensionAndValueSemantics() {
 		var v1 = dimensionView(variables.v1.versionId, variables.target.code);
-		assertEquals(variables.target.originalLabel, v1.label, "V1 still calls the dimension what it called it");
+		assertExactTextEquals(variables.target.originalLabel, v1.label, "V1 still calls the dimension what it called it");
 		assertEquals(variables.target.originalActive, v1.active, "V1's dimension activity is unchanged");
 
 		for (var code in structKeyArray(variables.target.originalValues)) {
 			var expected = variables.target.originalValues[code];
 			assertTrue(structKeyExists(v1.values, code), "V1 still offers value '" & code & "'");
-			assertEquals(expected.label, v1.values[code].label, "V1's label for '" & code & "'");
+			assertExactTextEquals(expected.label, v1.values[code].label, "V1's label for '" & code & "'");
 			assertEquals(expected.displayOrder, v1.values[code].displayOrder, "V1's order for '" & code & "'");
 			assertEquals(expected.active, v1.values[code].active, "V1's activity for '" & code & "'");
 		}
@@ -103,8 +103,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	/** V2 really did change all of that, so the test above is not passing by doing nothing. */
 	public void function testV2SeesItsOwnChangedSemantics() {
 		var v2 = dimensionView(variables.v2.versionId, variables.target.code);
-		assertEquals(variables.target.originalLabel & " (renamed in V2)", v2.label, "V2 renamed the dimension");
-		assertNotEquals(
+		assertExactTextEquals(variables.target.originalLabel & " (renamed in V2)", v2.label, "V2 renamed the dimension");
+		assertExactTextNotEquals(
 			variables.target.originalValues[variables.target.relabelledValueCode].label,
 			v2.values[variables.target.relabelledValueCode].label,
 			"V2 relabelled a value"
@@ -130,7 +130,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var shared = 0;
 		for (var code in structKeyArray(v1Ids)) {
 			if (!structKeyExists(v2Ids, code)) continue;
-			assertEquals(v1Ids[code], v2Ids[code], "value '" & code & "' is the same reporting identity in both versions");
+			assertExactTextEquals(v1Ids[code], v2Ids[code], "value '" & code & "' is the same reporting identity in both versions");
 			shared++;
 		}
 		assertTrue(shared >= 2, "the two versions share their value identities (" & shared & " shared)");
@@ -188,14 +188,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		);
 
 		var after = materialization(variables.v1.versionId);
-		assertEquals(before.definitionsChecksum, after.definitionsChecksum, "rewriting the shared rows does not change V1's definitions");
-		assertEquals(before.snapshotJson, after.snapshotJson, "nor its stored snapshot");
+		assertExactTextEquals(before.definitionsChecksum, after.definitionsChecksum, "rewriting the shared rows does not change V1's definitions");
+		assertExactTextEquals(before.snapshotJson, after.snapshotJson, "nor its stored snapshot");
 
 		var v1After = dimensionView(variables.v1.versionId, variables.target.code);
-		assertEquals(v1Before.label, v1After.label, "V1 still calls the dimension what it called it");
+		assertExactTextEquals(v1Before.label, v1After.label, "V1 still calls the dimension what it called it");
 		assertEquals(v1Before.active, v1After.active);
 		for (var code in structKeyArray(v1Before.values)) {
-			assertEquals(v1Before.values[code].label, v1After.values[code].label, "V1's label for '" & code & "'");
+			assertExactTextEquals(v1Before.values[code].label, v1After.values[code].label, "V1's label for '" & code & "'");
 			assertEquals(v1Before.values[code].displayOrder, v1After.values[code].displayOrder, "V1's order for '" & code & "'");
 			assertEquals(v1Before.values[code].active, v1After.values[code].active, "V1's activity for '" & code & "'");
 		}
@@ -216,14 +216,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 */
 	public void function testV1StillPassesTheChecksPublicationMadeAboutIt() {
 		var row = variables.repo.findVersionById(variables.v1.versionId);
-		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "V1's checksum still hashes V1's snapshot");
+		assertExactTextEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "V1's checksum still hashes V1's snapshot");
 		var snapshot = deserializeJSON(row.snapshotJson);
 		var validator = variables.c.definitionValidator;
 		assertTrue(validator.validateEnvelope(snapshot, { "versionLabel": row.versionLabel, "instrumentCode": row.instrumentCode }).valid, "V1's envelope is still valid");
 		var persisted = variables.repo.loadNormalizedDefinitions(variables.v1.versionId);
 		var issues = validator.validate(persisted);
 		assertTrue(issues.valid, "V1's persisted definitions are still valid: " & (arrayLen(issues.errors) ? serializeJSON(issues.errors[1]) : ""));
-		assertEquals(
+		assertExactTextEquals(
 			variables.compiler.definitionsChecksum(snapshot.definitions),
 			variables.compiler.definitionsChecksum(persisted),
 			"and they still match V1's snapshot"

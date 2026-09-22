@@ -257,7 +257,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var before = definitionsChecksum(h.versionId);
 
 		variables.repo.updateSectionContent(h.versionId, h.sectionId, sectionRow("Immutability probe title"));
-		assertNotEquals(before, definitionsChecksum(h.versionId), "a DRAFT section really was rewritten");
+		assertExactTextNotEquals(before, definitionsChecksum(h.versionId), "a DRAFT section really was rewritten");
 
 		variables.repo.deleteOption(h.versionId, h.optionId);
 		assertEquals(0, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[response_option] WHERE option_id = :id", { "id": variables.db.guid(h.optionId) }), "a DRAFT option really was deleted");
@@ -348,7 +348,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testRefusedImportOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit() {
 		var h = draftReferencedByAWalk("inuse-import");
 		var before = snapshotOfEverything(h.versionId);
-		assertEquals("DRAFT", before.status, "precondition: the version really is a DRAFT");
+		assertExactTextEquals("DRAFT", before.status, "precondition: the version really is a DRAFT");
 		assertEquals(0, auditCount(h.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "precondition: no refusals yet");
 
 		var importSvc = variables.importSvc;
@@ -403,12 +403,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			{ "id": variables.db.guid(frozen.versionId) }
 		);
 		assertEquals(1, q.recordCount);
-		assertEquals(variables.publisher, uCase(q.actor_user_id[1]), "the actor who attempted the write is named");
+		assertExactTextEquals(variables.publisher, uCase(q.actor_user_id[1]), "the actor who attempted the write is named");
 		var details = deserializeJSON(q.details_json[1]);
-		assertEquals("PUBLISHED", details.status, "the prior status is recorded");
-		assertEquals("IMPORT", details.operation, "and the operation");
-		assertEquals("VERSION_NOT_DRAFT", details.reason, "and a stable reason code");
-		assertEquals(label("audit-detail"), details.versionLabel);
+		assertExactTextEquals("PUBLISHED", details.status, "the prior status is recorded");
+		assertExactTextEquals("IMPORT", details.operation, "and the operation");
+		assertExactTextEquals("VERSION_NOT_DRAFT", details.reason, "and a stable reason code");
+		assertExactTextEquals(label("audit-detail"), details.versionLabel);
 		var text = q.details_json[1];
 		assertFalse(find("sectionKey", text) > 0, "no definitions in the audit details");
 		assertFalse(find("snapshotFormat", text) > 0, "no snapshot in the audit details");
@@ -427,12 +427,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			{ "id": variables.db.guid(arguments.versionId) }
 		);
 		assertEquals(1, q.recordCount, "a refusal record exists");
-		assertEquals(variables.publisher, uCase(q.actor_user_id[1]), "the actor who attempted the write is named");
+		assertExactTextEquals(variables.publisher, uCase(q.actor_user_id[1]), "the actor who attempted the write is named");
 		var details = deserializeJSON(q.details_json[1]);
-		assertEquals(arguments.versionLabel, details.versionLabel, "the version label is recorded");
-		assertEquals(arguments.status, details.status, "the prior status is recorded");
-		assertEquals(arguments.operation, details.operation, "and the operation");
-		assertEquals(arguments.reason, details.reason, "and a stable reason code");
+		assertExactTextEquals(arguments.versionLabel, details.versionLabel, "the version label is recorded");
+		assertExactTextEquals(arguments.status, details.status, "the prior status is recorded");
+		assertExactTextEquals(arguments.operation, details.operation, "and the operation");
+		assertExactTextEquals(arguments.reason, details.reason, "and a stable reason code");
 		var text = q.details_json[1];
 		assertFalse(find("sectionKey", text) > 0, "no definitions in the audit details");
 		assertFalse(find("snapshotFormat", text) > 0, "no snapshot in the audit details");
@@ -504,10 +504,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		try {
 			arguments.fn();
 		} catch (any e) {
-			if (left(e.type, len("ICFWalk.Publish.NotDraft")) != "ICFWalk.Publish.NotDraft") {
+			// Types are matched as CFML resolves them, case-insensitively; the errorcode is compared exactly.
+			if (compareNoCase(left(e.type, len("ICFWalk.Publish.NotDraft")), "ICFWalk.Publish.NotDraft") != 0) {
 				fail(arguments.what & " on a " & arguments.status & " version raised [" & e.type & "] instead of the DRAFT-only refusal: " & e.message);
 			}
-			if (!structKeyExists(e, "errorcode") || e.errorcode != "INSTRUMENT_VERSION_NOT_DRAFT") {
+			if (!structKeyExists(e, "errorcode") || compare(e.errorcode, "INSTRUMENT_VERSION_NOT_DRAFT") != 0) {
 				fail(arguments.what & " on a " & arguments.status & " version raised errorcode [" & (structKeyExists(e, "errorcode") ? e.errorcode : "") & "].");
 			}
 			return;
@@ -524,15 +525,32 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"dimensionDigest": digest("SELECT dimension_id, code FROM [icf].[dimension_definition] ORDER BY code"),
 			"dimensionValues": variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[dimension_value]"),
 			"dimensionValueDigest": digest("SELECT value_id, dimension_id, value_code FROM [icf].[dimension_value] ORDER BY dimension_id, value_code"),
-			"instrumentRowVersion": maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[instrument]", {})
+			"instrumentRowVersion": maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[instrument]", {})
 		};
 	}
 
+	/**
+	 * Each shared field under its own contract -- counts numerically, digests as exact text, the
+	 * high row_version as an opaque token -- and every field sharedState() records is compared.
+	 */
 	private void function assertSharedUnchanged(required struct before, required string message) {
 		var after = sharedState();
-		for (var field in structKeyArray(arguments.before)) {
-			assertEquals(arguments.before[field], after[field], arguments.message & ": " & field);
-		}
+		var counts = ["instruments", "dimensions", "dimensionValues"];
+		var digests = ["instrumentDigest", "dimensionDigest", "dimensionValueDigest"];
+		var compared = ["instrumentRowVersion"];
+		arrayAppend(compared, counts, true);
+		arrayAppend(compared, digests, true);
+		arraySort(compared, "text");
+		assertExactJsonEquals(sortedKeys(arguments.before), compared, arguments.message & ": every shared field is compared");
+		for (var field in counts) assertEquals(arguments.before[field], after[field], arguments.message & ": " & field);
+		for (var field in digests) assertExactTextEquals(arguments.before[field], after[field], arguments.message & ": " & field);
+		assertRowVersionEquals(arguments.before.instrumentRowVersion, after.instrumentRowVersion, arguments.message & ": instrumentRowVersion");
+	}
+
+	private array function sortedKeys(required struct s) {
+		var keys = structKeyArray(arguments.s);
+		arraySort(keys, "text");
+		return keys;
 	}
 
 	private string function digest(required string sql) {
@@ -557,26 +575,29 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private void function assertUnchanged(required struct before, required string versionId, required string message) {
 		var after = snapshotOfEverything(arguments.versionId);
-		assertEquals(arguments.before.status, after.status, arguments.message & ": status");
-		assertEquals(arguments.before.snapshotJson, after.snapshotJson, arguments.message & ": stored snapshot");
-		assertEquals(arguments.before.checksum, after.checksum, arguments.message & ": checksum");
-		assertEquals(arguments.before.publishedBy, after.publishedBy, arguments.message & ": publisher");
-		assertEquals(arguments.before.versionRowVersion, after.versionRowVersion, arguments.message & ": version row_version");
-		assertEquals(arguments.before.definitionsChecksum, after.definitionsChecksum, arguments.message & ": definitions");
-		assertEquals(arguments.before.childRowVersions, after.childRowVersions, arguments.message & ": child row_versions");
-		assertEquals(arguments.before.counts, after.counts, arguments.message & ": child counts");
+		assertExactTextEquals(arguments.before.status, after.status, arguments.message & ": status");
+		assertExactTextEquals(arguments.before.snapshotJson, after.snapshotJson, arguments.message & ": stored snapshot");
+		assertExactTextEquals(arguments.before.checksum, after.checksum, arguments.message & ": checksum");
+		assertExactTextEquals(arguments.before.publishedBy, after.publishedBy, arguments.message & ": publisher");
+		assertRowVersionEquals(arguments.before.versionRowVersion, after.versionRowVersion, arguments.message & ": version row_version");
+		assertExactTextEquals(arguments.before.definitionsChecksum, after.definitionsChecksum, arguments.message & ": definitions");
+		assertExactJsonEquals(sortedKeys(arguments.before.childRowVersions), sortedKeys(after.childRowVersions), arguments.message & ": child tables");
+		for (var table in sortedKeys(arguments.before.childRowVersions)) {
+			assertRowVersionEquals(arguments.before.childRowVersions[table], after.childRowVersions[table], arguments.message & ": " & table & " row_version");
+		}
+		assertExactJsonEquals(arguments.before.counts, after.counts, arguments.message & ": child counts");
 	}
 
 	private struct function childRowVersions(required string versionId) {
 		var p = { "id": variables.db.guid(arguments.versionId) };
 		var out = {};
-		out["sections"] = maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[section_definition] WHERE version_id = :id", p);
-		out["items"] = maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[item_definition] WHERE version_id = :id", p);
-		out["responseSets"] = maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[response_set] WHERE version_id = :id", p);
-		out["responseOptions"] = maxRowVersion("SELECT MAX(CAST(o.row_version AS bigint)) AS rv FROM [icf].[response_option] o JOIN [icf].[response_set] s ON s.response_set_id = o.response_set_id WHERE s.version_id = :id", p);
-		out["rules"] = maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[rule_definition] WHERE version_id = :id", p);
-		out["placements"] = maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[instrument_dimension] WHERE version_id = :id", p);
-		out["dimensionValues"] = maxRowVersion("SELECT MAX(CAST(row_version AS bigint)) AS rv FROM [icf].[instrument_dimension_value] WHERE version_id = :id", p);
+		out["sections"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[section_definition] WHERE version_id = :id", p);
+		out["items"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[item_definition] WHERE version_id = :id", p);
+		out["responseSets"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[response_set] WHERE version_id = :id", p);
+		out["responseOptions"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(o.row_version AS bigint))) AS rv FROM [icf].[response_option] o JOIN [icf].[response_set] s ON s.response_set_id = o.response_set_id WHERE s.version_id = :id", p);
+		out["rules"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[rule_definition] WHERE version_id = :id", p);
+		out["placements"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[instrument_dimension] WHERE version_id = :id", p);
+		out["dimensionValues"] = maxRowVersion("SELECT CONVERT(varchar(20), MAX(CAST(row_version AS bigint))) AS rv FROM [icf].[instrument_dimension_value] WHERE version_id = :id", p);
 		return out;
 	}
 

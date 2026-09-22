@@ -9,17 +9,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"teacher_email": "someone@example.org",
 			"long": repeatString("z", 500)
 		});
-		assertEquals("abc", entry.fields.checksum);
-		assertEquals("[redacted]", entry.fields.password);
-		assertEquals("[redacted]", entry.fields.text_value);
-		assertEquals("[redacted]", entry.fields.nested.notes);
-		assertEquals("[redacted]", entry.fields.nested.authorization);
-		assertEquals("[redacted]", entry.fields.teacher_email);
+		assertExactTextEquals("abc", entry.fields.checksum);
+		assertExactTextEquals("[redacted]", entry.fields.password);
+		assertExactTextEquals("[redacted]", entry.fields.text_value);
+		assertExactTextEquals("[redacted]", entry.fields.nested.notes);
+		assertExactTextEquals("[redacted]", entry.fields.nested.authorization);
+		assertExactTextEquals("[redacted]", entry.fields.teacher_email);
 		assertEquals(3, entry.fields.nested.count);
 		assertTrue(len(entry.fields.long) < 260, "Long strings must be truncated.");
 		assertContains("[truncated]", entry.fields.long);
-		assertEquals("unit.test", entry.event);
-		assertEquals("INFO", entry.level);
+		assertExactTextEquals("unit.test", entry.event);
+		assertExactTextEquals("INFO", entry.level);
 	}
 
 	public void function testEntrySerializesAsSingleJsonLine() {

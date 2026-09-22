@@ -142,7 +142,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// No database change and no row version movement from any of the four rejections.
 		assertEquals(0, schoolRow(w.id).recordCount);
-		assertEquals(rv, storedRowVersion(w.id), "a rejected save does not advance the row version");
+		assertRowVersionEquals(rv, storedRowVersion(w.id), "a rejected save does not advance the row version");
 		assertEquals(before, walkCountAt(variables.A, variables.atA.userId), "a rejected create writes no walk");
 		var audit = variables.db.run(
 			"SELECT details_json FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND event_type = N'WALK_SCHOOL_SCOPE_UNMAPPED' AND actor_user_id = :me ORDER BY event_id",
@@ -175,18 +175,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.fx.mapSchool(variables.B, variables.VALUE_B);
 		// The browser sends no School at all: the server fills the mapped value.
 		var w = create(variables.atA, variables.A);
-		assertEquals(variables.VALUE_A, w.state.dimensions[variables.schoolCode].selectedValueCode);
-		assertEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
+		assertExactTextEquals(variables.VALUE_A, w.state.dimensions[variables.schoolCode].selectedValueCode);
+		assertExactTextEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
 		// And it stays filled across a save that omits it.
 		var saved = save(variables.atA, w, {});
-		assertEquals(variables.VALUE_A, saved.state.dimensions[variables.schoolCode].selectedValueCode);
-		assertEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
+		assertExactTextEquals(variables.VALUE_A, saved.state.dimensions[variables.schoolCode].selectedValueCode);
+		assertExactTextEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
 		// Sending the mapped value is accepted unchanged.
 		save(variables.atA, saved, { "#variables.schoolCode#": { "selectedValueCode": variables.VALUE_A } });
-		assertEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
+		assertExactTextEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
 		// The mapping is stored, not inferred: the unit's own code is nothing like the value.
-		assertNotEquals(variables.orgUnits.findById(variables.A).code, variables.VALUE_A);
-		assertEquals(variables.VALUE_A, variables.orgUnits.findDimensionMapping(variables.A, variables.schoolCode).valueCode);
+		assertExactTextNotEquals(variables.orgUnits.findById(variables.A).code, variables.VALUE_A);
+		assertExactTextEquals(variables.VALUE_A, variables.orgUnits.findDimensionMapping(variables.A, variables.schoolCode).valueCode);
 	}
 
 	public void function testAWalkAuthorizedAtSchoolACannotBeSubmittedAsSchoolB() {
@@ -205,12 +205,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var rv = storedRowVersion(w.id);
 		var walk = w;
 		assertThrows(function() { save(user, walk, { "#schoolCode#": { "selectedValueCode": valueB } }); }, "ICFWalk.Conflict", "SCHOOL_ORG_MISMATCH");
-		assertEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
-		assertEquals(rv, storedRowVersion(w.id), "nothing was written");
+		assertExactTextEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
+		assertRowVersionEquals(rv, storedRowVersion(w.id), "nothing was written");
 		// "Other" free text is a conflicting label too.
 		assertThrows(function() { save(user, walk, { "#schoolCode#": { "selectedValueCode": "other", "otherText": "Somewhere else" } }); }, "ICFWalk.Conflict", "SCHOOL_ORG_MISMATCH");
-		assertEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
-		assertEquals(rv, storedRowVersion(w.id));
+		assertExactTextEquals(variables.VALUE_A, schoolRow(w.id).value_code[1]);
+		assertRowVersionEquals(rv, storedRowVersion(w.id));
 		// The rejection is audited without carrying narrative content.
 		var audit = variables.db.run("SELECT details_json FROM [icf].[audit_event] WHERE entity_type = N'WALK' AND event_type = N'WALK_SCHOOL_SCOPE_REJECTED' AND actor_user_id = :me ORDER BY event_id", { "me": variables.db.guid(variables.atA.userId) });
 		assertTrue(audit.recordCount >= 2, "every rejection is audited");
@@ -225,7 +225,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var schoolCode = variables.schoolCode;
 		var repo = variables.orgUnits;
 		assertThrows(function() { repo.upsertDimensionMapping(unitA, schoolCode, valueB, "EXPLICIT"); }, "ICFWalk.Validation", "ORG_UNIT_DIMENSION_VALUE_TAKEN");
-		assertEquals(variables.B, variables.orgUnits.findUnitByDimensionValue(variables.schoolCode, variables.VALUE_B).orgUnitId);
+		assertExactTextEquals(variables.B, variables.orgUnits.findUnitByDimensionValue(variables.schoolCode, variables.VALUE_B).orgUnitId);
 	}
 
 	// ---- district scope -------------------------------------------------------------------------
@@ -235,10 +235,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.fx.mapSchool(variables.B, variables.VALUE_B);
 		// A district-scoped user creates at an authorized child SCHOOL; the School follows that unit.
 		var atB = create(variables.districtUser, variables.B, { "selectedValueCode": variables.VALUE_B });
-		assertEquals(variables.B, atB.orgUnitId);
-		assertEquals(variables.VALUE_B, schoolRow(atB.id).value_code[1]);
+		assertExactTextEquals(variables.B, atB.orgUnitId);
+		assertExactTextEquals(variables.VALUE_B, schoolRow(atB.id).value_code[1]);
 		var atA = create(variables.districtUser, variables.A);
-		assertEquals(variables.VALUE_A, schoolRow(atA.id).value_code[1]);
+		assertExactTextEquals(variables.VALUE_A, schoolRow(atA.id).value_code[1]);
 		// But not at a unit outside the authorized subtree, and not labelled as another school.
 		var outside = variables.OUTSIDE;
 		var user = variables.districtUser;
@@ -279,7 +279,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var mappings = mappingCount();
 		assertThrows(function() { repo.upsertDimensionMapping(unitA, schoolCode, nonIdentifying, "EXPLICIT"); },
 			"ICFWalk.Validation", "ORG_UNIT_DIMENSION_VALUE_NOT_IDENTIFYING");
-		assertEquals(variables.VALUE_A, repo.findDimensionMapping(variables.A, schoolCode).valueCode, "the real mapping is untouched");
+		assertExactTextEquals(variables.VALUE_A, repo.findDimensionMapping(variables.A, schoolCode).valueCode, "the real mapping is untouched");
 		assertEquals(mappings, mappingCount(), "and the refusals wrote nothing");
 		assertTrue(structIsEmpty(repo.findDimensionMapping(unit, schoolCode)), "the unit it was refused for is still unmapped");
 	}
@@ -312,7 +312,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"ICFWalk.Conflict", "SCHOOL_ORG_UNMAPPED");
 
 		assertEquals(0, schoolRow(w.id).recordCount, "the refusals wrote no School value");
-		assertEquals(rv, storedRowVersion(w.id), "and did not move the walk's row version");
+		assertRowVersionEquals(rv, storedRowVersion(w.id), "and did not move the walk's row version");
 		assertEquals(mappings, mappingCount(), "and created no mapping");
 		assertTrue(structIsEmpty(variables.orgUnits.findDimensionMapping(variables.OTHER_UNIT, schoolCode)), "the unit is still unmapped");
 	}

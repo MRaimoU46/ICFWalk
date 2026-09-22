@@ -86,8 +86,8 @@ component output="false" {
 		var seq = sequence();
 		var firstAt = 0;
 		for (var i = 1; i <= arrayLen(seq); i++) {
-			if (firstAt == 0 && seq[i] == arguments.first) { firstAt = i; continue; }
-			if (firstAt > 0 && seq[i] == arguments.second) return true;
+			if (firstAt == 0 && compare(seq[i], arguments.first) == 0) { firstAt = i; continue; }
+			if (firstAt > 0 && compare(seq[i], arguments.second) == 0) return true;
 		}
 		return false;
 	}

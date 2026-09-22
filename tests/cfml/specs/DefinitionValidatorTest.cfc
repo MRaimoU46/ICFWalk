@@ -285,7 +285,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.definitions.items[1].itemType = "TELEPATHY";
 		var r = variables.validator.validate(variables.definitions, { "path": "$.persistedDefinitions" });
 		var found = false;
-		for (var e in r.errors) if (left(e.path, len("$.persistedDefinitions.items")) == "$.persistedDefinitions.items") found = true;
+		for (var e in r.errors) if (compare(left(e.path, len("$.persistedDefinitions.items")), "$.persistedDefinitions.items") == 0) found = true;
 		assertTrue(found, "expected a path under $.persistedDefinitions.items: " & errorSummary(r));
 	}
 
@@ -341,7 +341,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			var e = envelope();
 			// The exact right number, stored as a JSON string: only the TYPE is wrong.
 			e.counts[name] = javaCast("string", toString(e.counts[name]));
-			assertEquals("java.lang.String", e.counts[name].getClass().getName(), "precondition: counts." & name & " really is a JSON string");
+			assertExactTextEquals("java.lang.String", e.counts[name].getClass().getName(), "precondition: counts." & name & " really is a JSON string");
 			var r = variables.validator.validateEnvelope(e);
 			assertFalse(r.valid, "counts." & name & " as the string [" & e.counts[name] & "] must not be accepted");
 			assertTrue(hasError(r, "SNAPSHOT_COUNTS_INVALID"), "counts." & name & " as a string is a type error, not a mismatch: " & errorSummary(r));
@@ -405,12 +405,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	private boolean function hasError(required struct r, required string code) {
-		for (var e in arguments.r.errors) if (e.code == arguments.code) return true;
+		for (var e in arguments.r.errors) if (compare(e.code, arguments.code) == 0) return true;
 		return false;
 	}
 
 	private boolean function hasPath(required struct r, required string path) {
-		for (var e in arguments.r.errors) if (structKeyExists(e, "path") && e.path == arguments.path) return true;
+		for (var e in arguments.r.errors) if (structKeyExists(e, "path") && compare(e.path, arguments.path) == 0) return true;
 		return false;
 	}
 

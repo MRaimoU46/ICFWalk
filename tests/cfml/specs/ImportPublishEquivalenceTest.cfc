@@ -174,7 +174,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(importResult.valid, "import must refuse this document");
 		var namedByImport = false;
 		for (var e in importResult.errors) {
-			if (e.code == "MISSING_REFERENCE" && findNoCase("sec_does_not_exist", e.message) && findNoCase(".sectionId", e.path)) namedByImport = true;
+			if (compare(e.code, "MISSING_REFERENCE") == 0 && find("sec_does_not_exist", e.message) && find(".sectionId", e.path)) namedByImport = true;
 		}
 		assertTrue(namedByImport, "import names the authoring id the author wrote, at its sectionId path: " & summary(importResult.errors));
 
@@ -209,7 +209,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		arraySort(importPaths, "text");
 		arraySort(publishPaths, "text");
-		assertEquals(
+		assertExactTextEquals(
 			arrayToList(publishPaths, " | "),
 			arrayToList(importPaths, " | "),
 			"import and publish must report " & arguments.code & " at the same path(s)"
@@ -252,7 +252,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private array function pathsFor(required array errors, required string code) {
 		var out = [];
-		for (var e in arguments.errors) if (e.code == arguments.code) arrayAppend(out, e.path);
+		for (var e in arguments.errors) if (compare(e.code, arguments.code) == 0) arrayAppend(out, e.path);
 		return out;
 	}
 

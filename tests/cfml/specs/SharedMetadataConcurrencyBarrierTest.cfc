@@ -95,9 +95,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		);
 
 		var row = instrumentRow();
-		assertEquals("Renamed while deactivating", row.name, "the rename survived");
+		assertExactTextEquals("Renamed while deactivating", row.name, "the rename survived");
 		assertFalse(row.active, "and so did the deactivation: the rename did not restore the value it had read before");
-		assertEquals("committed", outcome.bOutcome, "both requests committed");
+		assertExactTextEquals("committed", outcome.bOutcome, "both requests committed");
 	}
 
 	/** The same two changes, with the arrival order at the row lock reversed. */
@@ -108,9 +108,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		);
 
 		var row = instrumentRow();
-		assertEquals("Renamed first", row.name, "the rename survived");
+		assertExactTextEquals("Renamed first", row.name, "the rename survived");
 		assertFalse(row.active, "and the deactivation that arrived second was applied to the renamed row");
-		assertEquals("committed", outcome.bOutcome, "both requests committed");
+		assertExactTextEquals("committed", outcome.bOutcome, "both requests committed");
 	}
 
 	/**
@@ -133,17 +133,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// events[1] is the earlier one (A, the deactivation); events[2] is B, which committed after it.
 		var a = events[1];
 		var b = events[2];
-		assertEquals(baselineName, a.previousName, "A replaced the baseline row");
+		assertExactTextEquals(baselineName, a.previousName, "A replaced the baseline row");
 		assertTrue(a.previousActive, "which was active");
 		assertFalse(a.active, "and A committed the deactivation");
 
-		assertEquals(baselineName, b.previousName, "B's before image carries the name A left in place");
+		assertExactTextEquals(baselineName, b.previousName, "B's before image carries the name A left in place");
 		assertFalse(b.previousActive, "and -- the point -- the active flag A had already committed, not the one B first read");
-		assertEquals("Second writer name", b.name, "B committed its own name");
+		assertExactTextEquals("Second writer name", b.name, "B committed its own name");
 		assertFalse(b.active, "and did not resurrect the value it had read before A ran");
 
 		var row = instrumentRow();
-		assertEquals(b.name, row.name, "the last audit's after image is the committed row");
+		assertExactTextEquals(b.name, row.name, "the last audit's after image is the committed row");
 		assertEquals(b.active, row.active);
 	}
 
@@ -185,7 +185,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		assertTrue(committed, "the competing authorized metadata change really committed while import was in flight");
 		assertFalse(instrumentRow().active, "and it is the committed state of the shared row");
-		assertEquals("INSTRUMENT_CONFIG_INVALID", refused, "import was refused: it judged the conflict on the locked current row, not on the object it read first");
+		assertExactTextEquals("INSTRUMENT_CONFIG_INVALID", refused, "import was refused: it judged the conflict on the locked current row, not on the object it read first");
 		assertEquals(0, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[instrument_version] v JOIN [icf].[instrument] i ON i.instrument_id = v.instrument_id WHERE i.code = :code AND v.version_label = :label",
 			{ "code": variables.db.nvarchar(variables.instrumentCode, 60), "label": variables.db.nvarchar(label("v2-after-deactivation"), 100) }
@@ -240,15 +240,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		aMetadata.updateMetadata(variables.instrumentCode, { "active": false }, variables.admin);
 
 		threadJoin(threadName, 60000);
-		assertEquals("COMPLETED", cfthread[threadName].status, "the import finished once the shared row was released");
-		assertEquals("INSTRUMENT_CONFIG_INVALID", cfthread[threadName].outcome, "and was refused on the row the metadata change had just committed");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the import finished once the shared row was released");
+		assertExactTextEquals("INSTRUMENT_CONFIG_INVALID", cfthread[threadName].outcome, "and was refused on the row the metadata change had just committed");
 		assertFalse(instrumentRow().active, "the authorized deactivation stands");
 
 		// The barrier evidence, asserted after the behaviour it exists to make deterministic.
 		assertTrue(barrier.observed("A_LOCKED"), "the metadata change really held the shared row");
 		assertTrue(reached, "and the import announced that it had reached the same row's lock");
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "in that order");
-		assertNotEquals("COMPLETED", joinedStatus, "the import was still queued there while the metadata change held it");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "the import was still queued there while the metadata change held it");
 	}
 
 	/**
@@ -274,20 +274,20 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { svc.importConfig(cfg, actor); }, "ICFWalk.Import.Validation", "INSTRUMENT_CONFIG_INVALID");
 
 		var afterVersion = variables.repo.findVersionById(draft.versionId);
-		assertEquals(beforeVersion.rowVersion, afterVersion.rowVersion, "the version row did not move");
-		assertEquals(beforeVersion.checksum, afterVersion.checksum, "nor its checksum");
-		assertEquals(beforeVersion.snapshotJson, afterVersion.snapshotJson, "nor its snapshot bytes");
-		assertEquals(beforeVersion.status, afterVersion.status, "nor its status");
-		assertEquals(beforeDefinitions, variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(draft.versionId)), "nor any definition row");
+		assertRowVersionEquals(beforeVersion.rowVersion, afterVersion.rowVersion, "the version row did not move");
+		assertExactTextEquals(beforeVersion.checksum, afterVersion.checksum, "nor its checksum");
+		assertExactTextEquals(beforeVersion.snapshotJson, afterVersion.snapshotJson, "nor its snapshot bytes");
+		assertExactTextEquals(beforeVersion.status, afterVersion.status, "nor its status");
+		assertExactTextEquals(beforeDefinitions, variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(draft.versionId)), "nor any definition row");
 		assertEquals(0, variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[item_definition] WHERE version_id = :id AND prompt = N'A prompt a refused import must never store'",
 			{ "id": variables.db.guid(draft.versionId) }
 		), "nothing from the refused document was written");
 
 		var afterInstrument = instrumentRow();
-		assertEquals(beforeInstrument.name, afterInstrument.name, "the shared row did not move");
+		assertExactTextEquals(beforeInstrument.name, afterInstrument.name, "the shared row did not move");
 		assertEquals(beforeInstrument.active, afterInstrument.active, "including its active flag");
-		assertEquals(beforeInstrument.rowVersion, afterInstrument.rowVersion, "nor its row version");
+		assertRowVersionEquals(beforeInstrument.rowVersion, afterInstrument.rowVersion, "nor its row version");
 		assertEquals(beforeMetadataAudits, auditCount(instrumentId(), "INSTRUMENT_METADATA_UPDATED"), "and no metadata audit was written by a refused import");
 
 		assertEquals(beforeRefusals + 1, auditCount(draft.versionId, "INSTRUMENT_VERSION_WRITE_REFUSED"), "exactly one durable refusal audit survived the rollback");
@@ -295,7 +295,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"SELECT TOP (1) details_json FROM [icf].[audit_event] WHERE entity_id = :id AND event_type = N'INSTRUMENT_VERSION_WRITE_REFUSED' ORDER BY event_id DESC",
 			{ "id": variables.db.guid(draft.versionId) }
 		);
-		assertEquals("SHARED_METADATA_CONFLICT", deserializeJSON(q.details_json[1]).reason, "with a stable reason code");
+		assertExactTextEquals("SHARED_METADATA_CONFLICT", deserializeJSON(q.details_json[1]).reason, "with a stable reason code");
 		assertFalse(find("prompt", q.details_json[1]) > 0, "and no narrative content");
 	}
 
@@ -348,11 +348,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		aSvc.updateMetadata(variables.instrumentCode, arguments.aChanges, variables.admin);
 		threadJoin(threadName, 60000);
 
-		assertEquals("COMPLETED", cfthread[threadName].status, "the second update finished once the shared row was released");
+		assertExactTextEquals("COMPLETED", cfthread[threadName].status, "the second update finished once the shared row was released");
 		assertTrue(barrier.observed("A_LOCKED"), "the first update really held the shared row");
 		assertTrue(reached, "and the second announced that it had reached the same row's lock");
 		assertTrue(barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "in that order");
-		assertNotEquals("COMPLETED", joinedStatus, "the second update was still queued there while the first held it");
+		assertExactTextNotEquals("COMPLETED", joinedStatus, "the second update was still queued there while the first held it");
 		return { "bOutcome": cfthread[threadName].outcome };
 	}
 

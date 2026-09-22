@@ -10,15 +10,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	public void function testDefaultsFailClosedToProduction() {
 		var cfg = loader({}).load();
-		assertEquals("production", cfg.environment);
+		assertExactTextEquals("production", cfg.environment);
 		assertTrue(cfg.isProduction);
 		assertFalse(cfg.maintenanceEnabled);
 		assertFalse(cfg.testsEnabled);
 		assertFalse(cfg.devIdentityEnabled);
 		assertFalse(cfg.outboundEmailEnabled);
-		assertEquals("RETAIN_HIDDEN", cfg.hiddenPeriodPolicy);
+		assertExactTextEquals("RETAIN_HIDDEN", cfg.hiddenPeriodPolicy);
 		assertEquals(0, cfg.reportSuppressionThreshold);
-		assertEquals("header", cfg.ssoMode);
+		assertExactTextEquals("header", cfg.ssoMode);
 		assertTrue(cfg.cookieSecure);
 		assertTrue(cfg.autoProvisionUsers);
 	}
@@ -66,11 +66,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	public void function testEnvFileParsing() {
 		var parsed = loader({}).parseEnvText("## comment" & chr(10) & "A=1" & chr(10) & 'export B="two words"' & chr(10) & "C='single'" & chr(10) & "bad line" & chr(10) & "D=" & chr(10) & "E=x=y");
-		assertEquals("1", parsed.A);
-		assertEquals("two words", parsed.B);
-		assertEquals("single", parsed.C);
-		assertEquals("", parsed.D);
-		assertEquals("x=y", parsed.E);
+		assertExactTextEquals("1", parsed.A);
+		assertExactTextEquals("two words", parsed.B);
+		assertExactTextEquals("single", parsed.C);
+		assertExactTextEquals("", parsed.D);
+		assertExactTextEquals("x=y", parsed.E);
 		assertFalse(structKeyExists(parsed, "bad line"));
 	}
 

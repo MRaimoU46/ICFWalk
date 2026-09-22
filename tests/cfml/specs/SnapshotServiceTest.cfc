@@ -19,13 +19,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(variables.c.config.allowUnpublishedInstrument, "Development allows the DRAFT fallback.");
 		var v = variables.service.currentVersion();
 		assertFalse(structIsEmpty(v), "A renderable version exists.");
-		assertEquals("2026-09-17 aligned prototype", v.versionLabel);
-		assertEquals("DRAFT", v.status);
+		assertExactTextEquals("2026-09-17 aligned prototype", v.versionLabel);
+		assertExactTextEquals("DRAFT", v.status);
 		assertTrue(v.isFallbackDraft);
-		assertEquals(variables.golden.checksum, v.checksum);
+		assertExactTextEquals(variables.golden.checksum, v.checksum);
 		var current = variables.service.currentRenderModel();
-		assertEquals("icfwalk-render-model/1", current.model.format);
-		assertEquals(v.versionId, current.version.versionId);
+		assertExactTextEquals("icfwalk-render-model/1", current.model.format);
+		assertExactTextEquals(v.versionId, current.version.versionId);
 	}
 
 	public void function testProductionSemanticsRequireAPublishedVersion() {
@@ -43,14 +43,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.service.clearCache();
 		var a = variables.service.snapshotFor(v.versionId);
 		var b = variables.service.snapshotFor(v.versionId);
-		assertEquals("icfwalk-instrument-snapshot/1", a.snapshotFormat);
+		assertExactTextEquals("icfwalk-instrument-snapshot/1", a.snapshotFormat);
 		assertEquals(23, arrayLen(a.definitions.sections));
 		assertTrue(a.equals(b), "Same parsed instance is served while the checksum is unchanged.");
 		var model = variables.service.renderModelFor(v.versionId);
 		assertEquals(144, model.counts.items);
 		// The stored snapshot equals the reference compilation byte for byte.
 		var row = variables.c.definitionRepository.findVersionById(v.versionId);
-		assertEquals(variables.golden.checksum, variables.c.canonicalJson.sha256(row.snapshotJson));
+		assertExactTextEquals(variables.golden.checksum, variables.c.canonicalJson.sha256(row.snapshotJson));
 	}
 
 	public void function testInvalidAndUnknownVersionsFailClosed() {

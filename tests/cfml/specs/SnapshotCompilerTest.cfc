@@ -9,8 +9,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Parity with scripts/lib/snapshot.mjs: identical canonical bytes and checksums.
 		var normalized = variables.c.configNormalizer.fromConfig(variables.config);
 		var compiled = variables.c.snapshotCompiler.compile(normalized);
-		assertEquals(variables.golden.checksum, compiled.checksum, "Snapshot checksum.");
-		assertEquals(variables.golden.definitionsChecksum, compiled.definitionsChecksum, "Definitions checksum.");
+		assertExactTextEquals(variables.golden.checksum, compiled.checksum, "Snapshot checksum.");
+		assertExactTextEquals(variables.golden.definitionsChecksum, compiled.definitionsChecksum, "Definitions checksum.");
 		var bytes = javaCast("string", compiled.canonicalJson).getBytes("UTF-8");
 		assertEquals(variables.golden.canonicalBytes, arrayLen(bytes), "Canonical byte length.");
 		for (var key in structKeyArray(variables.golden.counts)) {
@@ -21,9 +21,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior() {
 		var normalized = variables.c.configNormalizer.fromConfig(variables.config);
 		var compiled = variables.c.snapshotCompiler.compile(normalized);
-		assertEquals("icfwalk-instrument-snapshot/1", compiled.snapshot.snapshotFormat);
+		assertExactTextEquals("icfwalk-instrument-snapshot/1", compiled.snapshot.snapshotFormat);
 		assertTrue(structKeyExists(compiled.snapshot, "behavior") && isStruct(compiled.snapshot.behavior), "Behavior block present.");
-		assertEquals("Part 3 · Conditions for Learning", sectionTitle(compiled.snapshot.definitions.sections, "part3"));
+		assertExactTextEquals("Part 3 · Conditions for Learning", sectionTitle(compiled.snapshot.definitions.sections, "part3"));
 		assertEquals(17, arrayLen(variables.c.snapshotCompiler.placeholders(normalized.definitions)));
 		assertFalse(reFind("[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}", compiled.canonicalJson) > 0, "Snapshot must not embed SQL GUIDs.");
 	}
@@ -31,9 +31,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testRuleTargetsResolveToKeysNotLogicalIds() {
 		var normalized = variables.c.configNormalizer.fromConfig(variables.config);
 		for (var r in normalized.definitions.rules) {
-			if (r.ruleKey == "show_prek_k") { assertEquals("prek_k_classroom", r.targetKey); assertEquals("SECTION", r.targetType); }
-			if (r.ruleKey == "show_period_for_grades_6_12") { assertEquals("period", r.targetKey); assertEquals("DIMENSION", r.targetType); }
-			if (r.ruleKey == "show_comp_s3_q1") { assertEquals("comp_s3_q1", r.targetKey); assertEquals("ITEM", r.targetType); assertEquals("comp_s3_applicable", r.sourceKey); }
+			if (r.ruleKey == "show_prek_k") { assertExactTextEquals("prek_k_classroom", r.targetKey); assertExactTextEquals("SECTION", r.targetType); }
+			if (r.ruleKey == "show_period_for_grades_6_12") { assertExactTextEquals("period", r.targetKey); assertExactTextEquals("DIMENSION", r.targetType); }
+			if (r.ruleKey == "show_comp_s3_q1") { assertExactTextEquals("comp_s3_q1", r.targetKey); assertExactTextEquals("ITEM", r.targetType); assertExactTextEquals("comp_s3_applicable", r.sourceKey); }
 		}
 	}
 

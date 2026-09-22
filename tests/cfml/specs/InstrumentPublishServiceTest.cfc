@@ -69,31 +69,31 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testPublishFreezesTheImportedSnapshotByteForByte() {
 		var imported = draft("adm04");
 		var before = variables.repo.findVersionById(imported.versionId);
-		assertEquals("DRAFT", before.status);
+		assertExactTextEquals("DRAFT", before.status);
 
 		var result = variables.svc.publish(imported.versionId, variables.publisher);
 
-		assertEquals("PUBLISHED", result.status);
-		assertEquals(imported.checksum, result.checksum, "publishing does not recompute the checksum");
-		assertEquals(imported.versionId, result.versionId);
+		assertExactTextEquals("PUBLISHED", result.status);
+		assertExactTextEquals(imported.checksum, result.checksum, "publishing does not recompute the checksum");
+		assertExactTextEquals(imported.versionId, result.versionId);
 
 		var after = variables.repo.findVersionById(imported.versionId);
-		assertEquals("PUBLISHED", after.status);
-		assertEquals(before.snapshotJson, after.snapshotJson, "the frozen snapshot is the imported snapshot, byte for byte");
-		assertEquals(before.checksum, after.checksum);
-		assertEquals(after.checksum, variables.c.canonicalJson.sha256(after.snapshotJson), "and the checksum still hashes it");
+		assertExactTextEquals("PUBLISHED", after.status);
+		assertExactTextEquals(before.snapshotJson, after.snapshotJson, "the frozen snapshot is the imported snapshot, byte for byte");
+		assertExactTextEquals(before.checksum, after.checksum);
+		assertExactTextEquals(after.checksum, variables.c.canonicalJson.sha256(after.snapshotJson), "and the checksum still hashes it");
 
 		// Every field CK_instrument_version_publish_values requires of a non-DRAFT row.
 		var row = variables.db.run(
 			"SELECT status, published_at, effective_start, checksum_sha256, compiled_snapshot_json, published_by_user_id FROM [icf].[instrument_version] WHERE version_id = :id",
 			{ "id": variables.db.guid(imported.versionId) }
 		);
-		assertEquals("PUBLISHED", row.status[1]);
+		assertExactTextEquals("PUBLISHED", row.status[1]);
 		assertTrue(isDate(row.published_at[1]), "published_at is set");
 		assertTrue(isDate(row.effective_start[1]), "effective_start is set");
 		assertEquals(64, len(trim(row.checksum_sha256[1])));
 		assertTrue(len(row.compiled_snapshot_json[1]) > 0, "the snapshot is still stored");
-		assertEquals(variables.publisher, uCase(row.published_by_user_id[1]), "and the publisher is stored in the same statement");
+		assertExactTextEquals(variables.publisher, uCase(row.published_by_user_id[1]), "and the publisher is stored in the same statement");
 
 		assertEquals(1, auditCount(imported.versionId, "INSTRUMENT_VERSION_PUBLISHED"), "the publish is audited once");
 	}
@@ -123,18 +123,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var imported = draft("adm04c");
 		var result = variables.svc.publish(imported.versionId, variables.publisher);
 
-		assertEquals(variables.publisher, result.publishedByUserId, "the result names the publisher");
+		assertExactTextEquals(variables.publisher, result.publishedByUserId, "the result names the publisher");
 		var stored = variables.repo.findVersionById(imported.versionId);
-		assertEquals(variables.publisher, stored.publishedByUserId, "and so does the row");
+		assertExactTextEquals(variables.publisher, stored.publishedByUserId, "and so does the row");
 
 		var audit = variables.db.run(
 			"SELECT actor_user_id, details_json FROM [icf].[audit_event] WHERE entity_id = :id AND event_type = N'INSTRUMENT_VERSION_PUBLISHED'",
 			{ "id": variables.db.guid(imported.versionId) }
 		);
 		assertEquals(1, audit.recordCount, "exactly one success event");
-		assertEquals(variables.publisher, uCase(audit.actor_user_id[1]), "the audit actor is the stored publisher");
+		assertExactTextEquals(variables.publisher, uCase(audit.actor_user_id[1]), "the audit actor is the stored publisher");
 		var details = deserializeJSON(audit.details_json[1]);
-		assertEquals(variables.publisher, uCase(details.publishedByUserId), "and the recorded detail agrees");
+		assertExactTextEquals(variables.publisher, uCase(details.publishedByUserId), "and the recorded detail agrees");
 	}
 
 	/**
@@ -155,9 +155,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { svc.publish(id, unknown); }, "ICFWalk.Validation", "PUBLISHER_UNKNOWN");
 
 		var after = variables.repo.findVersionById(id);
-		assertEquals("DRAFT", after.status, "the version is still a DRAFT");
-		assertEquals(before.rowVersion, after.rowVersion, "and its row did not move");
-		assertEquals("", after.publishedByUserId, "no publisher was recorded");
+		assertExactTextEquals("DRAFT", after.status, "the version is still a DRAFT");
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "and its row did not move");
+		assertExactTextEquals("", after.publishedByUserId, "no publisher was recorded");
 		assertEquals(0, auditCount(id, "INSTRUMENT_VERSION_PUBLISHED"), "nothing was published");
 		// The unknown-actor attempt got as far as the locked row, so it is audited as a refusal;
 		// the three that never reached the database are rejected as input and are not.
@@ -179,7 +179,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			function() { db.transact(function() { return repo.markPublished(id, stored.snapshotJson, stored.checksum, ""); }); },
 			"ICFWalk.Validation", "PUBLISHER_REQUIRED"
 		);
-		assertEquals("DRAFT", variables.repo.findVersionById(id).status, "nothing was published");
+		assertExactTextEquals("DRAFT", variables.repo.findVersionById(id).status, "nothing was published");
 	}
 
 	// ---- ADM-05: a frozen version never moves again ----------------------------------------------
@@ -200,10 +200,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertContains("PUBLISHED", e.message, "the refusal names the status that blocked it");
 
 		var after = variables.repo.findVersionById(imported.versionId);
-		assertEquals(frozen.snapshotJson, after.snapshotJson, "the published snapshot is unchanged");
-		assertEquals(frozen.checksum, after.checksum);
-		assertEquals(frozen.rowVersion, after.rowVersion, "the row did not move at all");
-		assertEquals(frozen.publishedByUserId, after.publishedByUserId, "and the original publisher is still named");
+		assertExactTextEquals(frozen.snapshotJson, after.snapshotJson, "the published snapshot is unchanged");
+		assertExactTextEquals(frozen.checksum, after.checksum);
+		assertRowVersionEquals(frozen.rowVersion, after.rowVersion, "the row did not move at all");
+		assertExactTextEquals(frozen.publishedByUserId, after.publishedByUserId, "and the original publisher is still named");
 		assertEquals(1, auditCount(imported.versionId, "INSTRUMENT_VERSION_PUBLISHED"), "still exactly one publish");
 		assertEquals(1, auditCount(imported.versionId, "INSTRUMENT_VERSION_PUBLISH_REFUSED"), "and the refusal is on the record");
 	}
@@ -243,8 +243,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { importSvc.importConfig(cfg); }, "ICFWalk.Import", "INSTRUMENT_VERSION_IMMUTABLE");
 
 		var after = variables.repo.findVersionById(imported.versionId);
-		assertEquals(frozen.snapshotJson, after.snapshotJson, "the published definitions are unchanged");
-		assertEquals(frozen.rowVersion, after.rowVersion);
+		assertExactTextEquals(frozen.snapshotJson, after.snapshotJson, "the published definitions are unchanged");
+		assertRowVersionEquals(frozen.rowVersion, after.rowVersion);
 	}
 
 	// ---- ADM-03: a DRAFT that is not publishable is refused, and nothing changes -----------------
@@ -273,9 +273,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertContains("no longer match", e.message, "the refusal says what is wrong");
 
 		var after = variables.repo.findVersionById(imported.versionId);
-		assertEquals("DRAFT", after.status, "a refused publish leaves the version a DRAFT");
-		assertEquals(before.snapshotJson, after.snapshotJson, "and leaves its snapshot alone");
-		assertEquals(before.checksum, after.checksum);
+		assertExactTextEquals("DRAFT", after.status, "a refused publish leaves the version a DRAFT");
+		assertExactTextEquals(before.snapshotJson, after.snapshotJson, "and leaves its snapshot alone");
+		assertExactTextEquals(before.checksum, after.checksum);
 		assertEquals(0, auditCount(id, "INSTRUMENT_VERSION_PUBLISHED"), "nothing was published");
 		assertEquals(1, auditCount(id, "INSTRUMENT_VERSION_PUBLISH_REFUSED"), "and the refusal is audited");
 	}
@@ -390,7 +390,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// The version is still exactly what the import wrote, so the constraints refused rather
 		// than partially applied.
-		assertEquals(imported.definitionsChecksum, variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(versionId)));
+		assertExactTextEquals(imported.definitionsChecksum, variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(versionId)));
 	}
 
 	/** A choice item whose response set was taken away. */
@@ -866,8 +866,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		storeRawSnapshot(imported.versionId, noncanonical);
 
 		var row = variables.repo.findVersionById(imported.versionId);
-		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the checksum hashes these exact bytes");
-		assertEquals(
+		assertExactTextEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the checksum hashes these exact bytes");
+		assertExactTextEquals(
 			serializeJSON(deserializeJSON(canonical)),
 			serializeJSON(deserializeJSON(row.snapshotJson)),
 			"precondition: the bytes still parse to the same document, so only canonicality differs"
@@ -880,7 +880,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var e = assertThrows(function() { svc.publish(id, publisher); }, "ICFWalk.Publish", "INSTRUMENT_VERSION_NOT_PUBLISHABLE");
 		assertTrue(hasIssue(variables.c.errors.detailsOf(e).issues, ["SNAPSHOT_NOT_CANONICAL"]), "the refusal names the canonical-byte contract");
 		assertUntouchedDraft(id, before);
-		assertEquals(noncanonical, variables.repo.findVersionById(id).snapshotJson, "and publication did not quietly rewrite the bytes");
+		assertExactTextEquals(noncanonical, variables.repo.findVersionById(id).snapshotJson, "and publication did not quietly rewrite the bytes");
 	}
 
 	/** Reordered keys are the other way to be noncanonical, and are refused the same way. */
@@ -956,8 +956,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		storeRecompiledSnapshot(imported.versionId, snapshot);
 
 		var stored = deserializeJSON(variables.repo.findVersionById(imported.versionId).snapshotJson);
-		assertEquals("java.lang.String", stored.counts.items.getClass().getName(), "precondition: the stored counts.items really is a JSON string");
-		assertEquals(toString(actual), stored.counts.items, "precondition: and it names the right number");
+		assertExactTextEquals("java.lang.String", stored.counts.items.getClass().getName(), "precondition: the stored counts.items really is a JSON string");
+		assertExactTextEquals(toString(actual), stored.counts.items, "precondition: and it names the right number");
 
 		var svc = variables.svc;
 		var id = imported.versionId;
@@ -1014,8 +1014,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		storeRawSnapshotPastTheSchemaGuard(imported.versionId, arguments.text);
 
 		var row = variables.repo.findVersionById(imported.versionId);
-		assertEquals(arguments.text, row.snapshotJson, "precondition: the exact bytes are stored");
-		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes them, so nothing earlier can refuse this");
+		assertExactTextEquals(arguments.text, row.snapshotJson, "precondition: the exact bytes are stored");
+		assertExactTextEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes them, so nothing earlier can refuse this");
 
 		var svc = variables.svc;
 		var id = imported.versionId;
@@ -1062,7 +1062,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private boolean function hasIssuePath(required any issues, required string path) {
 		if (!isArray(arguments.issues)) return false;
-		for (var issue in arguments.issues) if (structKeyExists(issue, "path") && issue.path == arguments.path) return true;
+		for (var issue in arguments.issues) if (structKeyExists(issue, "path") && compare(issue.path, arguments.path) == 0) return true;
 		return false;
 	}
 
@@ -1103,8 +1103,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Precondition: this really is a checksum-matching, drift-free version, so nothing except
 		// semantic validation can refuse it. Without this the test would only retest drift.
 		var row = variables.repo.findVersionById(imported.versionId);
-		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes the stored snapshot");
-		assertEquals(
+		assertExactTextEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes the stored snapshot");
+		assertExactTextEquals(
 			variables.c.snapshotCompiler.definitionsChecksum(variables.repo.loadNormalizedDefinitions(imported.versionId)),
 			variables.c.snapshotCompiler.definitionsChecksum(deserializeJSON(row.snapshotJson).definitions),
 			"precondition: the snapshot definitions and the table definitions agree, so this is not a drift test"
@@ -1137,7 +1137,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		storeRecompiledSnapshot(imported.versionId, snapshot);
 
 		var row = variables.repo.findVersionById(imported.versionId);
-		assertEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes the stored snapshot");
+		assertExactTextEquals(row.checksum, variables.c.canonicalJson.sha256(row.snapshotJson), "precondition: the stored checksum hashes the stored snapshot");
 
 		var svc = variables.svc;
 		var id = imported.versionId;
@@ -1198,21 +1198,22 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private void function assertUntouchedDraft(required string versionId, struct before = {}) {
 		var after = variables.repo.findVersionById(arguments.versionId);
-		assertEquals("DRAFT", after.status, "a refused publish leaves the version a DRAFT");
-		assertEquals("", after.publishedByUserId, "and names no publisher");
+		assertExactTextEquals("DRAFT", after.status, "a refused publish leaves the version a DRAFT");
+		assertExactTextEquals("", after.publishedByUserId, "and names no publisher");
 		assertEquals(0, auditCount(arguments.versionId, "INSTRUMENT_VERSION_PUBLISHED"), "nothing was published");
 		assertEquals(1, auditCount(arguments.versionId, "INSTRUMENT_VERSION_PUBLISH_REFUSED"), "and exactly one refusal survived the rollback");
 		if (structIsEmpty(arguments.before)) return;
 		var now = versionState(arguments.versionId);
-		for (var field in ["status", "publishedByUserId", "checksum", "snapshotJson", "rowVersion", "publishedAt", "effectiveStart", "definitionsChecksum"]) {
-			assertEquals(arguments.before[field], now[field], "a refused publish leaves " & field & " exactly as it was");
+		for (var field in ["status", "publishedByUserId", "checksum", "snapshotJson", "publishedAt", "effectiveStart", "definitionsChecksum"]) {
+			assertExactTextEquals(arguments.before[field], now[field], "a refused publish leaves " & field & " exactly as it was");
 		}
+		assertRowVersionEquals(arguments.before.rowVersion, now.rowVersion, "a refused publish leaves rowVersion exactly as it was");
 	}
 
 	private boolean function hasIssue(required any issues, required array codes) {
 		if (!isArray(arguments.issues)) return false;
 		for (var issue in arguments.issues) {
-			for (var code in arguments.codes) if (structKeyExists(issue, "code") && issue.code == code) return true;
+			for (var code in arguments.codes) if (structKeyExists(issue, "code") && compare(issue.code, code) == 0) return true;
 		}
 		return false;
 	}

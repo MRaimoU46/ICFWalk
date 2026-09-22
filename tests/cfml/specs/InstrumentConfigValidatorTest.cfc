@@ -10,7 +10,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(0, arrayLen(r.errors));
 		assertEquals(17, arrayLen(r.placeholders));
 		var placeholderWarnings = 0;
-		for (var w in r.warnings) if (w.code == "PLACEHOLDER_CONTENT") placeholderWarnings++;
+		for (var w in r.warnings) if (compare(w.code, "PLACEHOLDER_CONTENT") == 0) placeholderWarnings++;
 		assertEquals(17, placeholderWarnings);
 		assertEquals(17, arrayLen(r.warnings), "Only placeholder warnings are expected for the supplied document.");
 	}
@@ -174,7 +174,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	private boolean function hasPath(required struct r, required string path) {
-		for (var e in arguments.r.errors) if (structKeyExists(e, "path") && e.path == arguments.path) return true;
+		for (var e in arguments.r.errors) if (structKeyExists(e, "path") && compare(e.path, arguments.path) == 0) return true;
 		return false;
 	}
 
@@ -186,7 +186,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	private boolean function hasError(required struct r, required string code, required string needle) {
 		for (var e in arguments.r.errors) {
-			if (e.code == arguments.code && (!len(arguments.needle) || find(arguments.needle, e.message))) return true;
+			if (compare(e.code, arguments.code) == 0 && (!len(arguments.needle) || find(arguments.needle, e.message))) return true;
 		}
 		return false;
 	}

@@ -117,19 +117,19 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	public void function testWalk02CreatePinsCurrentVersionOwnerAndDefaults() {
 		var w = newWalk();
-		assertEquals("DRAFT", w.status);
-		assertEquals(variables.current.versionId, w.versionId);
-		assertEquals(variables.S1, w.orgUnitId);
-		assertEquals(variables.walker.userId, w.ownerUserId);
+		assertExactTextEquals("DRAFT", w.status);
+		assertExactTextEquals(variables.current.versionId, w.versionId);
+		assertExactTextEquals(variables.S1, w.orgUnitId);
+		assertExactTextEquals(variables.walker.userId, w.ownerUserId);
 		assertTrue(w.isOwner && w.canEdit);
 		assertTrue(reFind("^0x[0-9A-F]{16}$", w.rowVersion) > 0, "row version token");
 		var row = walkRow(w.id);
-		assertEquals("DRAFT", row.status[1]);
-		assertEquals(variables.current.versionId, uCase(row.version_id[1]));
+		assertExactTextEquals("DRAFT", row.status[1]);
+		assertExactTextEquals(variables.current.versionId, uCase(row.version_id[1]));
 		// Defaults: skippable components start as not applicable (applicability = no).
-		assertEquals("no", w.state.responses.comp_s3_applicable.storedCode);
-		assertEquals("no", w.state.responses.comp_s4_applicable.storedCode);
-		assertEquals("NOT_APPLICABLE", w.states.responseStates.comp_s3_q1);
+		assertExactTextEquals("no", w.state.responses.comp_s3_applicable.storedCode);
+		assertExactTextEquals("no", w.state.responses.comp_s4_applicable.storedCode);
+		assertExactTextEquals("NOT_APPLICABLE", w.states.responseStates.comp_s3_q1);
 		// One response row per response-capable item; none for display items; no dimension rows.
 		var expectedRows = structCount(w.states.responseStates);
 		assertEquals(expectedRows, count("SELECT COUNT(*) AS n FROM [icf].[walk_response] WHERE walk_id = :id", w.id));
@@ -142,10 +142,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var id = newMutationId();
 		var first = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": id });
 		var second = variables.svc.create(p(variables.walker), { "orgUnitId": variables.S1, "clientMutationId": id });
-		assertEquals(first.id, second.id);
+		assertExactTextEquals(first.id, second.id);
 		assertFalse(first.replayed);
 		assertTrue(second.replayed);
-		assertEquals(first.rowVersion, second.rowVersion);
+		assertRowVersionEquals(first.rowVersion, second.rowVersion);
 		assertEquals(1, variables.db.scalar("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE mutation_id = :id", { "id": variables.db.guid(id) }));
 		assertEquals(1, auditEvents(first.id, "WALK_MUTATION_REPLAYED").recordCount);
 		// The same mutation id from another user is refused, never replayed to them.
@@ -169,38 +169,38 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			{ "date": { "dateValue": "2026-09-03" }, "observer": { "textValue": "Fixture Observer" }, "content": { "selectedValueCode": "other", "otherText": "Unlisted <b>Site</b>" }, "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "third" } },
 			{ "p1q1": { "storedCode": "Partial" }, "comp_s1_q1": { "storedCode": "4" }, "part1_adopted_notes": { "textValue": variables.NOTE }, "email_workflow": { "textValue": '{"includedPartKeys":["part1"],"drafted":true,"to":"","subject":"S","body":"B"}' } }
 		);
-		assertNotEquals(w.rowVersion, saved.rowVersion, "row version advances");
-		assertEquals("ANSWERED", saved.states.responseStates.p1q1);
+		assertRowVersionChanged(w.rowVersion, saved.rowVersion, "row version advances");
+		assertExactTextEquals("ANSWERED", saved.states.responseStates.p1q1);
 		// Fresh retrieval (new queries, no in-memory state) returns the same values.
 		var again = variables.svc.open(p(variables.walker), w.id);
-		assertEquals("2026-09-03", again.state.dimensions.date.dateValue);
-		assertEquals("Fixture Observer", again.state.dimensions.observer.textValue);
-		assertEquals("other", again.state.dimensions.content.selectedValueCode);
-		assertEquals("Unlisted <b>Site</b>", again.state.dimensions.content.otherText);
+		assertExactTextEquals("2026-09-03", again.state.dimensions.date.dateValue);
+		assertExactTextEquals("Fixture Observer", again.state.dimensions.observer.textValue);
+		assertExactTextEquals("other", again.state.dimensions.content.selectedValueCode);
+		assertExactTextEquals("Unlisted <b>Site</b>", again.state.dimensions.content.otherText);
 		assertFalse(structKeyExists(again.state.dimensions, "school"), "an unmapped SCHOOL unit carries no School value");
-		assertEquals("9", again.state.dimensions.grade.selectedValueCode);
-		assertEquals("third", again.state.dimensions.period.selectedValueCode);
-		assertEquals("Partial", again.state.responses.p1q1.storedCode);
-		assertEquals("4", again.state.responses.comp_s1_q1.storedCode);
-		assertEquals(variables.NOTE, again.state.responses.part1_adopted_notes.textValue, "markup and SQL metacharacters are stored verbatim");
-		assertEquals('{"body":"B","drafted":true,"includedPartKeys":["part1"],"subject":"S","to":""}', again.state.responses.email_workflow.textValue, "email draft stored as canonical JSON");
-		assertEquals(saved.rowVersion, again.rowVersion);
+		assertExactTextEquals("9", again.state.dimensions.grade.selectedValueCode);
+		assertExactTextEquals("third", again.state.dimensions.period.selectedValueCode);
+		assertExactTextEquals("Partial", again.state.responses.p1q1.storedCode);
+		assertExactTextEquals("4", again.state.responses.comp_s1_q1.storedCode);
+		assertExactTextEquals(variables.NOTE, again.state.responses.part1_adopted_notes.textValue, "markup and SQL metacharacters are stored verbatim");
+		assertExactTextEquals('{"body":"B","drafted":true,"includedPartKeys":["part1"],"subject":"S","to":""}', again.state.responses.email_workflow.textValue, "email draft stored as canonical JSON");
+		assertRowVersionEquals(saved.rowVersion, again.rowVersion);
 		// Typed columns and the documented Other mapping (selected_value_id = Other, text_value = the text).
 		var contentArea = dimensionRow(w.id, "content");
-		assertEquals("other", contentArea.value_code[1]);
-		assertEquals("Unlisted <b>Site</b>", contentArea.text_value[1]);
+		assertExactTextEquals("other", contentArea.value_code[1]);
+		assertExactTextEquals("Unlisted <b>Site</b>", contentArea.text_value[1]);
 		var d = dimensionRow(w.id, "date");
-		assertEquals("2026-09-03", dateFormat(d.date_value[1], "yyyy-mm-dd"));
+		assertExactTextEquals("2026-09-03", dateFormat(d.date_value[1], "yyyy-mm-dd"));
 		var obs = walkRow(w.id);
-		assertEquals("2026-09-03", dateFormat(obs.observed_at[1], "yyyy-mm-dd"), "observed_at follows the visit date");
+		assertExactTextEquals("2026-09-03", dateFormat(obs.observed_at[1], "yyyy-mm-dd"), "observed_at follows the visit date");
 		var r = responseRow(w.id, "comp_s1_q1");
-		assertEquals("ANSWERED", r.response_state[1]);
-		assertEquals("4", r.stored_code[1]);
+		assertExactTextEquals("ANSWERED", r.response_state[1]);
+		assertExactTextEquals("4", r.stored_code[1]);
 		assertEquals(1, count("SELECT COUNT(*) AS n FROM [icf].[walk_response] r JOIN [icf].[item_definition] i ON i.item_id = r.item_id WHERE r.walk_id = :id AND i.item_key = N'comp_s1_q1'", w.id), "one row per item");
 		// Removing a value deletes the dimension row and returns the response to UNANSWERED.
 		var cleared = saveState(again, { "date": { "dateValue": "2026-09-03" } }, { "part1_adopted_notes": { "textValue": variables.NOTE } });
 		assertEquals(0, dimensionRow(w.id, "content").recordCount);
-		assertEquals("UNANSWERED", responseRow(w.id, "comp_s1_q1").response_state[1]);
+		assertExactTextEquals("UNANSWERED", responseRow(w.id, "comp_s1_q1").response_state[1]);
 		assertFalse(structKeyExists(cleared.state.responses, "comp_s1_q1"));
 	}
 
@@ -233,14 +233,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				saveState(w, local_tc.dims, local_tc.responses);
 			} catch (ICFWalk.Validation e) {
 				thrown = true;
-				assertEquals(local_tc.code, e.errorcode, "case " & i & " (" & serializeJSON(local_tc.dims) & " " & serializeJSON(local_tc.responses) & ")");
+				assertExactTextEquals(local_tc.code, e.errorcode, "case " & i & " (" & serializeJSON(local_tc.dims) & " " & serializeJSON(local_tc.responses) & ")");
 				var details = variables.c.errors.detailsOf(e);
 				assertTrue(structKeyExists(details, "issues") && arrayLen(details.issues) >= 1, "issues listed for " & local_tc.code);
 			}
 			assertTrue(thrown, "case " & i & " should be rejected with " & local_tc.code & ": " & serializeJSON(local_tc.dims) & " " & serializeJSON(local_tc.responses));
 		}
 		assertEquals(before, count("SELECT COUNT(*) AS n FROM [icf].[walk_response] WHERE walk_id = :id AND response_state = N'ANSWERED'", w.id), "rejected saves write nothing");
-		assertEquals(w.rowVersion, variables.svc.open(p(variables.walker), w.id).rowVersion, "row version unchanged");
+		assertRowVersionEquals(w.rowVersion, variables.svc.open(p(variables.walker), w.id).rowVersion, "row version unchanged");
 		assertEquals(arrayLen(cases), auditEvents(w.id, "WALK_SAVE_REJECTED").recordCount);
 		// Identifiers: version, walk id, row version format, malformed and unknown walk ids.
 		assertThrows(function() { variables.svc.save(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId(), "versionId": variables.db.newGuid(), "dimensions": {}, "responses": {} }); }, "ICFWalk.Validation", "VERSION_MISMATCH");
@@ -260,11 +260,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var a = saveState(w, { "grade": { "selectedValueCode": "4" } }, { "comp_s1_q1": { "storedCode": "5" } });
 		var e = assertThrows(function() { saveState(w, { "grade": { "selectedValueCode": "2" } }, { "comp_s1_q1": { "storedCode": "1" } }); }, "ICFWalk.Conflict", "STALE_ROW_VERSION");
 		var details = variables.c.errors.detailsOf(e);
-		assertEquals(a.rowVersion, details.serverRowVersion);
+		assertRowVersionEquals(a.rowVersion, details.serverRowVersion);
 		var current = variables.svc.open(p(variables.walker), w.id);
-		assertEquals("4", current.state.dimensions.grade.selectedValueCode, "A's write survives");
-		assertEquals("5", current.state.responses.comp_s1_q1.storedCode);
-		assertEquals(a.rowVersion, current.rowVersion);
+		assertExactTextEquals("4", current.state.dimensions.grade.selectedValueCode, "A's write survives");
+		assertExactTextEquals("5", current.state.responses.comp_s1_q1.storedCode);
+		assertRowVersionEquals(a.rowVersion, current.rowVersion);
 		assertEquals(1, auditEvents(w.id, "WALK_SAVE_CONFLICT").recordCount);
 		// Same for completion with a stale token.
 		assertThrows(function() { variables.svc.complete(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Conflict", "STALE_ROW_VERSION");
@@ -277,7 +277,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var rows = count("SELECT COUNT(*) AS n FROM [icf].[walk_response] WHERE walk_id = :id", w.id);
 		var retry = saveState(w, { "grade": { "selectedValueCode": "6" } }, { "comp_s1_q1": { "storedCode": "3" }, "comp_s1_notes": { "textValue": "n1" } }, variables.walker, id);
 		assertTrue(retry.replayed);
-		assertEquals(first.rowVersion, retry.rowVersion, "replay returns the committed row version");
+		assertRowVersionEquals(first.rowVersion, retry.rowVersion, "replay returns the committed row version");
 		assertEquals(rows, count("SELECT COUNT(*) AS n FROM [icf].[walk_response] WHERE walk_id = :id", w.id), "no duplicate response rows");
 		assertEquals(1, count("SELECT COUNT(*) AS n FROM [icf].[walk_dimension_value] WHERE walk_id = :id", w.id));
 		assertEquals(0, count("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", w.id), "draft saves append no revision");
@@ -294,8 +294,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"ICFWalk.Conflict", "MUTATION_REPLAY_SUPERSEDED");
 		// Nothing was re-applied and no second mutation row was written.
 		var after = variables.svc.open(p(variables.walker), w.id);
-		assertEquals("7", after.state.dimensions.grade.selectedValueCode);
-		assertEquals(later.rowVersion, after.rowVersion);
+		assertExactTextEquals("7", after.state.dimensions.grade.selectedValueCode);
+		assertRowVersionEquals(later.rowVersion, after.rowVersion);
 		assertEquals(3, count("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", w.id), "one CREATE and two SAVE mutations; the refused retry recorded none");
 		// The mutation id belongs to this walk and actor only.
 		var other = newWalk();
@@ -307,41 +307,41 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testCond12And13SkippableComponentClearsRatingsKeepsNotesInOneTransaction() {
 		var w = newWalk();
 		var yes = saveState(w, {}, { "comp_s3_applicable": { "storedCode": "yes" }, "comp_s3_q1": { "storedCode": "4" }, "comp_s3_q2": { "storedCode": "2" }, "comp_s3_notes": { "textValue": "keep these notes" } });
-		assertEquals("ANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
+		assertExactTextEquals("ANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
 		var no = saveState(yes, {}, { "comp_s3_applicable": { "storedCode": "no" }, "comp_s3_q1": { "storedCode": "4" }, "comp_s3_q2": { "storedCode": "2" }, "comp_s3_notes": { "textValue": "keep these notes" } });
 		var kinds = [];
 		for (var ch in no.changes) arrayAppend(kinds, ch.kind & ":" & ch.key & ":" & ch.reason);
-		assertEquals("RESPONSE_CLEARED:comp_s3_q1:NOT_APPLICABLE,RESPONSE_CLEARED:comp_s3_q2:NOT_APPLICABLE", arrayToList(kinds));
+		assertExactTextEquals("RESPONSE_CLEARED:comp_s3_q1:NOT_APPLICABLE,RESPONSE_CLEARED:comp_s3_q2:NOT_APPLICABLE", arrayToList(kinds));
 		assertFalse(structKeyExists(no.state.responses, "comp_s3_q1"), "rating cleared from the returned state");
-		assertEquals("keep these notes", no.state.responses.comp_s3_notes.textValue);
+		assertExactTextEquals("keep these notes", no.state.responses.comp_s3_notes.textValue);
 		var q1 = responseRow(w.id, "comp_s3_q1");
-		assertEquals("NOT_APPLICABLE", q1.response_state[1]);
+		assertExactTextEquals("NOT_APPLICABLE", q1.response_state[1]);
 		assertTrue(!len(q1.selected_option_id[1]), "cleared option is null in the database");
-		assertEquals("NOT_APPLICABLE", responseRow(w.id, "comp_s3_q2").response_state[1]);
+		assertExactTextEquals("NOT_APPLICABLE", responseRow(w.id, "comp_s3_q2").response_state[1]);
 		var notes = responseRow(w.id, "comp_s3_notes");
-		assertEquals("ANSWERED", notes.response_state[1]);
-		assertEquals("keep these notes", notes.text_value[1]);
+		assertExactTextEquals("ANSWERED", notes.response_state[1]);
+		assertExactTextEquals("keep these notes", notes.text_value[1]);
 		// COND-13: back to Yes -> UNANSWERED, cleared ratings do not reappear, notes remain.
 		var back = saveState(no, {}, { "comp_s3_applicable": { "storedCode": "yes" }, "comp_s3_notes": { "textValue": "keep these notes" } });
-		assertEquals("UNANSWERED", back.states.responseStates.comp_s3_q1);
-		assertEquals("UNANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
+		assertExactTextEquals("UNANSWERED", back.states.responseStates.comp_s3_q1);
+		assertExactTextEquals("UNANSWERED", responseRow(w.id, "comp_s3_q1").response_state[1]);
 		assertFalse(structKeyExists(back.state.responses, "comp_s3_q1"));
-		assertEquals("keep these notes", back.state.responses.comp_s3_notes.textValue);
+		assertExactTextEquals("keep these notes", back.state.responses.comp_s3_notes.textValue);
 	}
 
 	public void function testCond10HiddenSectionAnswersArePersistedAsHiddenAndReturn() {
 		var w = newWalk();
 		var shown = saveState(w, { "classType": { "selectedValueCode": "dual_language" } }, { "dual_language_q1": { "storedCode": "yes" } });
-		assertEquals("ANSWERED", shown.states.responseStates.dual_language_q1);
+		assertExactTextEquals("ANSWERED", shown.states.responseStates.dual_language_q1);
 		var hidden = saveState(shown, { "classType": { "selectedValueCode": "general_education" } }, { "dual_language_q1": { "storedCode": "yes" } });
-		assertEquals("HIDDEN", hidden.states.responseStates.dual_language_q1);
-		assertEquals("yes", hidden.state.responses.dual_language_q1.storedCode, "value retained while hidden");
+		assertExactTextEquals("HIDDEN", hidden.states.responseStates.dual_language_q1);
+		assertExactTextEquals("yes", hidden.state.responses.dual_language_q1.storedCode, "value retained while hidden");
 		var row = responseRow(w.id, "dual_language_q1");
-		assertEquals("HIDDEN", row.response_state[1]);
-		assertEquals("yes", row.stored_code[1]);
+		assertExactTextEquals("HIDDEN", row.response_state[1]);
+		assertExactTextEquals("yes", row.stored_code[1]);
 		var again = saveState(hidden, { "classType": { "selectedValueCode": "dual_language" } }, { "dual_language_q1": { "storedCode": "yes" } });
-		assertEquals("ANSWERED", again.states.responseStates.dual_language_q1);
-		assertEquals("ANSWERED", responseRow(w.id, "dual_language_q1").response_state[1]);
+		assertExactTextEquals("ANSWERED", again.states.responseStates.dual_language_q1);
+		assertExactTextEquals("ANSWERED", responseRow(w.id, "dual_language_q1").response_state[1]);
 	}
 
 	public void function testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained() {
@@ -349,24 +349,24 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// unit: a high-school walk accepts grade 9, a middle-school walk does not.
 		var atHigh = newWalk(variables.schoolGroupWalker, variables.HS);
 		var hs = saveState(atHigh, { "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "second" } }, {}, variables.schoolGroupWalker);
-		assertEquals("elgin_high_school", hs.state.dimensions.school.selectedValueCode, "the School value is the unit's");
-		assertEquals("ANSWERED", hs.states.dimensionStates.period);
+		assertExactTextEquals("elgin_high_school", hs.state.dimensions.school.selectedValueCode, "the School value is the unit's");
+		assertExactTextEquals("ANSWERED", hs.states.dimensionStates.period);
 
 		var atMiddle = newWalk(variables.schoolGroupWalker, variables.MS);
 		var valid = saveState(atMiddle, { "grade": { "selectedValueCode": "7" }, "period": { "selectedValueCode": "second" } }, {}, variables.schoolGroupWalker);
-		assertEquals("abbott_middle_school", valid.state.dimensions.school.selectedValueCode);
-		assertEquals("ANSWERED", valid.states.dimensionStates.period);
+		assertExactTextEquals("abbott_middle_school", valid.state.dimensions.school.selectedValueCode);
+		assertExactTextEquals("ANSWERED", valid.states.dimensionStates.period);
 		// COND-05: a middle school invalidates grade 9 on the server too.
 		var ms = saveState(valid, { "grade": { "selectedValueCode": "9" }, "period": { "selectedValueCode": "second" } }, {}, variables.schoolGroupWalker);
 		assertEquals(1, arrayLen(ms.changes));
-		assertEquals("DIMENSION_CLEARED", ms.changes[1].kind);
-		assertEquals("grade", ms.changes[1].key);
+		assertExactTextEquals("DIMENSION_CLEARED", ms.changes[1].kind);
+		assertExactTextEquals("grade", ms.changes[1].key);
 		assertFalse(structKeyExists(ms.state.dimensions, "grade"));
 		assertEquals(0, dimensionRow(atMiddle.id, "grade").recordCount);
 		// COND-06: without a 6-12 grade, Period is HIDDEN but retained (RETAIN_HIDDEN policy).
-		assertEquals("HIDDEN", ms.states.dimensionStates.period);
-		assertEquals("second", ms.state.dimensions.period.selectedValueCode);
-		assertEquals("second", dimensionRow(atMiddle.id, "period").value_code[1]);
+		assertExactTextEquals("HIDDEN", ms.states.dimensionStates.period);
+		assertExactTextEquals("second", ms.state.dimensions.period.selectedValueCode);
+		assertExactTextEquals("second", dimensionRow(atMiddle.id, "period").value_code[1]);
 	}
 
 	// ---- WALK-09 / WALK-10: completion ----------------------------------------------------------
@@ -377,10 +377,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var e = assertThrows(function() { variables.svc.complete(p(variables.walker), w.id, { "rowVersion": partial.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Validation", "WALK_INCOMPLETE");
 		var details = variables.c.errors.detailsOf(e);
 		var keys = [];
-		for (var err in details.errors) { arrayAppend(keys, err.key); assertEquals("ITEM", err.kind); assertTrue(len(err.sectionKey) > 0); assertTrue(len(err.message) > 0); }
-		assertEquals("p1q2,p1q3,part1_adopted_pacing,part1_adopted_ac1,part1_adopted_ac2,part1_targettask_tt1,part1_targettask_tt2", arrayToList(keys));
-		assertEquals("DRAFT", walkRow(w.id).status[1]);
-		assertEquals("Yes", variables.svc.open(p(variables.walker), w.id).state.responses.p1q1.storedCode, "draft remains saved");
+		for (var err in details.errors) { arrayAppend(keys, err.key); assertExactTextEquals("ITEM", err.kind); assertTrue(len(err.sectionKey) > 0); assertTrue(len(err.message) > 0); }
+		assertExactTextEquals("p1q2,p1q3,part1_adopted_pacing,part1_adopted_ac1,part1_adopted_ac2,part1_targettask_tt1,part1_targettask_tt2", arrayToList(keys));
+		assertExactTextEquals("DRAFT", walkRow(w.id).status[1]);
+		assertExactTextEquals("Yes", variables.svc.open(p(variables.walker), w.id).state.responses.p1q1.storedCode, "draft remains saved");
 		assertEquals(0, count("SELECT COUNT(*) AS n FROM [icf].[walk_revision] WHERE walk_id = :id", w.id));
 		assertEquals(1, auditEvents(w.id, "WALK_COMPLETION_REJECTED").recordCount);
 	}
@@ -390,16 +390,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var full = saveState(w, { "grade": { "selectedValueCode": "3" } }, requiredAnswers());
 		var id = newMutationId();
 		var done = variables.svc.complete(p(variables.walker), w.id, { "rowVersion": full.rowVersion, "clientMutationId": id });
-		assertEquals("COMPLETED", done.status);
+		assertExactTextEquals("COMPLETED", done.status);
 		assertTrue(len(done.completedAt) > 0);
-		assertNotEquals(full.rowVersion, done.rowVersion);
+		assertRowVersionChanged(full.rowVersion, done.rowVersion);
 		var row = walkRow(w.id);
-		assertEquals("COMPLETED", row.status[1]);
+		assertExactTextEquals("COMPLETED", row.status[1]);
 		assertTrue(isDate(row.completed_at[1]));
 		var revisions = variables.c.walkRepository.listRevisions(w.id);
 		assertEquals(1, arrayLen(revisions));
-		assertEquals("COMPLETE", revisions[1].reason);
-		assertEquals(variables.walker.userId, revisions[1].actorUserId);
+		assertExactTextEquals("COMPLETE", revisions[1].reason);
+		assertExactTextEquals(variables.walker.userId, revisions[1].actorUserId);
 		var snapshot = variables.db.run("SELECT prior_snapshot_json FROM [icf].[walk_revision] WHERE walk_id = :id", { "id": variables.db.guid(w.id) });
 		assertContains('"status":"DRAFT"', snapshot.prior_snapshot_json[1]);
 		assertContains('"p1q1":{"state":"ANSWERED","storedCode":"Partial"}', snapshot.prior_snapshot_json[1]);
@@ -414,7 +414,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Completed walks stay in the owner's list and open normally.
 		var listed = variables.svc.list(p(variables.walker));
 		var found = false;
-		for (var item in listed) if (item.id == w.id) { found = true; assertEquals("COMPLETED", item.status); }
+		for (var item in listed) if (item.id == w.id) { found = true; assertExactTextEquals("COMPLETED", item.status); }
 		assertTrue(found);
 	}
 
@@ -430,12 +430,12 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		edited["p1q1"] = { "storedCode": "Yes" };
 		edited["comp_s1_notes"] = { "textValue": "added after completion" };
 		var after = saveState(done, {}, edited);
-		assertEquals("COMPLETED", after.status);
+		assertExactTextEquals("COMPLETED", after.status);
 		assertEquals(2, after.revisionCount);
 		var revisions = variables.c.walkRepository.listRevisions(w.id);
-		assertEquals("POST_COMPLETION_EDIT", revisions[2].reason);
+		assertExactTextEquals("POST_COMPLETION_EDIT", revisions[2].reason);
 		assertEquals(1, auditEvents(w.id, "WALK_POST_COMPLETION_EDIT").recordCount);
-		assertEquals("Yes", variables.svc.open(p(variables.walker), w.id).state.responses.p1q1.storedCode);
+		assertExactTextEquals("Yes", variables.svc.open(p(variables.walker), w.id).state.responses.p1q1.storedCode);
 	}
 
 	// ---- WALK-06 / WALK-08: void and delete refusal ----------------------------------------------
@@ -444,17 +444,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var w = newWalk();
 		assertThrows(function() { variables.svc.refuseDelete(p(variables.walker), w.id); }, "ICFWalk.Conflict", "WALK_DELETE_REFUSED");
 		assertEquals(1, auditEvents(w.id, "WALK_DELETE_REFUSED").recordCount);
-		assertEquals("DRAFT", walkRow(w.id).status[1]);
+		assertExactTextEquals("DRAFT", walkRow(w.id).status[1]);
 		var voided = variables.svc.void(p(variables.walker), w.id, { "rowVersion": w.rowVersion, "clientMutationId": newMutationId() });
-		assertEquals("VOIDED", voided.status);
+		assertExactTextEquals("VOIDED", voided.status);
 		assertFalse(voided.canEdit);
 		var row = walkRow(w.id);
-		assertEquals("VOIDED", row.status[1]);
+		assertExactTextEquals("VOIDED", row.status[1]);
 		assertTrue(isDate(row.voided_at[1]));
-		assertEquals("Deleted by owner from My Walks", row.void_reason[1]);
+		assertExactTextEquals("Deleted by owner from My Walks", row.void_reason[1]);
 		assertEquals(1, auditEvents(w.id, "WALK_VOIDED").recordCount);
 		assertContains('"priorStatus":"DRAFT"', auditEvents(w.id, "WALK_VOIDED").details_json[1]);
-		for (var item in variables.svc.list(p(variables.walker))) assertNotEquals(w.id, item.id, "voided walks leave the list");
+		for (var item in variables.svc.list(p(variables.walker))) assertExactTextNotEquals(w.id, item.id, "voided walks leave the list");
 		assertThrows(function() { saveState(voided, {}, {}); }, "ICFWalk.Conflict", "WALK_VOIDED");
 		assertThrows(function() { variables.svc.void(p(variables.walker), w.id, { "rowVersion": voided.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Conflict", "WALK_ALREADY_VOIDED");
 		// Completed walks need a reason and are retained (never physically deleted).
@@ -463,11 +463,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var done = variables.svc.complete(p(variables.walker), c.id, { "rowVersion": full.rowVersion, "clientMutationId": newMutationId() });
 		assertThrows(function() { variables.svc.void(p(variables.walker), c.id, { "rowVersion": done.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Validation", "VOID_REASON_REQUIRED");
 		assertThrows(function() { variables.svc.void(p(variables.walker), c.id, { "reason": "Duplicate entry", "rowVersion": full.rowVersion, "clientMutationId": newMutationId() }); }, "ICFWalk.Conflict", "STALE_ROW_VERSION");
-		assertEquals("COMPLETED", walkRow(c.id).status[1], "a stale void changes nothing");
+		assertExactTextEquals("COMPLETED", walkRow(c.id).status[1], "a stale void changes nothing");
 		var v = variables.svc.void(p(variables.walker), c.id, { "reason": "Duplicate entry", "rowVersion": done.rowVersion, "clientMutationId": newMutationId() });
-		assertEquals("VOIDED", v.status);
+		assertExactTextEquals("VOIDED", v.status);
 		var crow = walkRow(c.id);
-		assertEquals("Duplicate entry", crow.void_reason[1]);
+		assertExactTextEquals("Duplicate entry", crow.void_reason[1]);
 		assertTrue(isDate(crow.completed_at[1]), "completion history retained");
 		assertEquals(structCount(done.states.responseStates), count("SELECT COUNT(*) AS n FROM [icf].[walk_response] WHERE walk_id = :id", c.id), "responses retained");
 	}
@@ -493,16 +493,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(seen.canEdit);
 		assertThrows(function() { variables.svc.save(p(variables.walker2), w.id, { "rowVersion": seen.rowVersion, "clientMutationId": newMutationId(), "dimensions": {}, "responses": {} }); }, "ICFWalk.Forbidden");
 		assertThrows(function() { variables.svc.void(p(variables.walker2), w.id, { "reason": "x" }); }, "ICFWalk.Forbidden");
-		assertEquals("2", variables.svc.open(p(variables.walker), w.id).state.dimensions.grade.selectedValueCode, "nothing changed");
+		assertExactTextEquals("2", variables.svc.open(p(variables.walker), w.id).state.dimensions.grade.selectedValueCode, "nothing changed");
 		// Lists: "mine" is the owner's; "all" adds readable walks in scope; other districts never see it.
 		var mine = variables.svc.list(p(variables.walker2));
-		for (var item in mine) assertNotEquals(w.id, item.id);
+		for (var item in mine) assertExactTextNotEquals(w.id, item.id);
 		var all = variables.svc.list(p(variables.districtWalker), "all");
 		var found = false;
-		for (var item in all) if (item.id == w.id) { found = true; assertFalse(item.canEdit); assertEquals("2", item.state.dimensions.grade.selectedValueCode); assertTrue(structIsEmpty(item.state.responses), "list carries dimensions only"); }
+		for (var item in all) if (item.id == w.id) { found = true; assertFalse(item.canEdit); assertExactTextEquals("2", item.state.dimensions.grade.selectedValueCode); assertTrue(structIsEmpty(item.state.responses), "list carries dimensions only"); }
 		assertTrue(found, "district walker sees the walk with scope=all");
 		var foreignAll = variables.svc.list(p(variables.foreign), "all");
-		for (var item in foreignAll) assertNotEquals(w.id, item.id);
+		for (var item in foreignAll) assertExactTextNotEquals(w.id, item.id);
 		assertEquals(0, arrayLen(variables.svc.list(p(variables.reportOnly), "all")), "report-only lists nothing");
 	}
 
@@ -512,14 +512,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var older = newWalk(variables.walker2);
 		var newer = newWalk(variables.walker2);
 		var list = variables.svc.list(p(variables.walker2));
-		assertEquals(newer.id, list[1].id);
-		assertEquals(older.id, list[2].id);
+		assertExactTextEquals(newer.id, list[1].id);
+		assertExactTextEquals(older.id, list[2].id);
 		saveState(older, { "grade": { "selectedValueCode": "5" }, "content": { "selectedValueCode": "art" }, "date": { "dateValue": "2026-09-10" } }, {}, variables.walker2);
 		list = variables.svc.list(p(variables.walker2));
-		assertEquals(older.id, list[1].id, "the updated walk sorts first");
-		assertEquals("5", list[1].state.dimensions.grade.selectedValueCode);
-		assertEquals("art", list[1].state.dimensions.content.selectedValueCode);
-		assertEquals("2026-09-10", list[1].state.dimensions.date.dateValue);
+		assertExactTextEquals(older.id, list[1].id, "the updated walk sorts first");
+		assertExactTextEquals("5", list[1].state.dimensions.grade.selectedValueCode);
+		assertExactTextEquals("art", list[1].state.dimensions.content.selectedValueCode);
+		assertExactTextEquals("2026-09-10", list[1].state.dimensions.date.dateValue);
 		assertTrue(len(list[1].updatedAt) > 0 && len(list[1].rowVersion) > 0);
 	}
 
@@ -554,15 +554,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		try {
 			var fresh = newWalk();
 			newWalkId = fresh.id;
-			assertEquals(imported.versionId, fresh.versionId, "new walks pin the newest renderable version");
-			assertEquals(variables.current.versionId, variables.svc.open(p(variables.walker), oldWalk.id).versionId, "existing walk keeps its version");
+			assertExactTextEquals(imported.versionId, fresh.versionId, "new walks pin the newest renderable version");
+			assertExactTextEquals(variables.current.versionId, variables.svc.open(p(variables.walker), oldWalk.id).versionId, "existing walk keeps its version");
 			var stillOld = findItem(variables.svc.instrumentFor(p(variables.walker), oldWalk.id).model, "p1q1");
-			assertEquals(oldItem.prompt, stillOld.prompt, "historical walk renders its pinned prompt");
+			assertExactTextEquals(oldItem.prompt, stillOld.prompt, "historical walk renders its pinned prompt");
 			var changed = findItem(variables.svc.instrumentFor(p(variables.walker), fresh.id).model, "p1q1");
-			assertEquals("CHANGED PROMPT " & label, changed.prompt);
+			assertExactTextEquals("CHANGED PROMPT " & label, changed.prompt);
 			// The old walk still saves against its own definitions.
 			var saved = saveState(oldWalk, {}, { "p1q1": { "storedCode": "Yes" } });
-			assertEquals(variables.current.versionId, saved.versionId);
+			assertExactTextEquals(variables.current.versionId, saved.versionId);
 		} finally {
 			if (len(newWalkId)) variables.fx.deleteWalk(newWalkId);
 			variables.c.instrumentImportService.discardDraft(label);
@@ -599,8 +599,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertContains("2.3 WORKSHOP MODEL OF INSTRUCTION  (not part of this lesson at the time of the visit)", out.text);
 		// SEC-02: the injection string is text in the export, neither escaped nor stripped.
 		assertContains("Notes: " & variables.NOTE, out.text);
-		assertEquals("DRAFT", out.status);
-		assertEquals(saved.versionId, out.versionId, "WALK-11: the walk's pinned version, not the current one.");
+		assertExactTextEquals("DRAFT", out.status);
+		assertExactTextEquals(saved.versionId, out.versionId, "WALK-11: the walk's pinned version, not the current one.");
 		assertTrue(out.bytes > 0);
 	}
 
@@ -633,7 +633,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		var rowsBefore = variables.db.run("SELECT COUNT(*) AS n FROM [icf].[walk_mutation] WHERE walk_id = :id", { "id": variables.db.guid(w.id) }).n[1];
 		var out = variables.svc.summary(p(variables.walker), w.id);
-		assertEquals("VOIDED", out.status);
+		assertExactTextEquals("VOIDED", out.status);
 		assertContains("ICFWALK SUMMARY", out.text);
 		assertTrue(find("VOIDED", out.text) == 0, "The text carries no status line.");
 
@@ -641,7 +641,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"SELECT CONVERT(varchar(18), CAST(row_version AS binary(8)), 1) AS rv, (SELECT COUNT(*) FROM [icf].[walk_mutation] WHERE walk_id = :id) AS n FROM [icf].[walk] WHERE walk_id = :id",
 			{ "id": variables.db.guid(w.id) }
 		);
-		assertEquals(voided.rowVersion, after.rv[1], "Exporting does not bump the row version.");
+		assertRowVersionEquals(voided.rowVersion, after.rv[1], "Exporting does not bump the row version.");
 		assertEquals(rowsBefore, after.n[1], "Exporting records no mutation.");
 	}
 
@@ -661,7 +661,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var details = deserializeJSON(q.d[1]);
 		var keys = structKeyArray(details);
 		arraySort(keys, "text");
-		assertEquals(["bytes", "status", "versionId"], keys, "Only approved identifiers and counts.");
+		assertExactJsonEquals(["bytes", "status", "versionId"], keys, "Only approved identifiers and counts.");
 		assertTrue(find(secret, q.d[1]) == 0, "No narrative value reached the audit row.");
 	}
 
@@ -678,7 +678,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var saved = saveState(w, {}, responses);
 		// The mutation response is what the browser adopts, so the canonical form is already in it.
 		assertEquals(0, compare(canonical, saved.state.responses.email_workflow.textValue), "Canonical on the way out of the save.");
-		assertEquals("ANSWERED", saved.states.responseStates.email_workflow);
+		assertExactTextEquals("ANSWERED", saved.states.responseStates.email_workflow);
 
 		var reopened = variables.svc.open(p(variables.walker), w.id);
 		assertEquals(0, compare(canonical, reopened.state.responses.email_workflow.textValue), "SUM-07: reopening restores it byte for byte.");
@@ -696,28 +696,28 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var afterClear = saveState(w, {}, cleared, variables.walker, "", again.rowVersion);
 		var doc = deserializeJSON(afterClear.state.responses.email_workflow.textValue);
 		assertFalse(doc.drafted);
-		assertEquals("", doc.subject);
-		assertEquals("", doc.body);
-		assertEquals("teacher@u46.org", doc.to, "The recipient is kept.");
-		assertEquals(["part1", "comp_s3"], doc.includedPartKeys, "The ticked parts are kept.");
-		assertEquals("kept", afterClear.state.responses.summary_strengths.textValue, "Other responses are untouched.");
-		assertEquals("Partial", afterClear.state.responses.p1q1.storedCode);
+		assertExactTextEquals("", doc.subject);
+		assertExactTextEquals("", doc.body);
+		assertExactTextEquals("teacher@u46.org", doc.to, "The recipient is kept.");
+		assertExactJsonEquals(["part1", "comp_s3"], doc.includedPartKeys, "The ticked parts are kept.");
+		assertExactTextEquals("kept", afterClear.state.responses.summary_strengths.textValue, "Other responses are untouched.");
+		assertExactTextEquals("Partial", afterClear.state.responses.p1q1.storedCode);
 
 		// A recipient carrying header-injection characters is stored as text; nothing interprets it.
 		var hostile = duplicate(responses);
 		hostile["email_workflow"] = { "textValue": serializeJSON({ "body": "b", "drafted": true, "includedPartKeys": [], "subject": "s", "to": "a@b.test" & chr(13) & chr(10) & "bcc: victim@example.test" }) };
 		var afterHostile = saveState(w, {}, hostile, variables.walker, "", afterClear.rowVersion);
 		var hostileDoc = deserializeJSON(afterHostile.state.responses.email_workflow.textValue);
-		assertEquals("a@b.test" & chr(13) & chr(10) & "bcc: victim@example.test", hostileDoc.to, "Stored verbatim as data.");
+		assertExactTextEquals("a@b.test" & chr(13) & chr(10) & "bcc: victim@example.test", hostileDoc.to, "Stored verbatim as data.");
 
 		// The draft is not an observation: it never appears in the completion issues.
 		var model = variables.c.snapshotService.renderModelFor(afterHostile.versionId);
 		var evaluation = variables.c.visibilityEngine.evaluateVisibility(model, afterHostile.state);
 		for (var issue in variables.svc.completionIssues(model, evaluation)) {
-			assertNotEquals("email_workflow", issue.key, "The email draft is never a completion issue.");
+			assertExactTextNotEquals("email_workflow", issue.key, "The email draft is never a completion issue.");
 		}
 		var completed = variables.svc.complete(p(variables.walker), w.id, { "rowVersion": afterHostile.rowVersion, "clientMutationId": newMutationId() });
-		assertEquals("COMPLETED", completed.status);
+		assertExactTextEquals("COMPLETED", completed.status);
 		assertEquals(0, compare(afterHostile.state.responses.email_workflow.textValue, completed.state.responses.email_workflow.textValue), "Completion leaves the draft alone.");
 	}
 
@@ -748,7 +748,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			assertContains("responses.email_workflow.textValue", serializeJSON(variables.c.errors.detailsOf(e)), "The rejection names the field: " & payload);
 		}
 		var after = variables.svc.open(p(variables.walker), walkId);
-		assertEquals(before.rowVersion, after.rowVersion, "Every rejection wrote nothing.");
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "Every rejection wrote nothing.");
 	}
 
 	private struct function findItem(required struct model, required string key) {

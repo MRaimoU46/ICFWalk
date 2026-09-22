@@ -156,11 +156,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				{ "code": variables.db.nvarchar(valueCode, 100) }
 			), "a " & status & " version minted no value identity");
 
-			assertEquals(before, globalState(), "and the global identity tables are byte-identical after both refusals");
+			assertExactTextEquals(before, globalState(), "and the global identity tables are byte-identical after both refusals");
 			var versionAfter = variables.repo.findVersionById(frozen);
-			assertEquals(versionBefore.rowVersion, versionAfter.rowVersion, "the frozen version's row did not move");
-			assertEquals(versionBefore.checksum, versionAfter.checksum, "nor its checksum");
-			assertEquals(status, versionAfter.status, "nor its status");
+			assertRowVersionEquals(versionBefore.rowVersion, versionAfter.rowVersion, "the frozen version's row did not move");
+			assertExactTextEquals(versionBefore.checksum, versionAfter.checksum, "nor its checksum");
+			assertExactTextEquals(status, versionAfter.status, "nor its status");
 		}
 	}
 
@@ -172,7 +172,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var row = dimensionRow(dimensionCode);
 		var before = globalState();
 		assertThrows(function() { repo.createDimensionIdentity(absent, row); }, "ICFWalk.NotFound", "INSTRUMENT_VERSION_NOT_FOUND");
-		assertEquals(before, globalState(), "and nothing was minted");
+		assertExactTextEquals(before, globalState(), "and nothing was minted");
 	}
 
 	// ---- the two serial outcomes against a concurrent publish ------------------------------------
@@ -214,16 +214,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"SELECT COUNT(*) AS n FROM [icf].[dimension_definition] WHERE code = :code",
 			{ "code": variables.db.nvarchar(dimensionCode, 100) }
 		), "exactly one identity appeared -- not none, and not a duplicate");
-		assertEquals(mintedId, uCase(variables.db.run(
+		assertExactTextEquals(mintedId, uCase(variables.db.run(
 			"SELECT dimension_id FROM [icf].[dimension_definition] WHERE code = :code",
 			{ "code": variables.db.nvarchar(dimensionCode, 100) }
 		).dimension_id[1]), "and it is the identity the creator reported");
 		assertEquals(globalBefore.dimensions + 1, globalCounts().dimensions, "exactly one global dimension row was added in total");
 		assertEquals(globalBefore.values, globalCounts().values, "and no value rows");
 
-		assertEquals("PUBLISHED", variables.repo.findVersionById(versionId).status, "the publish proceeded afterwards");
-		assertEquals(variables.publisher, variables.repo.findVersionById(versionId).publishedByUserId);
-		assertEquals(published.checksum, variables.repo.findVersionById(versionId).checksum, "on the snapshot the import compiled");
+		assertExactTextEquals("PUBLISHED", variables.repo.findVersionById(versionId).status, "the publish proceeded afterwards");
+		assertExactTextEquals(variables.publisher, variables.repo.findVersionById(versionId).publishedByUserId);
+		assertExactTextEquals(published.checksum, variables.repo.findVersionById(versionId).checksum, "on the snapshot the import compiled");
 	}
 
 	/** The same, for a value identity. */
@@ -250,7 +250,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			{ "code": variables.db.nvarchar(valueCode, 100) }
 		), "exactly one value identity appeared");
 		assertEquals(globalBefore.values + 1, globalCounts().values, "and exactly one global value row in total");
-		assertEquals("PUBLISHED", variables.repo.findVersionById(versionId).status, "the publish proceeded afterwards");
+		assertExactTextEquals("PUBLISHED", variables.repo.findVersionById(versionId).status, "the publish proceeded afterwards");
 	}
 
 	// ---- helpers ---------------------------------------------------------------------------------

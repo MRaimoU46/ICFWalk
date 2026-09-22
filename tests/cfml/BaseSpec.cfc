@@ -46,7 +46,89 @@ component output="false" {
 		if (isBoolean(arguments.condition) && arguments.condition) fail(arguments.message);
 	}
 
+	// ---- exact comparisons ----------------------------------------------------------------------
+	//
+	// assertEquals and assertNotEquals (below) stringify both values and compare them with CFML's
+	// != and ==. Those operators ignore case, compare two numeric-looking strings as numbers and
+	// two boolean-looking strings as booleans, so they cannot tell "ICFWalk" from "Icfwalk", "4"
+	// from "04", or the row version 000000000000E988 from 000000000000E989 (both read as zero in
+	// exponent notation). Every value whose contract is exact -- text, identifiers, codes,
+	// statuses, checksums, canonical JSON, stored codes, opaque tokens and row versions -- is
+	// compared by these helpers instead, with compare(), which is case-sensitive and never
+	// reinterprets text. Nothing is trimmed, re-cased, padded or stripped of a prefix: two values
+	// are equal only when they are the same characters.
+
+	/** Exact, case-sensitive text equality of two simple values. */
+	public void function assertExactTextEquals(any expected, any actual, string message = "") {
+		if (isNull(arguments.expected) || isNull(arguments.actual)) failOnNull("assertExactTextEquals", isNull(arguments.expected) ? "expected" : "actual", arguments.message);
+		var e = exactText("assertExactTextEquals", "expected", arguments.expected, arguments.message);
+		var a = exactText("assertExactTextEquals", "actual", arguments.actual, arguments.message);
+		if (compare(e, a) != 0) {
+			fail(lead(arguments.message) & "Expected exactly " & shown(e, a) & " but got " & shown(a, e) & difference(e, a) & ".");
+		}
+	}
+
+	/** The two simple values are not the same text, compared exactly and case-sensitively. */
+	public void function assertExactTextNotEquals(any unexpected, any actual, string message = "") {
+		if (isNull(arguments.unexpected) || isNull(arguments.actual)) failOnNull("assertExactTextNotEquals", isNull(arguments.unexpected) ? "unexpected" : "actual", arguments.message);
+		var u = exactText("assertExactTextNotEquals", "unexpected", arguments.unexpected, arguments.message);
+		var a = exactText("assertExactTextNotEquals", "actual", arguments.actual, arguments.message);
+		if (compare(u, a) == 0) {
+			fail(lead(arguments.message) & "Expected a value other than " & shown(u, a) & " but got exactly that: " & shown(a, u) & ".");
+		}
+	}
+
+	/**
+	 * Row versions are opaque tokens: the same row version is the same characters. Hex such as
+	 * 000000000000E988 is never read as a number, a 0x prefix is never added or removed, and case
+	 * and padding are never normalized. An empty token is refused rather than compared, so a row
+	 * version that was never read cannot make "unchanged" true.
+	 */
+	public void function assertRowVersionEquals(any expected, any actual, string message = "") {
+		if (isNull(arguments.expected) || isNull(arguments.actual)) failOnNull("assertRowVersionEquals", isNull(arguments.expected) ? "expected" : "actual", arguments.message);
+		var e = rowVersionToken("assertRowVersionEquals", "expected", arguments.expected, arguments.message);
+		var a = rowVersionToken("assertRowVersionEquals", "actual", arguments.actual, arguments.message);
+		if (compare(e, a) != 0) {
+			fail(lead(arguments.message) & "Expected row version " & shown(e, a) & " but got " & shown(a, e) & difference(e, a) & ".");
+		}
+	}
+
+	/** The row version moved: `after` is not exactly the token `before` was. */
+	public void function assertRowVersionChanged(any before, any after, string message = "") {
+		if (isNull(arguments.before) || isNull(arguments.after)) failOnNull("assertRowVersionChanged", isNull(arguments.before) ? "before" : "after", arguments.message);
+		var b = rowVersionToken("assertRowVersionChanged", "before", arguments.before, arguments.message);
+		var a = rowVersionToken("assertRowVersionChanged", "after", arguments.after, arguments.message);
+		if (compare(b, a) == 0) {
+			fail(lead(arguments.message) & "Expected the row version to change from " & shown(b, a) & " but it is still exactly " & shown(a, b) & ".");
+		}
+	}
+
+	/**
+	 * Structures (arrays, structs) and typed JSON values: equal only when their serializeJSON
+	 * text is identical, character for character. Unlike assertEquals, codes and keys inside the
+	 * structure keep their case, and a string never equals the number it spells.
+	 */
+	public void function assertExactJsonEquals(any expected, any actual, string message = "") {
+		if (isNull(arguments.expected) || isNull(arguments.actual)) failOnNull("assertExactJsonEquals", isNull(arguments.expected) ? "expected" : "actual", arguments.message);
+		var e = serializeJSON(arguments.expected);
+		var a = serializeJSON(arguments.actual);
+		if (compare(e, a) != 0) {
+			fail(lead(arguments.message) & "Expected JSON " & shown(e, a) & " but got " & shown(a, e) & difference(e, a) & ".");
+		}
+	}
+
+	// ---- general (coercive) comparisons ----------------------------------------------------------
+
+	/**
+	 * General equality for numeric and boolean contracts (counts, lengths, statuses as numbers,
+	 * flags). Both values are stringified and compared with CFML's !=, which is what makes 3 equal
+	 * 3.0 -- and also what makes "ICFWalk" equal "Icfwalk" and 000000000000E988 equal
+	 * 000000000000E989. It is therefore not an exact comparison and is not used for text,
+	 * identifiers, codes, checksums, tokens, structures or row versions (see the exact helpers
+	 * above). A value shaped like a row-version token is refused outright.
+	 */
 	public void function assertEquals(required any expected, required any actual, string message = "") {
+		refuseRowVersionToken("assertEquals", arguments.expected, arguments.actual);
 		var e = isSimpleValue(arguments.expected) ? toString(arguments.expected) : serializeJSON(arguments.expected);
 		var a = isSimpleValue(arguments.actual) ? toString(arguments.actual) : serializeJSON(arguments.actual);
 		if (e != a) {
@@ -54,10 +136,12 @@ component output="false" {
 		}
 	}
 
+	/** The coercive counterpart of assertEquals, with the same limits; see there. */
 	public void function assertNotEquals(required any expected, required any actual, string message = "") {
+		refuseRowVersionToken("assertNotEquals", arguments.expected, arguments.actual);
 		var e = isSimpleValue(arguments.expected) ? toString(arguments.expected) : serializeJSON(arguments.expected);
 		var a = isSimpleValue(arguments.actual) ? toString(arguments.actual) : serializeJSON(arguments.actual);
-		if (e == a) fail((len(arguments.message) ? arguments.message & " " : "") & "Expected values to differ but both were [" & left(e, 300) & "].");
+		if (e == a) fail((len(arguments.message) ? arguments.message & " " : "") & "Expected values to differ but [" & left(e, 300) & "] and [" & left(a, 300) & "] compare equal under CFML ==.");
 	}
 
 	public void function assertContains(required string needle, required string haystack, string message = "") {
@@ -66,20 +150,92 @@ component output="false" {
 
 	/**
 	 * Runs fn and asserts it throws an exception whose type starts with typePrefix (and, when
-	 * given, whose errorcode equals code). Returns the caught exception for further assertions.
+	 * given, whose errorcode is exactly code). Returns the caught exception for further assertions.
+	 *
+	 * The type prefix is matched case-insensitively on purpose: that is how CFML itself resolves
+	 * exception types (`catch (ICFWalk.Validation e)`, and the switch in Errors.statusFor that maps
+	 * a type to its HTTP status), so it is the contract production relies on. The errorcode is
+	 * compared exactly, because it is what a client receives as error.code.
 	 */
 	public any function assertThrows(required any fn, required string typePrefix, string code = "") {
 		try {
 			arguments.fn();
 		} catch (any e) {
-			if (left(e.type, len(arguments.typePrefix)) != arguments.typePrefix) {
+			if (compareNoCase(left(e.type, len(arguments.typePrefix)), arguments.typePrefix) != 0) {
 				fail("Expected exception type starting with [" & arguments.typePrefix & "] but got [" & e.type & "]: " & e.message);
 			}
-			if (len(arguments.code) && (!structKeyExists(e, "errorcode") || e.errorcode != arguments.code)) {
+			if (len(arguments.code) && (!structKeyExists(e, "errorcode") || compare(e.errorcode, arguments.code) != 0)) {
 				fail("Expected errorcode [" & arguments.code & "] but got [" & (structKeyExists(e, "errorcode") ? e.errorcode : "") & "]: " & e.message);
 			}
 			return e;
 		}
 		fail("Expected an exception of type [" & arguments.typePrefix & "] but nothing was thrown.");
+	}
+
+	// ---- support for the exact comparisons -------------------------------------------------------
+
+	private string function lead(required string message) {
+		return len(arguments.message) ? arguments.message & " " : "";
+	}
+
+	private void function failOnNull(required string helper, required string role, required string message) {
+		fail(lead(arguments.message) & arguments.helper & " was given a null " & arguments.role & " value, and null is not comparable.");
+	}
+
+	/** The value's text, exactly as it is; a structure is refused rather than stringified. */
+	private string function exactText(required string helper, required string role, required any value, required string message) {
+		if (!isSimpleValue(arguments.value)) {
+			var kind = isArray(arguments.value) ? "an array" : (isStruct(arguments.value) ? "a struct" : (isQuery(arguments.value) ? "a query" : "a complex value"));
+			fail(lead(arguments.message) & arguments.helper & " compares simple values, but the " & arguments.role & " value is " & kind & "; compare structures with assertExactJsonEquals.");
+		}
+		return toString(arguments.value);
+	}
+
+	private string function rowVersionToken(required string helper, required string role, required any value, required string message) {
+		var token = exactText(arguments.helper, arguments.role, arguments.value, arguments.message);
+		if (!len(token)) {
+			fail(lead(arguments.message) & arguments.helper & " was given an empty " & arguments.role & " row version; a row version that was never read cannot be compared.");
+		}
+		return token;
+	}
+
+	/** 1-based index of the first differing character, one past the shorter text when one is a prefix of the other, 0 when identical. */
+	private numeric function firstDifferenceAt(required string a, required string b) {
+		var n = min(len(arguments.a), len(arguments.b));
+		for (var i = 1; i <= n; i++) {
+			if (compare(mid(arguments.a, i, 1), mid(arguments.b, i, 1)) != 0) return i;
+		}
+		return len(arguments.a) == len(arguments.b) ? 0 : n + 1;
+	}
+
+	/** [value] and its length; a long value is shown as the window around its first difference from `other`. */
+	private string function shown(required string value, required string other) {
+		var n = len(arguments.value);
+		if (n <= 300) return "[" & arguments.value & "] (" & n & " chars)";
+		var from = max(1, firstDifferenceAt(arguments.value, arguments.other) - 60);
+		return "[" & (from > 1 ? "..." : "") & mid(arguments.value, from, 180) & (from + 180 <= n ? "..." : "") & "] (" & n & " chars)";
+	}
+
+	private string function difference(required string expected, required string actual) {
+		var at = firstDifferenceAt(arguments.expected, arguments.actual);
+		if (at == 0) return "";
+		if (at > min(len(arguments.expected), len(arguments.actual))) {
+			return "; one is a prefix of the other (" & len(arguments.expected) & " and " & len(arguments.actual) & " chars)";
+		}
+		return "; the first difference is at character " & at & " ([" & mid(arguments.expected, at, 1) & "] expected, [" & mid(arguments.actual, at, 1) & "] found)";
+	}
+
+	/**
+	 * Keeps row versions off the coercive path. Text that is exactly 16 hexadecimal digits,
+	 * optionally 0x-prefixed, is how this application writes a row version (binaryEncode(..., "hex")
+	 * for instrument rows, CONVERT(varchar(18), ..., 1) for walks), and CFML's == reads the
+	 * unprefixed form as a number whenever it is digits around a single E.
+	 */
+	private void function refuseRowVersionToken(required string helper, required any expected, required any actual) {
+		for (var v in [arguments.expected, arguments.actual]) {
+			if (isSimpleValue(v) && reFind("^(0[xX])?[0-9A-Fa-f]{16}$", toString(v))) {
+				fail(arguments.helper & " was given [" & toString(v) & "], which has the shape of a row-version token. CFML's == can read it as a number and ignores case, so row versions are compared with assertRowVersionEquals or assertRowVersionChanged, and other exact text with assertExactTextEquals.");
+			}
+		}
 	}
 }

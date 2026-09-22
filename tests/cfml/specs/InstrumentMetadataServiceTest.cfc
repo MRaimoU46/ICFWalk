@@ -91,9 +91,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { svc.updateMetadata(code, { "name": "Renamed by a walker" }, walker); }, "ICFWalk.Forbidden", "FORBIDDEN");
 
 		var after = instrumentRow();
-		assertEquals(before.name, after.name, "a denied metadata change writes nothing");
+		assertExactTextEquals(before.name, after.name, "a denied metadata change writes nothing");
 		assertEquals(before.active, after.active);
-		assertEquals(before.rowVersion, after.rowVersion, "and does not move the row version");
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "and does not move the row version");
 		assertEquals(0, auditCount("INSTRUMENT_METADATA_UPDATED"), "and records no success event");
 	}
 
@@ -104,7 +104,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var code = variables.instrumentCode;
 		var bystander = variables.bystander;
 		assertThrows(function() { svc.updateMetadata(code, { "active": false }, bystander); }, "ICFWalk.Forbidden", "FORBIDDEN");
-		assertEquals(before.rowVersion, instrumentRow().rowVersion, "nothing moved");
+		assertRowVersionEquals(before.rowVersion, instrumentRow().rowVersion, "nothing moved");
 		assertEquals(0, auditCount("INSTRUMENT_METADATA_UPDATED"));
 	}
 
@@ -114,8 +114,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		var result = variables.svc.updateMetadata(variables.instrumentCode, { "name": "Renamed by an administrator" }, variables.admin);
 
-		assertEquals("Renamed by an administrator", result.name);
-		assertEquals("Renamed by an administrator", instrumentRow().name, "the shared row really changed");
+		assertExactTextEquals("Renamed by an administrator", result.name);
+		assertExactTextEquals("Renamed by an administrator", instrumentRow().name, "the shared row really changed");
 		assertTrue(arrayContains(result.changedFields, "name"), "and the result names what changed");
 		assertEquals(1, auditCount("INSTRUMENT_METADATA_UPDATED"), "exactly one audit event");
 	}
@@ -126,14 +126,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 */
 	public void function testTheAuditActorIsTheAuthorizedPrincipalAndCannotBeOverridden() {
 		var result = variables.svc.updateMetadata(variables.instrumentCode, { "description": "Set by the administrator" }, variables.admin);
-		assertEquals(variables.adminId, result.updatedByUserId, "the result names the authorized principal");
+		assertExactTextEquals(variables.adminId, result.updatedByUserId, "the result names the authorized principal");
 
 		var q = variables.db.run(
 			"SELECT TOP (1) actor_user_id, details_json FROM [icf].[audit_event]
 			  WHERE entity_id = :id AND event_type = N'INSTRUMENT_METADATA_UPDATED' ORDER BY event_id DESC",
 			{ "id": variables.db.guid(instrumentId()) }
 		);
-		assertEquals(variables.adminId, uCase(q.actor_user_id[1]), "and so does the audit event");
+		assertExactTextEquals(variables.adminId, uCase(q.actor_user_id[1]), "and so does the audit event");
 
 		// There is no actor argument, and a caller that supplies one anyway cannot change the actor.
 		invoke(variables.svc, "updateMetadata", {
@@ -147,7 +147,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			  WHERE entity_id = :id AND event_type = N'INSTRUMENT_METADATA_UPDATED' ORDER BY event_id DESC",
 			{ "id": variables.db.guid(instrumentId()) }
 		);
-		assertEquals(variables.adminId, uCase(after.actor_user_id[1]), "a supplied actor id is not honoured: the principal is the only actor");
+		assertExactTextEquals(variables.adminId, uCase(after.actor_user_id[1]), "a supplied actor id is not honoured: the principal is the only actor");
 	}
 
 	/** The principal has to be one: a bare user id, or anything that is not a principal, is refused. */
@@ -158,7 +158,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var adminId = variables.adminId;
 		assertThrows(function() { svc.updateMetadata(code, { "active": false }, adminId); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_PRINCIPAL_REQUIRED");
 		assertThrows(function() { svc.updateMetadata(code, { "active": false }, {}); }, "ICFWalk.Validation", "INSTRUMENT_METADATA_PRINCIPAL_REQUIRED");
-		assertEquals(before.rowVersion, instrumentRow().rowVersion, "and nothing was written");
+		assertRowVersionEquals(before.rowVersion, instrumentRow().rowVersion, "and nothing was written");
 	}
 
 	// ---- the patch -------------------------------------------------------------------------------
@@ -234,10 +234,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		assertEquals(0, arrayLen(result.changedFields), "nothing changed");
 		assertTrue(result.noOp, "and the result says the operation was a no-op");
-		assertEquals(before.name, result.name, "while still reporting the committed row");
+		assertExactTextEquals(before.name, result.name, "while still reporting the committed row");
 		assertEquals(before.active, result.active);
 		var after = instrumentRow();
-		assertEquals(before.rowVersion, after.rowVersion, "the row was not written at all");
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "the row was not written at all");
 		assertEquals(0, auditCount("INSTRUMENT_METADATA_UPDATED"), "and no audit event was recorded");
 	}
 
@@ -246,11 +246,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var before = instrumentRow();
 		var result = variables.svc.updateMetadata(variables.instrumentCode, { "active": false }, variables.admin);
 
-		assertEquals(["active"], result.changedFields, "only active moved");
+		assertExactJsonEquals(["active"], result.changedFields, "only active moved");
 		assertFalse(result.noOp);
 		var after = instrumentRow();
-		assertEquals(before.name, after.name, "the omitted name kept its stored value");
-		assertEquals(before.description, after.description, "and so did the omitted description");
+		assertExactTextEquals(before.name, after.name, "the omitted name kept its stored value");
+		assertExactTextEquals(before.description, after.description, "and so did the omitted description");
 		assertFalse(after.active);
 	}
 
@@ -266,31 +266,31 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var narrative = "Name case probe narrative " & createUUID();
 		variables.svc.updateMetadata(variables.instrumentCode, { "name": "ICFWalk", "description": narrative }, variables.admin);
 		var before = instrumentRow();
-		assertExactText("ICFWalk", before.name, "precondition: the stored name");
+		assertExactTextEquals("ICFWalk", before.name, "precondition: the stored name");
 		variables.baselineEventId = variables.db.scalar("SELECT ISNULL(MAX(event_id), 0) AS n FROM [icf].[audit_event]");
 
 		var result = variables.svc.updateMetadata(variables.instrumentCode, { "name": "Icfwalk" }, variables.admin);
 		var after = instrumentRow();
 
-		assertExactText(variables.adminId, result.updatedByUserId, "the authorized principal is the actor");
+		assertExactTextEquals(variables.adminId, result.updatedByUserId, "the authorized principal is the actor");
 		assertFalse(result.noOp, "a case-only name change is material, not a no-op (changedFields=" & serializeJSON(result.changedFields) & ", stored name=" & after.name & ")");
 		assertEquals(1, arrayLen(result.changedFields), "exactly one field changed");
-		assertExactText("name", result.changedFields[1], "and it is the name");
-		assertExactText("Icfwalk", result.name, "the result reports the requested capitalization");
-		assertExactText("Icfwalk", after.name, "the requested capitalization is what is stored");
-		assertExactText(narrative, after.description, "the omitted description kept its stored value");
+		assertExactTextEquals("name", result.changedFields[1], "and it is the name");
+		assertExactTextEquals("Icfwalk", result.name, "the result reports the requested capitalization");
+		assertExactTextEquals("Icfwalk", after.name, "the requested capitalization is what is stored");
+		assertExactTextEquals(narrative, after.description, "the omitted description kept its stored value");
 		assertTrue(after.active, "and so did active");
-		assertTrue(compare(before.rowVersion, after.rowVersion) != 0, "the row was written: row_version " & before.rowVersion & " -> " & after.rowVersion);
+		assertRowVersionChanged(before.rowVersion, after.rowVersion, "the row was written");
 
 		var event = metadataEventsSince();
 		assertEquals(1, event.recordCount, "exactly one INSTRUMENT_METADATA_UPDATED event");
-		assertExactText(variables.adminId, uCase(event.actor_user_id[1]), "the audit actor is the authorized principal");
+		assertExactTextEquals(variables.adminId, uCase(event.actor_user_id[1]), "the audit actor is the authorized principal");
 		var details = deserializeJSON(event.details_json[1]);
-		assertExactText(variables.instrumentCode, details.instrumentCode);
+		assertExactTextEquals(variables.instrumentCode, details.instrumentCode);
 		assertEquals(1, arrayLen(details.changedFields));
-		assertExactText("name", details.changedFields[1], "the audit names the name as changed");
-		assertExactText("ICFWalk", details.previousName, "the audit records the replaced capitalization");
-		assertExactText("Icfwalk", details.name, "and the committed one");
+		assertExactTextEquals("name", details.changedFields[1], "the audit names the name as changed");
+		assertExactTextEquals("ICFWalk", details.previousName, "the audit records the replaced capitalization");
+		assertExactTextEquals("Icfwalk", details.name, "and the committed one");
 		assertTrue(details.previousActive, "lifecycle facts: previously active");
 		assertTrue(details.active, "and still active");
 		assertFalse(details.descriptionChanged, "the description did not change");
@@ -303,31 +303,31 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var recased = uCase(original);
 		variables.svc.updateMetadata(variables.instrumentCode, { "name": "Description case probe", "description": original }, variables.admin);
 		var before = instrumentRow();
-		assertExactText(original, before.description, "precondition: the stored description");
+		assertExactTextEquals(original, before.description, "precondition: the stored description");
 		variables.baselineEventId = variables.db.scalar("SELECT ISNULL(MAX(event_id), 0) AS n FROM [icf].[audit_event]");
 
 		var result = variables.svc.updateMetadata(variables.instrumentCode, { "description": recased }, variables.admin);
 		var after = instrumentRow();
 
-		assertExactText(variables.adminId, result.updatedByUserId, "the authorized principal is the actor");
+		assertExactTextEquals(variables.adminId, result.updatedByUserId, "the authorized principal is the actor");
 		assertFalse(result.noOp, "a case-only description change is material, not a no-op (changedFields=" & serializeJSON(result.changedFields) & ", stored description=" & after.description & ")");
 		assertEquals(1, arrayLen(result.changedFields), "exactly one field changed");
-		assertExactText("description", result.changedFields[1], "and it is the description");
-		assertExactText(recased, result.description, "the result reports the requested capitalization");
-		assertExactText(recased, after.description, "the requested capitalization is what is stored");
-		assertExactText("Description case probe", after.name, "the omitted name kept its stored value");
+		assertExactTextEquals("description", result.changedFields[1], "and it is the description");
+		assertExactTextEquals(recased, result.description, "the result reports the requested capitalization");
+		assertExactTextEquals(recased, after.description, "the requested capitalization is what is stored");
+		assertExactTextEquals("Description case probe", after.name, "the omitted name kept its stored value");
 		assertTrue(after.active, "and so did active");
-		assertTrue(compare(before.rowVersion, after.rowVersion) != 0, "the row was written: row_version " & before.rowVersion & " -> " & after.rowVersion);
+		assertRowVersionChanged(before.rowVersion, after.rowVersion, "the row was written");
 
 		var event = metadataEventsSince();
 		assertEquals(1, event.recordCount, "exactly one INSTRUMENT_METADATA_UPDATED event");
-		assertExactText(variables.adminId, uCase(event.actor_user_id[1]), "the audit actor is the authorized principal");
+		assertExactTextEquals(variables.adminId, uCase(event.actor_user_id[1]), "the audit actor is the authorized principal");
 		var details = deserializeJSON(event.details_json[1]);
-		assertExactText(variables.instrumentCode, details.instrumentCode);
+		assertExactTextEquals(variables.instrumentCode, details.instrumentCode);
 		assertEquals(1, arrayLen(details.changedFields));
-		assertExactText("description", details.changedFields[1], "the audit names the description as changed");
-		assertExactText("Description case probe", details.previousName, "lifecycle facts: the name before");
-		assertExactText("Description case probe", details.name, "and after, unchanged");
+		assertExactTextEquals("description", details.changedFields[1], "the audit names the description as changed");
+		assertExactTextEquals("Description case probe", details.previousName, "lifecycle facts: the name before");
+		assertExactTextEquals("Description case probe", details.name, "and after, unchanged");
 		assertTrue(details.previousActive, "previously active");
 		assertTrue(details.active, "and still active");
 		assertTrue(details.descriptionChanged, "the description change is reported as a lifecycle fact");
@@ -390,8 +390,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var patch = arguments.changes;
 		assertThrows(function() { svc.updateMetadata(instrumentCode, patch, admin); }, "ICFWalk.Validation", arguments.code);
 		var after = instrumentRow();
-		assertEquals(before.rowVersion, after.rowVersion, "a refused patch " & serializeJSON(arguments.changes) & " must not write the row");
-		assertEquals(before.name, after.name);
+		assertRowVersionEquals(before.rowVersion, after.rowVersion, "a refused patch " & serializeJSON(arguments.changes) & " must not write the row");
+		assertExactTextEquals(before.name, after.name);
 		assertEquals(before.active, after.active);
 		assertEquals(audits, auditCount("INSTRUMENT_METADATA_UPDATED"), "and must not audit a change that did not happen");
 	}
@@ -422,18 +422,6 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			"active": q.active[1] ? true : false,
 			"rowVersion": binaryEncode(q.row_version[1], "hex")
 		};
-	}
-
-	/**
-	 * Byte-exact text equality. BaseSpec.assertEquals compares with CFML's `!=`, which ignores case,
-	 * so it cannot tell "ICFWalk" from "Icfwalk"; compare() can. The same operator also compares two
-	 * numeric-looking strings as numbers, and a row_version in hex such as 000000000000E988 reads as
-	 * 0e988, i.e. zero, so row versions are compared with compare() here too.
-	 */
-	private void function assertExactText(required string expected, required string actual, string message = "") {
-		if (compare(arguments.expected, arguments.actual) != 0) {
-			fail((len(arguments.message) ? arguments.message & " " : "") & "Expected exactly [" & left(arguments.expected, 300) & "] but got [" & left(arguments.actual, 300) & "].");
-		}
 	}
 
 	/** The INSTRUMENT_METADATA_UPDATED events written since this case's baseline, oldest first. */

@@ -67,8 +67,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	// ---- the parity contract -------------------------------------------------------------------
 
 	public void function testMatchesTheSharedSummaryVectorsExactly() {
-		assertEquals("icfwalk-summary-vectors/1", variables.vectors.format);
-		assertEquals("icfwalk-summary/1", variables.vectors.contract);
+		assertExactTextEquals("icfwalk-summary-vectors/1", variables.vectors.format);
+		assertExactTextEquals("icfwalk-summary/1", variables.vectors.contract);
 		assertTrue(arrayLen(variables.vectors.vectors) >= 10, "The shared vectors must cover every SUM case.");
 		for (var v in variables.vectors.vectors) {
 			var ev = evaluationFor(v.state);
@@ -141,8 +141,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		);
 		var ev = evaluationFor(hidden);
 		// The values are still there: this is exclusion at the export, not deletion of the walk.
-		assertEquals("HIDDEN", ev.dimensionStates["period"]);
-		assertEquals("HIDDEN", ev.responseStates["dual_language_q1"]);
+		assertExactTextEquals("HIDDEN", ev.dimensionStates["period"]);
+		assertExactTextEquals("HIDDEN", ev.responseStates["dual_language_q1"]);
 		var text = variables.fmt.summaryText(variables.model, hidden, ev);
 		assertTrue(find("Period:", text) == 0, "A hidden Period must not be exported.");
 		assertTrue(find("Fourth", text) == 0, "A hidden Period's value must not be exported.");
