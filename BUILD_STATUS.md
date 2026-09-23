@@ -12,7 +12,7 @@ Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
 **Current state: Phase 7 correction, second round (audit findings P7C-01, P7C-02 and P7C-03),
 awaiting independent re-audit.** Branch `claude/icfwalk-phase-7-correction-n62s25`: the second-round
-commit sits on the audited correction `0c74dbd5a8a79684d38ba0b169dce2682a54fad6`, which sits on the
+commits sit on the audited correction `0c74dbd5a8a79684d38ba0b169dce2682a54fad6`, which sits on the
 first audited Phase 7 candidate `0c6fa10972593043508f502538534c2aa95c671b` and the frozen Phase 0-6
 baseline `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`. Phase 7 is **not** frozen and **not**
 accepted; see "Phase 7 correction, second round" at the end.
@@ -3598,7 +3598,7 @@ status before and after the run.
 | `tests/cfml/specs/ReportIsolationTest.cfc` (new) | 7 cases: 3 barriers, cleanup, and the 3 guards. |
 | `tests/cfml/specs/ReportReleaseMembershipTest.cfc` (new) | 2 cases: the audit's scenario, and the database refusing a second membership. |
 | `tests/cfml/support/InterceptingReportRepository.cfc` | Signatures follow the handle; pass-throughs for the membership methods. |
-| `tests/cfml/specs/ReportReleaseTest.cfc`, `ReportCoherenceTest.cfc` | Release cleanup also deletes membership rows; `ReportCoherenceTest`'s release dates move from 1930-1949 to 1930-1939 to give the new specs their own years (walk dates must fall in 1900-2200 and releases need past dates). No assertion changed. |
+| `tests/cfml/specs/ReportReleaseTest.cfc`, `ReportCoherenceTest.cfc` | Release cleanup also deletes membership rows; `ReportCoherenceTest`'s release dates move from 1930-1949 to 1930-1939 to give the new specs their own years (walk dates must fall in 1900-2200 and releases need past dates). `ReportReleaseTest` also creates a district outside its own (see "The first gate of this round failed" below). No assertion changed. |
 | `tests/node/db-scripts.test.mjs` | The 007 section writes each release in one transaction, as the database now requires, and tests every new guard by error number (2627, 50065, 50066, 50064) and the one deletion the database allows. |
 | `tests/node/schema-contract.test.mjs` | The new table, column and triggers. **Replaced expectation:** "a release names no walk: no `[walk_id]`" encoded the design P7C-02 found unsafe (a release that kept no membership). It is now "no `[walk_id]` outside the membership table", and the narrative, owner, teacher and classroom checks are unchanged. The "additive: no ALTER TABLE" assertion is kept, which is why a draft 007 is refused rather than altered. |
 | `tests/node/reports.test.mjs` | A structural test: no fixed or global population table name, and the membership is only written or used to exclude, never read out. |
@@ -3611,8 +3611,25 @@ status before and after the run.
 | --- | --- |
 | The audited correction `0c74dbd`, its own exact-commit gate | Node/HTTP/Playwright **197/197**, CFML **435/435**; 0 failed, 0 skipped |
 | This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198** (197 + 1 structural), CFML **444/444** (435 + 7 `ReportIsolationTest` + 2 `ReportReleaseMembershipTest`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
+| With the `ReportReleaseTest` fixture fix, on the failed gate's database (no active unit left but the seed's), `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198**, CFML **444/444**; 0 failed, 0 cancelled, 0 skipped, 0 todo |
 
 These are development runs; the authoritative totals are the exact-commit gate's.
+
+### The first gate of this round failed
+
+The exact-commit gate of the round's first commit, `b67df76a9fe46eefe38d47f7919a89d19c1b5d79`,
+failed: part 1 of the CFML suite reported
+`ReportReleaseTest.testOnlySomeoneWhoCanOpenEveryWalkMayRelease` ("Expected an exception of type
+[ICFWalk.Forbidden] but nothing was thrown"), and the suite stopped there. The cause is in the first
+round's test, not in this round's code. The test expects DR's district walk-and-report user to be
+refused a release because some active unit lies outside DR, but it never created such a unit: it
+relied on another spec having left one behind. Adding two specs changed how specs are dealt into the
+suite's six parts, so on the gate's brand-new database `ReportReleaseTest` ran before any such unit
+existed. There the user could open every walk, and was rightly allowed to release. Reproduced on that
+database (0 other active units: 14 passed, 1 failed); fixed by giving the test its own district
+outside DR (15 passed on the same database). The HTTP suite already had one ("elsewhere"). The
+refusal assertion is unchanged. The failed gate's raw transcript is delivered with the handoff as a
+superseded record, and the gate was run again on the fixing commit.
 
 ### Red before fix
 

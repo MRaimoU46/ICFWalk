@@ -55,6 +55,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		fx.assign(schoolReportOnly.userId, "SCHOOL_REPORT_ONLY", S.c, false);
 		variables.liveUser = fx.user("district-walk-report");
 		fx.assign(liveUser.userId, "DISTRICT_WALK_REPORT", DR, true);
+		// A district outside DR, so that DR's own walk-and-report user provably cannot open every
+		// walk (testOnlySomeoneWhoCanOpenEveryWalkMayRelease). Without it the test depended on some
+		// other spec having left an active unit behind; on a fresh database it did not hold.
+		variables.elsewhere = fx.orgUnit("elsewhere", "DISTRICT");
 		// Someone who can open every walk in every school: the only kind of person who may release.
 		variables.releaser = fx.user("releaser");
 		for (var id in structKeyArray(variables.c.orgUnitRepository.loadActiveTree())) fx.assign(releaser.userId, "DISTRICT_WALK_REPORT", id, false);
