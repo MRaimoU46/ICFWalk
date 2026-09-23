@@ -10,16 +10,16 @@ ADM-07 retirement, ADM-08 placeholder review, and all administration UI -- has *
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 7 aggregate reporting candidate, awaiting independent audit.** Branch
-`claude/icfwalk-phase-6-admin-publish`, on top of the Phase 6 commit
-`a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`, which the project owner identified as the independently
-verified and frozen Phase 0-6 baseline for this phase. Phase 7 is **not** frozen and **not**
-accepted; see the Phase 7 section at the end.
+**Current state: Phase 7 correction candidate (audit findings P7-01 and P7-02), awaiting independent
+re-audit.** Branch `claude/icfwalk-phase-7-correction-n62s25`, one commit on top of the audited
+Phase 7 candidate `0c6fa10972593043508f502538534c2aa95c671b`, which sits on the frozen Phase 0-6
+baseline `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`. Phase 7 is **not** frozen and **not**
+accepted; see "Phase 7 correction" at the end.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
-the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, and
-finally **Phase 7**, which is the current state of the build.
+the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
+and finally **the Phase 7 correction**, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -3260,7 +3260,14 @@ change the commit they describe.
 6. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.
 
-## Phase 7: aggregate reporting (current state)
+## Phase 7: aggregate reporting (superseded in part by the Phase 7 correction below)
+
+> **Superseded in part.** The independent audit of this candidate (`0c6fa10`) found that RPT-03 was
+> not met (P7-01, HIGH: a report narrowed to one walk returned that walk's categorical answers to a
+> report-only user) and that its gate was not traceable to the delivered archive (P7-02). The
+> suppression seam described below -- default 0, "none" -- does **not** satisfy RPT-03, and its
+> RPT-03 PASS was wrong. The Phase 7 correction at the end of this file replaces it with an
+> owner-approved rule. This section is otherwise kept as delivered.
 
 **Starting point.** The container's local branch was stale at `a8e97f22ae1639faef5b6e68bf7255dea838f8e2`,
 three commits behind `origin/claude/icfwalk-phase-6-admin-publish`, which stood at the frozen
@@ -3390,3 +3397,120 @@ the commit they describe.
 6. **The remainder of Phase 6** (ADM-02, ADM-06, ADM-07, ADM-08, administration UI) is not built.
 7. **This is an implementation candidate.** Phase 7 has not been independently audited and is not
    frozen or accepted.
+
+## Phase 7 correction: RPT-03 privacy rule and exact-commit evidence (current state)
+
+**Starting point, verified before any edit.** Branch `claude/icfwalk-phase-7-correction-n62s25` at
+`0c6fa10972593043508f502538534c2aa95c671b`, tree `0b7a487975101154b3084bb7ef363fc150d880d4` (the
+audited candidate and the tree the auditor reconstructed), parent the frozen baseline
+`a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` (ancestor check passes), working tree and index clean
+including untracked files. The designated branch did not yet exist on `origin`; the candidate was
+published there as `claude/icfwalk-phase-6-admin-publish`. The unmodified candidate's full suite on
+this machine: **Node/HTTP/Playwright 193/193 and CFML 411/411, 0 failed, 0 skipped**.
+
+**The decision this needed.** RPT-03 forbids a report-only user from inferring an individual row;
+no owner-approved disclosure rule existed (`CLAUDE_FABLE_MASTER_PROMPT.md`: "Do not invent a
+privacy-suppression threshold"), so the correction stopped and proposed one. The owner's answer,
+verbatim: **"K=3, frozen releases"**. The approved rule and every implementation detail it needed
+are in `docs/OPEN_DECISIONS.md`, "Aggregate privacy rule (RPT-03)", and specified in
+`docs/DATA_CONTRACT.md`, "Aggregate privacy rule (RPT-03)".
+
+### What the correction does
+
+| Piece | What it does |
+| --- | --- |
+| Live or released (`ReportService.parseFilters`) | Live figures only for a caller holding `walk.read` on every unit the report counts; anyone else is refused (400 `REPORT_RELEASE_REQUIRED`) and reads releases. A release read refuses every parameter that narrows who is counted (400 `REPORT_FILTER_NOT_PERMITTED`). Scope is still decided first: an out-of-scope unit stays 404 and audited. |
+| Releases (`createRelease`, migration `007_report_release.sql`, `POST /api/reports/releases`) | Freeze the COMPLETED walks observed on a range of dates that has passed, under an exclusive lock, from one coherent read (row versions captured and verified, three attempts). Dates never overlap; nothing is ever updated or deleted by the application. Only someone with `walk.read` and `report.view` on every active unit may release. Blocks -- (version, org unit) -- below the minimum are never stored. The database enforces the minimum (3), the block floor, non-overlap and immutability itself. |
+| Protection (`DisclosureControl`, `ReportService.publishBlock`) | Per block, per breakdown: primary suppression of 1..k-1, complementary suppression, whole-breakdown withholding, and an exact ambiguity audit against a reader who knows the algorithm; breakdowns linked by instrument rules withheld as a group; district figures are sums of each block's published figures. Scores from published cells only, withheld under k. |
+| Surfaces | Report format `/2`: withheld figures are `null`, partly published ones carry `withheld: true`; the CSV has one record per figure with its own `withheld` flag and is built from the same report; the browser offers releases only to report-only users, shows "Withheld" / "At least N", and is never sent a withheld value; logs and audit carry identifiers and published counts. |
+| Configuration | `ICFWALK_REPORT_SUPPRESSION_THRESHOLD`: unset is the approved 3; it may be raised; below 3 (0 included) refuses startup. |
+
+### Narrow integration changes
+
+| File | Change | Why |
+| --- | --- | --- |
+| `src/http/Router.cfc` | `POST /api/reports/releases` (`report.view`, CSRF). | The release endpoint; no other route or policy changed. |
+| `src/controllers/ReportController.cfc` | `createRelease`. | Endpoint wiring. |
+| `src/controllers/MaintenanceController.cfc` | The test-only fixture cleanup removes releases created by fixture users. | A fixture release names fixture users and units; the route exists only where the test runner is enabled. |
+| `src/views/shell.html` | The "Release dates" form (hidden unless `canRelease`). | The view; nothing else in the shell changed. |
+| `scripts/db/apply-schema.mjs` | Applies `007_report_release.sql`. | The migration. |
+| `manifest.json` | Refreshed for `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md` and `database/README.md` (`node scripts/refresh-manifest.mjs`). | Those supplied files changed. |
+| `docs/evidence/screenshots/reports-desktop.png`, `reports-phone.png` | Regenerated. | The Reports view changed (the "Data" control); the other screenshots are unchanged. |
+
+No dependency, framework or infrastructure was added. `app/assets/js/app.js`,
+`app/assets/css/icfwalk.css` and `package.json` are unchanged.
+
+### Tests changed, and why
+
+Every existing report test that read **live** figures as a report-only role encoded the audited
+defect, because under the approved rule those roles are refused live figures. Their aggregate
+arithmetic (denominators, weighting, visibility, filters, exclusions, CSV, coherence) is unchanged
+and now runs as a walk-and-report role; the report-only roles in them now assert the refusal. The
+one assertion removed outright is `ReportServiceTest.testRpt03`'s "a population narrowed to one walk
+still yields only aggregates" (`one.population.walks == 1`): that one-walk aggregate is the
+individual row RPT-03 forbids, and the test now asserts it is refused. The pre-correction
+`testSuppressionThresholdWithholdsSmallGroupsOnlyWhenConfigured` (threshold 0 = none) is replaced by
+`testLiveFiguresOnlyForSomeoneWhoCanOpenEveryWalkCounted`. `ConfigLoaderTest` now requires unset to
+mean 3 and refuses 0, 1 and 2. The CSV header and audit-key assertions follow the `/2` format.
+
+New: `ReportDisclosureTest` (8 cases, including the exhaustive property proof), `ReportReleaseTest`
+(15 cases, one per required proof), `ReportCoherenceTest.testAReleaseFreezesEveryWalkInOneCommittedState`,
+new `reports.test.mjs` cases (report-only refusal, releases over HTTP), new
+`browser-reports.test.mjs` cases (the released view and the release form), migration 007 in
+`db-scripts.test.mjs` and `schema-contract.test.mjs`.
+
+### Tests and results (development runs, before the commit)
+
+Lucee 6.2.8.20, SQL Server 2022, Node 22.22.2, Playwright 1.56.1 with Chromium, axe-core 4.13.0.
+
+| Run | Result |
+| --- | --- |
+| The audited candidate `0c6fa10`, unmodified | Node/HTTP/Playwright **193/193**, CFML **411/411**; 0 failed, 0 skipped |
+| The correction's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **197/197** (193 + 2 `reports` + 1 `browser-reports` + 1 `schema-contract`), CFML **435/435** (411 + 8 `ReportDisclosureTest` + 15 `ReportReleaseTest` + 1 `ReportCoherenceTest`); 0 failed, 0 skipped |
+| `browser-reports.test.mjs` after the last UI change (the version choice offered with a release) | **7/7** |
+| The final working tree, after the mutation runs (section "Red before green"), `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **197/197**, CFML **435/435**; 0 failed, 0 cancelled, 0 skipped, 0 todo |
+| `npm run validate:handoff` after `node scripts/refresh-manifest.mjs` | ok, 51 checks, 0 errors |
+
+These are development runs. The authoritative totals are the exact-commit gate's (below).
+
+### Red before green
+
+`docs/evidence/phase7-correction-red-before-fix.md`: on the real pre-fix build `0c6fa10`, a
+report-only user narrowed a report to one walk (by an answer, or by Grade) and read all 12 of its
+categorical answers in the JSON and the CSV; the corrected build refuses every such request. The new
+privacy specs fail on the pre-fix build. Eleven deliberate mutations of the correction -- one
+protection removed each time -- each turn the privacy tests red for the reason targeted.
+
+### Unresolved and not verified (Phase 7 correction)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified**, as for every phase. New
+   engine-sensitive constructs: `sp_getapplock` with a transaction owner inside a `transaction` block
+   (the JDBC driver opens its implicit transaction on the first statement that reads a table, which
+   `lockReleases` does first and then verifies `@@TRANCOUNT`), triggers created through `EXEC` for
+   SQL Server 2016 RTM, `CAST(... AS date)` of `YYYY-MM-DD` text, and closures calling private
+   methods inside `Db.transact`.
+2. **Accepted residuals of the approved rule** (`docs/DATA_CONTRACT.md`): a block whose walks all
+   fall in one category publishes it complete (100%); collusion between users with different scopes
+   and outside knowledge are not addressed by aggregate suppression; walk-and-report roles keep
+   unsuppressed live figures for walks they can open.
+3. **Utility.** Small schools (fewer than 3 walks in a release's dates) disappear from released
+   reports, and district figures for report-only users exclude withheld cells, so rare ratings are
+   under-counted ("At least N") and released means are of published ratings only. Linked groups
+   (Grade/Period/PreK-K, Class Type and its sections, Content and its section, each skippable
+   component and its "applicable" question) are withheld whole in any block where one member has a
+   small cell.
+4. **Release cadence.** The system enforces closed, non-overlapping dates; it does not enforce term
+   or school-year boundaries. The district decides the cadence.
+5. **Deletion.** No application path deletes a release. Deleting one directly in the database would
+   free its dates for an overlapping release that could be subtracted from the first; only the test
+   fixture cleanup (enabled only where the test runner is) deletes releases, and only fixture users'.
+6. **A release omits walks pinned to a version that is neither current nor PUBLISHED/RETIRED**
+   (for example a discarded DRAFT's), because such a version has no reportable catalog.
+7. **The remainder of Phase 6** is still not built, and **Phase 7 is still not frozen or accepted.**
+
+**The authoritative result is the exact-commit gate**, run after this commit is pushed, on a freshly
+created database, from a clean tree, with screenshots written outside the repository. Its raw
+transcript, an environment record and a source archive of the commit are delivered with the
+handoff, each with its SHA-256, and are not committed (as in CORR8-03: committing them would create
+a different, untested commit).
+

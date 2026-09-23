@@ -569,15 +569,123 @@ exactly one committed state, and no statistic mixes two states of one walk. Ever
 updates the walk row in the same transaction as its child writes, which is what makes the row
 version a sufficient signal; the report holds no lock a writer waits on.
 
-**Privacy suppression.** The threshold is an undecided policy (`docs/OPEN_DECISIONS.md`), so the
-default is none. When a deployment sets it to N, a population of 1..N-1 walks is withheld entirely
-(no count, no aggregate), and within a reported population each org-unit group and each
-dimension-value group of 1..N-1 walks is withheld individually; an empty group is not withheld.
-Deliberately **not** attempted until the policy is decided: suppression of individual option,
-response-state or dimension-state counts and of the population's per-status counts, complementary
-suppression (a withheld group can be derived by subtracting the others from a total that is shown),
-and protection against differencing two reports whose filters differ by one walk.
-Report-only users never receive an individual walk, identifier or narrative value at any threshold.
+**Two kinds of report.** The population above is a *live* report's. Live figures are served only
+to a caller who holds `walk.read` on every unit the report would count: that person can open each
+of those walks, so an aggregate tells them nothing they could not read directly. Every other
+caller -- every report-only role -- reads *released* figures instead (next section), and a live
+request from them is refused with 400 `REPORT_RELEASE_REQUIRED`, however it is narrowed.
+
+### Aggregate privacy rule (RPT-03)
+
+The owner-approved rule (`docs/OPEN_DECISIONS.md`, "Aggregate privacy rule (RPT-03)"): minimum
+**k = 3** completed walks, report-only users read **frozen releases**. What follows is the rule as
+implemented, and what it does not protect against.
+
+**Why live figures cannot be protected.** Two live reports whose filters differ by one walk --
+`to=D` against `to=D-1`, a Grade filter against none, a parent unit against its children, with and
+without drafts, one answer filter against another -- differ by exactly that walk, and so does one
+report run before and after a walk is completed or edited. Subtraction returns the walk's
+categorical answers, and no suppression of the individual reports prevents it. So a report-only
+user never receives live figures.
+
+**Releases** (migration `007_report_release.sql`, `POST /api/reports/releases`). A release freezes
+the COMPLETED walks observed on a range of dates (`observedFrom`..`observedTo`, inclusive, on
+`icf.walk.observed_at` as live reports use it) that has passed (the last date before today, UTC).
+
+* **Who releases.** Only a caller holding `walk.read` and `report.view` on every active org unit --
+  someone who can already open every walk a release will count. Anyone else: 403
+  `REPORT_RELEASE_NOT_PERMITTED`, audited `ACCESS_DENIED`.
+* **No overlap.** No two releases cover the same date, so no two share a walk and none can be
+  subtracted from another. The service checks under an exclusive application lock (409
+  `REPORT_RELEASE_OVERLAP`) and `TR_report_release_no_overlap` refuses an overlapping row whatever
+  writes it.
+* **Never changes.** A release is computed once, from one coherent read of every walk (the same
+  captured-then-verified row versions as a live report, up to three attempts, then 409
+  `REPORT_POPULATION_CHANGED`), and is never updated (`TR_report_release*_immutable`) or deleted by
+  the application. Completing, editing or voiding a walk afterwards changes no released figure, so
+  rerunning a report reveals nothing. (Deleting a release directly in the database would free its
+  dates for a second, overlapping release; nothing in the application does, and an operator must
+  not.)
+* **Blocks.** A release is stored per block: one instrument version at one org unit (the walk's
+  own unit). A block with fewer than k walks is not stored at all (`CK_report_release_block_walks`,
+  `TR_report_release_block_floor`), so it contributes to nothing -- not to its school, not to its
+  district. For every stored block, every reportable breakdown is stored as the count of each
+  non-zero category, keyed by instrument codes. No walk id or narrative is stored.
+* **Versions.** A release covers every reportable version (the current version and the PUBLISHED
+  and RETIRED ones) with completed walks on its dates. Walks pinned to any other version are not
+  released.
+
+**Reading a release** (`releaseId=` on `/api/reports/aggregate` and `.csv`). Anyone with
+`report.view` may read one, within their own scope (an out-of-scope unit is still 404 and audited).
+A release takes `versionId`, `orgUnitId`, `section` and `item` -- what is shown -- and nothing that
+narrows who is counted: `from`, `to`, every `dim_*`, `optionItem`/`option` and `includeDrafts` are
+refused with 400 `REPORT_FILTER_NOT_PERMITTED`, each offending parameter named. The figures are
+built in three steps:
+
+1. **Per block, per breakdown.** A breakdown is every category a block's walks fall into for one
+   item (each option, then `UNANSWERED`, `HIDDEN`, `NOT_APPLICABLE`, `UNRECORDED`) or one dimension
+   (each value, then `UNANSWERED`, `HIDDEN`); the categories do not overlap and add up to the
+   block's walks. Each breakdown of each block is protected by `DisclosureControl.suppress`:
+   * cells of 1..k-1 are withheld (primary); zero is published;
+   * complementary cells -- the smallest other non-zero cell, ties by category order -- are added
+     until at least two are withheld, they total k or more, and they are not all forced to be 1;
+   * if that would withhold every non-zero cell, the whole breakdown is withheld, zeros included;
+   * an **audit** then computes, for every withheld cell, every value it could hold in any breakdown
+     this algorithm would publish the same way (a reader who knows the rule, its bounds and its
+     tie-breaks, not only one who subtracts); if any withheld cell has only one possible value, the
+     whole breakdown is withheld instead. `ReportDisclosureTest` proves the result exhaustively for
+     every breakdown of up to six categories and small totals, for k = 3 and k = 4, and checks the
+     audit against a brute-force inversion of the algorithm.
+   Every breakdown of the version is protected, whatever section or question the request selects,
+   so a block publishes the same cells in every report that reads it.
+2. **Linked breakdowns.** Instrument rules tie some breakdowns together: Period is shown only for
+   grades 6-12, so Period's `HIDDEN` count is a sum of Grade cells; the PreK-K section's items are
+   `HIDDEN` for every other grade; a classroom-type section's items are `HIDDEN` for every other
+   Class Type; the Music/Art/PE section follows Content; a skippable component's ratings are
+   `NOT_APPLICABLE` exactly when its "applicable" question was answered No. A published member of
+   such a group can solve a withheld cell of another. So breakdowns linked by any rule (read from
+   the version's own rules, transitively; an unreported source still links what it governs) are a
+   group: if any member has a cell of 1..k-1 in a block, the whole group is withheld in that block;
+   otherwise it is published complete.
+3. **Adding up.** A report over several blocks adds the cells each block published. A category
+   withheld in some block is marked `withheld: true` and its count is the published part -- a lower
+   bound -- or `null` when no block published any of it. Because every figure is a sum of figures
+   each block's own report already publishes, subtracting any two reports of one release (a district
+   and its schools, a school and its neighbour) yields nothing that is not already published.
+
+**Derived figures.** `states.ANSWERED` is the sum of the published option counts (withheld if any
+option is). An item's `scored` figures are computed from its published scored options only: with
+fewer than k such responses (or none, when some were withheld) `responses`, `sum` and `mean` are
+all `null` and `withheld` is `true`; otherwise `withheld: true` says the mean is of the published
+ratings only. A section pools its reported items' published scored responses under the same rule.
+`withheldResponses` is the block's (or blocks') walks less every figure shown for that breakdown.
+`population.byStatus` is `{ COMPLETED }` only: a release has no status to split.
+
+**What a released report looks like.** `mode: "RELEASE"`, `release: { releaseId, observedFrom,
+observedTo, minimumWalks, releasedAt }`, `disclosure: { minimumWalks, protected }`. A withheld figure
+is `null` -- never 0 and never a number sent beside a flag; a figure only partly published is a
+number with `withheld: true`. A selection with no stored block (a school with 0, 1 or 2 walks, or
+none of its blocks in the release) returns `population: { walks: null, byStatus: {}, withheld: true }`
+and no org unit, dimension, section or item, identically whatever the true count. The CSV carries
+the same figures, each on its own record with its own `withheld` flag (an empty count with `1` is
+withheld; a count with `1` is the published part). Logs (`report.generated`, `report.exported`,
+`report.released`) and audit details (`REPORT_EXPORTED`, `REPORT_RELEASED`) carry identifiers and
+published counts only; a withheld population is recorded as `-1`.
+
+**What this does not protect against** (accepted or outside the rule):
+
+* A block in which every walk falls in one category publishes that category complete (100%): its
+  complement is 0, so nothing is small. That is an attribute of every walk in the block, disclosed
+  to anyone who knows a walk was in it. Approved with the rule as a residual.
+* The rule protects a release against its own readers. Two people with different scopes who pool
+  what each can see, or a reader who also knows facts outside the report (who was walked when), can
+  learn more than either report shows. No aggregate suppression prevents collusion or outside
+  knowledge.
+* Walk-and-report roles reporting inside their own `walk.read` scope see live, unsuppressed figures
+  and every filter. They can open each of those walks already.
+* Releases record the counts of small cells inside stored blocks (they are needed to protect each
+  read the same way); only blocks below k are never stored. Database administrators can read walks
+  directly anyway.
 
 ## Mutation identity and idempotency
 

@@ -1,7 +1,9 @@
 /**
  * Aggregate report endpoints (Phase 7). The route policy requires report.view before anything
  * here runs; ReportService re-checks it and resolves the caller's organizational scope itself.
- * Every route is a read: no CSRF token, nothing written except the export's audit event.
+ * The report routes are reads: no CSRF token, nothing written except the export's audit event.
+ * Creating a release (RPT-03 correction) is the one write, and it carries the Router's CSRF check
+ * like every other POST.
  *
  * Only the query string is read. Nothing else in the request -- no header, no body, no identity
  * field -- can name a scope, a version or a population.
@@ -23,6 +25,17 @@ component output="false" {
 		var out = variables.c.reportService.aggregate(arguments.req.principal, arguments.req.query);
 		out["correlationId"] = variables.c.requestContext.correlationId();
 		return { "status": 200, "body": out };
+	}
+
+	/**
+	 * POST /api/reports/releases: freeze one closed period for report-only users. The body names
+	 * the period and nothing else; who releases it is the signed-in principal, never the body.
+	 * ReportService decides who may and refuses everything else.
+	 */
+	public struct function createRelease(required struct req) {
+		var out = variables.c.reportService.createRelease(arguments.req.principal, arguments.req.body);
+		out["correlationId"] = variables.c.requestContext.correlationId();
+		return { "status": 201, "body": out };
 	}
 
 	/**

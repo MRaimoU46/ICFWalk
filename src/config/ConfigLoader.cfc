@@ -15,6 +15,8 @@ component output="false" {
 
 	variables.VALID_ENVIRONMENTS = ["development", "test", "staging", "production"];
 	variables.VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"];
+	// The owner-approved aggregate privacy minimum (docs/OPEN_DECISIONS.md). A floor, not a default.
+	variables.APPROVED_REPORT_MINIMUM = 3;
 
 	public ConfigLoader function init(required string repoRoot) {
 		variables.repoRoot = arguments.repoRoot;
@@ -108,16 +110,17 @@ component output="false" {
 		// instrument names it "school" (config/instrument-config.json); the seam lets a deployment
 		// that renames it keep the org-unit consistency rule working.
 		cfg["schoolDimensionCode"] = value("ICFWALK_SCHOOL_DIMENSION_CODE", "school");
-		// Aggregate privacy-suppression threshold (docs/OPEN_DECISIONS.md: undecided, so empty or 0
-		// applies none). Phase 7 made it operative, so it now fails closed: a value that is not a
-		// whole number of walks refuses startup instead of being coerced without a word ("5 walks"
-		// and "0x10" used to become 0, which is no suppression at all, and "2.5" became 2).
+		// Aggregate privacy minimum (docs/OPEN_DECISIONS.md: owner-approved k = 3). The fewest walks
+		// a released block may hold, and the smallest count a released cell may show. Empty means
+		// the approved 3. A deployment may raise it, never lower it: anything below 3 -- 0 included,
+		// which used to mean "no suppression" -- and anything that is not a whole number refuses
+		// startup rather than running with a weaker rule than the one approved.
 		var suppression = trim(value("ICFWALK_REPORT_SUPPRESSION_THRESHOLD", ""));
-		cfg["reportSuppressionThreshold"] = 0;
-		if (reFind("^[0-9]{1,6}$", suppression)) {
+		cfg["reportSuppressionThreshold"] = variables.APPROVED_REPORT_MINIMUM;
+		if (reFind("^[0-9]{1,6}$", suppression) && int(suppression) >= variables.APPROVED_REPORT_MINIMUM) {
 			cfg.reportSuppressionThreshold = int(suppression);
 		} else if (len(suppression)) {
-			arrayAppend(errors, "ICFWALK_REPORT_SUPPRESSION_THRESHOLD must be empty or a whole number of walks (0 applies no suppression).");
+			arrayAppend(errors, "ICFWALK_REPORT_SUPPRESSION_THRESHOLD must be empty (the approved minimum of " & variables.APPROVED_REPORT_MINIMUM & " walks) or a whole number of walks of at least " & variables.APPROVED_REPORT_MINIMUM & ".");
 		}
 		cfg["outboundEmailEnabled"] = false; // Not configurable: no automatic outbound mail without separate authorization.
 

@@ -13,11 +13,13 @@ const mutationPatch = fs.readFileSync(path.join(root, "database", "003_walk_muta
 const fingerprintPatch = fs.readFileSync(path.join(root, "database", "004_mutation_fingerprint.sql"), "utf8");
 const mappingPatch = fs.readFileSync(path.join(root, "database", "005_org_unit_dimension_map.sql"), "utf8");
 const dimensionPatch = fs.readFileSync(path.join(root, "database", "006_version_scoped_dimensions.sql"), "utf8");
+const releasePatch = fs.readFileSync(path.join(root, "database", "007_report_release.sql"), "utf8");
 
 function columnsOf(table) {
   const source = table === "walk_mutation" ? mutationPatch
     : table === "org_unit_dimension_map" ? mappingPatch
     : table === "instrument_dimension_value" ? dimensionPatch
+    : table.startsWith("report_release") ? releasePatch
     : schema;
   const start = source.indexOf(`CREATE TABLE [icf].[${table}]`);
   assert.ok(start >= 0, `table ${table} present`);
@@ -60,6 +62,9 @@ const expected = {
   app_role: ["role_id", "role_code", "scope_type", "can_create_walk", "can_open_walk_details", "can_edit_owned_walks", "can_view_aggregate_reports", "can_manage_instruments", "active"],
   user_role_scope: ["user_role_scope_id", "user_id", "role_id", "org_unit_id", "effective_start", "effective_end", "include_descendants", "created_by_user_id"],
   audit_event: ["event_id", "entity_type", "entity_id", "event_type", "actor_user_id", "event_at", "correlation_id", "details_json"],
+  report_release: ["release_id", "observed_from", "observed_to", "minimum_walks", "released_by_user_id", "released_at"],
+  report_release_block: ["release_id", "version_id", "org_unit_id", "walks"],
+  report_release_cell: ["release_id", "version_id", "org_unit_id", "subject_type", "subject_key", "category_type", "category_code", "responses"],
 };
 
 test("repository columns exist in 001_schema.sql", () => {
@@ -164,12 +169,35 @@ test("006 patch scopes dimensions to a version and requires a publisher, idempot
   assert.doesNotMatch(dimensionPatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST|CREATE OR ALTER/i);
 });
 
+test("007 patch adds frozen report releases idempotently, additively, and guarded in the database", () => {
+  for (const table of ["report_release", "report_release_block", "report_release_cell"]) {
+    assert.match(releasePatch, new RegExp(`IF OBJECT_ID\\(N'\\[icf\\]\\.\\[${table}\\]', N'U'\\) IS NULL`), `${table} is created only when absent`);
+  }
+  // The approved floor is in the schema, not only in the application.
+  assert.match(releasePatch, /CONSTRAINT \[CK_report_release_minimum\]\s+CHECK \(\[minimum_walks\] >= 3\)/);
+  assert.match(releasePatch, /CONSTRAINT \[CK_report_release_block_walks\]\s+CHECK \(\[walks\] >= 3\)/);
+  assert.match(releasePatch, /CONSTRAINT \[CK_report_release_cell_responses\]\s+CHECK \(\[responses\] > 0\)/);
+  assert.match(releasePatch, /CONSTRAINT \[CK_report_release_dates\]\s+CHECK \(\[observed_to\] >= \[observed_from\]\)/);
+  // The guards: no overlapping dates, no block below its release's minimum, no update of anything.
+  for (const trigger of ["TR_report_release_no_overlap", "TR_report_release_block_floor", "TR_report_release_immutable", "TR_report_release_block_immutable", "TR_report_release_cell_immutable"]) {
+    assert.match(releasePatch, new RegExp(`IF OBJECT_ID\\(N'\\[icf\\]\\.\\[${trigger}\\]', N'TR'\\) IS NULL`), `${trigger} is created only when absent`);
+  }
+  // A release names no walk: no walk id column, no narrative column, no owner.
+  assert.doesNotMatch(releasePatch, /\[walk_id\]|text_value|owner_user_id|teacher_|classroom_label/);
+  // Additive: it creates its own tables and triggers and touches nothing that exists.
+  assert.doesNotMatch(releasePatch, /\bDROP\b|\bDELETE FROM\b|\bTRUNCATE\b|\bALTER TABLE\b/);
+  assert.doesNotMatch(releasePatch, /\bUPDATE \[icf\]/);
+  assert.doesNotMatch(releasePatch, /CREATE TABLE \[icf\]\.\[(?!report_release)/);
+  // SQL Server 2016 RTM compatible: no CREATE OR ALTER (triggers are created through EXEC instead).
+  assert.doesNotMatch(releasePatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST|CREATE OR ALTER/i);
+});
+
 test("CFML SQL references only known icf tables", () => {
   const cfml = ["src/instrument/DefinitionRepository.cfc", "src/audit/AuditRepository.cfc", "src/controllers/HealthController.cfc", "src/instrument/InstrumentImportService.cfc",
     "src/identity/UserRepository.cfc", "src/authorization/OrgUnitRepository.cfc", "src/authorization/RoleScopeRepository.cfc", "src/authorization/AuthorizationService.cfc", "src/controllers/MaintenanceController.cfc",
     "src/walks/WalkRepository.cfc", "src/walks/WalkService.cfc", "src/instrument/SnapshotService.cfc", "src/reports/ReportRepository.cfc"]
     .map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
-  const known = new Set([...(schema + mutationPatch + mappingPatch + dimensionPatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
+  const known = new Set([...(schema + mutationPatch + mappingPatch + dimensionPatch + releasePatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
   for (const match of cfml.matchAll(/\[icf\]\.\[([a-z_]+)\]/g)) assert.ok(known.has(match[1]), `unknown table icf.${match[1]}`);
 });
 

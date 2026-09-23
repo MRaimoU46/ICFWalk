@@ -17,7 +17,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(cfg.devIdentityEnabled);
 		assertFalse(cfg.outboundEmailEnabled);
 		assertExactTextEquals("RETAIN_HIDDEN", cfg.hiddenPeriodPolicy);
-		assertEquals(0, cfg.reportSuppressionThreshold);
+		assertEquals(3, cfg.reportSuppressionThreshold, "the owner-approved minimum");
 		assertExactTextEquals("header", cfg.ssoMode);
 		assertTrue(cfg.cookieSecure);
 		assertTrue(cfg.autoProvisionUsers);
@@ -65,15 +65,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	/**
-	 * Phase 7 made the suppression threshold operative, so a malformed value must refuse startup
-	 * rather than quietly apply no suppression. Empty and 0 remain the undecided default (none).
+	 * The owner approved a minimum of 3 walks (docs/OPEN_DECISIONS.md). Unset means 3; a deployment
+	 * may raise it; anything below 3 -- 0 included, which before the approval meant "no suppression"
+	 * -- or not a whole number refuses startup rather than running a weaker rule than the approved one.
 	 */
 	public void function testReportSuppressionThresholdIsAWholeNumberOrRefused() {
-		assertEquals(0, loader({}).load().reportSuppressionThreshold, "unset applies no suppression");
-		assertEquals(0, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": "0" }).load().reportSuppressionThreshold);
+		assertEquals(3, loader({}).load().reportSuppressionThreshold, "unset is the approved minimum");
+		assertEquals(3, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": "" }).load().reportSuppressionThreshold);
+		assertEquals(3, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": "3" }).load().reportSuppressionThreshold);
 		assertEquals(5, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": "5" }).load().reportSuppressionThreshold);
 		assertEquals(11, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": " 11 " }).load().reportSuppressionThreshold);
-		for (var bad in ["5 walks", "-3", "2.5", "five", "1e3", "0x10", "1234567"]) {
+		for (var bad in ["0", "1", "2", "002", "5 walks", "-3", "2.5", "five", "1e3", "0x10", "1234567"]) {
 			var e = assertThrows(function() {
 				loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": bad }).load();
 			}, "ICFWalk.Configuration", "CONFIGURATION_INVALID");

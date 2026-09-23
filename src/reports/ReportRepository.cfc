@@ -11,6 +11,10 @@
  * structurally, not by review: tests/node/reports.test.mjs scans this file and fails if any of
  * those names appears in it. What leaves this component is counts keyed by identifiers.
  *
+ * RELEASES. It also writes and reads the frozen report releases of migration 007 (see "Releases"
+ * below): counts per (release, version, org unit) block, keyed by instrument codes. They carry no
+ * walk id and are never updated or deleted here.
+ *
  * THE POPULATION. A report is computed over a population of walks materialized once, in a
  * session-local temporary table, and every aggregate joins that one table. The caller runs the
  * whole sequence inside one Db.transact so every statement uses the same connection (the temporary
@@ -33,6 +37,7 @@ component output="false" {
 	variables.POP = "##icf_report_population";
 	variables.UNITS = "##icf_report_units";
 	variables.UNIT_BATCH = 500;
+	variables.CELL_BATCH = 250;
 
 	public ReportRepository function init(required any db) {
 		variables.db = arguments.db;
@@ -236,6 +241,58 @@ component output="false" {
 	}
 
 	/**
+	 * dimensionCounts, per org unit: [{ orgUnitId, visible, valueId, walks }]. Used when a release
+	 * is created, because a release stores each block's breakdowns separately (see "Releases").
+	 */
+	public array function unitDimensionCounts(required string dimensionId, required struct visibility) {
+		var params = { "dimension": variables.db.guid(arguments.dimensionId) };
+		var vis = visibilitySql(arguments.visibility, "p", params);
+		var q = variables.db.run(
+			"SELECT t.org_unit_id, t.visible, t.selected_value_id, COUNT(*) AS n
+			   FROM (SELECT p.org_unit_id, CASE WHEN " & vis & " THEN 1 ELSE 0 END AS visible, x.selected_value_id
+			           FROM " & variables.POP & " p
+			           LEFT JOIN [icf].[walk_dimension_value] x ON x.walk_id = p.walk_id AND x.dimension_id = :dimension) t
+			  GROUP BY t.org_unit_id, t.visible, t.selected_value_id",
+			params
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) {
+			arrayAppend(out, { "orgUnitId": uCase(q.org_unit_id[r]), "visible": q.visible[r] == 1, "valueId": len(q.selected_value_id[r]) ? uCase(q.selected_value_id[r]) : "", "walks": q.n[r] });
+		}
+		return out;
+	}
+
+	/** itemCounts, per org unit: [{ orgUnitId, itemId, state, optionId, responses }]. */
+	public array function unitItemCounts(required array itemIds) {
+		if (!arrayLen(arguments.itemIds)) return [];
+		var names = [];
+		var params = {};
+		for (var i = 1; i <= arrayLen(arguments.itemIds); i++) {
+			arrayAppend(names, ":i" & i);
+			params["i" & i] = variables.db.guid(arguments.itemIds[i]);
+		}
+		var q = variables.db.run(
+			"SELECT p.org_unit_id, r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n
+			   FROM " & variables.POP & " p
+			   JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id
+			  WHERE r.item_id IN (" & arrayToList(names, ", ") & ")
+			  GROUP BY p.org_unit_id, r.item_id, r.response_state, r.selected_option_id",
+			params
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) {
+			arrayAppend(out, {
+				"orgUnitId": uCase(q.org_unit_id[r]),
+				"itemId": uCase(q.item_id[r]),
+				"state": q.response_state[r],
+				"optionId": len(q.selected_option_id[r]) ? uCase(q.selected_option_id[r]) : "",
+				"responses": q.n[r]
+			});
+		}
+		return out;
+	}
+
+	/**
 	 * S3. The number of population walks whose row changed (or disappeared) since selectCandidates
 	 * captured it. Zero means every aggregate read above saw one committed state of every walk.
 	 */
@@ -246,6 +303,178 @@ component output="false" {
 			   LEFT JOIN [icf].[walk] w ON w.walk_id = p.walk_id
 			  WHERE w.walk_id IS NULL OR CAST(w.row_version AS binary(8)) <> p.rv"
 		);
+	}
+
+	// ---- releases ----------------------------------------------------------------------------------
+	//
+	// A release freezes one closed observation period for report-only users (migration 007). What is
+	// stored is counts keyed by instrument codes -- per (version, org unit) block, per breakdown, per
+	// category -- never a walk id. Period dates travel as YYYY-MM-DD text and are cast by SQL Server,
+	// so no time zone can move a boundary. Nothing here updates or deletes a release.
+
+	/**
+	 * The versions that have COMPLETED walks observed in [observedFrom, observedBefore). Reads walk
+	 * headers only; the release then selects each version's population the way a report does.
+	 */
+	public array function versionsWithCompletedWalks(required date observedFrom, required date observedBefore) {
+		var q = variables.db.run(
+			"SELECT DISTINCT w.version_id FROM [icf].[walk] w
+			  WHERE w.status = N'COMPLETED' AND w.observed_at >= :observedFrom AND w.observed_at < :observedBefore",
+			{ "observedFrom": variables.db.timestamp(arguments.observedFrom), "observedBefore": variables.db.timestamp(arguments.observedBefore) }
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, uCase(q.version_id[r]));
+		return out;
+	}
+
+	/**
+	 * Serializes release creation: an exclusive application lock held until the caller's
+	 * transaction ends, so two overlapping releases cannot both pass the overlap check.
+	 * TR_report_release_no_overlap enforces the same rule in the database regardless.
+	 */
+	public void function lockReleases() {
+		// The JDBC driver opens the caller's (implicit) transaction on its first statement that reads a
+		// table, and a transaction-owned lock needs that transaction to exist, so read one first.
+		var q = variables.db.run(
+			"DECLARE @seen int, @result int;
+			 SELECT @seen = COUNT(*) FROM [icf].[report_release] WHERE 1 = 0;
+			 EXEC @result = sp_getapplock @Resource = N'icfwalk.report_release', @LockMode = N'Exclusive', @LockOwner = N'Transaction', @LockTimeout = 30000;
+			 SELECT @result AS result, @@TRANCOUNT AS open_transactions;"
+		);
+		if (q.open_transactions[1] < 1) throw(type = "ICFWalk.Configuration", message = "Releases must be created inside a transaction.", errorcode = "REPORT_RELEASE_NO_TRANSACTION");
+		if (q.result[1] < 0) throw(type = "ICFWalk.Conflict", message = "Another release is being created. Try again.", errorcode = "REPORT_RELEASE_BUSY");
+	}
+
+	public boolean function overlapsRelease(required string fromDay, required string toDay) {
+		return variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[report_release]
+			  WHERE observed_from <= CAST(:toDay AS date) AND CAST(:fromDay AS date) <= observed_to",
+			{ "fromDay": variables.db.nvarchar(arguments.fromDay, 10), "toDay": variables.db.nvarchar(arguments.toDay, 10) }
+		) > 0;
+	}
+
+	public void function insertRelease(required string releaseId, required string fromDay, required string toDay, required numeric minimumWalks, required string releasedBy) {
+		variables.db.run(
+			"INSERT INTO [icf].[report_release] (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+			 VALUES (:id, CAST(:fromDay AS date), CAST(:toDay AS date), :minimum, :releasedBy)",
+			{
+				"id": variables.db.guid(arguments.releaseId), "fromDay": variables.db.nvarchar(arguments.fromDay, 10),
+				"toDay": variables.db.nvarchar(arguments.toDay, 10), "minimum": variables.db.integer(arguments.minimumWalks),
+				"releasedBy": variables.db.guid(arguments.releasedBy)
+			}
+		);
+	}
+
+	public void function insertBlock(required string releaseId, required string versionId, required string orgUnitId, required numeric walks) {
+		variables.db.run(
+			"INSERT INTO [icf].[report_release_block] (release_id, version_id, org_unit_id, walks) VALUES (:release, :version, :unit, :walks)",
+			{ "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId), "unit": variables.db.guid(arguments.orgUnitId), "walks": variables.db.integer(arguments.walks) }
+		);
+	}
+
+	/** cells: [{ subjectType, subjectKey, categoryType, categoryCode, responses }], all for one block. */
+	public void function insertCells(required string releaseId, required string versionId, required string orgUnitId, required array cells) {
+		var n = arrayLen(arguments.cells);
+		var start = 1;
+		while (start <= n) {
+			var stop = min(n, start + variables.CELL_BATCH - 1);
+			var rows = [];
+			var params = { "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId), "unit": variables.db.guid(arguments.orgUnitId) };
+			for (var i = start; i <= stop; i++) {
+				var c = arguments.cells[i];
+				arrayAppend(rows, "(:release, :version, :unit, :st" & i & ", :sk" & i & ", :ct" & i & ", :cc" & i & ", :n" & i & ")");
+				params["st" & i] = variables.db.nvarchar(c.subjectType, 12);
+				params["sk" & i] = variables.db.nvarchar(c.subjectKey, 100);
+				params["ct" & i] = variables.db.nvarchar(c.categoryType, 12);
+				params["cc" & i] = variables.db.nvarchar(c.categoryCode, 100);
+				params["n" & i] = variables.db.integer(c.responses);
+			}
+			variables.db.run(
+				"INSERT INTO [icf].[report_release_cell] (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+				 VALUES " & arrayToList(rows, ", "),
+				params
+			);
+			start = stop + 1;
+		}
+	}
+
+	/** Every release, latest dates first: [{ releaseId, observedFrom, observedTo, minimumWalks, releasedAt }]. */
+	public array function listReleases() {
+		var q = variables.db.run(
+			"SELECT release_id, CONVERT(char(10), observed_from, 23) AS observed_from, CONVERT(char(10), observed_to, 23) AS observed_to, minimum_walks, released_at
+			   FROM [icf].[report_release] ORDER BY observed_from DESC"
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, releaseRow(q, r));
+		return out;
+	}
+
+	/** One release, or {} when there is none by that id. */
+	public struct function findRelease(required string releaseId) {
+		var q = variables.db.run(
+			"SELECT release_id, CONVERT(char(10), observed_from, 23) AS observed_from, CONVERT(char(10), observed_to, 23) AS observed_to, minimum_walks, released_at
+			   FROM [icf].[report_release] WHERE release_id = :id",
+			{ "id": variables.db.guid(arguments.releaseId) }
+		);
+		return q.recordCount ? releaseRow(q, 1) : {};
+	}
+
+	/** Every stored block's identity: [{ releaseId, versionId, orgUnitId }]. No counts. */
+	public array function releaseBlockIndex() {
+		var q = variables.db.run("SELECT release_id, version_id, org_unit_id FROM [icf].[report_release_block]");
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "releaseId": uCase(q.release_id[r]), "versionId": uCase(q.version_id[r]), "orgUnitId": uCase(q.org_unit_id[r]) });
+		return out;
+	}
+
+	/** The blocks one release stored for one version: [{ orgUnitId, walks }]. */
+	public array function releaseBlocks(required string releaseId, required string versionId) {
+		var q = variables.db.run(
+			"SELECT org_unit_id, walks FROM [icf].[report_release_block] WHERE release_id = :release AND version_id = :version",
+			{ "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId) }
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "orgUnitId": uCase(q.org_unit_id[r]), "walks": q.walks[r] });
+		return out;
+	}
+
+	/** The cells of the named blocks: [{ orgUnitId, subjectType, subjectKey, categoryType, categoryCode, responses }]. */
+	public array function releaseCells(required string releaseId, required string versionId, required array orgUnitIds) {
+		var out = [];
+		var ids = arguments.orgUnitIds;
+		var n = arrayLen(ids);
+		var start = 1;
+		while (start <= n) {
+			var stop = min(n, start + variables.UNIT_BATCH - 1);
+			var names = [];
+			var params = { "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId) };
+			for (var i = start; i <= stop; i++) {
+				arrayAppend(names, ":u" & i);
+				params["u" & i] = variables.db.guid(ids[i]);
+			}
+			var q = variables.db.run(
+				"SELECT org_unit_id, subject_type, subject_key, category_type, category_code, responses
+				   FROM [icf].[report_release_cell]
+				  WHERE release_id = :release AND version_id = :version AND org_unit_id IN (" & arrayToList(names, ", ") & ")",
+				params
+			);
+			for (var r = 1; r <= q.recordCount; r++) {
+				arrayAppend(out, {
+					"orgUnitId": uCase(q.org_unit_id[r]), "subjectType": q.subject_type[r], "subjectKey": q.subject_key[r],
+					"categoryType": q.category_type[r], "categoryCode": q.category_code[r], "responses": q.responses[r]
+				});
+			}
+			start = stop + 1;
+		}
+		return out;
+	}
+
+	private struct function releaseRow(required query q, required numeric r) {
+		return {
+			"releaseId": uCase(arguments.q.release_id[arguments.r]), "observedFrom": trim(arguments.q.observed_from[arguments.r]),
+			"observedTo": trim(arguments.q.observed_to[arguments.r]), "minimumWalks": arguments.q.minimum_walks[arguments.r],
+			"releasedAt": arguments.q.released_at[arguments.r]
+		};
 	}
 
 	// ---- visibility --------------------------------------------------------------------------------

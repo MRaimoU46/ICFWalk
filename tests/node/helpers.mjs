@@ -166,3 +166,34 @@ function requestWithTimeout(env, method, apiPath, headers, payload, timeoutMs) {
     request.end();
   });
 }
+
+/**
+ * A fixture user who may create report releases: under the approved RPT-03 rule only someone
+ * holding walk.read and report.view on EVERY active org unit may, so the user is given
+ * DISTRICT_WALK_REPORT at each active unit (read from the database, because no route lists units).
+ * Call it after the suite has imported its own units. Returns the subject.
+ */
+export async function provisionReleaser(env, token, subject) {
+  const provisioned = await api(env, "POST", "/api/maintenance/identity/provision-user", { token, body: { subject, displayName: `Fixture ${subject}` } });
+  if (provisioned.status !== 200 && provisioned.status !== 201) throw new Error(`provision-user ${provisioned.status}: ${provisioned.text}`);
+  const { default: sql } = await import("mssql");
+  const pool = await sql.connect(connectionConfig(env, env.ICFWALK_DB_NAME || "icfwalk_dev"));
+  let codes = [];
+  try {
+    codes = (await pool.request().query("SELECT org_unit_code FROM icf.org_unit WHERE active = 1")).recordset.map((r) => r.org_unit_code);
+  } finally {
+    await pool.close();
+  }
+  for (const orgUnitCode of codes) {
+    const a = await api(env, "POST", "/api/maintenance/identity/assign-role", { token, body: { subject, roleCode: "DISTRICT_WALK_REPORT", orgUnitCode, includeDescendants: false } });
+    if (a.status !== 201) throw new Error(`assign-role ${orgUnitCode} ${a.status}: ${a.text}`);
+  }
+  return subject;
+}
+
+/** A random first-of-the-month date in [fromYear, toYear], as YYYY-MM-DD, for a suite's own release period. */
+export function releaseMonth(fromYear, toYear) {
+  const year = fromYear + Math.floor(Math.random() * (toYear - fromYear + 1));
+  const month = 1 + Math.floor(Math.random() * 12);
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}

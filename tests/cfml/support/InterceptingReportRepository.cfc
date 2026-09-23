@@ -68,6 +68,12 @@ component output="false" {
 		return variables.inner.itemCounts(arguments.itemIds);
 	}
 
+	/** The release freeze's counterpart of itemCounts: after the dimension aggregates, before any response. */
+	public array function unitItemCounts(required array itemIds) {
+		trigger("unitItemCounts");
+		return variables.inner.unitItemCounts(arguments.itemIds);
+	}
+
 	public numeric function verifyPopulation() {
 		trigger("verifyPopulation");
 		return variables.inner.verifyPopulation();
@@ -85,4 +91,16 @@ component output="false" {
 	public array function unitStatusCounts() { return variables.inner.unitStatusCounts(); }
 	public array function dimensionCounts(required string dimensionId, required struct visibility) { return variables.inner.dimensionCounts(arguments.dimensionId, arguments.visibility); }
 	public string function visibilitySql(required struct visibility, required string alias, required struct params) { return variables.inner.visibilitySql(arguments.visibility, arguments.alias, arguments.params); }
+	public array function unitDimensionCounts(required string dimensionId, required struct visibility) { return variables.inner.unitDimensionCounts(arguments.dimensionId, arguments.visibility); }
+	public array function versionsWithCompletedWalks(required date observedFrom, required date observedBefore) { return variables.inner.versionsWithCompletedWalks(arguments.observedFrom, arguments.observedBefore); }
+	public void function lockReleases() { variables.inner.lockReleases(); }
+	public boolean function overlapsRelease(required string fromDay, required string toDay) { return variables.inner.overlapsRelease(arguments.fromDay, arguments.toDay); }
+	public void function insertRelease(required string releaseId, required string fromDay, required string toDay, required numeric minimumWalks, required string releasedBy) { variables.inner.insertRelease(arguments.releaseId, arguments.fromDay, arguments.toDay, arguments.minimumWalks, arguments.releasedBy); }
+	public void function insertBlock(required string releaseId, required string versionId, required string orgUnitId, required numeric walks) { variables.inner.insertBlock(arguments.releaseId, arguments.versionId, arguments.orgUnitId, arguments.walks); }
+	public void function insertCells(required string releaseId, required string versionId, required string orgUnitId, required array cells) { variables.inner.insertCells(arguments.releaseId, arguments.versionId, arguments.orgUnitId, arguments.cells); }
+	public array function listReleases() { return variables.inner.listReleases(); }
+	public struct function findRelease(required string releaseId) { return variables.inner.findRelease(arguments.releaseId); }
+	public array function releaseBlockIndex() { return variables.inner.releaseBlockIndex(); }
+	public array function releaseBlocks(required string releaseId, required string versionId) { return variables.inner.releaseBlocks(arguments.releaseId, arguments.versionId); }
+	public array function releaseCells(required string releaseId, required string versionId, required array orgUnitIds) { return variables.inner.releaseCells(arguments.releaseId, arguments.versionId, arguments.orgUnitIds); }
 }

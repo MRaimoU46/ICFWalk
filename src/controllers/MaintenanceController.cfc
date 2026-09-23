@@ -363,6 +363,13 @@ component output="false" {
 			// (the seeded one, for example). Those versions are not this cleanup's to remove, so the
 			// reference is released rather than the row deleted.
 			db.run("UPDATE [icf].[instrument_version] SET created_by_user_id = NULL WHERE created_by_user_id IN (SELECT user_id FROM [icf].[app_user] WHERE identity_subject LIKE :like)", { "like": like });
+			// Report releases a fixture user created (migration 007), cells and blocks first. The
+			// application never deletes a release; this verification-only route removes a test's own,
+			// which name its fixture user and its fixture org units.
+			var released = "SELECT r.release_id FROM [icf].[report_release] r JOIN [icf].[app_user] u ON u.user_id = r.released_by_user_id WHERE u.identity_subject LIKE :like";
+			db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id IN (" & released & ")", { "like": like });
+			db.run("DELETE FROM [icf].[report_release_block] WHERE release_id IN (" & released & ")", { "like": like });
+			db.run("DELETE FROM [icf].[report_release] WHERE release_id IN (" & released & ")", { "like": like });
 			db.run("DELETE s FROM [icf].[user_role_scope] s JOIN [icf].[app_user] u ON u.user_id = s.user_id WHERE u.identity_subject LIKE :like", { "like": like });
 			db.run("DELETE a FROM [icf].[audit_event] a JOIN [icf].[app_user] u ON u.user_id = a.actor_user_id OR u.user_id = a.entity_id WHERE u.identity_subject LIKE :like", { "like": like });
 			var users = db.run("DELETE FROM [icf].[app_user] WHERE identity_subject LIKE :like", { "like": like });

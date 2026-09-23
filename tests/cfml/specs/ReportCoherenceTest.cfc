@@ -17,6 +17,13 @@
  * because a report holds no lock a writer waits on -- and only then does the report go on to read
  * the responses. Uncorrected, that report carries state A's Grade beside state B's rating.
  *
+ * The same guarantee holds when a release is created (ReportService.createRelease): it freezes
+ * each block from one coherent read, so a release can never store a walk's Grade from one state
+ * beside its rating from another (testAReleaseFreezesEveryWalkInOneCommittedState).
+ *
+ * The analyst is a walk-and-report role: live figures are served only to a caller who can open
+ * every walk they count (RPT-03 correction), and live figures are what this spec is about.
+ *
  * Fixtures are synthetic and removed in afterAll.
  */
 component extends="icfwalktests.BaseSpec" output="false" {
@@ -33,11 +40,17 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.walkSvc = variables.c.walkService;
 		variables.DT = fx.orgUnit("dt", "DISTRICT");
 		variables.analyst = fx.user("analyst");
-		fx.assign(analyst.userId, "DISTRICT_REPORT_ONLY", DT, true);
+		fx.assign(analyst.userId, "DISTRICT_WALK_REPORT", DT, true);
 		variables.seq = 0;
+		variables.releases = [];
 	}
 
 	public void function afterAll() {
+		for (var id in variables.releases) {
+			db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", { "id": db.guid(id) });
+			db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", { "id": db.guid(id) });
+			db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", { "id": db.guid(id) });
+		}
 		fx.remove();
 	}
 
@@ -266,5 +279,76 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(1, spy.calls("verifyPopulation"));
 		assertEquals(1, valueWalks(r, "grade", "7"));
 		assertEquals(1, optionCount(r, "comp_s1_q1", "1"));
+	}
+
+	/**
+	 * A release reads every walk of its period in one coherent state, like a live report: a save
+	 * that commits after the Grade aggregates were read and before the ratings are is detected by
+	 * the row-version check, the freeze is recomputed, and what is stored pairs each walk's Grade
+	 * with its own rating. Uncorrected, the block would hold three Grade 7s beside a rating of 5.
+	 */
+	public void function testAReleaseFreezesEveryWalkInOneCommittedState() {
+		variables.seq++;
+		var base = createDate(randRange(1930, 1949), randRange(1, 12), 1);
+		var visit = dateFormat(base, "yyyy-mm-dd");
+		var unit = fx.orgUnit("rel" & variables.seq, "SCHOOL", variables.DT);
+		var walker = fx.user("relwalker" & variables.seq);
+		fx.assign(walker.userId, "SCHOOL_WALK_REPORT", unit, false);
+		var releaser = fx.user("releaser" & variables.seq);
+		for (var id in structKeyArray(variables.c.orgUnitRepository.loadActiveTree())) fx.assign(releaser.userId, "DISTRICT_WALK_REPORT", id, false);
+		var principal = p(walker);
+		var ids = [];
+		var rvs = [];
+		for (var i = 1; i <= 3; i++) {
+			var created = walkSvc.create(principal, { "orgUnitId": unit, "clientMutationId": db.newGuid() });
+			var a = stateA();
+			a.dimensions["date"] = { "dateValue": visit };
+			var saved = walkSvc.save(principal, created.id, { "rowVersion": created.rowVersion, "clientMutationId": db.newGuid(), "dimensions": a.dimensions, "responses": a.responses });
+			var done = walkSvc.complete(principal, created.id, { "rowVersion": saved.rowVersion, "clientMutationId": db.newGuid() });
+			arrayAppend(ids, created.id);
+			arrayAppend(rvs, done.rowVersion);
+		}
+		var spy = interceptor();
+		var releaseSvc = serviceWith(spy);
+		var writerSvc = variables.walkSvc;
+		var walkId = ids[1];
+		var rv = rvs[1];
+		var mutationId = db.newGuid();
+		var b = stateB();
+		b.dimensions["date"] = { "dateValue": visit };
+		var observed = { "outcome": "" };
+		spy.arm("unitItemCounts", function() {
+			thread name="releaseCoherenceWriter" svc=writerSvc who=principal wid=walkId rv=rv mid=mutationId payload=b {
+				try {
+					attributes.svc.save(attributes.who, attributes.wid, {
+						"rowVersion": attributes.rv, "clientMutationId": attributes.mid,
+						"dimensions": attributes.payload.dimensions, "responses": attributes.payload.responses
+					});
+					thread.outcome = "committed";
+				} catch (any e) {
+					thread.outcome = structKeyExists(e, "errorcode") ? e.errorcode : e.type;
+				}
+			}
+			threadJoin("releaseCoherenceWriter", 20000);
+			observed.outcome = structKeyExists(cfthread.releaseCoherenceWriter, "outcome") ? cfthread.releaseCoherenceWriter.outcome : "";
+		});
+		var created = "";
+		try {
+			created = releaseSvc.createRelease(p(releaser), { "observedFrom": visit, "observedTo": visit });
+			arrayAppend(variables.releases, created.release.releaseId);
+		} finally {
+			if (isDefined("cfthread") && structKeyExists(cfthread, "releaseCoherenceWriter")) threadJoin("releaseCoherenceWriter", 30000);
+		}
+		assertExactTextEquals("committed", observed.outcome, "the save committed while the release was being frozen");
+		assertEquals(1, spy.fired("unitItemCounts"));
+		assertEquals(2, spy.calls("selectCandidates"), "the freeze saw the walk move and started over");
+		var cells = db.run(
+			"SELECT subject_key, category_code, responses FROM [icf].[report_release_cell]
+			  WHERE release_id = :r AND org_unit_id = :u AND ((subject_type = N'DIMENSION' AND subject_key = N'grade') OR (subject_type = N'ITEM' AND subject_key = N'comp_s1_q1' AND category_type = N'OPTION'))
+			  ORDER BY subject_key, category_code",
+			{ "r": db.guid(created.release.releaseId), "u": db.guid(unit) });
+		var stored = {};
+		for (var r = 1; r <= cells.recordCount; r++) stored[cells.subject_key[r] & ":" & cells.category_code[r]] = cells.responses[r];
+		assertExactJsonEquals({ "comp_s1_q1:1": 2, "comp_s1_q1:5": 1, "grade:7": 2, "grade:8": 1 }, stored, "each walk's Grade stored beside its own rating");
 	}
 }

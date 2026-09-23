@@ -84,6 +84,19 @@
     <p class="status report-status" id="report-status" role="status" aria-live="polite"></p>
     <div id="report-error" class="app-message error" role="alert" hidden></div>
     <div id="report-results"></div>
+    <!-- Releases (RPT-03 correction): shown only to someone who may create one (options.canRelease).
+         Report-only roles read released dates only; see docs/DATA_CONTRACT.md. -->
+    <form id="release-form" class="section-card report-form" novalidate aria-labelledby="release-title" hidden>
+      <h2 class="section-title" id="release-title">Release dates for report-only users</h2>
+      <p class="muted report-meta">Freezes the completed walks observed on these dates for everyone who reports without opening walks. Released dates never overlap, and a release never changes afterwards.</p>
+      <div class="field-grid report-filters">
+        <div class="report-field"><label for="release-from">First day observed</label><input type="date" id="release-from"></div>
+        <div class="report-field"><label for="release-to">Last day observed</label><input type="date" id="release-to"></div>
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="btn" id="release-create">Release these dates</button>
+      </div>
+    </form>
   </section>
 
   <!-- WALK VIEW -->

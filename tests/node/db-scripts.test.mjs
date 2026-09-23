@@ -242,6 +242,56 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     const resolved = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
     assert.equal(resolved.ok, true, resolved.error?.message);
     assert.equal(resolved.recordset[0].publisher_required_constraint_present, 1);
+
+    // ---- Correction migration 007: frozen report releases (RPT-03) ---------------------------
+    // Additive and idempotent, and the database itself enforces what a release may hold.
+    const releases = await applyScript(pool, readScript("007_report_release.sql"));
+    assert.equal(releases.ok, true, releases.error?.message);
+    assert.equal(releases.recordset[0].report_release_available, 1);
+    assert.equal(releases.recordset[0].release_guards_present, 5);
+    const releasesAgain = await applyScript(pool, readScript("007_report_release.sql"));
+    assert.equal(releasesAgain.ok, true, releasesAgain.error?.message);
+    assert.equal(releasesAgain.recordset[0].release_guards_present, 5, "re-applying creates no second trigger");
+    const releaseTables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
+    assert.equal(releaseTables.recordset[0].n, 27, "007 adds exactly three tables");
+    const R1 = "77777777-0000-0000-0000-000000000001";
+    const firstRelease = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+      VALUES ('${R1}', '1930-03-01', '1930-03-31', 3, '22222222-2222-2222-2222-222222222222');`);
+    assert.equal(firstRelease.ok, true, firstRelease.error?.message);
+    for (const [from, to, why] of [["1930-03-31", "1930-04-30", "sharing the last day"], ["1930-02-01", "1930-03-01", "sharing the first day"], ["1930-03-10", "1930-03-12", "inside it"], ["1930-01-01", "1930-12-31", "around it"]]) {
+      const overlap = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+        VALUES (NEWID(), '${from}', '${to}', 3, '22222222-2222-2222-2222-222222222222');`);
+      assert.equal(overlap.ok, false, `a release ${why} is refused`);
+      assert.equal(overlap.error?.number, 50062);
+    }
+    const adjacent = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+      VALUES ('77777777-0000-0000-0000-000000000002', '1930-04-01', '1930-04-30', 5, '22222222-2222-2222-2222-222222222222');`);
+    assert.equal(adjacent.ok, true, "the next day on is a different set of walks");
+    const belowFloor = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+      VALUES (NEWID(), '1931-01-01', '1931-01-02', 2, '22222222-2222-2222-2222-222222222222');`);
+    assert.equal(belowFloor.ok, false, "no release below the approved minimum of 3");
+    const smallBlock = await applyScript(pool, `INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks)
+      VALUES ('${R1}', '44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 2);`);
+    assert.equal(smallBlock.ok, false, "no block of fewer than 3 walks");
+    const underOwnMinimum = await applyScript(pool, `INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks)
+      VALUES ('77777777-0000-0000-0000-000000000002', '44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 4);`);
+    assert.equal(underOwnMinimum.ok, false, "no block below its own release's minimum");
+    assert.equal(underOwnMinimum.error?.number, 50063);
+    const block = await applyScript(pool, `INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks)
+      VALUES ('${R1}', '44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 3);
+      INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R1}', '44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'ITEM', 'q', 'OPTION', '1', 3);`);
+    assert.equal(block.ok, true, block.error?.message);
+    const zeroCell = await applyScript(pool, `INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R1}', '44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'ITEM', 'q', 'OPTION', '2', 0);`);
+    assert.equal(zeroCell.ok, false, "zero cells are not stored");
+    for (const [sqlText, what] of [[`UPDATE icf.report_release SET observed_to = '1930-03-30' WHERE release_id = '${R1}'`, "a release"],
+      [`UPDATE icf.report_release_block SET walks = 4 WHERE release_id = '${R1}'`, "a block"],
+      [`UPDATE icf.report_release_cell SET responses = 4 WHERE release_id = '${R1}'`, "a cell"]]) {
+      const changed = await applyScript(pool, sqlText);
+      assert.equal(changed.ok, false, `${what} is never updated`);
+      assert.equal(changed.error?.number, 50064);
+    }
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));
