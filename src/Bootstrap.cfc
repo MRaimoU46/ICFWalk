@@ -86,12 +86,22 @@ component output="false" {
 			c.walkSummaryFormatter
 		);
 
+		// Aggregate reporting (Phase 7). Reads walks through its own repository, which selects no
+		// narrative or identifying column; scope, versions and visibility come from the services
+		// above rather than being re-derived.
+		c["reportRepository"] = new icfwalk.reports.ReportRepository(c.db);
+		c["reportService"] = new icfwalk.reports.ReportService(
+			c.config, c.db, c.errors, c.logger, c.auditRepository, c.canonicalJson, c.authorizationService,
+			c.snapshotService, c.visibilityEngine, c.walkRepository, c.orgUnitRepository, c.reportRepository
+		);
+
 		c["healthController"] = new icfwalk.controllers.HealthController(c.config, c.db, c.requestContext);
 		c["shellController"] = new icfwalk.controllers.ShellController(c);
 		c["instrumentController"] = new icfwalk.controllers.InstrumentController(c);
 		c["authController"] = new icfwalk.controllers.AuthController(c);
 		c["walkController"] = new icfwalk.controllers.WalkController(c);
 		c["adminInstrumentController"] = new icfwalk.controllers.AdminInstrumentController(c);
+		c["reportController"] = new icfwalk.controllers.ReportController(c);
 		c["maintenanceController"] = new icfwalk.controllers.MaintenanceController(c);
 		c["router"] = new icfwalk.http.Router(c);
 		c.logger.info("application.started", {

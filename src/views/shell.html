@@ -19,6 +19,7 @@
     <span class="status" id="global-status" role="status" aria-live="polite"></span>
     <span class="status" id="user-name"></span>
     <button type="button" class="btn btn-ghost" id="nav-list-btn" hidden>My walks</button>
+    <button type="button" class="btn btn-ghost" id="nav-reports-btn" hidden>Reports</button>
   </div>
 </header>
 
@@ -58,6 +59,31 @@
       </div>
     </div>
     <div id="walk-list"></div>
+  </section>
+
+  <!-- REPORTS VIEW (Phase 7): aggregate results only; built by assets/js/reports.js -->
+  <section id="view-reports" hidden aria-labelledby="reports-heading">
+    <div class="list-header">
+      <div>
+        <h1 id="reports-heading" tabindex="-1">Reports</h1>
+        <p class="muted list-sub" id="report-scope-note">Individual walks are never shown.</p>
+      </div>
+    </div>
+    <form id="report-form" class="section-card report-form" novalidate aria-labelledby="report-filters-title">
+      <h2 class="section-title" id="report-filters-title">Filters</h2>
+      <div class="field-grid report-filters" id="report-filters"></div>
+      <div class="row-actions">
+        <button type="submit" class="btn btn-primary" id="report-run">Run report</button>
+        <!-- No download attribute: the route's Content-Disposition names the file, and the attribute
+             would make the browser fetch the URL on its own terms instead of following the response
+             (the same reasoning as the Phase 5 summary export). -->
+        <a class="btn" id="report-download" href="#">Download CSV</a>
+        <button type="button" class="btn" id="report-reset">Clear filters</button>
+      </div>
+    </form>
+    <p class="status report-status" id="report-status" role="status" aria-live="polite"></p>
+    <div id="report-error" class="app-message error" role="alert" hidden></div>
+    <div id="report-results"></div>
   </section>
 
   <!-- WALK VIEW -->

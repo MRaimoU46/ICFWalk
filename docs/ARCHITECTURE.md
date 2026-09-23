@@ -1,4 +1,4 @@
-# Architecture notes (Phases 1 to 5, plus the Phase 6 publish foundation)
+# Architecture notes (Phases 1 to 5, the Phase 6 publish foundation, and Phase 7 reporting)
 
 ## Shape
 
@@ -22,7 +22,8 @@ over HTTP: `Application.cfc` rejects every request except `index.cfm`.
 | Data access | `instrument/DefinitionRepository`, `instrument/DefinitionMapper`, `audit/AuditRepository` |
 | Cross-cutting | `config/ConfigLoader`, `core/Errors`, `core/Logger`, `core/RequestContext`, `core/CanonicalJson` |
 | Instrument engine (Phase 3) | `instrument/SnapshotService`, `instrument/RenderModelBuilder`, `instrument/VisibilityEngine` |
-| Views | `views/shell.html` served by `controllers/ShellController`; browser modules in `app/assets/js` (`renderer.js`, `rules.js`, `walk-state.js`, `walk-store.js`, `app.js`) |
+| Views | `views/shell.html` served by `controllers/ShellController`; browser modules in `app/assets/js` (`renderer.js`, `rules.js`, `walk-state.js`, `walk-store.js`, `app.js`, `reports.js`) |
+| Reporting (Phase 7) | `reports/ReportService`, `reports/ReportRepository`, `controllers/ReportController` |
 
 ## Configuration and environments
 
@@ -492,6 +493,86 @@ identity and publish/new dimension-value identity (`PublishConcurrencyBarrierTes
 metadata/metadata and import's shared-state check against an authorized metadata update
 (`SharedMetadataConcurrencyBarrierTest`). The decorator is test-only: the container never holds it
 and no route reaches it, so there is no configuration in which a client can activate a lock hook.
+
+## Aggregate reporting (Phase 7)
+
+```
+browser  reports.js -> GET /api/reports/options | /aggregate | /aggregate.csv   (Router: permission report.view)
+server   ReportController -> ReportService
+             AuthorizationService.requirePermission / visibleOrgUnitIds   (scope: covered units only)
+             SnapshotService.renderModelFor(version) + WalkRepository.definitionIndex(version)
+             VisibilityEngine.evaluateVisibility   (which dimension values are visible, per combination)
+             ReportRepository   (one READ COMMITTED transaction, session temp tables, counts only)
+             AuditRepository    (REPORT_EXPORTED: identifiers and counts)
+```
+
+**What a report is.** Counts and scores keyed by codes, over the walks of **one** instrument
+version (default: the current one). Every walk is pinned to an immutable version, and two versions
+may word or score an item differently, so the report never pools across versions. The reportable
+surface -- the *catalog* -- is derived from that version's render model: active single-choice
+items flagged reportable (notes, text, display items and the email draft are never reportable,
+whatever their flags say), and active placements of reportable, non-sensitive **list** dimensions
+except School (the org unit is the school and the scope authority; free-text Observer, Lesson
+Standard and tags and the Date dimension are never reported). The catalog is cached per version and
+checksum, exactly like the definition index it is built from.
+
+**Who.** `report.view` admits the request; the population is the caller's covered units
+(`AuthorizationService.visibleOrgUnitIds`, which already resolves effective dates, active units and
+`include_descendants`) intersected with any unit the request names. A named unit outside that set
+is refused through `requirePermission`, so it is 404 and audited `ACCESS_DENIED`, the same way an
+out-of-scope walk is. Instrument administrators and role-less users hold no `report.view`.
+
+**Counting.** Response states are read, not re-derived: the Phase 4 save path writes the engine's
+own `ANSWERED` / `UNANSWERED` / `HIDDEN` / `NOT_APPLICABLE` evaluation in the same transaction as the
+value it describes. Option distributions count `ANSWERED` rows only; an item mean is the sum of the
+option scores of answered, scored, non-N/A responses divided by their count, computed in
+`BigDecimal`; a section's mean pools every scored response beneath it (weighted by responses, never
+an average of walk averages). Dimension states are **not** persisted, so the report asks the engine:
+for a dimension whose visibility rules read only other list dimensions, every combination of those
+source values (plus "none") is evaluated through `VisibilityEngine.evaluateVisibility`, and the
+combinations that show it become the SQL condition that decides whether a stored value counts. For
+Period that yields "grade in 6..12", derived rather than written anywhere. A dimension whose
+visibility would depend on a response or on free text is left out of the report rather than
+counted wrong.
+
+**Coherence without locks.** A report reads many walks over several statements, and a save can
+commit between two of them. Holding every population walk's mutation lock (the Phase 5 export's
+answer for one walk) would stall every autosave in scope for the length of a district report, so
+the report validates optimistically with the row version every mutation already moves:
+
+1. `selectCandidates` reads walk rows only and stores each walk's `row_version` in a session temp
+   table (`#icf_report_population`);
+2. the population filters and every aggregate join that table and read child rows;
+3. `verifyPopulation` re-reads the row versions. Any walk that moved (or vanished) means some
+   aggregate may have seen it in two states, and the whole report is discarded and recomputed, at
+   most three times; then 409 `REPORT_POPULATION_CHANGED`.
+
+Create, save, complete and void all update the walk row in the same transaction as their child
+writes, and a no-op save writes nothing, so a moved row version is exactly the signal needed. A walk
+left out because of what S2 read (a filter it failed) was left out on the strength of one committed
+state; every walk that is counted was unchanged from its selection to the check. The transaction is
+READ COMMITTED and exists only to keep the temp tables on one connection -- it holds no lock a writer
+waits on. `ReportCoherenceTest` forces a real committed save between the dimension and item
+aggregates through `tests/cfml/support/InterceptingReportRepository` and proves the recomputation;
+with the check removed the same test reports Grade 7 beside rating 5, a state the walk never held
+(`docs/evidence/phase7-red-before-fix.md`).
+
+**Exclusions are structural.** `ReportRepository` selects walk ids, org units, statuses, row
+versions, selected value ids and selected option ids -- nothing else. It names no text, teacher,
+classroom, owner or user column, which `tests/node/reports.test.mjs` asserts against its source,
+and no report DTO carries a walk identifier. The browser module builds its DOM with `textContent`
+only.
+
+**Privacy suppression.** `ICFWALK_REPORT_SUPPRESSION_THRESHOLD` stays the undecided seam it was
+(default none). When set to N, a population below N is withheld whole and each org-unit and
+dimension-value group below N is withheld individually. See `docs/DATA_CONTRACT.md` for what it
+deliberately does not attempt.
+
+**Browser.** `reports.js` owns the Reports view in the existing shell: filters built from
+`/api/reports/options`, a query string for `/api/reports/aggregate`, and a link to the CSV route
+(no `download` attribute, so the route's `Content-Disposition` names the file). A report-only role
+lands there and never requests `/api/walks` or `/api/instrument/current`; walk roles get a Reports
+button beside My walks, reached through the same unsaved-work guard as leaving the editor.
 
 ## What Phase 6 builds on
 

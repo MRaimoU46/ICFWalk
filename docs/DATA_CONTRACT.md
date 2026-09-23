@@ -532,6 +532,53 @@ This object is private walk content, not an aggregate-report source. Nothing in 
 - Hidden, unanswered, and not-applicable values remain visible as separate data-quality/state counts when useful, but never enter numeric averages.
 - Narrative items, email workflow state, teacher fields, and classroom labels are excluded.
 
+### How Phase 7 reports implement this
+
+**The population.** A report covers the walks of **one** instrument version (default: the current
+one), because every walk is pinned to one immutable version and two versions may word or score an
+item differently. Within it: walks whose org unit is one the caller's `report.view` assignments cover
+now (effective dates, active units and `include_descendants` resolved), narrowed to one named unit
+and its covered descendants when the request names one; COMPLETED walks, plus DRAFT walks only when
+the request asks (`includeDrafts=true`); never a VOIDED walk; and, when given, an observation window
+on `icf.walk.observed_at` (the visit date, or the creation instant when there is none), inclusive of
+both calendar dates.
+
+**What is reportable.** An item is reported when it is an active `SINGLE_CHOICE` item flagged
+reportable in the pinned version; notes, text, display items and the email draft never are,
+whatever their flags say. A dimension is reported when it is an active placement of a reportable,
+non-sensitive `LIST` dimension other than School. Free-text dimensions (Observer, Lesson Standard,
+tags) and the Date dimension are never reported, and neither is a list dimension's "Other" text:
+"Other" is counted by its code. School is reported as the org unit, which is the scope authority
+(see "School and organizational scope").
+
+**States.** Response states are the persisted engine evaluation (see "Response states"); a
+distribution counts `ANSWERED` rows only, an item's numeric average is the sum of the option scores of
+its answered responses whose option carries a score and is not N/A divided by their count, and a
+section's average pools every such response beneath it. Dimension states are not persisted, so a
+report asks the engine: a dimension value counts only when the instrument shows that dimension for
+the walk's own values of the dimensions its rules read. A Period retained while hidden is `HIDDEN`,
+is never counted as its value and never matches a Period filter. A dimension whose visibility would
+depend on a response or on free text is left out of reports rather than counted wrongly.
+
+**Report coherence.** A report reads many walks in several statements. It captures every
+population walk's `row_version` from the walk row before any child row is read, and verifies them
+after every aggregate has been read. A walk that moved in between may have been read in two
+committed states, so the report is discarded and recomputed, at most three times, after which the
+request is refused with 409 `REPORT_POPULATION_CHANGED`. Every counted walk therefore contributes
+exactly one committed state, and no statistic mixes two states of one walk. Every mutation path
+updates the walk row in the same transaction as its child writes, which is what makes the row
+version a sufficient signal; the report holds no lock a writer waits on.
+
+**Privacy suppression.** The threshold is an undecided policy (`docs/OPEN_DECISIONS.md`), so the
+default is none. When a deployment sets it to N, a population of 1..N-1 walks is withheld entirely
+(no count, no aggregate), and within a reported population each org-unit group and each
+dimension-value group of 1..N-1 walks is withheld individually; an empty group is not withheld.
+Deliberately **not** attempted until the policy is decided: suppression of individual option,
+response-state or dimension-state counts and of the population's per-status counts, complementary
+suppression (a withheld group can be derived by subtracting the others from a total that is shown),
+and protection against differencing two reports whose filters differ by one walk.
+Report-only users never receive an individual walk, identifier or narrative value at any threshold.
+
 ## Mutation identity and idempotency
 
 Every state-changing walk request carries a `clientMutationId` (create, save, complete, void) and,

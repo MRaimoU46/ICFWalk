@@ -211,3 +211,33 @@ textarea{resize:vertical;min-height:56px;background:#FFF9E7;border:3px solid var
 .email-status:empty{display:none}
 .email-status{font-size:12.5px;font-weight:600;color:var(--navy);margin:8px 0 0}
 .email-note{font-size:11.5px;margin:8px 0 0}
+
+/* Phase 7: aggregate reports. Tables are two columns of wrapping text, so none ever needs to scroll
+   sideways at 375 px; counts are right-aligned text, never conveyed by color. */
+a.btn{display:inline-block;text-decoration:none;line-height:normal}
+.report-filters{margin-top:10px}
+.report-field label{margin-bottom:4px}
+.report-check{display:flex;align-items:center;gap:8px;align-self:end;padding-bottom:6px}
+.report-check input{width:auto;margin:0}
+.report-check label{margin:0;font-size:12.5px;font-weight:500;color:var(--ink);letter-spacing:0}
+.report-status{display:block;margin:0 0 12px;min-height:1em}
+.report-card h2{margin-bottom:8px}
+.report-total{font-size:14px;margin:0 0 6px}
+.report-meta{font-size:12.5px;margin:0 0 10px}
+.report-suppressed{font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 6px}
+.report-dimensions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.report-table{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 6px}
+.report-table caption{text-align:left;font-weight:700;color:var(--navy);font-size:13px;padding:0 0 6px}
+.report-table th,.report-table td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.report-table thead th{font-size:11.5px;color:var(--gray);font-weight:600}
+.report-table tbody th{font-weight:500}
+.report-table .num{text-align:right;white-space:nowrap;width:1%}
+.report-dist caption{font-weight:600;color:var(--gray);font-size:12px;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.report-states{font-size:12px;margin:0 0 6px}
+.report-avg{font-size:13px;font-weight:600;color:var(--navy);margin:0 0 4px}
+.report-section{margin-top:18px;padding-top:12px;border-top:3px solid var(--navy)}
+.report-section.depth-2,.report-section.depth-3{border-top:1px solid var(--line);margin-top:12px}
+.report-section-title{font-size:15px;color:var(--navy);margin:0 0 4px}
+h4.report-section-title{font-size:14px}
+.report-item{margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
+.report-q{font-size:13.5px;font-weight:600;margin:0 0 4px;line-height:1.4;color:var(--ink)}

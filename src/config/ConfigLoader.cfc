@@ -108,8 +108,17 @@ component output="false" {
 		// instrument names it "school" (config/instrument-config.json); the seam lets a deployment
 		// that renames it keep the org-unit consistency rule working.
 		cfg["schoolDimensionCode"] = value("ICFWALK_SCHOOL_DIMENSION_CODE", "school");
-		var suppression = value("ICFWALK_REPORT_SUPPRESSION_THRESHOLD", "");
-		cfg["reportSuppressionThreshold"] = len(suppression) && isNumeric(suppression) ? int(suppression) : 0;
+		// Aggregate privacy-suppression threshold (docs/OPEN_DECISIONS.md: undecided, so empty or 0
+		// applies none). Phase 7 made it operative, so it now fails closed: a value that is not a
+		// whole number of walks refuses startup instead of being coerced without a word ("5 walks"
+		// and "0x10" used to become 0, which is no suppression at all, and "2.5" became 2).
+		var suppression = trim(value("ICFWALK_REPORT_SUPPRESSION_THRESHOLD", ""));
+		cfg["reportSuppressionThreshold"] = 0;
+		if (reFind("^[0-9]{1,6}$", suppression)) {
+			cfg.reportSuppressionThreshold = int(suppression);
+		} else if (len(suppression)) {
+			arrayAppend(errors, "ICFWALK_REPORT_SUPPRESSION_THRESHOLD must be empty or a whole number of walks (0 applies no suppression).");
+		}
 		cfg["outboundEmailEnabled"] = false; // Not configurable: no automatic outbound mail without separate authorization.
 
 		// Phase 3 rendering seam: until Phase 6 publishes a version, non-production deployments may

@@ -167,7 +167,7 @@ test("006 patch scopes dimensions to a version and requires a publisher, idempot
 test("CFML SQL references only known icf tables", () => {
   const cfml = ["src/instrument/DefinitionRepository.cfc", "src/audit/AuditRepository.cfc", "src/controllers/HealthController.cfc", "src/instrument/InstrumentImportService.cfc",
     "src/identity/UserRepository.cfc", "src/authorization/OrgUnitRepository.cfc", "src/authorization/RoleScopeRepository.cfc", "src/authorization/AuthorizationService.cfc", "src/controllers/MaintenanceController.cfc",
-    "src/walks/WalkRepository.cfc", "src/walks/WalkService.cfc", "src/instrument/SnapshotService.cfc"]
+    "src/walks/WalkRepository.cfc", "src/walks/WalkService.cfc", "src/instrument/SnapshotService.cfc", "src/reports/ReportRepository.cfc"]
     .map((f) => fs.readFileSync(path.join(root, f), "utf8")).join("\n");
   const known = new Set([...(schema + mutationPatch + mappingPatch + dimensionPatch).matchAll(/CREATE TABLE \[icf\]\.\[([a-z_]+)\]/g)].map((m) => m[1]));
   for (const match of cfml.matchAll(/\[icf\]\.\[([a-z_]+)\]/g)) assert.ok(known.has(match[1]), `unknown table icf.${match[1]}`);

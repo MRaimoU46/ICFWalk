@@ -3,22 +3,23 @@
 Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation),
 Phase 2 (identity, roles, authorization, organizational scope), Phase 3 (instrument engine and
 visual shell), Phase 4 (walk persistence, autosave, completion, concurrency, audit), Phase 5
-(summary export and teacher email draft), and the Phase 6 publish foundation (ADM-03/04/05 at the
-service and endpoint level)** from `docs/IMPLEMENTATION_PLAN.md`. The rest of Phase 6 -- ADM-02
-preview, ADM-06 clone-and-compare, ADM-07 retirement, ADM-08 placeholder review, and all
-administration UI -- has **not** been started, and neither has Phase 7.
+(summary export and teacher email draft), the Phase 6 publish foundation (ADM-03/04/05 at the
+service and endpoint level), and Phase 7 (aggregate reporting, RPT-01..07)** from
+`docs/IMPLEMENTATION_PLAN.md`. The rest of Phase 6 -- ADM-02 preview, ADM-06 clone-and-compare,
+ADM-07 retirement, ADM-08 placeholder review, and all administration UI -- has **not** been started.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 6 publish-foundation fifth correction candidate, awaiting independent
-verification.** Branch `claude/icfwalk-phase-6-admin-publish`, on top of the frozen Phase 5 baseline
-`e55ec08af5b8622db5823b6e353423b891918549`. Phase 6 is **not** frozen and **not** complete; the
-correction it carries has not yet been independently audited.
+**Current state: Phase 7 aggregate reporting candidate, awaiting independent audit.** Branch
+`claude/icfwalk-phase-6-admin-publish`, on top of the Phase 6 commit
+`a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`, which the project owner identified as the independently
+verified and frozen Phase 0-6 baseline for this phase. Phase 7 is **not** frozen and **not**
+accepted; see the Phase 7 section at the end.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
-the Phase 6 publish-foundation correction, its second, third and fourth corrections, and finally
-the Phase 6 publish-foundation **fifth** correction, which is the current state of the build.
+the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, and
+finally **Phase 7**, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -3084,7 +3085,7 @@ they describe.
 5. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.
 
-## Phase 6 publish-foundation fifth correction (current state)
+## Phase 6 publish-foundation fifth correction (frozen as the Phase 0-6 baseline)
 
 Correction-only session against the independent audit of the fourth correction (the supplied
 candidate `04fb1afb05edbdad96d61c160c59217a01ab06e0`), whose verdict was **NOT READY TO ACCEPT THE
@@ -3258,3 +3259,134 @@ change the commit they describe.
 5. **ADM-02, ADM-06, ADM-07, ADM-08 are not started**, nor is any administration UI, nor Phase 7.
 6. **This correction has not been independently audited.** It is a correction candidate. Phase 6 is
    **not** frozen, **not** complete and **not** accepted, and no `phase-6-freeze` tag was created.
+
+## Phase 7: aggregate reporting (current state)
+
+**Starting point.** The container's local branch was stale at `a8e97f22ae1639faef5b6e68bf7255dea838f8e2`,
+three commits behind `origin/claude/icfwalk-phase-6-admin-publish`, which stood at the frozen
+`a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`. The tree was clean and `a8e97f2` is an ancestor, so the
+branch was fast-forwarded (`git merge --ff-only`): no reset, rebase, force or rewrite. Verified before
+any edit: HEAD exactly `a219d9e…`, working tree and index clean including untracked files, remote
+branch equal to HEAD. The full suite was then run on that untouched commit against a freshly
+created database: **Node/HTTP/Playwright 175/175 and CFML 391/391, 0 failed, 0 skipped**.
+
+**Scope.** `docs/IMPLEMENTATION_PLAN.md` Phase 7: scoped filters, distributions, item-level
+weighted averages, state counts and an export; narrative/teacher/email exclusion in the query,
+service and DTO layers; no report-only drill-through; completion gate "scope, denominator,
+exclusion, and report-only tests pass". Acceptance IDs RPT-01..07, plus the report parts of
+AUTH-01, AUTH-06, SEC-01, SEC-02, SEC-05 and A11Y-01..05.
+
+**A scope discrepancy, recorded rather than resolved.** The project owner identified `a219d9e` as
+the independently verified, frozen Phase 0-6 baseline. The records at that commit describe Phase 6
+as the publish foundation only (ADM-03/04/05); ADM-02, ADM-06, ADM-07, ADM-08 and the administration
+UI were never built. They are not Phase 7 and were not started here.
+
+### What Phase 7 adds
+
+| Piece | What it does |
+| --- | --- |
+| `src/reports/ReportService.cfc` | Validates filters against the caller's scope and the selected version, derives the reportable catalog from the pinned render model and the instrument's own `VisibilityEngine`, computes the report with population verification and retry, applies the suppression seam, formats the CSV, audits exports. |
+| `src/reports/ReportRepository.cfc` | Every report statement: the session population and scope temp tables, the S1 candidate selection (walk rows only, row versions captured), the population filters, the aggregates (counts keyed by ids), and the S3 verification. Selects no narrative, identifying or teacher column. |
+| `src/controllers/ReportController.cfc` | `options`, `aggregate`, `exportCsv`. |
+| Routes | `GET /api/reports/options`, `/api/reports/aggregate`, `/api/reports/aggregate.csv`, each `{ permission: "report.view" }` (`docs/ENDPOINTS.md`). |
+| `app/assets/js/reports.js` + shell | The Reports view: filters from `/options`, the report, a CSV link. Report-only roles land on it without ever calling a walk route; walk roles get a Reports button beside My walks. |
+
+Design and decisions (full text in `docs/ARCHITECTURE.md` "Aggregate reporting (Phase 7)",
+`docs/DATA_CONTRACT.md` "How Phase 7 reports implement this", `docs/OPEN_DECISIONS.md`):
+
+* **One version per report**, default the current one; versions may score an item differently.
+* **Population**: the caller's covered units (optionally one named covered unit and its covered
+  descendants), COMPLETED walks (drafts on request, VOIDED never), an inclusive observation window.
+* **Reportable surface**: active reportable `SINGLE_CHOICE` items; reportable non-sensitive `LIST`
+  dimensions except School (reported as the org unit). Free-text dimensions, Date, notes, text,
+  display items and the email draft are never reported, whatever their flags say.
+* **States and scores**: persisted response states are read (they are the engine's evaluation,
+  written with the value); distributions count ANSWERED only; means are `BigDecimal` sums of
+  answered, scored, non-N/A option scores over their count; sections pool responses. Dimension
+  visibility is not persisted, so the engine is evaluated for every combination of the source
+  dimensions' values and the visible combinations become the SQL condition; a hidden retained
+  Period is HIDDEN, never its value.
+* **Coherence**: optimistic, using the row version every mutation already moves (S1 capture, S3
+  verification, up to three attempts, then 409 `REPORT_POPULATION_CHANGED`). No lock is held that a
+  writer waits on, so reports never stall autosave.
+* **Suppression**: the undecided threshold, default none; when set, small populations and small
+  org-unit and dimension-value groups are withheld. What it does not attempt is documented.
+
+### Narrow integration changes to frozen Phase 0-6 files
+
+| File | Change | Why it was necessary |
+| --- | --- | --- |
+| `src/Bootstrap.cfc` | Constructs `reportRepository`, `reportService`, `reportController`. | Wiring; nothing existing moved. |
+| `src/http/Router.cfc` | Three GET routes. | The endpoints; no existing route or policy changed. |
+| `src/config/ConfigLoader.cfc` | `ICFWALK_REPORT_SUPPRESSION_THRESHOLD` must be empty or a whole number (up to six digits), otherwise startup is refused. | Phase 7 is the seam's first consumer. The frozen loader turned `"5 walks"`, `"five"` or `"0x10"` into 0 (no suppression) and `"-3"` into -3 silently -- a fail-open privacy control. Strengthens validation only; empty and 0 still mean none. |
+| `src/views/shell.html` | A Reports nav button and the Reports view section. | The view; the existing views are unchanged. |
+| `app/assets/js/app.js` | Imports the reports module; records `canWalk` / `canReport` from `/api/me`; `showView` knows the reports view; report-only roles land on Reports and skip the walk bootstrap. | Report-only users previously landed on My walks and got `FORBIDDEN` from `/api/walks`. For walk users `nav-list-btn` behaves exactly as before in the list and walk views. |
+| `app/assets/css/icfwalk.css` | Report styles appended. | Styles live in the stylesheet so the CSP is unchanged. |
+| `tests/cfml/specs/ConfigLoaderTest.cfc` | One new case. | Covers the stricter threshold rule; nothing existing changed. |
+| `tests/node/schema-contract.test.mjs` | `ReportRepository` added to the table-name scan. | Extends existing coverage to the new data-access file. |
+| `package.json` | `test:reports`; `browser-reports` added to `test:browser`. | Scripts only; no dependency added. |
+
+No schema migration, dependency, framework or infrastructure was added. No existing test was
+removed, skipped, weakened or rewritten.
+
+### Files changed (Phase 7)
+
+| File | Status |
+| --- | --- |
+| `src/reports/ReportService.cfc`, `src/reports/ReportRepository.cfc`, `src/controllers/ReportController.cfc` | New |
+| `app/assets/js/reports.js` | New |
+| `tests/cfml/specs/ReportServiceTest.cfc` (15 cases), `tests/cfml/specs/ReportCoherenceTest.cfc` (4 cases) | New |
+| `tests/cfml/support/InterceptingReportRepository.cfc`, `tests/cfml/support/CapturingLogger.cfc` | New, test-only |
+| `tests/node/reports.test.mjs` (12 cases), `tests/node/browser-reports.test.mjs` (6 cases) | New |
+| `docs/evidence/phase7-red-before-fix.md`, `docs/evidence/screenshots/reports-desktop.png`, `reports-phone.png` | New |
+| `src/Bootstrap.cfc`, `src/http/Router.cfc`, `src/config/ConfigLoader.cfc`, `src/views/shell.html`, `app/assets/js/app.js`, `app/assets/css/icfwalk.css` | Integration (table above) |
+| `tests/cfml/specs/ConfigLoaderTest.cfc`, `tests/node/schema-contract.test.mjs`, `package.json` | Test coverage and scripts (table above) |
+| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/LOCAL_SETUP.md`, `docs/ACCEPTANCE_TRACKING.md`, `.env.example`, `BUILD_STATUS.md` | Records |
+| `manifest.json` | Refreshed for `docs/DATA_CONTRACT.md` and `docs/OPEN_DECISIONS.md` (`node scripts/refresh-manifest.mjs`) |
+
+### Tests and results (development runs, before the commit)
+
+Environment: Lucee 6.2.8.20, SQL Server 2022 (16.0.4295.3) in Docker, Node 22.22.2, Playwright
+1.56.1 with Chromium 141.0.7390.37, axe-core 4.13.0.
+
+| Run | Result |
+| --- | --- |
+| Frozen baseline `a219d9e`, fresh database | Node/HTTP/Playwright **175/175**, CFML **391/391**; 0 failed, 0 skipped |
+| Phase 7 working tree, same database, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **193/193** (175 + 12 `reports` + 6 `browser-reports`), CFML **411/411** (391 + 15 `ReportServiceTest` + 4 `ReportCoherenceTest` + 1 `ConfigLoaderTest`); 0 failed, 0 skipped |
+| `npm run validate:handoff` | ok, 51 checks, 0 errors |
+
+Red before green (`docs/evidence/phase7-red-before-fix.md`): removing population verification made
+the coherence spec report Grade 7 beside rating 5, a state the walk never held; ignoring dimension
+visibility let a hidden retained Period match the Period filter; counting options regardless of
+state let a hidden retained 5 and a hidden section's "yes" into distributions; trusting a named org
+unit let out-of-scope schools be reported; the frozen `ConfigLoader` accepted `"5 walks"`.
+
+**The authoritative result is the exact-commit gate**, run after this commit exists, on a freshly
+created database, from a completely clean tree, with screenshots written outside the repository.
+Its totals are reported with the handoff rather than here, because writing them here would change
+the commit they describe.
+
+### Unresolved and not verified (Phase 7)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified**, as for every earlier phase. Phase
+   7 adds engine-sensitive constructs that must be re-run there: session temporary tables inside a
+   `transaction` block (one pooled connection per transaction on Adobe ColdFusion's datasource),
+   `createObject("java", "java.math.BigDecimal")` arithmetic, `cfthread` in `ReportCoherenceTest`,
+   URL-scope key case (parameter names are matched case-insensitively for that reason), and a
+   `CASE WHEN EXISTS (...)` inside a derived table. All SQL is SQL Server 2016 syntax.
+2. **The suppression threshold is still an open decision.** The seam withholds small populations and
+   small org-unit and dimension-value groups; cell-level, per-status, complementary and differencing
+   protection are not implemented (`docs/DATA_CONTRACT.md`). With the default (none), a filter that
+   narrows the population to one walk shows that walk's ratings in aggregate form -- never its
+   identity, owner or narrative.
+3. **Reports never pool instrument versions.** Cross-version trend reporting needs an approved
+   comparability mapping (`docs/OPEN_DECISIONS.md`).
+4. **A dimension whose visibility depends on an item response or free text would be left out of
+   reports** (fail closed). The current instrument has none; Period depends on Grade only.
+5. **Scale.** Reports aggregate in SQL over the existing indexes; no load test was run. A population
+   that changes on every one of three attempts is refused (409), which on a very busy district could
+   surface during heavy editing of completed walks; drafts are excluded by default, so ordinary
+   autosave traffic does not affect a default report.
+6. **The remainder of Phase 6** (ADM-02, ADM-06, ADM-07, ADM-08, administration UI) is not built.
+7. **This is an implementation candidate.** Phase 7 has not been independently audited and is not
+   frozen or accepted.

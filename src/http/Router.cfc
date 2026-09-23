@@ -60,6 +60,13 @@ component output="false" {
 		add("POST", "^/api/walks/([^/]+)/void$", "walkController", "void", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
 		add("DELETE", "^/api/walks/([^/]+)$", "walkController", "remove", { "anyPermission": variables.WALK_EDIT_PERMISSIONS });
 
+		// Aggregate reporting (Phase 7). Read-only, so no CSRF; report.view anywhere admits the
+		// request and ReportService draws the population from the caller's covered units only. The
+		// ".csv" route is "$" anchored and listed first so neither pattern can shadow the other.
+		add("GET", "^/api/reports/options$", "reportController", "options", { "permission": "report.view" });
+		add("GET", "^/api/reports/aggregate\.csv$", "reportController", "exportCsv", { "permission": "report.view" });
+		add("GET", "^/api/reports/aggregate$", "reportController", "aggregate", { "permission": "report.view" });
+
 		add("POST", "^/api/maintenance/instrument/import$", "maintenanceController", "importInstrument", "maintenance");
 		add("GET", "^/api/maintenance/instrument/versions$", "maintenanceController", "listVersions", "maintenance");
 		add("POST", "^/api/maintenance/instrument/discard-draft$", "maintenanceController", "discardDraft", "maintenance");

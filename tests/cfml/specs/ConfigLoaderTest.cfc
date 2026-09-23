@@ -64,6 +64,23 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertThrows(function() { loader({ "ICFWALK_LOG_LEVEL": "TRACE" }).load(); }, "ICFWalk.Configuration");
 	}
 
+	/**
+	 * Phase 7 made the suppression threshold operative, so a malformed value must refuse startup
+	 * rather than quietly apply no suppression. Empty and 0 remain the undecided default (none).
+	 */
+	public void function testReportSuppressionThresholdIsAWholeNumberOrRefused() {
+		assertEquals(0, loader({}).load().reportSuppressionThreshold, "unset applies no suppression");
+		assertEquals(0, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": "0" }).load().reportSuppressionThreshold);
+		assertEquals(5, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": "5" }).load().reportSuppressionThreshold);
+		assertEquals(11, loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": " 11 " }).load().reportSuppressionThreshold);
+		for (var bad in ["5 walks", "-3", "2.5", "five", "1e3", "0x10", "1234567"]) {
+			var e = assertThrows(function() {
+				loader({ "ICFWALK_REPORT_SUPPRESSION_THRESHOLD": bad }).load();
+			}, "ICFWalk.Configuration", "CONFIGURATION_INVALID");
+			assertContains("ICFWALK_REPORT_SUPPRESSION_THRESHOLD", e.message, "[" & bad & "] is refused by name");
+		}
+	}
+
 	public void function testEnvFileParsing() {
 		var parsed = loader({}).parseEnvText("## comment" & chr(10) & "A=1" & chr(10) & 'export B="two words"' & chr(10) & "C='single'" & chr(10) & "bad line" & chr(10) & "D=" & chr(10) & "E=x=y");
 		assertExactTextEquals("1", parsed.A);
