@@ -4,8 +4,8 @@
  *
  * Fixture district DR with schools A (1 walk), B (2), C (10 completed, 1 draft, 1 outside the
  * period), D (3 = the minimum) and E (none), all in one released period that no other fixture
- * uses: a random month between 1901 and 1929 (ReportCoherenceTest uses 1930-1949, the HTTP suite
- * 1950-1974 and the browser suite 1975-1999), so
+ * uses: a random month between 1901 and 1929 (ReportCoherenceTest uses 1930-1939, ReportIsolationTest 1940-1944,
+ * ReportReleaseMembershipTest 1945-1949, the HTTP suite 1950-1974 and the browser suite 1975-1999), so
  * the release covers these walks and nothing else. School C's walks are built so that its
  * released breakdowns exercise every case of the rule:
  *
@@ -127,6 +127,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	private void function deleteRelease(required string id) {
 		db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", { "id": db.guid(arguments.id) });
 		db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", { "id": db.guid(arguments.id) });
+		db.run("DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", { "id": db.guid(arguments.id) });
 		db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", { "id": db.guid(arguments.id) });
 	}
 

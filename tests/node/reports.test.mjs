@@ -40,10 +40,28 @@ test("RPT-06 (structural): the report repository selects no narrative, identifyi
     assert.ok(!code.toLowerCase().includes(forbidden), `ReportRepository must not reference ${forbidden}`);
   }
   // Every value reaches SQL as a named parameter; the only concatenations are the generated
-  // placeholders, the session's temporary table names, and the WHERE clause built from them.
+  // placeholders, each computation's own temporary table names (server-generated and checked
+  // against their exact pattern on every use), and the WHERE clause built from them.
   for (const line of code.split("\n").filter((l) => /queryExecute|db\.run|db\.scalar/.test(l))) {
     assert.doesNotMatch(line, /&\s*arguments\.(?!visibility|alias|params)/, `value concatenated into SQL: ${line.trim()}`);
   }
+});
+
+test("P7C-01 / P7C-02 (structural): report tables are connection-local, and release membership is never read out", () => {
+  const code = cfmlCode(source("src/reports/ReportRepository.cfc"));
+  // No fixed temporary table name, no "##" (a global table) anywhere: the one "#" is chr(35).
+  assert.doesNotMatch(code, /icf_report_population|icf_report_units/, "no fixed, shared population table name");
+  assert.doesNotMatch(code, /["']#/, "no temporary table name written as a CFML literal");
+  assert.match(code, /variables\.LOCAL_TEMP = chr\(35\);/);
+  // The membership is written, and consulted only to leave released walks out of a new release.
+  const uses = [...code.matchAll(/[^\n]*report_release_walk[^\n]*/g)].map((m) => m[0].trim());
+  assert.ok(uses.length >= 3, "membership is written and consulted");
+  for (const use of uses) {
+    assert.ok(/NOT EXISTS \(SELECT 1 FROM \[icf\]\.\[report_release_walk\] rw WHERE rw\.walk_id = w\.walk_id\)/.test(use) || /INSERT INTO \[icf\]\.\[report_release_walk\]/.test(use),
+      `release membership is only written or used to exclude: ${use}`);
+  }
+  // And nothing in the service returns it.
+  assert.doesNotMatch(cfmlCode(source("src/reports/ReportService.cfc")), /report_release_walk/);
 });
 
 test("reports are driven by the instrument, not by names written into the report code", () => {

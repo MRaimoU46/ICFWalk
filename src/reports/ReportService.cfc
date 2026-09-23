@@ -258,10 +258,12 @@ component output="false" {
 	 * WHAT. body = { observedFrom, observedTo } (YYYY-MM-DD, inclusive), nothing else. The dates
 	 * must have passed (the last before today, UTC) and must not overlap any existing release's dates:
 	 * two overlapping releases could be subtracted. Under an exclusive lock, for every reportable
-	 * version with COMPLETED walks observed in the period, the walks of every active unit are read
-	 * as one coherent population (captured row versions, verified, up to MAX_ATTEMPTS), and each
-	 * (version, org unit) block with at least the minimum walks is stored with the count of every
-	 * non-zero category of every reportable breakdown. A smaller block is not stored at all.
+	 * version with COMPLETED walks observed in the period, the walks of every active unit that no
+	 * earlier release counted are read as one coherent population (captured row versions, verified,
+	 * up to MAX_ATTEMPTS), and each (version, org unit) block with at least the minimum walks is
+	 * stored with the count of every non-zero category of every reportable breakdown, beside the
+	 * walks it counts (so no later release counts them again, even after a date correction moves
+	 * one: P7C-02). A smaller block is not stored at all, and its walks stay unreleased.
 	 * Nothing is suppressed at this point: suppression is applied, deterministically, each time the
 	 * release is read.
 	 */
@@ -294,6 +296,7 @@ component output="false" {
 				var frozen = freezeVersion(versionId, span.from, span.before, unitIds, k);
 				attempts = max(attempts, frozen.attempts);
 				for (var b in frozen.blocks) {
+					reports.insertMembers(releaseId, versionId, b.orgUnitId, b.walkIds);
 					reports.insertBlock(releaseId, versionId, b.orgUnitId, b.walks);
 					reports.insertCells(releaseId, versionId, b.orgUnitId, b.cells);
 				}
@@ -373,25 +376,46 @@ component output="false" {
 		var itemIds = [];
 		for (var it in catalog.items) arrayAppend(itemIds, it.itemId);
 		for (var attempt = 1; attempt <= variables.MAX_ATTEMPTS; attempt++) {
-			reports.beginPopulation();
-			reports.loadScope(arguments.unitIds);
-			// S1: walk rows only, row versions captured.
-			reports.selectCandidates(arguments.versionId, ["COMPLETED"], arguments.observedFrom, arguments.observedBefore);
+			var population = reports.beginPopulation();
+			reports.loadScope(population, arguments.unitIds);
+			// S1: walk rows only, row versions captured. A walk an earlier release counted is never
+			// a candidate again, wherever a correction has moved its date since (P7C-02).
+			reports.selectCandidates(population, arguments.versionId, ["COMPLETED"], arguments.observedFrom, arguments.observedBefore, true);
 			// S2: every aggregate reads child rows.
-			var units = reports.unitStatusCounts();
+			var units = reports.unitStatusCounts(population);
 			var dims = {};
-			for (var d in catalog.dimensions) dims[d.code] = reports.unitDimensionCounts(d.dimensionId, d.visibility);
-			var items = reports.unitItemCounts(itemIds);
+			for (var d in catalog.dimensions) dims[d.code] = reports.unitDimensionCounts(population, d.dimensionId, d.visibility);
+			var items = reports.unitItemCounts(population, itemIds);
 			// S3: every walk still at the row version S1 captured, or this attempt is discarded.
-			var moved = reports.verifyPopulation();
-			reports.endPopulation();
-			if (moved == 0) return { "attempts": attempt, "blocks": blocksFrom(catalog, units, dims, items, arguments.k) };
+			var moved = reports.verifyPopulation(population);
+			var members = moved == 0 ? reports.populationWalks(population) : [];
+			reports.endPopulation(population);
+			if (moved == 0) return { "attempts": attempt, "blocks": withMembers(blocksFrom(catalog, units, dims, items, arguments.k), members) };
 			variables.logger.warn("report.release.population.changed", { "versionId": arguments.versionId, "attempt": attempt, "moved": moved });
 		}
 		variables.errors.conflict(
 			"Walks observed on those dates changed while the release was being prepared. Release them again.",
 			"REPORT_POPULATION_CHANGED", { "attempts": variables.MAX_ATTEMPTS }
 		);
+	}
+
+	/**
+	 * Attaches to each kept block the walks it counts (the release's membership). A block whose
+	 * count and walks disagree is a defect, and the database would refuse it too (50065).
+	 */
+	private array function withMembers(required array blocks, required array members) {
+		var byUnit = {};
+		for (var m in arguments.members) {
+			if (!structKeyExists(byUnit, m.orgUnitId)) byUnit[m.orgUnitId] = [];
+			arrayAppend(byUnit[m.orgUnitId], m.walkId);
+		}
+		for (var b in arguments.blocks) {
+			b["walkIds"] = structKeyExists(byUnit, uCase(b.orgUnitId)) ? byUnit[uCase(b.orgUnitId)] : [];
+			if (arrayLen(b.walkIds) != b.walks) {
+				throw(type = "ICFWalk.Internal", message = "A release block's walks and its count disagree.", errorcode = "REPORT_RELEASE_MEMBERSHIP_MISMATCH");
+			}
+		}
+		return arguments.blocks;
 	}
 
 	/**
@@ -628,23 +652,23 @@ component output="false" {
 		for (var it in reportedItems(f)) arrayAppend(itemIds, it.itemId);
 		for (var attempt = 1; attempt <= variables.MAX_ATTEMPTS; attempt++) {
 			var outcome = variables.db.transact(function() {
-				reports.beginPopulation();
+				var population = reports.beginPopulation();
 				var result = { "units": [], "dimensions": {}, "items": [], "moved": 0 };
 				for (var d in catalog.dimensions) result.dimensions[d.code] = [];
 				if (arrayLen(f.unitIds)) {
-					reports.loadScope(f.unitIds);
+					reports.loadScope(population, f.unitIds);
 					// S1: walk rows only, row versions captured.
-					reports.selectCandidates(f.version.versionId, f.statuses, f.observedFrom, f.observedBefore);
+					reports.selectCandidates(population, f.version.versionId, f.statuses, f.observedFrom, f.observedBefore);
 					// S2: population filters and every aggregate read child rows.
-					for (var df in f.dimensionFilters) reports.restrictToDimensionValue(df.dimension.dimensionId, df.value.valueId, df.dimension.visibility);
-					if (!structIsEmpty(f.optionFilter)) reports.restrictToOption(f.optionFilter.itemId, f.optionFilter.optionId);
-					result.units = reports.unitStatusCounts();
-					for (var d in catalog.dimensions) result.dimensions[d.code] = reports.dimensionCounts(d.dimensionId, d.visibility);
-					result.items = reports.itemCounts(itemIds);
+					for (var df in f.dimensionFilters) reports.restrictToDimensionValue(population, df.dimension.dimensionId, df.value.valueId, df.dimension.visibility);
+					if (!structIsEmpty(f.optionFilter)) reports.restrictToOption(population, f.optionFilter.itemId, f.optionFilter.optionId);
+					result.units = reports.unitStatusCounts(population);
+					for (var d in catalog.dimensions) result.dimensions[d.code] = reports.dimensionCounts(population, d.dimensionId, d.visibility);
+					result.items = reports.itemCounts(population, itemIds);
 					// S3: every walk still at the row version S1 captured, or the report is discarded.
-					result.moved = reports.verifyPopulation();
+					result.moved = reports.verifyPopulation(population);
 				}
-				reports.endPopulation();
+				reports.endPopulation(population);
 				return result;
 			});
 			if (outcome.moved == 0) {

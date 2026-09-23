@@ -595,22 +595,42 @@ the COMPLETED walks observed on a range of dates (`observedFrom`..`observedTo`, 
 * **Who releases.** Only a caller holding `walk.read` and `report.view` on every active org unit --
   someone who can already open every walk a release will count. Anyone else: 403
   `REPORT_RELEASE_NOT_PERMITTED`, audited `ACCESS_DENIED`.
-* **No overlap.** No two releases cover the same date, so no two share a walk and none can be
-  subtracted from another. The service checks under an exclusive application lock (409
-  `REPORT_RELEASE_OVERLAP`) and `TR_report_release_no_overlap` refuses an overlapping row whatever
-  writes it.
-* **Never changes.** A release is computed once, from one coherent read of every walk (the same
-  captured-then-verified row versions as a live report, up to three attempts, then 409
-  `REPORT_POPULATION_CHANGED`), and is never updated (`TR_report_release*_immutable`) or deleted by
-  the application. Completing, editing or voiding a walk afterwards changes no released figure, so
-  rerunning a report reveals nothing. (Deleting a release directly in the database would free its
-  dates for a second, overlapping release; nothing in the application does, and an operator must
-  not.)
+* **No overlap.** No two releases cover the same date. The service checks under an exclusive
+  application lock (409 `REPORT_RELEASE_OVERLAP`) and `TR_report_release_no_overlap` refuses an
+  overlapping row whatever writes it. Dates alone do not keep releases apart, though: a completed
+  walk stays correctable, and its visit date decides `observed_at`. The next bullet does.
+* **One release per walk, ever** (audit finding P7C-02). When a release is created it records every
+  walk its stored blocks count in `icf.report_release_walk`, keyed by the walk alone, so the
+  database refuses a second membership (`PK_report_release_walk`) whatever writes it. A new release
+  leaves out every walk an earlier release counted. So no two releases share a walk, and none can
+  be combined with another to learn about one. What a date correction does:
+  * a walk an earlier release counted keeps its correction (walks stay correctable after release),
+    the release that counted it keeps the figures it froze, and no later release ever counts it,
+    whatever dates its visit date now falls in;
+  * a walk not yet released whose visit date is corrected into dates already released is never
+    released: those dates are closed, and no later release covers them.
+  Both outcomes disclose less, never more (fail closed). Walks in a block below k are not recorded
+  (the block is not stored, so nothing about them was published) and remain releasable. The
+  database also refuses a block whose count differs from the walks recorded for it (50065), and any
+  later change to a stored block's recorded walks (50065).
+* **Never changes.** A release is computed once, in one transaction, from one coherent read of
+  every walk (the same captured-then-verified row versions as a live report, up to three attempts,
+  then 409 `REPORT_POPULATION_CHANGED`). Completing, editing or voiding a walk afterwards changes no
+  released figure, so rerunning a report reveals nothing. What the database itself enforces: no
+  release, block, cell or membership row is ever updated (50064); nothing -- block, cell or
+  membership row -- is added to a release after the transaction that created it
+  (`created_transaction_id`, 50066); a stored block's recorded walks never grow or shrink (50065).
+  What it does not refuse is deleting a whole release, rows in dependency order (cells, blocks,
+  membership, release). Nothing in the application does; only the test-only fixture cleanup removes
+  a test's own. An operator must not: a deleted release frees its dates and its walks for a second
+  release that could then be combined with what was already read.
 * **Blocks.** A release is stored per block: one instrument version at one org unit (the walk's
   own unit). A block with fewer than k walks is not stored at all (`CK_report_release_block_walks`,
   `TR_report_release_block_floor`), so it contributes to nothing -- not to its school, not to its
   district. For every stored block, every reportable breakdown is stored as the count of each
-  non-zero category, keyed by instrument codes. No walk id or narrative is stored.
+  non-zero category, keyed by instrument codes. No narrative is stored. The walks a block counts
+  are recorded in the membership (above) so the database can refuse a second release of them; no
+  report reads the membership, and nothing a report returns carries a walk id.
 * **Versions.** A release covers every reportable version (the current version and the PUBLISHED
   and RETIRED ones) with completed walks on its dates. Walks pinned to any other version are not
   released.
@@ -672,6 +692,23 @@ withheld; a count with `1` is the published part). Logs (`report.generated`, `re
 `report.released`) and audit details (`REPORT_EXPORTED`, `REPORT_RELEASED`) carry identifiers and
 published counts only; a withheld population is recorded as `-1`.
 
+**Computing a report in isolation** (audit finding P7C-01). A live report, and each version of a
+release being frozen, materialize their authorized scope and walk population in temporary tables
+that every aggregate joins. Each computation gets its own pair: connection-local (one `#`, built
+from `chr(35)`, never `##`, which SQL Server makes global), named from a server-generated GUID
+(`#icf_rp_` / `#icf_ru_` and 32 hex digits, checked against that exact pattern on every use), and
+created inside the request's own transaction, which `beginPopulation` requires
+(`REPORT_POPULATION_NO_TRANSACTION`). The computation records its connection's session id and
+refuses to verify or clean up on any other (`REPORT_POPULATION_CONNECTION_CHANGED`), so a result is
+never assembled from two connections. The tables are dropped on success and rolled back with the
+transaction on failure. Concurrent requests therefore never share, block on, replace or read one
+another's scope or population: `ReportIsolationTest` pauses one computation inside its transaction
+and runs another (two live reports on disjoint schools; a live report and a release, both ways) to
+completion beside it, and checks both counts exactly. The build the audit examined
+(`0c74dbd`) already used connection-local tables: CFML writes one `#` as `##` inside a string, so
+its `"##icf_report_population"` was `#icf_report_population` at run time. The fixed name is gone
+anyway, and the transaction and connection checks are new.
+
 **What this does not protect against** (accepted or outside the rule):
 
 * A block in which every walk falls in one category publishes that category complete (100%): its
@@ -684,8 +721,11 @@ published counts only; a withheld population is recorded as `-1`.
 * Walk-and-report roles reporting inside their own `walk.read` scope see live, unsuppressed figures
   and every filter. They can open each of those walks already.
 * Releases record the counts of small cells inside stored blocks (they are needed to protect each
-  read the same way); only blocks below k are never stored. Database administrators can read walks
-  directly anyway.
+  read the same way), and the membership records which walks each stored block counts; only blocks
+  below k are never stored. Database administrators can read walks directly anyway.
+* A walk whose visit date is corrected into dates already released is never released, and a walk
+  corrected after its release is reported only as it stood when released. Utility is lost; nothing
+  is disclosed.
 
 ## Mutation identity and idempotency
 

@@ -53,9 +53,9 @@ component output="false" {
 
 	// ---- hooked seams ------------------------------------------------------------------------------
 
-	public numeric function selectCandidates(required string versionId, required array statuses, any observedFrom = "", any observedBefore = "") {
+	public numeric function selectCandidates(required struct population, required string versionId, required array statuses, any observedFrom = "", any observedBefore = "", boolean unreleasedOnly = false) {
 		trigger("selectCandidates");
-		return variables.inner.selectCandidates(arguments.versionId, arguments.statuses, arguments.observedFrom, arguments.observedBefore);
+		return variables.inner.selectCandidates(arguments.population, arguments.versionId, arguments.statuses, arguments.observedFrom, arguments.observedBefore, arguments.unreleasedOnly);
 	}
 
 	/**
@@ -63,39 +63,41 @@ component output="false" {
 	 * report has captured every row version and read every walk's dimension values, and has not
 	 * read a single response. A save committed here is the torn read itself.
 	 */
-	public array function itemCounts(required array itemIds) {
+	public array function itemCounts(required struct population, required array itemIds) {
 		trigger("itemCounts");
-		return variables.inner.itemCounts(arguments.itemIds);
+		return variables.inner.itemCounts(arguments.population, arguments.itemIds);
 	}
 
 	/** The release freeze's counterpart of itemCounts: after the dimension aggregates, before any response. */
-	public array function unitItemCounts(required array itemIds) {
+	public array function unitItemCounts(required struct population, required array itemIds) {
 		trigger("unitItemCounts");
-		return variables.inner.unitItemCounts(arguments.itemIds);
+		return variables.inner.unitItemCounts(arguments.population, arguments.itemIds);
 	}
 
-	public numeric function verifyPopulation() {
+	public numeric function verifyPopulation(required struct population) {
 		trigger("verifyPopulation");
-		return variables.inner.verifyPopulation();
+		return variables.inner.verifyPopulation(arguments.population);
 	}
 
 	// ---- pass-through ------------------------------------------------------------------------------
 
 	public array function listFrozenVersions(required string instrumentCode) { return variables.inner.listFrozenVersions(arguments.instrumentCode); }
-	public void function beginPopulation() { variables.inner.beginPopulation(); }
-	public void function endPopulation() { variables.inner.endPopulation(); }
-	public void function loadScope(required array orgUnitIds) { variables.inner.loadScope(arguments.orgUnitIds); }
-	public numeric function populationSize() { return variables.inner.populationSize(); }
-	public void function restrictToDimensionValue(required string dimensionId, required string valueId, required struct visibility) { variables.inner.restrictToDimensionValue(arguments.dimensionId, arguments.valueId, arguments.visibility); }
-	public void function restrictToOption(required string itemId, required string optionId) { variables.inner.restrictToOption(arguments.itemId, arguments.optionId); }
-	public array function unitStatusCounts() { return variables.inner.unitStatusCounts(); }
-	public array function dimensionCounts(required string dimensionId, required struct visibility) { return variables.inner.dimensionCounts(arguments.dimensionId, arguments.visibility); }
+	public struct function beginPopulation() { return variables.inner.beginPopulation(); }
+	public void function endPopulation(required struct population) { variables.inner.endPopulation(arguments.population); }
+	public void function loadScope(required struct population, required array orgUnitIds) { variables.inner.loadScope(arguments.population, arguments.orgUnitIds); }
+	public numeric function populationSize(required struct population) { return variables.inner.populationSize(arguments.population); }
+	public void function restrictToDimensionValue(required struct population, required string dimensionId, required string valueId, required struct visibility) { variables.inner.restrictToDimensionValue(arguments.population, arguments.dimensionId, arguments.valueId, arguments.visibility); }
+	public void function restrictToOption(required struct population, required string itemId, required string optionId) { variables.inner.restrictToOption(arguments.population, arguments.itemId, arguments.optionId); }
+	public array function unitStatusCounts(required struct population) { return variables.inner.unitStatusCounts(arguments.population); }
+	public array function dimensionCounts(required struct population, required string dimensionId, required struct visibility) { return variables.inner.dimensionCounts(arguments.population, arguments.dimensionId, arguments.visibility); }
 	public string function visibilitySql(required struct visibility, required string alias, required struct params) { return variables.inner.visibilitySql(arguments.visibility, arguments.alias, arguments.params); }
-	public array function unitDimensionCounts(required string dimensionId, required struct visibility) { return variables.inner.unitDimensionCounts(arguments.dimensionId, arguments.visibility); }
+	public array function unitDimensionCounts(required struct population, required string dimensionId, required struct visibility) { return variables.inner.unitDimensionCounts(arguments.population, arguments.dimensionId, arguments.visibility); }
 	public array function versionsWithCompletedWalks(required date observedFrom, required date observedBefore) { return variables.inner.versionsWithCompletedWalks(arguments.observedFrom, arguments.observedBefore); }
 	public void function lockReleases() { variables.inner.lockReleases(); }
 	public boolean function overlapsRelease(required string fromDay, required string toDay) { return variables.inner.overlapsRelease(arguments.fromDay, arguments.toDay); }
 	public void function insertRelease(required string releaseId, required string fromDay, required string toDay, required numeric minimumWalks, required string releasedBy) { variables.inner.insertRelease(arguments.releaseId, arguments.fromDay, arguments.toDay, arguments.minimumWalks, arguments.releasedBy); }
+	public array function populationWalks(required struct population) { return variables.inner.populationWalks(arguments.population); }
+	public void function insertMembers(required string releaseId, required string versionId, required string orgUnitId, required array walkIds) { variables.inner.insertMembers(arguments.releaseId, arguments.versionId, arguments.orgUnitId, arguments.walkIds); }
 	public void function insertBlock(required string releaseId, required string versionId, required string orgUnitId, required numeric walks) { variables.inner.insertBlock(arguments.releaseId, arguments.versionId, arguments.orgUnitId, arguments.walks); }
 	public void function insertCells(required string releaseId, required string versionId, required string orgUnitId, required array cells) { variables.inner.insertCells(arguments.releaseId, arguments.versionId, arguments.orgUnitId, arguments.cells); }
 	public array function listReleases() { return variables.inner.listReleases(); }

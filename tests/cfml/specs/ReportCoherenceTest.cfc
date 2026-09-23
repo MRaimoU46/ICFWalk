@@ -49,6 +49,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		for (var id in variables.releases) {
 			db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", { "id": db.guid(id) });
 			db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", { "id": db.guid(id) });
+			db.run("DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", { "id": db.guid(id) });
 			db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", { "id": db.guid(id) });
 		}
 		fx.remove();
@@ -289,7 +290,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 */
 	public void function testAReleaseFreezesEveryWalkInOneCommittedState() {
 		variables.seq++;
-		var base = createDate(randRange(1930, 1949), randRange(1, 12), 1);
+		var base = createDate(randRange(1930, 1939), randRange(1, 12), 1);
 		var visit = dateFormat(base, "yyyy-mm-dd");
 		var unit = fx.orgUnit("rel" & variables.seq, "SCHOOL", variables.DT);
 		var walker = fx.user("relwalker" & variables.seq);

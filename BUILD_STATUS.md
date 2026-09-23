@@ -10,16 +10,17 @@ ADM-07 retirement, ADM-08 placeholder review, and all administration UI -- has *
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 7 correction candidate (audit findings P7-01 and P7-02), awaiting independent
-re-audit.** Branch `claude/icfwalk-phase-7-correction-n62s25`, one commit on top of the audited
-Phase 7 candidate `0c6fa10972593043508f502538534c2aa95c671b`, which sits on the frozen Phase 0-6
+**Current state: Phase 7 correction, second round (audit findings P7C-01, P7C-02 and P7C-03),
+awaiting independent re-audit.** Branch `claude/icfwalk-phase-7-correction-n62s25`: the second-round
+commit sits on the audited correction `0c74dbd5a8a79684d38ba0b169dce2682a54fad6`, which sits on the
+first audited Phase 7 candidate `0c6fa10972593043508f502538534c2aa95c671b` and the frozen Phase 0-6
 baseline `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`. Phase 7 is **not** frozen and **not**
-accepted; see "Phase 7 correction" at the end.
+accepted; see "Phase 7 correction, second round" at the end.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
 the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
-and finally **the Phase 7 correction**, which is the current state of the build.
+the Phase 7 correction, and finally **its second round**, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -3398,7 +3399,7 @@ the commit they describe.
 7. **This is an implementation candidate.** Phase 7 has not been independently audited and is not
    frozen or accepted.
 
-## Phase 7 correction: RPT-03 privacy rule and exact-commit evidence (current state)
+## Phase 7 correction: RPT-03 privacy rule and exact-commit evidence (superseded in part by the second round below)
 
 **Starting point, verified before any edit.** Branch `claude/icfwalk-phase-7-correction-n62s25` at
 `0c6fa10972593043508f502538534c2aa95c671b`, tree `0b7a487975101154b3084bb7ef363fc150d880d4` (the
@@ -3513,4 +3514,127 @@ created database, from a clean tree, with screenshots written outside the reposi
 transcript, an environment record and a source archive of the commit are delivered with the
 handoff, each with its SHA-256, and are not committed (as in CORR8-03: committing them would create
 a different, untested commit).
+
+## Phase 7 correction, second round: audit findings P7C-01, P7C-02 and P7C-03 (current state)
+
+**Starting point, verified before any edit.** Branch `claude/icfwalk-phase-7-correction-n62s25` at
+`0c74dbd5a8a79684d38ba0b169dce2682a54fad6` (tree `413ac2b7f71d03f30ba18866215939795deccca1`, parent
+`0c6fa10972593043508f502538534c2aa95c671b`), equal to the remote branch, working tree and index clean
+including untracked files. The independent audit of that commit: **NOT READY TO FREEZE PHASE 7**,
+with P7C-01 (HIGH), P7C-02 (HIGH), P7C-03 (MEDIUM, evidence) and one observation on release
+immutability. It confirmed the first round's P7-01 correction (report-only users refused live
+figures, the floor of 3, block suppression, complementary suppression and the ambiguity audit, which
+survived an independent brute-force check of 2,473,571 distributions).
+
+### P7C-01: concurrent report isolation
+
+**What was found.** The audit read `variables.POP = "##icf_report_population"` as a global (`##`)
+temporary table. Inside a CFML string `##` is the escape for one `#`, so at run time the name was
+`#icf_report_population`, a connection-local table. This was checked, not assumed: on the audited
+build, a report paused inside its transaction shows its tables in tempdb as `#icf_report_population`
+and `#icf_report_units`, padded to 128 characters with a per-connection suffix, and no global
+temporary table at all. The new barrier tests (below) pass on the audited build unchanged, and fail
+there when the tables are made genuinely global. So the finding as stated does not reproduce.
+
+**What changed anyway.** Isolation should not depend on a reader decoding CFML escapes, or on an
+engine's connection handling this environment cannot run (Adobe ColdFusion). `ReportRepository`:
+
+| Change | Why |
+| --- | --- |
+| `beginPopulation` returns a handle `{ pop, units, spid }`; every population method takes it. | No shared, fixed table name: each computation has its own. |
+| Names are `#icf_rp_` / `#icf_ru_` and 32 hex digits of a server-generated GUID, the `#` built from `chr(35)`, checked against that exact pattern on every use (`popTable`, `unitsTable`). | Connection-local by construction and unambiguous to read; two computations never share a name, so a statement that somehow reached another connection could not find, drop or read another request's tables. |
+| `beginPopulation` refuses to run outside a transaction (`REPORT_POPULATION_NO_TRANSACTION`). | The audited code would build a population in autocommit mode and leave its tables on a pooled connection, where the next computation reused them (seen on the audited build; see the evidence). |
+| `verifyPopulation` and `endPopulation` refuse to continue on any session but the one that created the population (`REPORT_POPULATION_CONNECTION_CHANGED`). | A result is never assembled from two connections, whatever the engine does. |
+
+`ReportService.compute` and `freezeVersion` thread the handle through; nothing else in the report
+path changed. Tables are dropped by `endPopulation` on success and rolled back with the transaction
+on failure (proven: `testAReportLeavesNoPopulationTableBehindOnSuccessOrFailure`).
+
+### P7C-02: one release per walk
+
+**What was found.** Reproduced on the audited build: release A froze three walks, one of them had its
+visit date corrected into release B's dates, and release B counted it again. Non-overlapping dates do
+not make populations disjoint, because a completed walk's date stays correctable and `observed_at`
+follows it.
+
+**What changed.** Migration 007 adds `icf.report_release_walk`, keyed by the walk: every walk a stored
+block counts is recorded when the release is created, and the database refuses a second membership
+whatever writes it. `createRelease` leaves out every walk an earlier release counted
+(`selectCandidates(..., unreleasedOnly = true)`, also in `versionsWithCompletedWalks`) and records
+each block's walks (`populationWalks`, `insertMembers`) before storing the block. The decision the
+audit asked for, fail closed and documented in `docs/DATA_CONTRACT.md` and `docs/OPEN_DECISIONS.md`
+(as an implementation detail of the approved frozen releases, not a new owner decision): walks stay
+correctable after release; the release that counted a walk keeps the figures it froze; no later
+release ever counts it; a walk corrected into dates already released is never released. No change
+to walk editing was needed.
+
+### The immutability observation
+
+The audit noted that 007 refused updates but not later inserts or deletes of a release's rows. The
+schema now proves more, and the documents say exactly what: nothing is added to a release after the
+transaction that created it (`report_release.created_transaction_id`, checked by the block, cell and
+membership triggers, 50066); a stored block counts exactly its recorded walks, and they never grow
+or shrink (50065); no row is ever updated (50064). Deleting a whole release, rows in dependency
+order, is still possible directly in the database; nothing in the application does it, and it
+remains the documented residual. A database carrying an earlier, unreleased draft of 007 is refused
+with 50067 rather than altered, so the patch still changes nothing that exists.
+
+### P7C-03: delivered evidence
+
+The gate runs again from this round's exact pushed commit. Its raw transcript, the environment
+record, a source archive, a git bundle of the branch (so commit, tree, parent and ancestry can be
+checked without network access) and a `SHA256SUMS` file are delivered together as one bundle, with
+the push output. None is committed (CORR8-03). The gate transcript now also prints branch tracking
+status before and after the run.
+
+### Files changed in this round
+
+| File | Change |
+| --- | --- |
+| `database/007_report_release.sql` | `report_release_walk`, `created_transaction_id`, three triggers (`TR_report_release_block_members`, `TR_report_release_cell_sealed`, `TR_report_release_walk_guard`), the 50067 draft check, the header's guarantees. |
+| `src/reports/ReportRepository.cfc` | Population handle, names, transaction and connection checks (P7C-01); membership read, write and exclusion (P7C-02). |
+| `src/reports/ReportService.cfc` | Threads the handle; records membership when a release is created (`withMembers`). |
+| `src/controllers/MaintenanceController.cfc` | Test-only fixture cleanup removes releases (membership included) before walks, which the membership references. |
+| `tests/cfml/specs/ReportIsolationTest.cfc` (new) | 7 cases: 3 barriers, cleanup, and the 3 guards. |
+| `tests/cfml/specs/ReportReleaseMembershipTest.cfc` (new) | 2 cases: the audit's scenario, and the database refusing a second membership. |
+| `tests/cfml/support/InterceptingReportRepository.cfc` | Signatures follow the handle; pass-throughs for the membership methods. |
+| `tests/cfml/specs/ReportReleaseTest.cfc`, `ReportCoherenceTest.cfc` | Release cleanup also deletes membership rows; `ReportCoherenceTest`'s release dates move from 1930-1949 to 1930-1939 to give the new specs their own years (walk dates must fall in 1900-2200 and releases need past dates). No assertion changed. |
+| `tests/node/db-scripts.test.mjs` | The 007 section writes each release in one transaction, as the database now requires, and tests every new guard by error number (2627, 50065, 50066, 50064) and the one deletion the database allows. |
+| `tests/node/schema-contract.test.mjs` | The new table, column and triggers. **Replaced expectation:** "a release names no walk: no `[walk_id]`" encoded the design P7C-02 found unsafe (a release that kept no membership). It is now "no `[walk_id]` outside the membership table", and the narrative, owner, teacher and classroom checks are unchanged. The "additive: no ALTER TABLE" assertion is kept, which is why a draft 007 is refused rather than altered. |
+| `tests/node/reports.test.mjs` | A structural test: no fixed or global population table name, and the membership is only written or used to exclude, never read out. |
+| `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `database/README.md`, `docs/ARCHITECTURE.md`, `docs/ENDPOINTS.md`, `docs/ACCEPTANCE_TRACKING.md`, `manifest.json` | The rule as now enforced, the P7C ledger, and the refreshed manifest. |
+| `docs/evidence/phase7-correction-2-red-before-fix.md` (new) | The red-before-fix record. |
+
+### Tests and results (development runs, before the commit)
+
+| Run | Result |
+| --- | --- |
+| The audited correction `0c74dbd`, its own exact-commit gate | Node/HTTP/Playwright **197/197**, CFML **435/435**; 0 failed, 0 skipped |
+| This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198** (197 + 1 structural), CFML **444/444** (435 + 7 `ReportIsolationTest` + 2 `ReportReleaseMembershipTest`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
+
+These are development runs; the authoritative totals are the exact-commit gate's.
+
+### Red before fix
+
+`docs/evidence/phase7-correction-2-red-before-fix.md`: on the audited build, served against its own
+database built from its own migrations, P7C-02 reproduces (release B counted a released walk again);
+P7C-01's barrier tests pass (the tables were already connection-local), fail when the tables are
+made global, and the guard tests fail because the guards are new. Sixteen deliberate mutations of this
+round's code -- the first round's eleven re-run, and five new ones for P7C-01 and P7C-02 -- each turn
+tests red for the reason targeted, and each file is restored byte for byte.
+
+### Unresolved and not verified (second round)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New engine-sensitive constructs:
+   `CURRENT_TRANSACTION_ID()` in a default and in triggers (SQL Server 2016 and later), `@@SPID` and
+   `@@TRANCOUNT` checks inside `cftransaction`, and `cfthread` in the barrier tests (Lucee only here).
+   The connection check fails closed if an engine moves a transaction's statements between
+   connections; it does not make such an engine work.
+2. **Whole-release deletion** in the database is not refused; it would free the release's dates and
+   walks. Nothing in the application deletes a release.
+3. **Utility.** A walk corrected into dates already released is never released, and a released
+   walk's later corrections never reach any release.
+4. The accepted residuals of the approved rule are unchanged (100% blocks, collusion and outside
+   knowledge, live figures for walk-and-report roles in their own scope).
+5. **The remainder of Phase 6** is still not built, and **Phase 7 is still not frozen or accepted.**
 

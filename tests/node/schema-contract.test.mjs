@@ -62,9 +62,10 @@ const expected = {
   app_role: ["role_id", "role_code", "scope_type", "can_create_walk", "can_open_walk_details", "can_edit_owned_walks", "can_view_aggregate_reports", "can_manage_instruments", "active"],
   user_role_scope: ["user_role_scope_id", "user_id", "role_id", "org_unit_id", "effective_start", "effective_end", "include_descendants", "created_by_user_id"],
   audit_event: ["event_id", "entity_type", "entity_id", "event_type", "actor_user_id", "event_at", "correlation_id", "details_json"],
-  report_release: ["release_id", "observed_from", "observed_to", "minimum_walks", "released_by_user_id", "released_at"],
+  report_release: ["release_id", "observed_from", "observed_to", "minimum_walks", "released_by_user_id", "released_at", "created_transaction_id"],
   report_release_block: ["release_id", "version_id", "org_unit_id", "walks"],
   report_release_cell: ["release_id", "version_id", "org_unit_id", "subject_type", "subject_key", "category_type", "category_code", "responses"],
+  report_release_walk: ["walk_id", "release_id", "version_id", "org_unit_id"],
 };
 
 test("repository columns exist in 001_schema.sql", () => {
@@ -170,7 +171,7 @@ test("006 patch scopes dimensions to a version and requires a publisher, idempot
 });
 
 test("007 patch adds frozen report releases idempotently, additively, and guarded in the database", () => {
-  for (const table of ["report_release", "report_release_block", "report_release_cell"]) {
+  for (const table of ["report_release", "report_release_block", "report_release_cell", "report_release_walk"]) {
     assert.match(releasePatch, new RegExp(`IF OBJECT_ID\\(N'\\[icf\\]\\.\\[${table}\\]', N'U'\\) IS NULL`), `${table} is created only when absent`);
   }
   // The approved floor is in the schema, not only in the application.
@@ -178,12 +179,25 @@ test("007 patch adds frozen report releases idempotently, additively, and guarde
   assert.match(releasePatch, /CONSTRAINT \[CK_report_release_block_walks\]\s+CHECK \(\[walks\] >= 3\)/);
   assert.match(releasePatch, /CONSTRAINT \[CK_report_release_cell_responses\]\s+CHECK \(\[responses\] > 0\)/);
   assert.match(releasePatch, /CONSTRAINT \[CK_report_release_dates\]\s+CHECK \(\[observed_to\] >= \[observed_from\]\)/);
-  // The guards: no overlapping dates, no block below its release's minimum, no update of anything.
-  for (const trigger of ["TR_report_release_no_overlap", "TR_report_release_block_floor", "TR_report_release_immutable", "TR_report_release_block_immutable", "TR_report_release_cell_immutable"]) {
+  // The guards: no overlapping dates, no block below its release's minimum, no update of anything,
+  // a block counts exactly its recorded walks, and nothing is added after the release's transaction.
+  for (const trigger of ["TR_report_release_no_overlap", "TR_report_release_block_floor", "TR_report_release_immutable", "TR_report_release_block_immutable",
+    "TR_report_release_cell_immutable", "TR_report_release_block_members", "TR_report_release_cell_sealed", "TR_report_release_walk_guard"]) {
     assert.match(releasePatch, new RegExp(`IF OBJECT_ID\\(N'\\[icf\\]\\.\\[${trigger}\\]', N'TR'\\) IS NULL`), `${trigger} is created only when absent`);
   }
-  // A release names no walk: no walk id column, no narrative column, no owner.
-  assert.doesNotMatch(releasePatch, /\[walk_id\]|text_value|owner_user_id|teacher_|classroom_label/);
+  // One release per walk, ever (P7C-02): the membership is keyed by the walk alone.
+  assert.match(releasePatch, /CONSTRAINT \[PK_report_release_walk\]\s+PRIMARY KEY CLUSTERED \(\[walk_id\]\)/);
+  assert.match(releasePatch, /\[created_transaction_id\] bigint NOT NULL\s+CONSTRAINT \[DF_report_release_created_transaction\] DEFAULT \(CURRENT_TRANSACTION_ID\(\)\)/);
+  // A release names no narrative, owner, teacher or classroom value. The one walk reference is the
+  // membership's own key, which the database needs to refuse a second release of a walk; nothing
+  // else in the patch names a walk id. (Until the P7C-02 correction this asserted no [walk_id] at
+  // all: a release then kept no membership, which is what let a corrected walk be released twice.)
+  assert.doesNotMatch(releasePatch, /text_value|owner_user_id|teacher_|classroom_label/);
+  const membershipStart = releasePatch.indexOf("CREATE TABLE [icf].[report_release_walk]");
+  const membershipEnd = releasePatch.indexOf(");", membershipStart);
+  assert.ok(membershipStart > 0 && membershipEnd > membershipStart, "the membership table is created");
+  const outsideMembership = releasePatch.slice(0, membershipStart) + releasePatch.slice(membershipEnd);
+  assert.doesNotMatch(outsideMembership, /\[walk_id\]/, "no walk id outside the membership table");
   // Additive: it creates its own tables and triggers and touches nothing that exists.
   assert.doesNotMatch(releasePatch, /\bDROP\b|\bDELETE FROM\b|\bTRUNCATE\b|\bALTER TABLE\b/);
   assert.doesNotMatch(releasePatch, /\bUPDATE \[icf\]/);
