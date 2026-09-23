@@ -1,0 +1,9 @@
+Push of the gated commit, captured when it ran (output file written 2026-09-23T18:32:51Z).
+
+$ git push -u origin claude/icfwalk-phase-7-correction-n62s25
+To https://github.com/MRaimoU46/ICFWalk
+   9ef9b97..98321a1  claude/icfwalk-phase-7-correction-n62s25 -> claude/icfwalk-phase-7-correction-n62s25
+branch 'claude/icfwalk-phase-7-correction-n62s25' set up to track 'origin/claude/icfwalk-phase-7-correction-n62s25'.
+
+$ git ls-remote origin refs/heads/claude/icfwalk-phase-7-correction-n62s25   (after the gate, before the evidence commit)
+98321a16df64005f9b55fcd9bc3b9b4d4a071e4e	refs/heads/claude/icfwalk-phase-7-correction-n62s25
