@@ -10,8 +10,10 @@ ADM-07 retirement, ADM-08 placeholder review, and all administration UI -- has *
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 7 correction, second round (audit findings P7C-01, P7C-02 and P7C-03),
-awaiting independent re-audit.** Branch `claude/icfwalk-phase-7-correction-n62s25`: the second-round
+**Current state: Phase 7 correction, third round (re-audit findings P7C-03 and P7C-04), awaiting
+independent re-audit.** See "Phase 7 correction, third round" at the end: its gated commit sits on
+the re-audited `9ef9b97b5b4ee20dd51d6ca023c0841b7ca872ba`, and the commit after it adds only that
+gate's evidence. Earlier: branch `claude/icfwalk-phase-7-correction-n62s25`, the second-round
 commits sit on the audited correction `0c74dbd5a8a79684d38ba0b169dce2682a54fad6`, which sits on the
 first audited Phase 7 candidate `0c6fa10972593043508f502538534c2aa95c671b` and the frozen Phase 0-6
 baseline `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`. Phase 7 is **not** frozen and **not**
@@ -3515,7 +3517,7 @@ transcript, an environment record and a source archive of the commit are deliver
 handoff, each with its SHA-256, and are not committed (as in CORR8-03: committing them would create
 a different, untested commit).
 
-## Phase 7 correction, second round: audit findings P7C-01, P7C-02 and P7C-03 (current state)
+## Phase 7 correction, second round: audit findings P7C-01, P7C-02 and P7C-03 (superseded in part by the third round below)
 
 **Starting point, verified before any edit.** Branch `claude/icfwalk-phase-7-correction-n62s25` at
 `0c74dbd5a8a79684d38ba0b169dce2682a54fad6` (tree `413ac2b7f71d03f30ba18866215939795deccca1`, parent
@@ -3654,4 +3656,98 @@ tests red for the reason targeted, and each file is restored byte for byte.
 4. The accepted residuals of the approved rule are unchanged (100% blocks, collusion and outside
    knowledge, live figures for walk-and-report roles in their own scope).
 5. **The remainder of Phase 6** is still not built, and **Phase 7 is still not frozen or accepted.**
+
+## Phase 7 correction, third round: re-audit findings P7C-03 and P7C-04 (current state)
+
+**Starting point, verified before any edit.** Branch at `9ef9b97b5b4ee20dd51d6ca023c0841b7ca872ba`
+(tree `0c9387dfc1af39d83105d788c8f69bc5ca890a4f`), equal to the remote branch, clean including
+untracked files. The re-audit of that commit: **NOT READY TO FREEZE PHASE 7**. P7C-01 and P7C-02
+closed at source level ("no further redesign ... is indicated"); P7C-03 open; P7C-04 new.
+
+### P7C-03: why the evidence did not arrive, and what changed
+
+The handoff bundle for `9ef9b97` was built and verified (its own `SHA256SUMS`, a clone of its git
+bundle, ancestry, the source tree) and delivered, but what reached the auditor was GitHub's download
+of the branch and a narrative listing hashes of files that download does not contain. The evidence
+now travels inside the branch as well. After the gated commit is pushed and its exact-commit gate
+passes, one more commit adds `docs/evidence/gate/` with a directory named after the gated commit's
+full SHA: the raw gate transcript, the environment record, the push record, the raw mutation
+transcript, the scripts that produced them, `SHA256SUMS` and a README saying how to check them. That
+commit changes nothing else, so any download of the branch carries the evidence, and the downloaded
+tree less that directory must equal the gated commit's tree, which the transcript prints. The
+handoff bundle, with a git bundle of the branch for commit and ancestry checks, is delivered too.
+This is a departure from CORR8-03 ("never commit the evidence"), made deliberately: the evidence
+still describes a commit it is not part of, and the one-directory difference is checkable without
+git.
+
+### P7C-04: no part of a release is ever deleted
+
+**What was found.** The release triggers refused UPDATE but not DELETE. Reproduced on the re-audited
+schema: through the database, one cell could be deleted, and so could a block with its cells and
+walks, or the whole release in the order the keys allow, each leaving a release that reads
+differently (or not at all) under the same identity. The second round's own database test deleted a
+whole release that way and expected success.
+
+**What changed.** The audit offered enforcement, a controlled deletion procedure, or owner
+acceptance of the risk. Enforcement was taken: it is the reading of the owner's "frozen releases"
+that withholds more, and it needs no new decision.
+
+| Change | Why |
+| --- | --- |
+| `007_report_release.sql`: `TR_report_release_no_delete`, `_block_no_delete`, `_cell_no_delete`, `_walk_no_delete`, each `INSTEAD OF DELETE`, refusing with 50068 before anything is deleted. | No release row is deleted, one at a time or all together. `INSTEAD OF` makes the refusal the first and only one, whatever else a deletion would violate. |
+| `database/README.md`: the runtime login holds data permissions only -- never ALTER, CONTROL, `db_owner` or `db_ddladmin`; migrations use a separate, privileged login. | A trigger cannot stop a principal allowed to change the schema: it could switch the guard off or truncate a table. The boundary is tested (below). |
+| `tests/cfml/support/Fixtures.cfc` `deleteRelease` and the test-only `MaintenanceController.cleanupFixtures` switch the four delete guards off inside their own transaction, delete in key order, and switch them on again before committing. | Tests still remove their own releases. That needs ALTER, which a development login has and the production runtime login must not; the route is also disabled wherever the test runner is. A failure rolls the whole thing back, guards included. |
+| The four report specs call `fx.deleteRelease`. | One cleanup path. |
+
+### Tests changed in this round, and why
+
+* **New:** `ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted` -- one cell, one block, one
+  recorded walk, the release row, a block with its cells and walks, and the whole release in key
+  order, each in a transaction that is always rolled back, each refused with 50068, and the release
+  reads identically afterwards. `db-scripts.test.mjs` -- the same refusals by error number; a
+  principal with data permissions only (`CREATE USER ... WITHOUT LOGIN`, `EXECUTE AS`) can neither
+  delete a release row nor disable, drop or truncate past the guard; a privileged removal with the
+  guards off still has to go in key order (50065), and leaves every guard enabled.
+* **Replaced expectations** (both encoded the P7C-04 gap): `db-scripts.test.mjs` deleted a whole
+  release in key order and expected success -- it now expects 50068, and the removal succeeds only
+  on the privileged path; it expected a recorded walk's deletion to be refused with 50065 -- the
+  delete guard now refuses it first, with 50068 (50065 is still tested, on the privileged path).
+* **Adjusted, no assertion changed:** `schema-contract.test.mjs` lists the four new triggers and
+  checks each is `INSTEAD OF DELETE`; the guard count in `db-scripts.test.mjs` is 12. The four report
+  specs' release cleanup goes through `fx.deleteRelease`.
+
+### Tests and results (development run, before the commit)
+
+| Run | Result |
+| --- | --- |
+| The re-audited `9ef9b97`, its own exact-commit gate | Node/HTTP/Playwright **198/198**, CFML **444/444**; 0 failed, 0 skipped |
+| This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198**, CFML **445/445** (444 + `testNoPartOfAReleaseCanBeDeleted`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
+
+The authoritative totals are the exact-commit gate's, in `docs/evidence/gate/`.
+
+### Red before fix
+
+The sixteen deliberate mutations of the second round were run again against this round's tests (the
+three report source files they patch are byte-identical to the second round's): each still turns
+tests red, and each file is restored byte-identical. The only differences are the new case passing
+beside each failure, and failing with the rest under M10, where the whole spec's setup fails. The raw
+output is in the gate evidence directory.
+
+`docs/evidence/phase7-correction-3-red-before-fix.md`. On the re-audited schema the new CFML case
+failed with six deletions not refused (one cell deleted outright; one block and the release row
+stopped only by foreign keys; one recorded walk stopped only by the membership guard; a block with
+its cells and walks, and the whole release, deleted), and the new database test failed at "one cell
+is never deleted".
+
+### Unresolved and not verified (third round)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New: `INSTEAD OF DELETE`
+   triggers (available in SQL Server 2016), and the fixture cleanup's in-transaction
+   `DISABLE TRIGGER`/`ENABLE TRIGGER`, which takes a schema lock on the release tables for its
+   duration (test environments only).
+2. **Privileged principals.** A login allowed to alter the schema can still remove or change a
+   release. That is an operational control: the runtime login must not be one.
+3. **No withdrawal.** A release made in error cannot be withdrawn by the application.
+4. The residuals of the second round and of the approved rule are unchanged, and **the remainder of
+   Phase 6** is still not built. **Phase 7 is still not frozen or accepted.**
 

@@ -589,7 +589,10 @@ beside the walks each block counts (`report_release_walk`, keyed by the walk); a
 out every walk an earlier one counted, so a date correction can never put a walk in two releases
 (audit finding P7C-02). Blocks below k are never stored, and the database refuses overlap, small
 blocks, a second release of a walk, a block that disagrees with its recorded walks, any addition
-after the release's own transaction, and any update.
+after the release's own transaction, any update, and any deletion, in whole or in part (audit finding
+P7C-04). Only a principal allowed to alter the schema can switch those guards off, so the runtime
+login holds data permissions only; the test-only fixture cleanup, on a development login, switches
+the delete guards off inside its own transaction to remove a test's releases.
 `releaseReport` protects every breakdown of every block with `DisclosureControl` (primary and
 complementary suppression plus an exact ambiguity audit) or, for breakdowns linked by instrument
 rules (`linkGroupsOf`), as a group, and only then adds blocks up, so every figure is a sum of

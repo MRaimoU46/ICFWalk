@@ -619,11 +619,18 @@ the COMPLETED walks observed on a range of dates (`observedFrom`..`observedTo`, 
   released figure, so rerunning a report reveals nothing. What the database itself enforces: no
   release, block, cell or membership row is ever updated (50064); nothing -- block, cell or
   membership row -- is added to a release after the transaction that created it
-  (`created_transaction_id`, 50066); a stored block's recorded walks never grow or shrink (50065).
-  What it does not refuse is deleting a whole release, rows in dependency order (cells, blocks,
-  membership, release). Nothing in the application does; only the test-only fixture cleanup removes
-  a test's own. An operator must not: a deleted release frees its dates and its walks for a second
-  release that could then be combined with what was already read.
+  (`created_transaction_id`, 50066); a stored block's recorded walks never grow or shrink (50065);
+  and no row is ever deleted, one at a time or all together in the order the keys allow (an
+  `INSTEAD OF DELETE` guard on each of the four tables, 50068; audit finding P7C-04). A partly
+  deleted release would read differently under the same identity, and a wholly deleted one would
+  free its dates and its walks, so either could be combined with what was already read. What no
+  trigger can stop is a principal allowed to change the schema (ALTER, CONTROL, `db_owner`,
+  `db_ddladmin`): it can switch a trigger off or truncate a table. The runtime login therefore holds
+  data permissions only (`database/README.md`, "Production responsibilities");
+  `db-scripts.test.mjs` proves such a principal can neither delete a release row nor disable,
+  drop or truncate past the guard. Nothing in the application deletes a release. The test-only
+  fixture cleanup, whose development login has ALTER, removes a test's own releases by switching the
+  delete guards off inside its own transaction and on again before it commits.
 * **Blocks.** A release is stored per block: one instrument version at one org unit (the walk's
   own unit). A block with fewer than k walks is not stored at all (`CK_report_release_block_walks`,
   `TR_report_release_block_floor`), so it contributes to nothing -- not to its school, not to its
@@ -726,6 +733,8 @@ anyway, and the transaction and connection checks are new.
 * A walk whose visit date is corrected into dates already released is never released, and a walk
   corrected after its release is reported only as it stood when released. Utility is lost; nothing
   is disclosed.
+* A release made in error cannot be withdrawn by the application. Only a principal allowed to change
+  the schema can remove one, and doing so frees its dates and walks (see "Never changes").
 
 ## Mutation identity and idempotency
 

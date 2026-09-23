@@ -101,11 +101,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	private void function deleteRelease(required string id) {
-		var key = { "id": db.guid(arguments.id) };
-		db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", key);
-		db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", key);
-		db.run("IF OBJECT_ID(N'[icf].[report_release_walk]', N'U') IS NOT NULL DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", key);
-		db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", key);
+		fx.deleteRelease(arguments.id);
 	}
 
 	// ---- the cases ---------------------------------------------------------------------------------

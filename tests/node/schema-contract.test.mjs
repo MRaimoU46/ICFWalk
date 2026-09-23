@@ -182,8 +182,13 @@ test("007 patch adds frozen report releases idempotently, additively, and guarde
   // The guards: no overlapping dates, no block below its release's minimum, no update of anything,
   // a block counts exactly its recorded walks, and nothing is added after the release's transaction.
   for (const trigger of ["TR_report_release_no_overlap", "TR_report_release_block_floor", "TR_report_release_immutable", "TR_report_release_block_immutable",
-    "TR_report_release_cell_immutable", "TR_report_release_block_members", "TR_report_release_cell_sealed", "TR_report_release_walk_guard"]) {
+    "TR_report_release_cell_immutable", "TR_report_release_block_members", "TR_report_release_cell_sealed", "TR_report_release_walk_guard",
+    "TR_report_release_no_delete", "TR_report_release_block_no_delete", "TR_report_release_cell_no_delete", "TR_report_release_walk_no_delete"]) {
     assert.match(releasePatch, new RegExp(`IF OBJECT_ID\\(N'\\[icf\\]\\.\\[${trigger}\\]', N'TR'\\) IS NULL`), `${trigger} is created only when absent`);
+  }
+  // Never deleted, in whole or in part (P7C-04): every release table refuses DELETE before it happens.
+  for (const table of ["report_release", "report_release_block", "report_release_cell", "report_release_walk"]) {
+    assert.match(releasePatch, new RegExp(`ON \\[icf\\]\\.\\[${table}\\]\\s+INSTEAD OF DELETE`), `${table} refuses DELETE`);
   }
   // One release per walk, ever (P7C-02): the membership is keyed by the walk alone.
   assert.match(releasePatch, /CONSTRAINT \[PK_report_release_walk\]\s+PRIMARY KEY CLUSTERED \(\[walk_id\]\)/);

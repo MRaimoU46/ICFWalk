@@ -52,13 +52,19 @@
       TR_report_release_cell_sealed     no cell is added after the release's own transaction (50066)
       TR_report_release_immutable,      no release, block or cell row is ever updated (50064)
         _block_immutable, _cell_immutable
+      TR_report_release_no_delete,      no release, block, cell or membership row is ever deleted, one
+        _block_, _cell_, _walk_no_delete at a time or all together (INSTEAD OF DELETE, 50068)
     "The release's own transaction" is created_transaction_id, CURRENT_TRANSACTION_ID() when the
     release row was inserted.
 
-    What the database does not refuse is deleting a release's rows outright, in dependency order:
-    cells, blocks, membership, then the release. Nothing in the application deletes a release; only
-    the test-only fixture cleanup does, for a test's own. A deleted release would free its dates and
-    its walks for a second release, and the two could then be subtracted; see docs/DATA_CONTRACT.md.
+    What a trigger cannot stop is a principal allowed to change the schema: ALTER on these tables
+    lets one disable a trigger, and truncating a table (which also needs ALTER) fires none. The runtime
+    login must therefore hold data permissions only -- no ALTER, CONTROL, db_owner or db_ddladmin
+    (database/README.md, "Production responsibilities"). Nothing in the application deletes a
+    release. The test-only fixture cleanup removes a test's own releases by disabling these triggers
+    inside its own transaction, which only works for a login with ALTER, as a development login has.
+    A deleted release would free its dates and its walks for a second release that could then be
+    combined with the first; see docs/DATA_CONTRACT.md.
 
     This patch is idempotent and additive: it creates what is missing and changes nothing else.
 */
@@ -385,6 +391,70 @@ BEGIN
 END;');
     END;
 
+    IF OBJECT_ID(N'[icf].[TR_report_release_no_delete]', N'TR') IS NULL
+    BEGIN
+        EXEC (N'
+CREATE TRIGGER [icf].[TR_report_release_no_delete]
+ON [icf].[report_release]
+INSTEAD OF DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM deleted)
+    BEGIN
+        ;THROW 50068, ''A report release is never deleted, in whole or in part.'', 1;
+    END;
+END;');
+    END;
+
+    IF OBJECT_ID(N'[icf].[TR_report_release_block_no_delete]', N'TR') IS NULL
+    BEGIN
+        EXEC (N'
+CREATE TRIGGER [icf].[TR_report_release_block_no_delete]
+ON [icf].[report_release_block]
+INSTEAD OF DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM deleted)
+    BEGIN
+        ;THROW 50068, ''A report release is never deleted, in whole or in part.'', 1;
+    END;
+END;');
+    END;
+
+    IF OBJECT_ID(N'[icf].[TR_report_release_cell_no_delete]', N'TR') IS NULL
+    BEGIN
+        EXEC (N'
+CREATE TRIGGER [icf].[TR_report_release_cell_no_delete]
+ON [icf].[report_release_cell]
+INSTEAD OF DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM deleted)
+    BEGIN
+        ;THROW 50068, ''A report release is never deleted, in whole or in part.'', 1;
+    END;
+END;');
+    END;
+
+    IF OBJECT_ID(N'[icf].[TR_report_release_walk_no_delete]', N'TR') IS NULL
+    BEGIN
+        EXEC (N'
+CREATE TRIGGER [icf].[TR_report_release_walk_no_delete]
+ON [icf].[report_release_walk]
+INSTEAD OF DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM deleted)
+    BEGIN
+        ;THROW 50068, ''A report release is never deleted, in whole or in part.'', 1;
+    END;
+END;');
+    END;
+
     COMMIT TRANSACTION;
 
     SELECT
@@ -401,7 +471,9 @@ END;');
                                   OBJECT_ID(N'[icf].[report_release_cell]', N'U'), OBJECT_ID(N'[icf].[report_release_walk]', N'U'))
               AND [name] IN (N'TR_report_release_no_overlap', N'TR_report_release_block_floor', N'TR_report_release_immutable',
                              N'TR_report_release_block_immutable', N'TR_report_release_cell_immutable',
-                             N'TR_report_release_block_members', N'TR_report_release_cell_sealed', N'TR_report_release_walk_guard')
+                             N'TR_report_release_block_members', N'TR_report_release_cell_sealed', N'TR_report_release_walk_guard',
+                             N'TR_report_release_no_delete', N'TR_report_release_block_no_delete', N'TR_report_release_cell_no_delete',
+                             N'TR_report_release_walk_no_delete')
         ) AS [release_guards_present],
         (SELECT COUNT(*) FROM [icf].[report_release]) AS [release_rows];
 END TRY

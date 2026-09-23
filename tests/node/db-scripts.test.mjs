@@ -248,10 +248,10 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     const releases = await applyScript(pool, readScript("007_report_release.sql"));
     assert.equal(releases.ok, true, releases.error?.message);
     assert.equal(releases.recordset[0].report_release_available, 1);
-    assert.equal(releases.recordset[0].release_guards_present, 8);
+    assert.equal(releases.recordset[0].release_guards_present, 12);
     const releasesAgain = await applyScript(pool, readScript("007_report_release.sql"));
     assert.equal(releasesAgain.ok, true, releasesAgain.error?.message);
-    assert.equal(releasesAgain.recordset[0].release_guards_present, 8, "re-applying creates no second trigger");
+    assert.equal(releasesAgain.recordset[0].release_guards_present, 12, "re-applying creates no second trigger");
     const releaseTables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
     assert.equal(releaseTables.recordset[0].n, 28, "007 adds exactly four tables");
     const V = "44444444-4444-4444-4444-444444444444";
@@ -320,9 +320,6 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
       ${member(W[6], "77777777-0000-0000-0000-000000000006")}`));
     assert.equal(grown.ok, false, "a stored block's recorded walks never grow, even in its own transaction");
     assert.equal(grown.error?.number, 50065);
-    const shrunk = await applyScript(pool, `DELETE FROM icf.report_release_walk WHERE walk_id = '${W[0]}';`);
-    assert.equal(shrunk.ok, false, "and never shrink: a counted walk cannot be freed for another release");
-    assert.equal(shrunk.error?.number, 50065);
 
     // Sealed: nothing is added to a release after the transaction that created it.
     for (const [sqlText, what] of [
@@ -344,13 +341,71 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     }
     const counted = await pool.request().query(`SELECT COUNT(*) AS n FROM icf.report_release_walk`);
     assert.equal(counted.recordset[0].n, 3, "only the first release's three walks were ever recorded");
-    // What the database does not refuse: removing a whole release in dependency order (the
-    // accepted residual, used only by the test-only fixture cleanup).
-    const removed = await applyScript(pool, `DELETE FROM icf.report_release_cell WHERE release_id = '${R1}';
-      DELETE FROM icf.report_release_block WHERE release_id = '${R1}';
-      DELETE FROM icf.report_release_walk WHERE release_id = '${R1}';
-      DELETE FROM icf.report_release WHERE release_id = '${R1}';`);
+
+    // Deletion (P7C-04): no release row is ever deleted, one at a time or all together in the order
+    // the keys allow. (Until the P7C-04 correction this section deleted the whole release in that
+    // order and expected success, and a recorded walk's deletion was refused only while its block
+    // existed: that is the partial-deletion path the audit found.)
+    const wholeRelease = (r) => `DELETE FROM icf.report_release_cell WHERE release_id = '${r}';
+      DELETE FROM icf.report_release_block WHERE release_id = '${r}';
+      DELETE FROM icf.report_release_walk WHERE release_id = '${r}';
+      DELETE FROM icf.report_release WHERE release_id = '${r}';`;
+    for (const [sqlText, what] of [
+      [`DELETE FROM icf.report_release_cell WHERE release_id = '${R1}' AND category_code = '1';`, "one cell"],
+      [`DELETE FROM icf.report_release_block WHERE release_id = '${R1}';`, "a block"],
+      [`DELETE FROM icf.report_release_walk WHERE walk_id = '${W[0]}';`, "a recorded walk"],
+      [`DELETE FROM icf.report_release WHERE release_id = '${R1}';`, "the release row"],
+      [inOneTransaction(wholeRelease(R1)), "the whole release, in the order the keys allow"]]) {
+      const deleted = await applyScript(pool, sqlText);
+      assert.equal(deleted.ok, false, `${what} is never deleted`);
+      assert.equal(deleted.error?.number, 50068, `${what}: refused by the release's own delete guard`);
+    }
+    const intact = await pool.request().query(`SELECT (SELECT COUNT(*) FROM icf.report_release_cell WHERE release_id = '${R1}') AS cells,
+      (SELECT COUNT(*) FROM icf.report_release_block WHERE release_id = '${R1}') AS blocks,
+      (SELECT COUNT(*) FROM icf.report_release_walk WHERE release_id = '${R1}') AS walks`);
+    assert.deepEqual(intact.recordset[0], { cells: 1, blocks: 1, walks: 3 }, "the release is intact");
+
+    // The permission boundary. A principal with data permissions only -- what the runtime login
+    // must be (database/README.md) -- can neither delete a release row nor switch the guard off.
+    await pool.request().batch(`CREATE USER release_runtime WITHOUT LOGIN;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::icf TO release_runtime;`);
+    const asRuntime = (body) => `EXECUTE AS USER = 'release_runtime';
+      BEGIN TRY ${body} END TRY BEGIN CATCH REVERT; THROW; END CATCH;
+      REVERT;`;
+    const runtimeDelete = await applyScript(pool, asRuntime(`DELETE FROM icf.report_release_cell WHERE release_id = '${R1}';`));
+    assert.equal(runtimeDelete.ok, false, "the runtime principal cannot delete a release row");
+    assert.equal(runtimeDelete.error?.number, 50068);
+    for (const [body, what] of [
+      [`DISABLE TRIGGER icf.TR_report_release_cell_no_delete ON icf.report_release_cell;`, "disable the guard"],
+      [`TRUNCATE TABLE icf.report_release_cell;`, "truncate a release table (which fires no trigger)"],
+      [`DROP TRIGGER icf.TR_report_release_cell_no_delete;`, "drop the guard"]]) {
+      const denied = await applyScript(pool, asRuntime(body));
+      assert.equal(denied.ok, false, `the runtime principal cannot ${what}`);
+      assert.match(denied.error?.message ?? "", /permission|does not exist/i, `${what}: refused for want of permission`);
+    }
+    const stillRuntime = await pool.request().query("SELECT USER_NAME() AS who");
+    assert.equal(stillRuntime.recordset[0].who, "dbo", "every impersonation was reverted");
+    const guards = await pool.request().query(`SELECT COUNT(*) AS n FROM sys.triggers WHERE name LIKE 'TR_report_release%' AND is_disabled = 0`);
+    assert.equal(guards.recordset[0].n, 12, "all twelve guards are still enabled");
+
+    // The one way a release is removed: a principal with ALTER (the test-only fixture cleanup's
+    // login, never the production runtime login) switches the delete guards off inside its own
+    // transaction, deletes in order, and switches them on again before committing. The membership
+    // guard still insists on the order: a recorded walk cannot go while its block exists.
+    const guardsOff = `DISABLE TRIGGER icf.TR_report_release_no_delete ON icf.report_release;
+      DISABLE TRIGGER icf.TR_report_release_block_no_delete ON icf.report_release_block;
+      DISABLE TRIGGER icf.TR_report_release_cell_no_delete ON icf.report_release_cell;
+      DISABLE TRIGGER icf.TR_report_release_walk_no_delete ON icf.report_release_walk;`;
+    const guardsOn = guardsOff.replaceAll("DISABLE", "ENABLE");
+    const outOfOrder = await applyScript(pool, inOneTransaction(`${guardsOff}
+      DELETE FROM icf.report_release_walk WHERE release_id = '${R1}'; ${guardsOn}`));
+    assert.equal(outOfOrder.ok, false, "even with the delete guards off, a stored block's walks cannot be removed first");
+    assert.equal(outOfOrder.error?.number, 50065);
+    const removed = await applyScript(pool, inOneTransaction(`${guardsOff} ${wholeRelease(R1)} ${guardsOn}`));
     assert.equal(removed.ok, true, removed.error?.message);
+    const afterRemoval = await pool.request().query(`SELECT (SELECT COUNT(*) FROM icf.report_release WHERE release_id = '${R1}') AS releases,
+      (SELECT COUNT(*) FROM sys.triggers WHERE name LIKE 'TR_report_release%' AND is_disabled = 0) AS enabled`);
+    assert.deepEqual(afterRemoval.recordset[0], { releases: 0, enabled: 12 }, "the release is gone and every guard is on again");
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

@@ -46,12 +46,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	public void function afterAll() {
-		for (var id in variables.releases) {
-			db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", { "id": db.guid(id) });
-			db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", { "id": db.guid(id) });
-			db.run("DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", { "id": db.guid(id) });
-			db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", { "id": db.guid(id) });
-		}
+		for (var id in variables.releases) fx.deleteRelease(id);
 		fx.remove();
 	}
 

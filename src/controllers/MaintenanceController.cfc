@@ -325,16 +325,21 @@ component output="false" {
 		var db = variables.c.db;
 		var like = { "value": b.tag & "-%", "cfsqltype": "cf_sql_nvarchar" };
 		var removed = db.transact(function() {
-			// Report releases a fixture user created (migration 007), in the order the database allows:
-			// cells, blocks, the walks they counted, then the release -- and before the walks, which
-			// a release's membership references. The application never deletes a release; this
-			// verification-only route removes a test's own, which name its fixture user and its
-			// fixture org units.
+			// Report releases a fixture user created (migration 007), before the walks, which a
+			// release's membership references. The database refuses every deletion of a release row
+			// (50068), so this verification-only route disables those guards inside its own
+			// transaction, deletes in the order the keys and the membership guard allow (cells, blocks,
+			// the walks they counted, the release), and enables the guards again before it commits.
+			// That needs ALTER on the tables, which a development login has and the production runtime
+			// login must not (database/README.md); the route is also disabled wherever the test runner
+			// is. The application itself never deletes a release.
 			var released = "SELECT r.release_id FROM [icf].[report_release] r JOIN [icf].[app_user] u ON u.user_id = r.released_by_user_id WHERE u.identity_subject LIKE :like";
+			db.run(releaseDeleteGuards("DISABLE"));
 			db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id IN (" & released & ")", { "like": like });
 			db.run("DELETE FROM [icf].[report_release_block] WHERE release_id IN (" & released & ")", { "like": like });
 			db.run("DELETE FROM [icf].[report_release_walk] WHERE release_id IN (" & released & ")", { "like": like });
 			db.run("DELETE FROM [icf].[report_release] WHERE release_id IN (" & released & ")", { "like": like });
+			db.run(releaseDeleteGuards("ENABLE"));
 			var owned = "SELECT w.walk_id FROM [icf].[walk] w JOIN [icf].[app_user] u ON u.user_id = w.owner_user_id WHERE u.identity_subject LIKE :like";
 			db.run("DELETE FROM [icf].[walk_mutation] WHERE walk_id IN (" & owned & ")", { "like": like });
 			db.run("DELETE FROM [icf].[walk_revision] WHERE walk_id IN (" & owned & ")", { "like": like });
@@ -401,5 +406,15 @@ component output="false" {
 		var runner = createObject("component", "icfwalktests.TestRunner").init(variables.c);
 		var results = runner.run(filter, part, of);
 		return { "status": 200, "body": results };
+	}
+
+	/** DISABLE or ENABLE the triggers that refuse deletion of release rows (migration 007, 50068). */
+	private string function releaseDeleteGuards(required string action) {
+		var out = [];
+		for (var pair in [["report_release", "TR_report_release_no_delete"], ["report_release_block", "TR_report_release_block_no_delete"],
+			["report_release_cell", "TR_report_release_cell_no_delete"], ["report_release_walk", "TR_report_release_walk_no_delete"]]) {
+			arrayAppend(out, "IF OBJECT_ID(N'[icf].[" & pair[2] & "]', N'TR') IS NOT NULL " & arguments.action & " TRIGGER [icf].[" & pair[2] & "] ON [icf].[" & pair[1] & "];");
+		}
+		return arrayToList(out, chr(10));
 	}
 }

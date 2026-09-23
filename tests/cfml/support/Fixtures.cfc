@@ -87,6 +87,35 @@ component output="false" {
 		db.run("DELETE FROM [icf].[walk] WHERE walk_id = :id", p);
 	}
 
+	/**
+	 * Removes one of a test's own releases. The database refuses every deletion of a release row
+	 * (migration 007, 50068), so this disables those guards inside its own transaction, deletes in the
+	 * order the keys and the membership guard allow, and enables them again before committing. That
+	 * needs ALTER on the tables: a development login has it, the production runtime login must not.
+	 */
+	public void function deleteRelease(required string releaseId) {
+		var db = variables.c.db;
+		var key = { "id": db.guid(arguments.releaseId) };
+		db.transact(function() {
+			db.run(releaseDeleteGuards("DISABLE"));
+			db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", key);
+			db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", key);
+			db.run("DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", key);
+			db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", key);
+			db.run(releaseDeleteGuards("ENABLE"));
+			return true;
+		});
+	}
+
+	private string function releaseDeleteGuards(required string action) {
+		var out = [];
+		for (var pair in [["report_release", "TR_report_release_no_delete"], ["report_release_block", "TR_report_release_block_no_delete"],
+			["report_release_cell", "TR_report_release_cell_no_delete"], ["report_release_walk", "TR_report_release_walk_no_delete"]]) {
+			arrayAppend(out, "IF OBJECT_ID(N'[icf].[" & pair[2] & "]', N'TR') IS NOT NULL " & arguments.action & " TRIGGER [icf].[" & pair[2] & "] ON [icf].[" & pair[1] & "];");
+		}
+		return arrayToList(out, chr(10));
+	}
+
 	public void function remove() {
 		var db = variables.c.db;
 		for (var id in variables.walkIds) deleteWalk(id);

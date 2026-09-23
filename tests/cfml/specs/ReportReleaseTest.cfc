@@ -129,10 +129,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	private void function deleteRelease(required string id) {
-		db.run("DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", { "id": db.guid(arguments.id) });
-		db.run("DELETE FROM [icf].[report_release_block] WHERE release_id = :id", { "id": db.guid(arguments.id) });
-		db.run("DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", { "id": db.guid(arguments.id) });
-		db.run("DELETE FROM [icf].[report_release] WHERE release_id = :id", { "id": db.guid(arguments.id) });
+		fx.deleteRelease(arguments.id);
 	}
 
 	private struct function read(required struct who, struct query = {}) {
@@ -469,6 +466,59 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	}
 
 	/** Required proof 11, across periods: releases never overlap, so none can be subtracted from another. */
+	/**
+	 * Audit finding P7C-04: no part of a release can be deleted, alone or in the order the foreign keys
+	 * allow. Each attempt runs in a transaction that is always rolled back, so a deletion the schema
+	 * failed to refuse cannot damage the fixture release for the cases after it.
+	 */
+	public void function testNoPartOfAReleaseCanBeDeleted() {
+		var key = { "id": db.guid(variables.rel.releaseId) };
+		var cell = db.run("SELECT TOP 1 version_id, org_unit_id, subject_type, subject_key, category_type, category_code FROM [icf].[report_release_cell] WHERE release_id = :id ORDER BY org_unit_id, subject_key, category_code", key);
+		var member = db.run("SELECT TOP 1 walk_id, version_id, org_unit_id FROM [icf].[report_release_walk] WHERE release_id = :id ORDER BY walk_id", key);
+		assertEquals(1, cell.recordCount, "the release has a cell");
+		assertEquals(1, member.recordCount, "and a recorded walk");
+		var blockKey = { "id": db.guid(variables.rel.releaseId), "v": db.guid(member.version_id[1]), "o": db.guid(member.org_unit_id[1]) };
+		var cellKey = { "id": db.guid(variables.rel.releaseId), "v": db.guid(cell.version_id[1]), "o": db.guid(cell.org_unit_id[1]),
+			"st": db.nvarchar(cell.subject_type[1]), "sk": db.nvarchar(cell.subject_key[1]), "ct": db.nvarchar(cell.category_type[1]), "cc": db.nvarchar(cell.category_code[1]) };
+		var before = stable(read(districtReportOnly));
+		var attempts = [
+			["one cell", [["DELETE FROM [icf].[report_release_cell] WHERE release_id = :id AND version_id = :v AND org_unit_id = :o AND subject_type = :st AND subject_key = :sk AND category_type = :ct AND category_code = :cc", cellKey]]],
+			["one block", [["DELETE FROM [icf].[report_release_block] WHERE release_id = :id AND version_id = :v AND org_unit_id = :o", blockKey]]],
+			["one recorded walk", [["DELETE FROM [icf].[report_release_walk] WHERE walk_id = :w", { "w": db.guid(member.walk_id[1]) }]]],
+			["the release row", [["DELETE FROM [icf].[report_release] WHERE release_id = :id", key]]],
+			["a block with its cells and walks, in the order the keys allow", [
+				["DELETE FROM [icf].[report_release_cell] WHERE release_id = :id AND version_id = :v AND org_unit_id = :o", blockKey],
+				["DELETE FROM [icf].[report_release_block] WHERE release_id = :id AND version_id = :v AND org_unit_id = :o", blockKey],
+				["DELETE FROM [icf].[report_release_walk] WHERE release_id = :id AND version_id = :v AND org_unit_id = :o", blockKey]]],
+			["the whole release, in the order the keys allow", [
+				["DELETE FROM [icf].[report_release_cell] WHERE release_id = :id", key],
+				["DELETE FROM [icf].[report_release_block] WHERE release_id = :id", key],
+				["DELETE FROM [icf].[report_release_walk] WHERE release_id = :id", key],
+				["DELETE FROM [icf].[report_release] WHERE release_id = :id", key]]]
+		];
+		var notRefused = [];
+		for (var attempt in attempts) {
+			var outcome = rolledBack(attempt[2]);
+			if (findNoCase("A report release is never deleted", outcome) == 0) arrayAppend(notRefused, attempt[1] & " -> " & left(outcome, 160));
+		}
+		assertEquals(0, arrayLen(notRefused), "every deletion is refused by the database; not refused: " & arrayToList(notRefused, " | "));
+		assertExactTextEquals(before, stable(read(districtReportOnly)), "the release reads exactly as before");
+	}
+
+	/** Runs the statements in one transaction and always rolls it back: "DELETED" if none was refused, else the refusal. */
+	private string function rolledBack(required array statements) {
+		var outcome = "";
+		try {
+			db.transact(function() {
+				for (var st in statements) db.run(st[1], st[2]);
+				throw(type = "ICFWalk.TestRollback", message = "DELETED");
+			});
+		} catch (any e) {
+			outcome = e.message;
+		}
+		return outcome;
+	}
+
 	public void function testReleasedDatesNeverOverlap() {
 		var overlapping = [[period.start, period.end], [before, period.start], [period.end, later], [dayText(parseDateText(period.start), 1), dayText(parseDateText(period.start), 1)], [before, later]];
 		for (var span in overlapping) {
