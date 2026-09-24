@@ -3571,6 +3571,10 @@ check fixtures; nothing in the project depends on it.
 Red before green: `docs/evidence/excel-roundtrip-red-before-green.md` (every new check fails without
 the new source; no product defect was found). **The authoritative result is the full gate on the
 exact commit**, recorded in `docs/evidence/excel-roundtrip-release-gate.txt` in the commit after it.
+**Result on `0a784d58f66d6796d7ce6d55b1965f6e7d408340`: Node/HTTP/Playwright 225/225 (210 + 12
+`workbook` + 2 HTTP + 1 browser), CFML 455/455 (449 + 6 `InstrumentDocumentExporterTest`), 0 failed,
+0 skipped**, `validate:handoff` ok, working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server
+2022 only.
 
 ### Unresolved and not verified (Excel round-trip)
 
