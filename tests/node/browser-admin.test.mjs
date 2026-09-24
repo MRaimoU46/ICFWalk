@@ -6,7 +6,9 @@
  * nothing (ADM-02); a new DRAFT is made from a published version, a prompt is edited and the
  * comparison shows it, with stored markup staying text (ADM-06, SEC-02); publishing and retiring
  * ask for confirmation, and retiring the only version in service asks twice (ADM-04, ADM-07); the
- * placeholder queue searches and links to the editor (ADM-08); and the view passes keyboard,
+ * placeholder queue searches and links to the editor (ADM-08); a version downloads as an Excel
+ * workbook, and an edited workbook uploads as a new draft, with problems named by sheet, row and
+ * column and a changed draft never replaced without asking (the Excel round-trip); and the view passes keyboard,
  * axe-core (WCAG 2.1 AA) and 375 px checks (A11Y-01/03/05).
  *
  * Every fixture lives under this run's own instrument codes, so nothing here publishes or retires
@@ -18,6 +20,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { api, baseUrl, loadRuntimeEnv, root, screenshotDir } from "./helpers.mjs";
+import { readWorkbook, readZip, writeWorkbook, writeZip } from "../../app/assets/js/workbook.js";
+import { canonicalize } from "../../scripts/lib/snapshot.mjs";
 
 const require = createRequire(import.meta.url);
 const env = loadRuntimeEnv();
@@ -180,7 +184,7 @@ test("ADM-01 (browser): an instrument-admin-only user lands on administration an
   await page.setInputFiles("#admin-import-file", { name: "notes.json", mimeType: "application/json", buffer: Buffer.from("{ not json") });
   await page.click("#admin-import-btn");
   await page.waitForSelector("#admin-error:not([hidden])");
-  assert.match(await page.textContent("#admin-error"), /notes\.json is not valid JSON, so nothing was sent/);
+  assert.match(await page.textContent("#admin-error"), /notes\.json is neither an Excel workbook \(\.xlsx\) nor valid JSON, so nothing was sent/);
   assert.ok(!requested.some((p) => p.endsWith("/api/admin/instrument/import")));
 
   // An invalid document: every issue is listed, nothing is written.
@@ -407,6 +411,96 @@ test("ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only
   await context.close();
 });
 
+test("Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells", { skip }, async () => {
+  const base = await importVersion("excel");
+  await publishVersion(base.versionId);
+  const { context, page } = await browser.newContext({ extraHTTPHeaders: { "X-ICFWalk-Dev-Subject": adminSubject }, viewport: { width: 1280, height: 900 }, acceptDownloads: true }).then(async (ctx) => ({ context: ctx, page: await ctx.newPage() }));
+  page.on("pageerror", (e) => pageErrors.push(`pageerror: ${e.message}`));
+  const posts = [];
+  page.on("request", (r) => { if (r.method() === "POST") posts.push(new URL(r.url()).pathname); });
+  await openHome(page);
+
+  // Download: the workbook carries exactly the version's document.
+  await row(page, base.versionId).getByRole("button", { name: /^Download / }).click();
+  await page.waitForSelector("#admin-panel h2");
+  assert.equal(await page.textContent("#admin-panel h2"), `Download ${base.versionLabel}`);
+  const [xlsxDownload] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Excel workbook (.xlsx)" }).click()]);
+  assert.match(xlsxDownload.suggestedFilename(), new RegExp(`^ICFWalk_${instrumentCode}_.*\\.xlsx$`));
+  const downloaded = new Uint8Array(fs.readFileSync(await xlsxDownload.path()));
+  const exported = await admin.call("GET", `/api/admin/instrument/versions/${base.versionId}/document`);
+  const wb = await readWorkbook(downloaded);
+  assert.equal(wb.ok, true, JSON.stringify(wb.errors));
+  assert.equal(canonicalize(wb.document), canonicalize(exported.json.document), "the downloaded workbook is the version, exactly");
+  assert.equal(wb.meta.versionId.toUpperCase(), base.versionId.toUpperCase());
+  assert.equal(wb.meta.checksum, base.checksum);
+  const [jsonDownload] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "JSON document (.json)" }).click()]);
+  assert.equal(canonicalize(JSON.parse(fs.readFileSync(await jsonDownload.path(), "utf8"))), canonicalize(exported.json.document));
+  await idle(page);
+  await page.screenshot({ path: path.join(shotDir, "admin-download-desktop.png"), fullPage: false });
+
+  // Upload an edited workbook under a new label: a new draft that differs by exactly the edit.
+  const item = SOURCE.items.find((i) => i.reviewStatus !== PLACEHOLDER_STATUS && i.itemType === "SINGLE_CHOICE");
+  const doc = structuredClone(wb.document);
+  doc.items.find((i) => i.itemKey === item.itemKey).prompt = `${item.prompt} (revised in Excel)`;
+  const edited = await writeWorkbook(doc, { exportedFrom: wb.meta, exportedAt: wb.meta.exportedAt });
+  const newLabel = `${tag}-excel-edit-${++labelCounter}`;
+  await page.setInputFiles("#admin-import-file", { name: "edited.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(edited) });
+  await page.fill("#admin-import-label", newLabel);
+  await page.click("#admin-import-btn");
+  await page.waitForSelector("#admin-import-result .admin-summary:not(.admin-summary-invalid)");
+  await idle(page);
+  assert.equal(await page.textContent("#admin-import-result .admin-summary-title"), `Created DRAFT ${newLabel} of ${instrumentCode} from edited.xlsx.`);
+  const created = page.locator("#admin-versions tr", { hasText: newLabel });
+  const createdId = await created.getAttribute("data-version-id");
+  const cmp = await admin.call("GET", `/api/admin/instrument/compare?from=${base.versionId}&to=${createdId}`);
+  assert.deepEqual(cmp.json.changes.map((c) => `${c.key}:${c.fields.map((f) => f.field).join(",")}`), [`${item.itemKey}:prompt`]);
+
+  // A reference the server cannot resolve is reported on the cell it came from.
+  const broken = structuredClone(wb.document);
+  const brokenIndex = broken.items.findIndex((i) => i.itemKey === item.itemKey);
+  broken.items[brokenIndex].responseSetId = "rs_does_not_exist";
+  await page.setInputFiles("#admin-import-file", { name: "broken.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(await writeWorkbook(broken, { exportedFrom: wb.meta })) });
+  await page.fill("#admin-import-label", `${tag}-excel-broken-${++labelCounter}`);
+  await page.click("#admin-import-btn");
+  await page.waitForSelector("#admin-import-result .admin-summary-invalid");
+  await idle(page);
+  const places = await page.$$eval("#admin-import-result .admin-issue-place", (els) => els.map((e) => e.textContent));
+  assert.ok(places.includes(` (item_definition, row ${4 + brokenIndex}, column response_set_id (L${4 + brokenIndex}))`), places.join(" | "));
+
+  // A problem in the workbook itself is found before anything is sent.
+  const files = await readZip(edited);
+  const itemSheet = [...files.keys()].find((k) => k.endsWith("sheet5.xml"));
+  files.set(itemSheet, new TextEncoder().encode(new TextDecoder().decode(files.get(itemSheet)).replace(">prompt</t>", ">question</t>")));
+  const postsBefore = posts.length;
+  await page.setInputFiles("#admin-import-file", { name: "no-prompt.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(await writeZip([...files].map(([name, data]) => ({ name, data })))) });
+  await page.click("#admin-import-btn");
+  await page.waitForFunction(() => /column prompt/.test(document.querySelector("#admin-import-result")?.textContent || ""), null, { timeout: 20000 });
+  assert.match(await page.textContent("#admin-import-result .admin-summary-title"), /^Not imported: no-prompt\.xlsx has \d+ problems?\. Nothing was sent\.$/);
+  assert.equal(posts.length, postsBefore, "nothing was sent");
+
+  // Replacing a draft that changed after the workbook was downloaded asks first; Cancel sends nothing.
+  const draftExport = await admin.call("GET", `/api/admin/instrument/versions/${createdId}/document`);
+  const draftBook = await writeWorkbook(draftExport.json.document, { exportedFrom: draftExport.json.version });
+  const change = await admin.call("POST", `/api/admin/instrument/versions/${createdId}/edits`, {
+    expectedChecksum: draftExport.json.version.checksum,
+    edits: [{ target: "version", field: "revisionNotes", value: "Changed in the app after the download" }],
+  });
+  assert.equal(change.status, 200, change.text);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector("#admin-versions table");
+  await page.setInputFiles("#admin-import-file", { name: "stale.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(draftBook) });
+  const postsBeforeStale = posts.length;
+  await page.click("#admin-import-btn");
+  const dialog = page.getByRole("alertdialog", { name: `Replace draft ${newLabel}?` });
+  await dialog.waitFor({ timeout: 20000 });
+  assert.match(await dialog.textContent(), /changed after this workbook was downloaded/);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await waitStatus(page, /^Nothing was imported\.$/);
+  assert.equal(posts.length, postsBeforeStale, "a cancelled replacement sends nothing");
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+});
+
 test("A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss", { skip }, async () => {
   const draft = await importVersion("a11y");
   const { context, page } = await newContext();
@@ -451,6 +545,13 @@ test("A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375
   await page.waitForSelector('#admin-panel form.admin-entity[data-target="section"]');
   await idle(page);
   assert.deepEqual(await axe(page), [], "wording editor and import summary");
+
+  // The download panel, reached from the keyboard.
+  await row(page, draft.versionId).getByRole("button", { name: /^Download / }).focus();
+  await page.keyboard.press("Enter");
+  await page.waitForSelector("#admin-panel h2");
+  assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.textContent), "Excel workbook (.xlsx)", "focus lands on the first download");
+  assert.deepEqual(await axe(page), [], "download panel");
 
   for (const width of [768, 375]) {
     await page.setViewportSize({ width, height: 800 });

@@ -13,6 +13,11 @@
  *   POST /api/admin/instrument/versions/{id}/retire      ADM-07 stop new walks on a version
  *   POST /api/admin/instrument/versions/{id}/discard     remove a DRAFT no walk references
  *   GET  /api/admin/instrument/versions/{id}/placeholders ADM-08 placeholder review queue
+ *   GET  /api/admin/instrument/versions/{id}/document    the version as an importable document
+ *
+ * The Excel round-trip: Download turns a version's document into a workbook in the page
+ * (workbook.js), and Import turns an uploaded workbook back into a document before it is sent to
+ * the same import route a JSON document goes to. Problems are named by sheet, row and column.
  *
  * Every decision is the server's. This module never infers what an action is allowed to do from
  * the list it last loaded: it offers the actions a status makes sensible and shows whatever the
@@ -28,8 +33,10 @@
 import { ApiError, NetworkError, ResponseError } from "./api.js";
 import { renderEditor } from "./renderer.js";
 import { createBlankState } from "./walk-state.js";
+import { describeLocation, fileBaseName, looksLikeWorkbook, readWorkbook, writeWorkbook, XLSX_MIME } from "./workbook.js";
 
 const MAX_DOCUMENT_BYTES = 5000000;   // mirrors the import route's 413 limit
+const MAX_WORKBOOK_BYTES = 20000000;  // an instrument workbook is ~100 KB; anything near this is not one
 const STATUS_LABEL = { DRAFT: "Draft", PUBLISHED: "Published", RETIRED: "Retired" };
 const COUNT_LABELS = [
   ["sections", "Sections"], ["items", "Items"], ["responseSets", "Response sets"], ["responseOptions", "Response options"],
@@ -107,6 +114,7 @@ export function mountAdmin({ api, announce = () => {} }) {
   const importForm = $("admin-import-form");
   const importFile = $("admin-import-file");
   const importResult = $("admin-import-result");
+  const importLabel = $("admin-import-label");
   const view = { versions: [], busy: false, bound: false };
 
   function setStatus(text) { status.textContent = text; if (text) announce(text); }
@@ -118,9 +126,17 @@ export function mountAdmin({ api, announce = () => {} }) {
     error.hidden = false;
   }
 
-  function issueList(issues) {
-    return el("ul", { className: "admin-issues" }, issues.map((i) =>
-      el("li", {}, el("code", { text: i.code || "ISSUE" }), ` ${i.message || ""}`, i.path ? el("span", { className: "muted", text: ` (${i.path})` }) : null)));
+  /**
+   * Problems as a list. A problem found in a workbook names its sheet, row and column; a problem
+   * the server found in a document that came from a workbook is located on the cell it came from
+   * (`locate`); anything else shows the document path the server reported.
+   */
+  function issueList(issues, locate = null) {
+    return el("ul", { className: "admin-issues" }, issues.map((i) => {
+      const where = i.sheet ? describeLocation(i) : (locate && i.path ? describeLocation(locate(i.path)) : "");
+      const place = where || i.path || "";
+      return el("li", {}, el("code", { text: i.code || "ISSUE" }), ` ${i.message || ""}`, place ? el("span", { className: "muted admin-issue-place", text: ` (${place})` }) : null);
+    }));
   }
 
   /** A refusal carries the server's message and code; a lost answer is never reported as either outcome. */
@@ -174,6 +190,7 @@ export function mountAdmin({ api, announce = () => {} }) {
       button("Compare", { "aria-label": `Compare ${name} with another version` }, () => openCompare(v.versionId)),
       button("Placeholders", { "aria-label": `Placeholder review for ${name}` }, () => openPlaceholders(v.versionId)),
       button("New draft", { "aria-label": `Create a new draft from ${name}` }, () => openClone(v.versionId)),
+      button("Download", { "aria-label": `Download ${name}` }, () => openDownload(v.versionId)),
     ];
     if (v.status === "DRAFT") {
       actions.push(button("Edit wording", { "aria-label": `Edit wording of ${name}` }, () => openWording(v.versionId)));
@@ -238,45 +255,95 @@ export function mountAdmin({ api, announce = () => {} }) {
   async function onImport(ev) {
     ev.preventDefault();
     importResult.replaceChildren();
+    showError("");
     const file = importFile.files && importFile.files[0];
-    if (!file) { showError("Choose an instrument document (.json) to import."); importFile.focus(); return; }
-    if (file.size > MAX_DOCUMENT_BYTES) { showError(`That file is ${file.size.toLocaleString("en-US")} bytes. An instrument document may be at most ${MAX_DOCUMENT_BYTES.toLocaleString("en-US")} bytes.`); return; }
-    let document;
-    try {
-      document = JSON.parse(await file.text());
-    } catch (e) {
-      showError(`${file.name} is not valid JSON, so nothing was sent. ${e.message}`);
-      return;
+    if (!file) { showError("Choose a workbook (.xlsx) or an instrument document (.json) to import."); importFile.focus(); return; }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const isWorkbook = looksLikeWorkbook(bytes);
+    const limit = isWorkbook ? MAX_WORKBOOK_BYTES : MAX_DOCUMENT_BYTES;
+    if (file.size > limit) { showError(`That file is ${file.size.toLocaleString("en-US")} bytes. An instrument ${isWorkbook ? "workbook" : "document"} may be at most ${limit.toLocaleString("en-US")} bytes.`); return; }
+
+    let doc;
+    let source = { locate: null, warnings: [], meta: null };
+    if (isWorkbook) {
+      setStatus(`Reading ${file.name}...`);
+      const wb = await readWorkbook(bytes);
+      if (!wb.ok) {
+        importResult.append(problemSummary(`Not imported: ${file.name} has ${plural(wb.errors.length, "problem", "problems")}. Nothing was sent.`, wb.errors));
+        setStatus(`${file.name} was not imported: ${plural(wb.errors.length, "problem", "problems")} in the workbook.`);
+        return;
+      }
+      doc = wb.document;
+      source = { locate: wb.locate, warnings: wb.warnings, meta: wb.meta };
+    } else {
+      try {
+        doc = JSON.parse(new TextDecoder().decode(bytes));
+      } catch (e) {
+        showError(`${file.name} is neither an Excel workbook (.xlsx) nor valid JSON, so nothing was sent. ${e.message}`);
+        return;
+      }
     }
+
+    const label = importLabel.value.trim();
+    const version = doc && typeof doc === "object" && doc.instrument && typeof doc.instrument === "object" ? doc.instrument.version : null;
+    if (label && version && typeof version === "object") version.versionLabel = label;
+    if (!(await mayReplace(doc, source.meta))) { setStatus("Nothing was imported."); return; }
+
     await guarded(async () => {
       setStatus(`Validating ${file.name}...`);
       let result;
       try {
-        result = await api.post("/admin/instrument/import", { document });
+        result = await api.post("/admin/instrument/import", { document: doc });
       } catch (e) {
         if (e instanceof ApiError && e.code === "INSTRUMENT_CONFIG_INVALID") {
-          importResult.append(invalidSummary(file.name, e));
-          setStatus(`${file.name} was not imported: ${plural((e.details?.issues || []).length, "problem", "problems")} found.`);
+          const issues = (e.details && e.details.issues) || [];
+          importResult.append(problemSummary(`Not imported: ${file.name} has ${plural(issues.length, "problem", "problems")}. Nothing was written.`, issues, source.locate));
+          setStatus(`${file.name} was not imported: ${plural(issues.length, "problem", "problems")} found.`);
           return;
         }
         throw e;
       }
-      importResult.append(importSummary(file.name, result));
+      importResult.append(importSummary(file.name, result, source));
       setStatus(`${result.created ? "Created" : "Re-imported"} draft ${result.versionLabel}.`);
       await loadVersions();
     }, { mutation: true });
   }
 
-  function invalidSummary(fileName, e) {
-    const issues = (e.details && e.details.issues) || [];
-    return el("div", { className: "admin-summary admin-summary-invalid", role: "group", "aria-label": "Validation summary" },
-      el("p", { className: "admin-summary-title", text: `Not imported: ${fileName} has ${plural(issues.length, "problem", "problems")}. Nothing was written.` }),
-      issueList(issues));
+  /**
+   * An upload whose label names an existing DRAFT replaces that draft entirely. That is the point
+   * of editing a draft in Excel -- but not when the draft changed after the workbook was
+   * downloaded, or when the file did not come from that draft at all. Those ask first. A label that
+   * names a published or retired version is refused here with the way out; the server would refuse
+   * it anyway.
+   */
+  async function mayReplace(doc, meta) {
+    const code = doc?.instrument?.code;
+    const label = doc?.instrument?.version?.versionLabel;
+    if (typeof code !== "string" || typeof label !== "string") return true;
+    const existing = view.versions.find((v) => v.instrumentCode === code && v.versionLabel === label);
+    if (!existing) return true;
+    if (existing.status !== "DRAFT") {
+      showError(`"${label}" is the label of a ${STATUS_LABEL[existing.status].toLowerCase()} version of ${code}, which cannot change. Enter a new draft label, or change version_label in the file.`);
+      importLabel.focus();
+      return false;
+    }
+    const fromThisDraft = meta && meta.versionId === existing.versionId;
+    if (fromThisDraft && meta.checksum === existing.checksum) return true;
+    const reason = fromThisDraft
+      ? `Draft ${label} changed after this workbook was downloaded (for example, wording edited here). Uploading replaces the draft with the file, and those changes are lost.`
+      : `A draft named ${label} already exists, and this file did not come from it. Uploading replaces that draft entirely with the file.`;
+    return confirmPanel(`Replace draft ${label}?`, [reason, "To keep both, cancel and enter a new draft label."], "Replace draft", true);
   }
 
-  function importSummary(fileName, r) {
+  function problemSummary(title, issues, locate = null) {
+    return el("div", { className: "admin-summary admin-summary-invalid", role: "group", "aria-label": "Validation summary" },
+      el("p", { className: "admin-summary-title", text: title }),
+      issueList(issues, locate));
+  }
+
+  function importSummary(fileName, r, source = { locate: null, warnings: [] }) {
     const counts = r.counts || {};
-    const warnings = r.warnings || [];
+    const warnings = [...(source.warnings || []), ...(r.warnings || [])];
     const placeholders = r.placeholders || [];
     return el("div", { className: "admin-summary", role: "group", "aria-label": "Validation summary" },
       el("p", { className: "admin-summary-title", text: `${r.created ? "Created" : "Re-imported"} DRAFT ${r.versionLabel} of ${r.instrumentCode} from ${fileName}.` }),
@@ -286,7 +353,7 @@ export function mountAdmin({ api, announce = () => {} }) {
         el("tbody", {}, COUNT_LABELS.filter(([k]) => counts[k] !== undefined).map(([k, label]) =>
           el("tr", {}, el("th", { scope: "row", text: label }), el("td", { className: "num", text: String(counts[k]) }))))),
       warnings.length
-        ? el("div", {}, el("p", { className: "admin-summary-subtitle", text: `${plural(warnings.length, "warning", "warnings")} (imported anyway)` }), issueList(warnings))
+        ? el("div", {}, el("p", { className: "admin-summary-subtitle", text: `${plural(warnings.length, "warning", "warnings")} (imported anyway)` }), issueList(warnings, source.locate))
         : el("p", { className: "muted", text: "No warnings." }),
       placeholders.length
         ? el("div", { className: "row-actions" },
@@ -547,6 +614,43 @@ export function mountAdmin({ api, announce = () => {} }) {
       setStatus(r.changed ? `Saved ${plural((r.applied || []).length, "change", "changes")} to ${r.versionLabel}.` : "Nothing changed.");
       await loadVersions();
     }, { mutation: true });
+  }
+
+  // ---- download: the Excel round-trip starts here ---------------------------------------------------
+
+  function openDownload(versionId) {
+    const v = versionById(versionId);
+    if (!v) return;
+    const xlsx = button("Excel workbook (.xlsx)", { className: "btn btn-sm btn-primary" }, () => download(v, "xlsx"));
+    openPanel(`Download ${v.versionLabel}`,
+      el("p", { className: "section-sub", text: "Edit the workbook in Excel, give the new version a label, then upload it with Import above. It becomes a new draft; nothing changes for walks until you publish it. The workbook's Start Here sheet explains each sheet." }),
+      el("div", { className: "row-actions" }, xlsx, button("JSON document (.json)", {}, () => download(v, "json"))));
+    xlsx.focus();
+  }
+
+  async function download(v, format) {
+    await guarded(async () => {
+      setStatus(`Preparing ${v.versionLabel}...`);
+      const r = await api.get(`/admin/instrument/versions/${encodeURIComponent(v.versionId)}/document`);
+      const base = fileBaseName(r.version.instrumentCode, r.version.versionLabel);
+      if (format === "xlsx") {
+        const bytes = await writeWorkbook(r.document, { exportedFrom: r.version, exportedAt: new Date().toISOString() });
+        saveFile(bytes, `${base}.xlsx`, XLSX_MIME);
+      } else {
+        saveFile(`${JSON.stringify(r.document, null, 2)}\n`, `${base}.json`, "application/json");
+      }
+      setStatus(`Downloaded ${v.versionLabel} as ${format === "xlsx" ? "an Excel workbook" : "a JSON document"}.`);
+    });
+  }
+
+  /** A file made in the page. The object URL is released once the click has been handled. */
+  function saveFile(data, fileName, type) {
+    const url = URL.createObjectURL(new Blob([data], { type }));
+    const link = el("a", { href: url, download: fileName, hidden: true });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   // ---- clone (ADM-06) --------------------------------------------------------------------------

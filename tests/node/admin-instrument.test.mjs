@@ -9,6 +9,9 @@
 //   ADM-07  retirement: stops new walks, keeps a historical walk openable and saveable, refuses
 //           a repeat and refuses leaving no version in service unless explicitly confirmed
 //   ADM-08  the placeholder review queue, its search, and resolving a placeholder by DRAFT edit
+//   Excel   a version exported as its document and as a workbook, and edited workbooks -- one
+//           edited here, one edited in LibreOffice Calc -- imported as drafts carrying exactly
+//           their edits
 //   and     discard of a DRAFT, and the 401 / 403 / CSRF posture of every route
 //
 // Fixtures live under this run's own instrument code, so nothing here publishes, retires or edits
@@ -22,6 +25,7 @@ import { randomUUID } from "node:crypto";
 import sql from "mssql";
 import { api, baseUrl, connectionConfig, hasDatabaseConfig, loadRuntimeEnv, requireApp, root } from "./helpers.mjs";
 import { canonicalize } from "../../scripts/lib/snapshot.mjs";
+import { readWorkbook, writeWorkbook } from "../../app/assets/js/workbook.js";
 
 const env = loadRuntimeEnv();
 const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
@@ -192,6 +196,7 @@ test("every administration route refuses anonymous callers, users without instru
     ["GET", v(id, "preview")],
     ["GET", `${v(id, "wording")}?q=prompt`],
     ["GET", v(id, "placeholders")],
+    ["GET", v(id, "document")],
     ["POST", v(id, "clone"), { versionLabel: `${tag}-posture-clone` }],
     ["POST", v(id, "edits"), { expectedChecksum: draft.checksum, edits: [{ target: "version", field: "revisionNotes", value: "x" }] }],
     ["POST", v(id, "discard")],
@@ -576,4 +581,65 @@ test("a DRAFT can be discarded through the admin route; a published version cann
   const refused = await admin.call("POST", v(published.versionId, "discard"));
   assert.equal(refused.status, 409, refused.text);
   assert.equal((await versionRow(published.versionId)).status, "PUBLISHED");
+});
+
+// ---- the Excel round-trip ----------------------------------------------------------------------
+
+test("Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit", { skip }, async () => {
+  const base = await importDraft("excel-base");
+  await publish(base.versionId);
+
+  const exported = await admin.call("GET", v(base.versionId, "document"));
+  assert.equal(exported.status, 200, exported.text);
+  assert.equal(exported.json.version.status, "PUBLISHED");
+  assert.equal(exported.json.document.instrument.version.status, "DRAFT", "an import can only create a DRAFT");
+  assert.equal(exported.json.document.items.length, SOURCE.items.length);
+  const missing = await admin.call("GET", v(randomUUID(), "document"));
+  assert.equal(missing.status, 404, missing.text);
+
+  // Through a workbook and back, unchanged: the same definitions as the published version.
+  const bytes = await writeWorkbook(exported.json.document, { exportedFrom: exported.json.version, exportedAt: "2026-09-24T00:00:00Z" });
+  const unchanged = await readWorkbook(bytes);
+  assert.equal(unchanged.ok, true, JSON.stringify(unchanged.errors));
+  assert.equal(canonicalize(unchanged.document), canonicalize(exported.json.document), "the workbook carries the document exactly");
+  assert.equal(unchanged.meta.checksum, base.checksum);
+  unchanged.document.instrument.version.versionLabel = `${tag}-excel-same-${++labelCounter}`;
+  const same = await admin.call("POST", "/api/admin/instrument/import", { document: unchanged.document });
+  assert.equal(same.status, 201, same.text);
+  assert.equal(same.json.definitionsChecksum, base.definitionsChecksum, "a workbook round trip changes nothing");
+
+  // One prompt edited in the workbook's document.
+  const edited = await readWorkbook(bytes);
+  const item = SOURCE.items.find((i) => i.reviewStatus !== PLACEHOLDER_STATUS && i.itemType === "SINGLE_CHOICE");
+  edited.document.items.find((i) => i.itemKey === item.itemKey).prompt = `${item.prompt} (edited in Excel)`;
+  edited.document.instrument.version.versionLabel = `${tag}-excel-edit-${++labelCounter}`;
+  const draft = await admin.call("POST", "/api/admin/instrument/import", { document: edited.document });
+  assert.equal(draft.status, 201, draft.text);
+  const cmp = await admin.call("GET", `/api/admin/instrument/compare?from=${base.versionId}&to=${draft.json.versionId}`);
+  assert.equal(cmp.status, 200, cmp.text);
+  assert.deepEqual(cmp.json.changes, [{ collection: "items", key: item.itemKey, change: "changed", label: `${item.prompt} (edited in Excel)`, fields: [{ field: "prompt", from: item.prompt, to: `${item.prompt} (edited in Excel)` }] }]);
+});
+
+test("Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits", { skip }, async () => {
+  // The same instrument as the fixture's starting point, under this run's code.
+  const base = await importDraft("excel-lo-base");
+  const fixture = await readWorkbook(new Uint8Array(fs.readFileSync(path.join(root, "tests", "fixtures", "workbooks", "libreoffice-edited.xlsx"))));
+  assert.equal(fixture.ok, true, JSON.stringify(fixture.errors));
+  fixture.document.instrument.code = instrumentCode;
+  fixture.document.instrument.version.versionLabel = `${tag}-excel-lo-${++labelCounter}`;
+  const r = await admin.call("POST", "/api/admin/instrument/import", { document: fixture.document });
+  assert.equal(r.status, 201, r.text);
+  assert.equal(r.json.counts.placeholders, PLACEHOLDER_COUNT - 1, "the placeholder resolved in LibreOffice is resolved");
+  assert.equal(r.json.counts.responseOptions, SOURCE.counts.responseOptions + 1, "and the answer added there is there");
+
+  const cmp = await admin.call("GET", `/api/admin/instrument/compare?from=${base.versionId}&to=${r.json.versionId}`);
+  assert.equal(cmp.status, 200, cmp.text);
+  const changes = Object.fromEntries(cmp.json.changes.map((c) => [`${c.collection}/${c.key}/${c.change}`, c.fields.map((f) => `${f.field}=${JSON.stringify(f.to)}`).sort()]));
+  assert.deepEqual(changes, {
+    "items/prek_k_q1/changed": ['prompt="Students can describe today\'s learning goal."', 'reviewStatus="Reviewed"'],
+    "items/prek_k_q2/changed": ["displayOrder=15"],
+    "items/prek_k_q3/changed": ["required=true"],
+    "dimensionValues/school/abbott_middle_school/changed": ['label="2024"'],
+    "responseOptions/yes_no/maybe/added": [],
+  });
 });

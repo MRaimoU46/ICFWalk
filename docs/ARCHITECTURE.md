@@ -583,6 +583,50 @@ done. All text reaches the page through `textContent`; the CSP is unchanged.
 change there: when nothing is in service, the default report version is the newest frozen version
 instead of a 404, so the Reports view still opens (`InstrumentAdministrationTest.testReportsStillOpenWhenNoVersionIsInService`).
 
+## The Excel round-trip (instrument updates)
+
+The instrument changes once a year. Structure (new questions, answers, rules) is authored in the
+instrument document, and people edit that document in Excel rather than as JSON:
+
+```
+Download:  GET .../versions/{id}/document  -> InstrumentDocumentExporter (snapshot -> document)
+           -> workbook.js writeWorkbook (in the page) -> .xlsx saved by the browser
+Upload:    .xlsx -> workbook.js readWorkbook (in the page) -> document
+           -> POST /api/admin/instrument/import (unchanged) -> validation, DRAFT
+```
+
+**The server never parses a spreadsheet.** Conversion both ways happens in the browser. The upload
+ends as the same JSON document a JSON upload sends, through the same route, validation, size cap and
+refusal audit, so a workbook can do nothing a document could not, and there is no new upload path
+to secure. `app/assets/js/workbook.js` has no dependency: an .xlsx file is a zip of XML parts, read
+and written with the platform's raw-deflate streams (`CompressionStream`, `DecompressionStream`) and
+a small XML reader that refuses any DOCTYPE, so no entity or external reference is ever expanded.
+Size limits stop a file that inflates far past what an instrument could be, and every zip part's
+CRC is checked.
+
+**The export is an exact inverse.** Compiled snapshots keep every row's authoring id, so
+`InstrumentDocumentExporter` gives each row its id back and resolves each key reference to the id
+of the row that owns it. `InstrumentDocumentExporterTest` proves the supplied instrument exports and
+normalizes back to the same definitions checksum and the same whole-snapshot checksum, and that a
+PUBLISHED version exported and imported under a new label is a DRAFT with exactly its definitions.
+
+**The workbook is the one content owners already know.** Same sheet and column names and the same
+title, description and header rows as `config/ICFWalk_Instrument_Configuration_Aligned.xlsx`, plus a
+"Start Here" sheet and a "document" sheet (`docs/DATA_CONTRACT.md`, "Instrument workbooks"). The
+reviewed aligned workbook, written by other software, reads to exactly the supplied instrument, and
+workbooks opened, edited and saved in LibreOffice Calc read back exactly (`tests/node/workbook.test.mjs`
+with the fixtures in `tests/fixtures/workbooks`).
+
+**Problems point at cells.** A problem in the workbook itself is reported by sheet, row and column
+before anything is sent. A problem the server finds is reported against a document path, which
+`locate()` maps back to the cell it came from -- including paths into the normalized definitions,
+whose rows the server sorts by key, by reproducing that sort.
+
+**A draft is not replaced by surprise.** Uploading under the label of an existing DRAFT replaces
+it, which is how a draft is edited in Excel. The workbook records which version and checksum it was
+downloaded from, so the page asks first when that draft changed after the download, or when the file
+did not come from it at all; a published version's label is refused with the way out.
+
 ## Aggregate reporting (Phase 7)
 
 ```

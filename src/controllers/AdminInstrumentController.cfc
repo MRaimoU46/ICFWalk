@@ -50,6 +50,14 @@ component output="false" {
 		return { "status": 200, "body": variables.c.instrumentAdminService.preview(arguments.req.params[1]) };
 	}
 
+	/**
+	 * GET /api/admin/instrument/versions/{versionId}/document. The version as an importable authoring
+	 * document, for the Excel round-trip and a JSON download. Read-only.
+	 */
+	public struct function exportDocument(required struct req) {
+		return { "status": 200, "body": variables.c.instrumentAdminService.exportDocument(arguments.req.params[1]) };
+	}
+
 	/** GET /api/admin/instrument/versions/{versionId}/wording?q= (ADM-06, ADM-08). Read-only. */
 	public struct function wording(required struct req) {
 		return { "status": 200, "body": variables.c.instrumentAdminService.wording(arguments.req.params[1], queryValue(arguments.req, "q")) };

@@ -34,7 +34,7 @@ component output="false" {
 	public InstrumentAdminService function init(
 		required struct config, required any db, required any errors, required any logger,
 		required any definitionRepository, required any snapshotService, required any importService,
-		required any draftEditor, required any comparer, required any snapshotCompiler
+		required any draftEditor, required any comparer, required any snapshotCompiler, required any documentExporter
 	) {
 		variables.config = arguments.config;
 		variables.db = arguments.db;
@@ -46,6 +46,7 @@ component output="false" {
 		variables.editor = arguments.draftEditor;
 		variables.comparer = arguments.comparer;
 		variables.compiler = arguments.snapshotCompiler;
+		variables.exporter = arguments.documentExporter;
 		variables.types = new icfwalk.core.JsonTypes();
 		return this;
 	}
@@ -73,6 +74,18 @@ component output="false" {
 	}
 
 	// ---- writes ----------------------------------------------------------------------------------
+
+	/**
+	 * Any version, of any status, as the authoring document an import takes: the starting point of
+	 * the Excel round-trip and of a JSON download. Read from the checksum-verified snapshot and
+	 * inverted by InstrumentDocumentExporter, so importing it (under a new label) produces a DRAFT
+	 * with exactly this version's definitions. Read-only.
+	 */
+	public struct function exportDocument(required string versionId) {
+		var row = requireVersion(arguments.versionId);
+		var normalized = variables.editor.normalizedFromSnapshot(variables.snapshots.snapshotFor(row.versionId));
+		return { "version": versionSummary(row), "document": variables.exporter.toDocument(normalized) };
+	}
 
 	/**
 	 * An uploaded authoring document, imported exactly as the maintenance import would. `document`

@@ -3514,3 +3514,77 @@ working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server 2022 (16.0.4295
    unchanged.
 7. **Nothing here is independently audited.** Phase 6 administration and Phase 7 are implementation
    candidates: not frozen, not accepted.
+
+## Excel round-trip for the yearly instrument update
+
+**Why.** The product owner confirmed the instrument changes once a year, in summer, and chose to
+make structural changes in Excel first, with a friendlier in-app editor scoped after the first
+summer shows what actually changes. The plan and its status are in the Phase 6 review document.
+
+**Starting point.** `2b68cc06db98bf335b375529088ca5adef7132fb` (Phase 6 administration and its gate
+transcript), clean tree, remote equal to HEAD.
+
+### What it adds
+
+| Piece | What it does |
+| --- | --- |
+| `src/instrument/InstrumentDocumentExporter.cfc` | Pure: a version's normalized content back to the authoring document, the exact inverse of `ConfigNormalizer` (rows keep their authoring ids; references resolve to the ids they had; the version declares DRAFT; rows in reading order). |
+| `GET /api/admin/instrument/versions/{id}/document` | `InstrumentAdminService.exportDocument`: any version as that document, from its checksum-verified snapshot. |
+| `app/assets/js/workbook.js` | Dependency-free .xlsx writer and reader in the page: the aligned workbook's layout plus Start Here and document sheets; typed cell handling; problems by sheet, row and column; `locate()` for server paths; limits, CRC checks, no DOCTYPE. |
+| Admin view | Download on every version (Excel workbook or JSON document). Import takes a workbook or a JSON document and an optional new draft label, lists workbook problems by cell, locates server problems on their cells, and asks before replacing a draft that changed since the download or that the file did not come from. |
+
+The server never parses a spreadsheet: an uploaded workbook becomes the same JSON document any
+upload sends, through the unchanged import route. No schema migration, dependency, framework or
+infrastructure was added. `libreoffice-calc` was installed into this build container to produce and
+check fixtures; nothing in the project depends on it.
+
+### Changes to existing files
+
+| File | Change |
+| --- | --- |
+| `src/instrument/InstrumentAdminService.cfc` | `exportDocument`; the exporter is a new constructor argument. |
+| `src/controllers/AdminInstrumentController.cfc`, `src/http/Router.cfc`, `src/Bootstrap.cfc` | The action, the route (`instrument.manage`), the wiring. |
+| `app/assets/js/admin.js`, `src/views/shell.html` | Download panel; the import card accepts .xlsx and an optional draft label; problems located on cells; the replace check. |
+| `tests/node/admin-instrument.test.mjs`, `tests/node/browser-admin.test.mjs` | New cases (below); the document route joins the 401/403 table; one assertion updated for deliberately changed wording. |
+| `package.json` | `test:workbook`; the workbook test joins `test:admin`. |
+
+### Files changed
+
+| File | Status |
+| --- | --- |
+| `src/instrument/InstrumentDocumentExporter.cfc`, `app/assets/js/workbook.js` | New |
+| `tests/cfml/specs/InstrumentDocumentExporterTest.cfc` (6), `tests/node/workbook.test.mjs` (12) | New |
+| `tests/fixtures/workbooks/` (two LibreOffice-saved workbooks, the script that edited one, a README) | New |
+| `docs/evidence/excel-roundtrip-red-before-green.md`, `docs/evidence/screenshots/admin-download-desktop.png` | New |
+| The files in the table above; `docs/evidence/screenshots/admin-*.png` refreshed | Changed |
+| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/ACCEPTANCE_TRACKING.md`, `docs/LOCAL_SETUP.md`, `BUILD_STATUS.md`, `manifest.json` | Records |
+
+### Tests and results (development runs, before the commit)
+
+| Run | Result |
+| --- | --- |
+| `InstrumentDocumentExporterTest` | 6/6 |
+| `workbook.test.mjs` | 12/12 |
+| `admin-instrument.test.mjs` | 13/13 (2 new: an edited workbook imports as a draft with exactly the edit; the LibreOffice-edited workbook imports and the comparison shows exactly its five edits) |
+| `browser-admin.test.mjs` | 7/7 (1 new: download, upload, problems by cell, nothing sent for a workbook problem, the replace check; the download panel added to the accessibility case) |
+
+Red before green: `docs/evidence/excel-roundtrip-red-before-green.md` (every new check fails without
+the new source; no product defect was found). **The authoritative result is the full gate on the
+exact commit**, recorded in `docs/evidence/excel-roundtrip-release-gate.txt` in the commit after it.
+
+### Unresolved and not verified (Excel round-trip)
+
+1. **Not opened in Microsoft Excel.** Excel is not available in this environment. The reader is
+   proven against the aligned workbook written by other software and against LibreOffice Calc 24.2
+   output; the writer's files open in LibreOffice. A check in real Excel (open, edit, save, upload)
+   belongs in the spring practice run.
+2. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** The exporter is plain CFML
+   (closures passed to `arraySort`, recursive private methods); re-run
+   `InstrumentDocumentExporterTest` there.
+3. **Editing structure in Excel is still technical.** Rows point at each other by id, and rules and
+   settings are JSON in cells. Validation catches mistakes and names the cell, but the admin still
+   has to understand the sheets. That is what the later in-app editor is for.
+4. **Uploading under an existing draft's label replaces that draft.** The page asks first when the
+   draft changed since the download or the file did not come from it; the server itself does not
+   compare checksums on import.
+5. **Not independently audited**, like the rest of Phase 6 administration and Phase 7.

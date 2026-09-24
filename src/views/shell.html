@@ -98,10 +98,19 @@
     <p class="status admin-status" id="admin-status" role="status" aria-live="polite"></p>
     <div id="admin-error" class="app-message error" role="alert" hidden></div>
     <form id="admin-import-form" class="section-card admin-import" novalidate aria-labelledby="admin-import-title">
-      <h2 class="section-title" id="admin-import-title">Import an instrument document</h2>
-      <p class="section-sub" id="admin-import-hint">The document is validated in full before anything is written. A valid document becomes a DRAFT; nothing is published until you publish it.</p>
-      <label for="admin-import-file">Instrument document (.json)</label>
-      <input type="file" id="admin-import-file" accept=".json,application/json" aria-describedby="admin-import-hint">
+      <h2 class="section-title" id="admin-import-title">Import an instrument</h2>
+      <p class="section-sub" id="admin-import-hint">Upload an Excel workbook (use Download on a version below, then edit it in Excel) or an instrument document (.json). It is validated in full before anything is written. A valid file becomes a DRAFT; nothing changes for walks until you publish it.</p>
+      <div class="field-grid admin-import-fields">
+        <div>
+          <label for="admin-import-file">Workbook (.xlsx) or document (.json)</label>
+          <input type="file" id="admin-import-file" accept=".xlsx,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-describedby="admin-import-hint">
+        </div>
+        <div>
+          <label for="admin-import-label">New draft label (optional)</label>
+          <input type="text" id="admin-import-label" maxlength="100" aria-describedby="admin-import-label-hint">
+          <p class="field-note muted" id="admin-import-label-hint">Leave empty to use the version label inside the file. A published version's label cannot be reused.</p>
+        </div>
+      </div>
       <div class="row-actions">
         <button type="submit" class="btn btn-primary" id="admin-import-btn">Validate and import</button>
       </div>

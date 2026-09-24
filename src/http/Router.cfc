@@ -50,6 +50,7 @@ component output="false" {
 		add("GET", "^/api/admin/instrument/compare$", "adminInstrumentController", "compareVersions", { "permission": "instrument.manage" });
 		add("GET", "^/api/admin/instrument/versions/([^/]+)/preview$", "adminInstrumentController", "previewVersion", { "permission": "instrument.manage" });
 		add("GET", "^/api/admin/instrument/versions/([^/]+)/wording$", "adminInstrumentController", "wording", { "permission": "instrument.manage" });
+		add("GET", "^/api/admin/instrument/versions/([^/]+)/document$", "adminInstrumentController", "exportDocument", { "permission": "instrument.manage" });
 		add("GET", "^/api/admin/instrument/versions/([^/]+)/placeholders$", "adminInstrumentController", "placeholders", { "permission": "instrument.manage" });
 		add("POST", "^/api/admin/instrument/versions/([^/]+)/clone$", "adminInstrumentController", "cloneVersion", { "permission": "instrument.manage" });
 		add("POST", "^/api/admin/instrument/versions/([^/]+)/edits$", "adminInstrumentController", "editDraft", { "permission": "instrument.manage" });

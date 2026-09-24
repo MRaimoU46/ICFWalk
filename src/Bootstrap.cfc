@@ -79,9 +79,13 @@ component output="false" {
 		// DRAFT write path; every read is of a checksum-verified snapshot through SnapshotService.
 		c["draftEditor"] = new icfwalk.instrument.DraftEditor(c.definitionValidator.placeholderReviewStatus());
 		c["instrumentVersionComparer"] = new icfwalk.instrument.InstrumentVersionComparer(c.canonicalJson);
+		// The inverse of ConfigNormalizer: a stored version back to the document an import takes,
+		// for the Excel round-trip (the browser lays it out as a workbook) and a JSON download.
+		c["instrumentDocumentExporter"] = new icfwalk.instrument.InstrumentDocumentExporter(c.canonicalJson);
 		c["instrumentAdminService"] = new icfwalk.instrument.InstrumentAdminService(
 			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.snapshotService,
-			c.instrumentImportService, c.draftEditor, c.instrumentVersionComparer, c.snapshotCompiler
+			c.instrumentImportService, c.draftEditor, c.instrumentVersionComparer, c.snapshotCompiler,
+			c.instrumentDocumentExporter
 		);
 
 		// Walk persistence (Phase 4).

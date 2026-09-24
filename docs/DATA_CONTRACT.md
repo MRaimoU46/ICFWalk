@@ -398,6 +398,48 @@ when it was written.
 Reports (Phase 7) already include RETIRED versions. With nothing in service, the default report
 version is the newest frozen version.
 
+## Instrument workbooks (the Excel round-trip)
+
+An instrument workbook is the authoring document laid out as sheets. It is written and read only in
+the browser (`app/assets/js/workbook.js`); what is sent to the server is the document.
+
+| Sheet | Rows | Document member |
+| --- | --- | --- |
+| `Start Here` | instructions; never read back | none |
+| `instrument` | exactly one | `instrument` (without `version`) |
+| `instrument_version` | exactly one | `instrument.version` |
+| `section_definition`, `item_definition`, `response_set`, `response_option`, `rule_definition`, `dimension_definition`, `dimension_value`, `instrument_dimension` | one per record | `sections`, `items`, `responseSets`, `responseOptions`, `rules`, `dimensions`, `dimensionValues`, `instrumentDimensions` |
+| `document` | one per member: `schemaVersion`, `source`, `behavior`, `contentReview`, and `export.*` (where the file came from) | those members; `export.*` is not sent |
+
+- **Layout.** Title on row 1, description on row 2, column names on row 3, records from row 4, as in
+  `config/ICFWalk_Instrument_Configuration_Aligned.xlsx`. A reader finds the header row as the first
+  of the first ten rows that names the sheet's first column, and maps columns by name, so column order
+  does not matter. A missing or duplicated column is an error; an extra column is ignored with a
+  warning. A row whose mapped cells are all empty is skipped.
+- **Columns** are the aligned workbook's: each document field in snake_case, with `settings` as
+  `settings_json`. Kinds: ids and keys are text, trimmed; text is kept exactly; `display_order` is a
+  whole number; `numeric_score` is a number; TRUE/FALSE columns also accept 1/0 and yes/no; JSON
+  columns (`settings_json`) must parse; dates accept an Excel date and are written YYYY-MM-DD. A
+  number typed into a text column is read as its text ("7", "2024"). An empty cell is null. An Excel
+  error cell (#REF! ...) is an error. `conditions_json` and `comparison_value` are text, exactly as in
+  the document; the server checks them.
+- **Text fidelity.** Characters XML cannot carry, and carriage returns, are written as Excel's
+  `_xHHHH_` escapes, and a literal `_xHHHH_` is itself escaped, so every string comes back exactly.
+  Text columns are formatted as text, so a value typed into them stays text.
+- **The placeholder summary.** `contentReview.unresolvedPlaceholders` is kept true to the items by the
+  rule the in-app editor applies: when the items marked `Placeholder in source` no longer match it,
+  it is rebuilt (surviving entries keep their order and take the item's current prompt, entries for
+  items no longer marked are dropped, newly marked items are appended by key) and a warning says so;
+  a summary that already agrees is left exactly as it was.
+- **Where it came from.** `export.versionId`, `export.versionLabel`, `export.status`,
+  `export.checksum`, `export.instrumentCode`, `export.exportedAt` and `export.format`
+  (`icfwalk-instrument-workbook/1`) record the download. The page uses them only to ask before an
+  upload replaces a draft that changed since, or that the file did not come from.
+- **Limits.** At most 2,000 zip parts, 20 MB per part and 64 MB in all once inflated, 20,000 rows per
+  sheet, 32,767 characters per cell (Excel's own), a 20 MB file. A DOCTYPE, an encrypted workbook,
+  a compression method other than stored or deflate, and a part whose size or CRC does not match are
+  refused.
+
 ## Publisher attribution
 
 A version that is not a DRAFT names the user who published it. There is no default, no empty string,
