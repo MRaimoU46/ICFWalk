@@ -323,8 +323,11 @@ An independent audit of the Phase 6 administration candidate (`2a3f2ecb4f070401c
 found four defects. Each was corrected on `claude/icfwalk-phase-6-admin-audit-corrections` after a
 regression that failed on the candidate for the intended reason
 (`docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`). Verified on Lucee 6.2.8.20 with
-SQL Server 2022 and Chromium only. **This is an implementation candidate submitted for independent
-re-audit: it is not accepted, frozen or complete.**
+SQL Server 2022 and Chromium only. The full gate on the code commit
+`06660a238c8dd6c62cacd8a27ed970e757ef22a1` passed: Node/HTTP/Playwright 240/240, CFML 475/475, 0
+failed, 0 skipped (`docs/evidence/phase6-admin-audit-corrections-release-gate.txt`). **This is an
+implementation candidate submitted for independent re-audit: it is not accepted, frozen or
+complete.**
 
 | ID | Finding | Status | Evidence |
 | --- | --- | --- | --- |

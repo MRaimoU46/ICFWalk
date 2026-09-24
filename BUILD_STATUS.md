@@ -3706,6 +3706,12 @@ that 200 kept.
 
 **The authoritative result is the full gate on the exact code commit**, recorded in the commit after
 it (`docs/evidence/phase6-admin-audit-corrections-release-gate.txt`).
+**Result on `06660a238c8dd6c62cacd8a27ed970e757ef22a1`: Node/HTTP/Playwright 240/240 (225 + 4
+`workbook` + 6 HTTP + 5 browser), CFML 475/475 (455 + 12 `RouterBodyOrderTest` + 6
+`DraftReplacementConcurrencyTest` + 2 `DiscardIdentityBarrierTest`), 0 failed, 0 skipped**,
+`validate:handoff` ok (51 checks), `test:package` 19/19, run from a clean tree on a freshly created
+database with migration `006` re-applied, working tree and HEAD unchanged afterwards. Lucee 6.2.8.20
+and SQL Server 2022 only.
 
 ### Unresolved and not verified (audit corrections)
 
@@ -3728,3 +3734,13 @@ it (`docs/evidence/phase6-admin-audit-corrections-release-gate.txt`).
    back between its two reads). Worth the same one-read treatment in a later round.
 5. **Not independently audited.**
 
+## Submitted for re-audit
+
+The Phase 6 administration audit corrections are submitted for independent re-audit as an
+implementation candidate: branch `claude/icfwalk-phase-6-admin-audit-corrections`, from the audited
+`2a3f2ecb4f070401cba00518c0db8a2de823a29d`; code commit `06660a238c8dd6c62cacd8a27ed970e757ef22a1`
+(gated), followed by a records-only commit. What to audit, finding by finding, where each claim is,
+where to look first and what was not performed are in
+`docs/evidence/phase6-admin-audit-corrections-handoff.md`; the environment is in
+`docs/evidence/phase6-admin-audit-corrections-environment.md`. Not accepted, frozen, production-ready
+or audited.
