@@ -48,6 +48,11 @@ component output="false" {
 			c.canonicalJson, c.snapshotCompiler, c.definitionValidator, c.renderContractValidator
 		);
 		c["responder"] = new icfwalk.http.Responder(c.config, c.logger, c.canonicalJson, c.requestContext);
+		// The request as the router reads it: metadata first, the body only on request and bounded
+		// (P6A-01); and the one place a request body is deserialized, after it is authorized and
+		// measured.
+		c["httpRequestSource"] = new icfwalk.http.HttpRequestSource(c.requestContext);
+		c["jsonBodyParser"] = new icfwalk.http.JsonBodyParser(c.errors);
 
 		// Instrument engine (Phase 3): visibility rules from the compiled snapshot. The render model
 		// builder itself is constructed above, because import and publish preflight through it.

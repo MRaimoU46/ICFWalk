@@ -82,21 +82,54 @@ component output="false" {
 	 * with exactly this version's definitions. Read-only.
 	 */
 	public struct function exportDocument(required string versionId) {
-		var row = requireVersion(arguments.versionId);
-		var normalized = variables.editor.normalizedFromSnapshot(variables.snapshots.snapshotFor(row.versionId));
-		return { "version": versionSummary(row), "document": variables.exporter.toDocument(normalized) };
+		if (!variables.db.isGuid(arguments.versionId)) variables.errors.validation("versionId must be a GUID.", "INVALID_VERSION_ID");
+		// ONE READ OF THE ROW (P6A-02). The metadata returned with the document -- above all its
+		// checksum, which a workbook carries back as the state it was downloaded from -- and the
+		// snapshot the document is built from come from the same read, verified against each other.
+		// This used to read the row for the metadata and then read the snapshot again, so an edit
+		// committed between the two paired one state's checksum with another state's content.
+		var loaded = variables.snapshots.loadVersion(arguments.versionId);
+		var normalized = variables.editor.normalizedFromSnapshot(loaded.snapshot);
+		return { "version": versionSummary(loaded.row), "document": variables.exporter.toDocument(normalized) };
 	}
 
 	/**
-	 * An uploaded authoring document, imported exactly as the maintenance import would. `document`
-	 * is deliberately not `required`: an absent member arrives as null, and a required argument
-	 * given null is an engine error (500) rather than this refusal (400).
+	 * An uploaded authoring document (ADM-01). `document` is deliberately not `required`: an absent
+	 * member arrives as null, and a required argument given null is an engine error (500) rather
+	 * than this refusal (400).
+	 *
+	 * CREATE-ONLY UNLESS A REPLACEMENT IS NAMED (P6A-02). Without `replace`, a label that already
+	 * names a DRAFT is refused (409 DRAFT_REPLACEMENT_REQUIRED) rather than re-imported -- including
+	 * a DRAFT that appeared after the administrator's page last looked. With
+	 * `replace = { versionId, expectedChecksum }`, the DRAFT under the document's label must be that
+	 * exact version with that exact checksum, compared under the version lock the write holds; any
+	 * other state is refused (409 DRAFT_CHANGED) and nothing is written. The page's confirmation is
+	 * how an administrator chooses; this is what makes the choice hold.
 	 */
-	public struct function importDocument(any document, required string actorUserId) {
+	public struct function importDocument(any document, required string actorUserId, any replace) {
 		if (isNull(arguments.document) || !isStruct(arguments.document)) {
 			variables.errors.validation("document must be the instrument configuration JSON object.", "DOCUMENT_REQUIRED");
 		}
-		return variables.importer.importConfig(arguments.document, arguments.actorUserId);
+		var options = { "createOnly": true };
+		if (!isNull(arguments.replace)) {
+			var token = replacementToken(arguments.replace);
+			options = { "replaceVersionId": token.versionId, "expectedChecksum": token.expectedChecksum };
+		}
+		return variables.importer.importConfig(arguments.document, arguments.actorUserId, options);
+	}
+
+	/** `{ versionId: <GUID>, expectedChecksum: <64 hex> }` and nothing else, or 400 REPLACE_INVALID. */
+	private struct function replacementToken(required any replace) {
+		var shape = "replace must be { ""versionId"": the DRAFT's id, ""expectedChecksum"": the 64-hex-digit checksum you agreed to replace }.";
+		if (!isStruct(arguments.replace)) variables.errors.validation(shape, "REPLACE_INVALID");
+		for (var key in structKeyArray(arguments.replace)) {
+			if (!arrayFindNoCase(["versionId", "expectedChecksum"], key)) variables.errors.validation("'" & key & "' is not accepted in replace. " & shape, "REPLACE_INVALID");
+		}
+		var id = structKeyExists(arguments.replace, "versionId") ? arguments.replace.versionId : javaCast("null", "");
+		var checksum = structKeyExists(arguments.replace, "expectedChecksum") ? arguments.replace.expectedChecksum : javaCast("null", "");
+		if (isNull(id) || !variables.types.isJsonString(id) || !variables.db.isGuid(id)) variables.errors.validation(shape, "REPLACE_INVALID");
+		if (isNull(checksum) || !variables.types.isJsonString(checksum) || !reFind("^[0-9a-fA-F]{64}$", checksum)) variables.errors.validation(shape, "REPLACE_INVALID");
+		return { "versionId": uCase(trim(id)), "expectedChecksum": lCase(checksum) };
 	}
 
 	/**

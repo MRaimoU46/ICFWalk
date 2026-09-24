@@ -95,7 +95,19 @@ component output="false" {
 		return result;
 	}
 
-	public struct function importConfig(required any config, string actorUserId = "") {
+	/**
+	 * `options` selects how an existing DRAFT under the document's label is treated (P6A-02):
+	 *
+	 *   (none)            the maintenance import: an existing DRAFT is re-imported. The operator seed
+	 *                     path relies on that and keeps it deliberately; it is behind the maintenance
+	 *                     guard, and no signed-in administrator can reach it.
+	 *   createOnly        the administration import without a replacement: an existing DRAFT is
+	 *                     refused 409 DRAFT_REPLACEMENT_REQUIRED and nothing is written.
+	 *   replaceVersionId  the administration import naming the DRAFT it replaces, with
+	 *   + expectedChecksum   the checksum the administrator agreed to replace; both are compared
+	 *                     under the version lock the write holds (writeNormalizedDraft).
+	 */
+	public struct function importConfig(required any config, string actorUserId = "", struct options = {}) {
 		var validation = variables.validator.validate(arguments.config);
 		if (!validation.valid) {
 			variables.logger.warn("instrument.import.rejected", { "errorCount": arrayLen(validation.errors), "firstCode": validation.errors[1].code });
@@ -104,9 +116,11 @@ component output="false" {
 		var normalized = variables.normalizer.fromConfig(arguments.config);
 		// The authoring-document validation above already ran the shared semantic rule set over
 		// exactly this normalized form (InstrumentConfigValidator.checkDefinitions).
-		return writeNormalizedDraft(normalized, arguments.actorUserId, {
-			"operation": "IMPORT", "warnings": validation.warnings, "definitionsValidated": true
-		});
+		var opts = { "operation": "IMPORT", "warnings": validation.warnings, "definitionsValidated": true };
+		for (var key in ["createOnly", "replaceVersionId", "expectedChecksum"]) {
+			if (structKeyExists(arguments.options, key)) opts[key] = arguments.options[key];
+		}
+		return writeNormalizedDraft(normalized, arguments.actorUserId, opts);
 	}
 
 	/**
@@ -129,9 +143,13 @@ component output="false" {
 	 *   warnings             inbound-document warnings to return with the result
 	 *   definitionsValidated true when step 1 has already run over this document
 	 *   mustCreate           CLONE: refuse (409 VERSION_LABEL_EXISTS) if the label is taken
+	 *   createOnly           IMPORT without a replacement: an existing DRAFT under the label is
+	 *                        refused (409 DRAFT_REPLACEMENT_REQUIRED), decided under the version lock
+	 *   replaceVersionId     IMPORT replacing a DRAFT: the label must hold exactly this version, or
+	 *                        the import is refused (409 DRAFT_CHANGED); it never creates a version
 	 *   targetVersionId      EDIT: the version the caller read; a different or vanished row is refused
-	 *   expectedChecksum     EDIT: the snapshot checksum the caller's edits were made against;
-	 *                        compared under the version lock (409 DRAFT_CHANGED)
+	 *   expectedChecksum     EDIT and replacing IMPORT: the snapshot checksum the caller's change was
+	 *                        made against; compared under the version lock (409 DRAFT_CHANGED)
 	 *   skipWhenUnchanged    EDIT: when the compiled snapshot equals the stored one, write nothing,
 	 *                        audit nothing, and report changed = false
 	 *   successEvent         the audit event for a successful write (default CREATED / REIMPORTED)
@@ -141,10 +159,12 @@ component output="false" {
 		var started = getTickCount();
 		var opts = {
 			"operation": "IMPORT", "warnings": [], "definitionsValidated": false, "mustCreate": false,
+			"createOnly": false, "replaceVersionId": "",
 			"targetVersionId": "", "expectedChecksum": "", "skipWhenUnchanged": false,
 			"successEvent": "", "auditDetails": {}
 		};
 		structAppend(opts, arguments.options, true);
+		var replaceId = uCase(trim(opts.replaceVersionId));
 		var normalized = arguments.normalized;
 		var validation = { "warnings": opts.warnings };
 
@@ -178,6 +198,12 @@ component output="false" {
 		try {
 		outcome = variables.db.transact(function() {
 			var instrument = variables.repo.findInstrumentByCode(normalized.instrument.code);
+			if (structIsEmpty(instrument) && len(replaceId)) {
+				// A replacement names a DRAFT of an instrument that does not exist: there is nothing
+				// under this label to replace, and a replacement never creates.
+				self.markRefusal(refusal, replaceId, normalized.version.versionLabel, "ABSENT", opts.operation, "REPLACED_VERSION_MISSING", actor);
+				variables.errors.conflict(self.replacementChangedMessage(normalized.version.versionLabel), "DRAFT_CHANGED", { "versionId": replaceId, "versionLabel": normalized.version.versionLabel });
+			}
 			var instrumentId = structIsEmpty(instrument)
 				? variables.repo.createInstrument(normalized.instrument.code, normalized.instrument.name, normalized.instrument.description, normalized.instrument.active)
 				: instrument.instrumentId;
@@ -191,12 +217,21 @@ component output="false" {
 			var existing = variables.repo.findVersion(instrumentId, normalized.version.versionLabel, true);
 			var created = false;
 			var versionId = "";
+			var priorChecksum = "";
 			var operation = opts.operation;
 			if (structIsEmpty(existing)) {
 				if (len(opts.targetVersionId)) {
 					// An edit names a DRAFT that no longer exists (it was discarded after it was
 					// read). Refuse rather than silently creating a new version under its label.
 					variables.errors.notFound("The DRAFT being edited no longer exists.", "INSTRUMENT_VERSION_NOT_FOUND");
+				}
+				if (len(replaceId)) {
+					// The DRAFT the administrator agreed to replace is gone (discarded, or never under
+					// this label). Decided under the range lock HOLDLOCK took on the free label, so no
+					// DRAFT can appear here before this transaction ends -- and a replacement never
+					// creates one.
+					self.markRefusal(refusal, replaceId, normalized.version.versionLabel, "ABSENT", operation, "REPLACED_VERSION_MISSING", actor);
+					variables.errors.conflict(self.replacementChangedMessage(normalized.version.versionLabel), "DRAFT_CHANGED", { "versionId": replaceId, "versionLabel": normalized.version.versionLabel });
 				}
 				versionId = variables.repo.createDraftVersion(instrumentId, normalized.version.versionLabel, actor);
 				created = true;
@@ -215,9 +250,30 @@ component output="false" {
 					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_MISMATCH", actor);
 					variables.errors.conflict("The edited document names a different version than the one being edited.", "VERSION_MISMATCH");
 				}
+				var lockedChecksum = isNull(existing.checksum) ? "" : lCase(trim(existing.checksum));
+				if (len(replaceId) && compare(existing.versionId, replaceId) != 0) {
+					// The label now holds a different version than the one the administrator agreed
+					// to replace (that one was discarded and the label re-made). Refused: replacing
+					// this one was never agreed to.
+					self.markRefusal(refusal, replaceId, normalized.version.versionLabel, existing.status, operation, "REPLACED_VERSION_MISMATCH", actor);
+					variables.errors.conflict(self.replacementChangedMessage(normalized.version.versionLabel), "DRAFT_CHANGED", {
+						"versionId": replaceId, "versionLabel": normalized.version.versionLabel,
+						"currentVersionId": existing.versionId, "currentChecksum": lockedChecksum
+					});
+				}
 				if (existing.status != "DRAFT") {
 					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_NOT_DRAFT", actor);
 					variables.errors.importPublishedVersion(normalized.version.versionLabel, existing.status);
+				}
+				if (opts.createOnly) {
+					// Create-only never takes over an existing DRAFT, however it came to hold the
+					// label -- including one created after the caller last looked. Decided here, on
+					// the locked row, so there is no window in which the answer can go stale.
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "REPLACEMENT_REQUIRED", actor);
+					variables.errors.conflict(
+						"A DRAFT labelled '" & normalized.version.versionLabel & "' already exists for this instrument. Replacing it has to be asked for explicitly, naming that DRAFT and the checksum you agreed to replace; or choose a new label.",
+						"DRAFT_REPLACEMENT_REQUIRED", { "versionId": existing.versionId, "versionLabel": normalized.version.versionLabel, "currentChecksum": lockedChecksum }
+					);
 				}
 				var walkCount = variables.repo.countWalksForVersion(existing.versionId);
 				if (walkCount > 0) {
@@ -229,17 +285,18 @@ component output="false" {
 					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_IN_USE", actor);
 					variables.errors.importVersionInUse(normalized.version.versionLabel, walkCount);
 				}
-				var storedChecksum = isNull(existing.checksum) ? "" : lCase(trim(existing.checksum));
+				var storedChecksum = lockedChecksum;
 				if (len(opts.expectedChecksum) && compare(storedChecksum, lCase(trim(opts.expectedChecksum))) != 0) {
-					// Optimistic concurrency for DRAFT edits, decided under the version lock: the
-					// edits were made against a snapshot that is no longer the DRAFT's content.
-					// Applying them would silently discard whatever changed it.
+					// Optimistic concurrency for DRAFT edits and replacing imports, decided under the
+					// version lock: the change was made against (or agreed for) a snapshot that is no
+					// longer the DRAFT's content. Applying it would silently discard whatever changed it.
 					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "DRAFT_CHANGED", actor);
 					variables.errors.conflict(
-						"This DRAFT changed after it was read. Reload it and make the edit again.",
+						len(replaceId) ? self.replacementChangedMessage(normalized.version.versionLabel) : "This DRAFT changed after it was read. Reload it and make the edit again.",
 						"DRAFT_CHANGED", { "versionId": existing.versionId, "currentChecksum": storedChecksum }
 					);
 				}
+				priorChecksum = storedChecksum;
 				if (opts.skipWhenUnchanged && compare(storedChecksum, compiled.checksum) == 0) {
 					// Nothing to write: the edited document compiles to exactly the stored snapshot.
 					// No row is touched and nothing is audited, so updated_at and row_version do not
@@ -317,6 +374,12 @@ component output="false" {
 				"warningCount": arrayLen(warnings),
 				"placeholderCount": arrayLen(placeholders)
 			};
+			if (len(replaceId)) {
+				// A replacement is audited against exactly what it replaced: the same version id, and
+				// the checksum that id held under the lock -- which equals the one agreed to.
+				auditDetails["replacedVersionId"] = versionId;
+				auditDetails["previousChecksum"] = priorChecksum;
+			}
 			structAppend(auditDetails, opts.auditDetails, true);
 			var successEvent = len(opts.successEvent) ? opts.successEvent : (created ? "INSTRUMENT_VERSION_CREATED" : "INSTRUMENT_VERSION_REIMPORTED");
 			variables.audit.record("INSTRUMENT_VERSION", versionId, successEvent, actor, auditDetails);
@@ -348,6 +411,11 @@ component output="false" {
 		outcome["elapsedMs"] = getTickCount() - started;
 		variables.logger.info("instrument.draft.written", { "operation": opts.operation, "versionId": outcome.versionId, "created": outcome.created, "changed": outcome.changed, "checksum": outcome.checksum, "counts": outcome.counts, "warningCount": arrayLen(outcome.warnings), "elapsedMs": outcome.elapsedMs });
 		return outcome;
+	}
+
+	/** Public only because the transaction closure above reaches it through `self`. */
+	public string function replacementChangedMessage(required string versionLabel) {
+		return "The DRAFT labelled '" & arguments.versionLabel & "' is not the one you chose to replace, or it changed after you chose to replace it. Nothing was imported; reload the version list and decide again.";
 	}
 
 	/**
@@ -388,15 +456,59 @@ component output="false" {
 	}
 
 	/**
-	 * discardDraft, addressed by version id rather than by label (the administration route knows the
-	 * id). The label and instrument code are read from the row and handed to discardDraft, which
-	 * takes the version lock and makes every decision again under it.
+	 * Discards exactly the DRAFT `versionId` names (the administration route, P6A-03).
+	 *
+	 * ONE IDENTITY, ONE TRANSACTION. This used to read the row without a lock, turn it into
+	 * (instrument code, label) and hand that to the label-addressed discardDraft below, which then
+	 * deleted whatever row owned the label -- so if the named version was discarded and a new DRAFT
+	 * created under its label in between, a request naming the first deleted the second. Nothing
+	 * here resolves a label now:
+	 *
+	 *   1. the transaction locks the exact row the path names (UPDLOCK, the lock publish, import and
+	 *      retire take on the same row, in the same version-first order);
+	 *   2. the instrument, label, status and checksum are read from THAT locked row;
+	 *   3. this id must be a DRAFT, and no walk may reference this id;
+	 *   4. this id -- and only this id -- is deleted, and exactly one version row must go;
+	 *   5. the audit event and the response name this id.
+	 *
+	 * Refusals keep their codes and leave the same single durable trace as every refused write.
+	 * The maintenance route's label-addressed discardDraft is a separate operation and is untouched.
 	 */
 	public struct function discardDraftById(required string versionId, string actorUserId = "") {
 		if (!variables.db.isGuid(arguments.versionId)) variables.errors.validation("versionId must be a GUID.", "INVALID_VERSION_ID");
-		var row = variables.repo.findVersionById(arguments.versionId);
-		if (structIsEmpty(row)) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
-		return discardDraft(row.versionLabel, arguments.actorUserId, row.instrumentCode);
+		var id = uCase(trim(arguments.versionId));
+		var actor = arguments.actorUserId;
+		var self = this;
+		var refusal = {};
+		try {
+			return variables.db.transact(function() {
+				var row = variables.repo.findVersionByIdForUpdate(id);
+				if (structIsEmpty(row)) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
+				if (row.status != "DRAFT") {
+					self.markRefusal(refusal, row.versionId, row.versionLabel, row.status, "DISCARD_DRAFT", "VERSION_NOT_DRAFT", actor);
+					variables.errors.importPublishedVersion(row.versionLabel, row.status);
+				}
+				var walkCount = variables.repo.countWalksForVersion(row.versionId);
+				if (walkCount > 0) {
+					self.markRefusal(refusal, row.versionId, row.versionLabel, row.status, "DISCARD_DRAFT", "VERSION_IN_USE", actor);
+					variables.errors.importVersionInUse(row.versionLabel, walkCount);
+				}
+				var deleted = variables.repo.deleteDraftVersionCascade(row.versionId);
+				if (deleted != 1) {
+					// The locked DRAFT did not go. Nothing is committed and nothing is claimed.
+					variables.logger.error("instrument.discard.unexpected_delete_count", { "versionId": row.versionId, "deleted": deleted });
+					throw(type = "ICFWalk.Conflict", message = "The DRAFT could not be discarded; nothing was changed.", errorcode = "DISCARD_NOT_APPLIED");
+				}
+				var checksum = isNull(row.checksum) ? "" : lCase(trim(row.checksum));
+				variables.audit.record("INSTRUMENT_VERSION", row.versionId, "INSTRUMENT_VERSION_DISCARDED", actor, {
+					"versionLabel": row.versionLabel, "instrumentCode": row.instrumentCode, "checksum": checksum
+				});
+				return { "versionId": row.versionId, "versionLabel": row.versionLabel, "instrumentCode": row.instrumentCode, "discarded": true };
+			});
+		} catch (any e) {
+			writeRefusalAudit(refusal);
+			rethrow;
+		}
 	}
 
 	/**

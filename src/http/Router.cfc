@@ -17,6 +17,25 @@
  * State-changing requests (POST/PUT/PATCH/DELETE) on session-authenticated routes must carry the
  * session's CSRF token in X-ICFWalk-CSRF-Token. Controllers receive a request struct (path params,
  * query, parsed JSON body, headers, principal) and return { status, body }.
+ *
+ * THE BODY COMES LAST (P6A-01). A request is handled in this order, and each step runs only if the
+ * one before it passed:
+ *
+ *   1. route match, and the request's METADATA (method, path, headers, query, remote address) --
+ *      no body byte is read;
+ *   2. the policy's pre-body checks: the maintenance guard's token check; or authentication, the
+ *      CSRF token for a mutating method, and the permission unless the policy reads a body member
+ *      (`orgUnitBody`);
+ *   3. the body, under the route's byte limit (`maxBodyBytes`, else the server maximum): a
+ *      declared Content-Length over it is refused 413 without reading, otherwise at most one byte
+ *      past it is read and a longer body is refused 413 -- counted in bytes, never characters;
+ *   4. JSON parsing of a body that passed all of that (JsonBodyParser);
+ *   5. the permission of an `orgUnitBody` policy, which needs the parsed member;
+ *   6. the controller.
+ *
+ * It used to read and parse the body inside step 1, so an anonymous or CSRF-invalid caller's body
+ * was acquired and deserialized in full, a malformed body answered 400 before anyone asked who sent
+ * it, and the import's size limit -- checked in its controller -- came after the parse.
  */
 component output="false" {
 
@@ -25,6 +44,15 @@ component output="false" {
 	variables.WALK_LIST_PERMISSIONS = ["walk.create", "walk.read", "walk.edit_owned"];
 	variables.WALK_READ_PERMISSIONS = ["walk.read", "walk.edit_owned"];
 	variables.WALK_EDIT_PERMISSIONS = ["walk.edit_owned"];
+
+	// The server maximum: the most any request body may be, on any route that does not declare a
+	// smaller limit of its own. It matches Adobe ColdFusion's default "Maximum size of post data"
+	// (20 MB) and sits far above any real walk save; production also sets the same ceiling at the
+	// connector (docs/LOCAL_SETUP.md, "Request size limits").
+	variables.MAX_REQUEST_BODY_BYTES = 20000000;
+	// An uploaded instrument document is ~300 KB; this leaves ample room for growth while refusing a
+	// body no administrator would send (the import route's limit, ADM-01).
+	variables.MAX_IMPORT_BYTES = 5000000;
 
 	public Router function init(required struct container) {
 		variables.c = arguments.container;
@@ -46,7 +74,11 @@ component output="false" {
 		add("POST", "^/api/admin/instrument/versions/([^/]+)/publish$", "adminInstrumentController", "publishVersion", { "permission": "instrument.manage" });
 		// The rest of instrument administration (Phase 6). Every route requires instrument.manage;
 		// every POST also requires the CSRF token (enforcePolicy). Reads are GETs and change nothing.
-		add("POST", "^/api/admin/instrument/import$", "adminInstrumentController", "importDocument", { "permission": "instrument.manage" });
+		add("POST", "^/api/admin/instrument/import$", "adminInstrumentController", "importDocument", { "permission": "instrument.manage" }, {
+			"maxBodyBytes": variables.MAX_IMPORT_BYTES,
+			"tooLargeCode": "DOCUMENT_TOO_LARGE",
+			"tooLargeMessage": "The instrument document may be at most " & variables.MAX_IMPORT_BYTES & " bytes."
+		});
 		add("GET", "^/api/admin/instrument/compare$", "adminInstrumentController", "compareVersions", { "permission": "instrument.manage" });
 		add("GET", "^/api/admin/instrument/versions/([^/]+)/preview$", "adminInstrumentController", "previewVersion", { "permission": "instrument.manage" });
 		add("GET", "^/api/admin/instrument/versions/([^/]+)/wording$", "adminInstrumentController", "wording", { "permission": "instrument.manage" });
@@ -92,60 +124,88 @@ component output="false" {
 		return this;
 	}
 
-	public void function add(required string method, required string pattern, required string controller, required string action, required any policy) {
+	/**
+	 * `options.maxBodyBytes` sets the route's own body limit (else the server maximum), with
+	 * `tooLargeCode` / `tooLargeMessage` for its 413. It is route METADATA: the router enforces it
+	 * before the body is read or parsed, so no controller can run ahead of it.
+	 */
+	public void function add(required string method, required string pattern, required string controller, required string action, required any policy, struct options = {}) {
 		if (!isSimpleValue(arguments.policy) && !isStruct(arguments.policy)) {
 			throw(type = "ICFWalk.Configuration", message = "Route policy must be a string or struct.", errorcode = "ROUTE_POLICY_INVALID");
 		}
 		if (isSimpleValue(arguments.policy) && arguments.policy != "public" && arguments.policy != "maintenance") {
 			throw(type = "ICFWalk.Configuration", message = "Unknown route policy '" & arguments.policy & "'.", errorcode = "ROUTE_POLICY_INVALID");
 		}
-		arrayAppend(variables.routes, { "method": uCase(arguments.method), "pattern": arguments.pattern, "controller": arguments.controller, "action": arguments.action, "policy": arguments.policy });
+		var limit = structKeyExists(arguments.options, "maxBodyBytes") ? arguments.options.maxBodyBytes : variables.MAX_REQUEST_BODY_BYTES;
+		if (!isNumeric(limit) || limit < 0 || limit > variables.MAX_REQUEST_BODY_BYTES) {
+			throw(type = "ICFWalk.Configuration", message = "A route's maxBodyBytes must be between 0 and the server maximum.", errorcode = "ROUTE_POLICY_INVALID");
+		}
+		arrayAppend(variables.routes, {
+			"method": uCase(arguments.method), "pattern": arguments.pattern, "controller": arguments.controller, "action": arguments.action, "policy": arguments.policy,
+			"maxBodyBytes": limit,
+			"tooLargeCode": structKeyExists(arguments.options, "tooLargeCode") ? arguments.options.tooLargeCode : "PAYLOAD_TOO_LARGE",
+			"tooLargeMessage": structKeyExists(arguments.options, "tooLargeMessage") ? arguments.options.tooLargeMessage : "The request body may be at most " & limit & " bytes."
+		});
 	}
 
 	public array function routes() {
 		var out = [];
-		for (var r in variables.routes) arrayAppend(out, { "method": r.method, "pattern": r.pattern, "policy": r.policy });
+		for (var r in variables.routes) arrayAppend(out, { "method": r.method, "pattern": r.pattern, "policy": r.policy, "maxBodyBytes": r.maxBodyBytes });
 		return out;
 	}
 
 	public void function dispatch() {
 		var responder = variables.c.responder;
-		var method = uCase(cgi.request_method);
-		var path = variables.c.requestContext.pathInfo();
 		try {
-			var matched = false;
-			var methodMismatch = false;
-			for (var route in variables.routes) {
-				var m = reFind(route.pattern, path, 1, true);
-				if (m.len[1] == 0) continue;
-				if (route.method != method) { methodMismatch = true; continue; }
-				matched = true;
-				var req = buildRequest(path, m);
-				enforcePolicy(route, req);
-				var controller = variables.c[route.controller];
-				var result = invoke(controller, route.action, { "req": req });
-				responder.send(result);
+			var outcome = handle(variables.c.httpRequestSource);
+			if (structKeyExists(outcome, "unrouted")) {
+				responder.sendError(outcome.status, outcome.code, outcome.message);
 				return;
 			}
-			if (methodMismatch) {
-				responder.sendError(405, "METHOD_NOT_ALLOWED", "Method not allowed.");
-			} else {
-				responder.sendError(404, "NOT_FOUND", "Not found.");
-			}
+			responder.send(outcome);
 		} catch (any e) {
 			responder.sendException(e);
 		}
 	}
 
 	/**
-	 * Applies the route policy. Maintenance routes keep their guard inside the controller (token
-	 * header, no session); every other non-public route authenticates first, then checks CSRF for
-	 * mutating methods, then the declared permission.
+	 * One request, in the order the header describes, from `source` (HttpRequestSource for a real
+	 * request; a spec's FakeRequestSource otherwise). Returns the controller's result, or
+	 * { unrouted, status, code, message } when no route matched; refusals are thrown.
 	 */
-	private void function enforcePolicy(required struct route, required struct req) {
+	public struct function handle(required any source) {
+		var method = arguments.source.method();
+		var path = arguments.source.path();
+		var methodMismatch = false;
+		for (var route in variables.routes) {
+			var m = reFind(route.pattern, path, 1, true);
+			if (m.len[1] == 0) continue;
+			if (route.method != method) { methodMismatch = true; continue; }
+			var req = requestMetadata(arguments.source, method, path, m);
+			authorizeBeforeBody(route, req);
+			acquireBody(route, req, arguments.source);
+			authorizeAfterBody(route, req);
+			var controller = variables.c[route.controller];
+			return invoke(controller, route.action, { "req": req });
+		}
+		if (methodMismatch) return { "unrouted": true, "status": 405, "code": "METHOD_NOT_ALLOWED", "message": "Method not allowed." };
+		return { "unrouted": true, "status": 404, "code": "NOT_FOUND", "message": "Not found." };
+	}
+
+	/**
+	 * Step 2. Maintenance routes: the guard's token check (the controller still runs its own full
+	 * guard, which audits the invocation). Every other non-public route: authentication, then CSRF
+	 * for a mutating method, then the declared permission -- unless the policy reads a body member,
+	 * in which case that one check waits for step 5.
+	 */
+	private void function authorizeBeforeBody(required struct route, required struct req) {
 		var policy = arguments.route.policy;
 		if (isSimpleValue(policy)) {
-			if (policy == "public" || policy == "maintenance") return;
+			if (policy == "public") return;
+			if (policy == "maintenance") {
+				variables.c.maintenanceGuard.precheck(arguments.req, arguments.route.action);
+				return;
+			}
 			variables.c.errors.forbidden();
 		}
 		var principal = variables.c.authenticationService.authenticate(arguments.req);
@@ -157,6 +217,21 @@ component output="false" {
 				variables.c.errors.forbidden("Missing or invalid CSRF token.", "CSRF_TOKEN_INVALID");
 			}
 		}
+		if (needsBody(policy)) return;
+		requirePolicyPermission(policy, arguments.req);
+	}
+
+	/** Step 5: the permission of a policy that is decided on a body member. */
+	private void function authorizeAfterBody(required struct route, required struct req) {
+		if (isStruct(arguments.route.policy) && needsBody(arguments.route.policy)) requirePolicyPermission(arguments.route.policy, arguments.req);
+	}
+
+	private boolean function needsBody(required any policy) {
+		return isStruct(arguments.policy) && structKeyExists(arguments.policy, "orgUnitBody");
+	}
+
+	private void function requirePolicyPermission(required struct policy, required struct req) {
+		var principal = arguments.req.principal;
 		if (structKeyExists(policy, "anyPermission")) {
 			var granted = false;
 			for (var perm in policy.anyPermission) if (variables.c.authorizationService.hasAnyCapability(principal, perm)) granted = true;
@@ -175,60 +250,66 @@ component output="false" {
 		}
 	}
 
-	private struct function buildRequest(required string path, required struct match) {
-		var data = getHttpRequestData(true);
+	/** Step 1: everything about the request except its body. */
+	private struct function requestMetadata(required any source, required string method, required string path, required struct match) {
 		var req = {
 			"path": arguments.path,
-			"method": uCase(cgi.request_method),
+			"method": arguments.method,
 			"params": [],
-			"query": duplicate(url),
-			"headers": {},
-			"remoteAddress": cgi.remote_addr,
+			"query": arguments.source.query(),
+			"headers": arguments.source.headers(),
+			"remoteAddress": arguments.source.remoteAddress(),
 			"body": {},
 			// Whether the client sent a body AT ALL, independent of what it parsed to. A route
 			// documented as taking no request body cannot tell that from `body` alone: no body and
-			// a literal `{}` both parse to an empty struct, so structCount() accepted `{}` from a
-			// client that believed it was sending something. This is the raw fact -- were there any
-			// body bytes on the wire -- and it is what such a route checks.
+			// a literal `{}` both parse to an empty struct. This is the raw fact -- were there any
+			// body bytes on the wire -- set in step 3 from the bytes actually read, whitespace
+			// included, and it is what such a route checks.
 			"hasBody": false,
+			// The body's length in BYTES as read (step 3).
 			"rawBodyLength": 0,
 			"principal": {}
 		};
-		for (var name in structKeyArray(data.headers)) {
-			req.headers[lCase(name)] = data.headers[name];
-		}
 		var n = arrayLen(arguments.match.len);
 		for (var i = 2; i <= n; i++) {
 			if (arguments.match.len[i] > 0) arrayAppend(req.params, mid(arguments.path, arguments.match.pos[i], arguments.match.len[i]));
 			else arrayAppend(req.params, "");
 		}
-		var content = data.content;
-		if (!isNull(content) && !isSimpleValue(content)) content = toString(content, "utf-8");
-		// DID THE CLIENT SEND A BODY? Asked of the wire, not of the parse.
-		//
-		// The engine does not hand back whitespace-only content -- getHttpRequestData() gives an
-		// empty string for it -- so `content` alone cannot answer this, and a route documented as
-		// taking no body would accept "   " while refusing "{}". Content-Length is the raw fact and
-		// is checked first; `content` covers a chunked request, which carries no Content-Length.
-		// Content-Length: 0 is not a body: the client sent no bytes.
-		var declaredLength = structKeyExists(req.headers, "content-length") && isNumeric(req.headers["content-length"])
-			? int(req.headers["content-length"]) : 0;
-		var actualLength = (!isNull(content) && isSimpleValue(content)) ? len(content) : 0;
-		req.rawBodyLength = max(declaredLength, actualLength);
-		req.hasBody = req.rawBodyLength > 0;
-		if (!isNull(content) && len(trim(content))) {
-			if (!isJSON(content)) {
-				variables.c.errors.validation("Request body must be a JSON document.", "INVALID_JSON_BODY");
-			}
-			// A body of literal `null` parses to CFML null, and reading that variable back is an
-			// error rather than a value -- so this used to escape as a 500 instead of the 400 the
-			// contract promises. isNull() is the only safe way to ask.
-			var parsed = deserializeJSON(content);
-			if (isNull(parsed) || !isStruct(parsed)) {
-				variables.c.errors.validation("Request body must be a JSON object.", "INVALID_JSON_BODY");
-			}
-			req.body = parsed;
-		}
 		return req;
+	}
+
+	/**
+	 * Steps 3 and 4. The declared length is trusted only as a plain decimal Content-Length on a
+	 * request without a transfer coding (HTTP: Transfer-Encoding overrides Content-Length); a
+	 * declared length over the limit is refused without reading anything. Whatever the declaration,
+	 * the source reads at most one byte past the limit, and the count of bytes actually read is
+	 * compared again -- so a chunked or mis-declared body cannot slip past. Only a body within the
+	 * limit is decoded (UTF-8) and, if it is not blank, parsed.
+	 */
+	private void function acquireBody(required struct route, required struct req, required any source) {
+		var limit = arguments.route.maxBodyBytes;
+		if (declaredLength(arguments.req.headers) > limit) tooLarge(arguments.route);
+		var read = arguments.source.readBody(limit);
+		if (read.exceeded || read.byteCount > limit) tooLarge(arguments.route);
+		arguments.req.rawBodyLength = read.byteCount;
+		arguments.req.hasBody = read.byteCount > 0;
+		if (read.byteCount == 0) return;
+		var text = charsetEncode(read.bytes, "utf-8");
+		if (len(trim(text))) arguments.req.body = variables.c.jsonBodyParser.parse(text);
+	}
+
+	/** The Content-Length a request declares, or -1 when it declares none that can be trusted. */
+	private numeric function declaredLength(required struct headers) {
+		if (structKeyExists(arguments.headers, "transfer-encoding")) return -1;
+		if (!structKeyExists(arguments.headers, "content-length") || !isSimpleValue(arguments.headers["content-length"])) return -1;
+		var raw = trim(arguments.headers["content-length"]);
+		if (!reFind("^[0-9]+$", raw)) return -1;
+		// Longer than any limit can be, and longer than a number can safely hold: over every limit.
+		if (len(raw) > 15) return variables.MAX_REQUEST_BODY_BYTES + 1;
+		return val(raw);
+	}
+
+	private void function tooLarge(required struct route) {
+		variables.c.errors.payloadTooLarge(arguments.route.tooLargeMessage, arguments.route.tooLargeCode, { "limitBytes": arguments.route.maxBodyBytes });
 	}
 }

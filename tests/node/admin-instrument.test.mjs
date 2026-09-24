@@ -22,6 +22,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import http from "node:http";
+import net from "node:net";
 import sql from "mssql";
 import { api, baseUrl, connectionConfig, hasDatabaseConfig, loadRuntimeEnv, requireApp, root } from "./helpers.mjs";
 import { canonicalize } from "../../scripts/lib/snapshot.mjs";
@@ -91,7 +93,7 @@ async function client(subject) {
   const me = await call("GET", "/api/me");
   assert.equal(me.status, 200, me.text);
   csrf = me.json.csrfToken;
-  return { call, me: me.json };
+  return { call, me: me.json, csrf: () => csrf, cookie: () => cookieJar.header() };
 }
 
 // ---- direct database reads, for facts the API does not expose ------------------------------
@@ -249,11 +251,73 @@ test("ADM-01: an administrator imports a document and gets the validation summar
   assert.equal(created.length, 1);
   assert.equal(created[0].actor_user_id.toUpperCase(), adminUserId.toUpperCase(), "the import is attributed to the signed-in administrator");
 
-  const again = await admin.call("POST", "/api/admin/instrument/import", { document: doc });
+  // Re-import is an explicit replacement of the exact DRAFT (P6A-02). Without one it is refused and
+  // nothing moves; with one it answers 200 on the same version.
+  const rowBefore = await versionRow(r.json.versionId);
+  const unasked = await admin.call("POST", "/api/admin/instrument/import", { document: doc });
+  assert.equal(unasked.status, 409, unasked.text);
+  assert.equal(unasked.json.error.code, "DRAFT_REPLACEMENT_REQUIRED");
+  assert.equal(unasked.json.error.details.versionId, r.json.versionId);
+  assert.equal(unasked.json.error.details.currentChecksum, r.json.checksum);
+  assert.equal((await versionRow(r.json.versionId)).row_version, rowBefore.row_version, "a refused create-only import moved nothing");
+
+  const again = await admin.call("POST", "/api/admin/instrument/import", { document: doc, replace: { versionId: r.json.versionId, expectedChecksum: r.json.checksum } });
   assert.equal(again.status, 200, again.text);
   assert.equal(again.json.created, false);
   assert.equal(again.json.versionId, r.json.versionId);
   assert.equal(again.json.checksum, r.json.checksum);
+});
+
+test("P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum", { skip }, async () => {
+  const doc = documentFor("replace-contract");
+  const first = await admin.call("POST", "/api/admin/instrument/import", { document: doc });
+  assert.equal(first.status, 201, first.text);
+  const id = first.json.versionId;
+  const edited = await admin.call("POST", v(id, "edits"), { expectedChecksum: first.json.checksum, edits: [{ target: "version", field: "revisionNotes", value: "Edited after the upload was prepared" }] });
+  assert.equal(edited.status, 200, edited.text);
+  const before = await versionRow(id);
+  const successes = (await audits(id, "INSTRUMENT_VERSION_REIMPORTED")).length;
+
+  // A token made against the state before the edit: refused, nothing moves.
+  const stale = await admin.call("POST", "/api/admin/instrument/import", { document: doc, replace: { versionId: id, expectedChecksum: first.json.checksum } });
+  assert.equal(stale.status, 409, stale.text);
+  assert.equal(stale.json.error.code, "DRAFT_CHANGED");
+  assert.equal(stale.json.error.details.currentChecksum, edited.json.checksum);
+  // Another id under this label, and a label with nothing under it: refused, nothing created.
+  const otherId = await admin.call("POST", "/api/admin/instrument/import", { document: doc, replace: { versionId: randomUUID().toUpperCase(), expectedChecksum: edited.json.checksum } });
+  assert.equal(otherId.status, 409, otherId.text);
+  assert.equal(otherId.json.error.code, "DRAFT_CHANGED");
+  const free = documentFor("replace-free");
+  const nothing = await admin.call("POST", "/api/admin/instrument/import", { document: free, replace: { versionId: id, expectedChecksum: edited.json.checksum } });
+  assert.equal(nothing.status, 409, nothing.text);
+  assert.equal(nothing.json.error.code, "DRAFT_CHANGED");
+  const freeRows = await query("SELECT COUNT(*) AS n FROM icf.instrument_version WHERE version_label = @l", { l: free.instrument.version.versionLabel });
+  assert.equal(freeRows[0].n, 0, "a replacement never creates");
+  // Malformed tokens.
+  for (const replace of ["x", [], { versionId: id }, { expectedChecksum: edited.json.checksum }, { versionId: "nope", expectedChecksum: edited.json.checksum },
+    { versionId: id, expectedChecksum: "abc" }, { versionId: id, expectedChecksum: edited.json.checksum, force: true }]) {
+    const bad = await admin.call("POST", "/api/admin/instrument/import", { document: doc, replace });
+    assert.equal(bad.status, 400, `${JSON.stringify(replace)}: ${bad.text}`);
+    assert.equal(bad.json.error.code, "REPLACE_INVALID");
+  }
+  const after = await versionRow(id);
+  assert.equal(after.row_version, before.row_version, "no refused import moved the DRAFT");
+  assert.equal(after.checksum_sha256, before.checksum_sha256);
+  assert.equal((await audits(id, "INSTRUMENT_VERSION_REIMPORTED")).length, successes, "and none was audited as a success");
+
+  // The exact current state: replaced, once, audited against it.
+  const ok = await admin.call("POST", "/api/admin/instrument/import", { document: doc, replace: { versionId: id, expectedChecksum: edited.json.checksum } });
+  assert.equal(ok.status, 200, ok.text);
+  assert.equal(ok.json.versionId, id);
+  const replaced = await audits(id, "INSTRUMENT_VERSION_REIMPORTED");
+  assert.equal(replaced.length, successes + 1);
+  const details = JSON.parse(replaced[replaced.length - 1].details_json);
+  assert.equal(details.replacedVersionId, id);
+  assert.equal(details.previousChecksum, edited.json.checksum);
+  assert.equal(replaced[replaced.length - 1].actor_user_id.toUpperCase(), adminUserId.toUpperCase());
+  const replay = await admin.call("POST", "/api/admin/instrument/import", { document: doc, replace: { versionId: id, expectedChecksum: edited.json.checksum } });
+  assert.equal(replay.status, 409, replay.text);
+  assert.equal(replay.json.error.code, "DRAFT_CHANGED");
 });
 
 test("ADM-01: an invalid document is refused with every issue and writes nothing", { skip }, async () => {
@@ -289,6 +353,176 @@ test("ADM-01: the import body contract and the size cap", { skip }, async () => 
   assert.equal(tooLarge.status, 413, tooLarge.text.slice(0, 300));
   assert.equal(tooLarge.json.error.code, "DOCUMENT_TOO_LARGE");
   assert.equal(await versionCount(), before, "no refused body wrote anything");
+});
+
+// ---- P6A-01: authentication, CSRF and the size limit come before the body ----------------------
+
+/**
+ * Sends the request line, the headers and only `sent` of the body, then waits for an answer
+ * WITHOUT sending the rest. A server that reads the body before deciding can only wait for bytes
+ * that never come; one that decides first answers. So an answer here is direct evidence that the
+ * body was never acquired -- and therefore never parsed -- which a status code alone cannot show.
+ */
+function partialRequest(p, headers, sent, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${baseUrl(env)}/index.cfm${p}`);
+    const req = http.request({ host: url.hostname, port: url.port, path: url.pathname + url.search, method: "POST", headers });
+    let settled = false;
+    const done = (fn, value) => { if (!settled) { settled = true; clearTimeout(timer); req.destroy(); fn(value); } };
+    const timer = setTimeout(() => done(reject, new Error(`no answer within ${timeoutMs} ms: the server was waiting for the rest of the body`)), timeoutMs);
+    req.on("response", (res) => {
+      let text = "";
+      res.setEncoding("utf8");
+      res.on("data", (c) => { text += c; });
+      res.on("end", () => { let json = null; try { json = JSON.parse(text); } catch { json = null; } done(resolve, { status: res.statusCode, text, json }); });
+    });
+    req.on("error", (e) => done(reject, e));
+    req.write(sent);
+  });
+}
+
+/**
+ * A complete request with an exact raw body (Buffer), optionally chunked, over a raw socket. The
+ * whole body is sent, but a server that refuses early may stop reading it and close; the answer it
+ * gave is still read and returned (an HTTP client library would report the refused write instead).
+ */
+function rawRequest(p, headers, body, { chunked = false, timeoutMs = 60000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${baseUrl(env)}/index.cfm${p}`);
+    const socket = net.connect(Number(url.port || 80), url.hostname);
+    const h = { Host: url.host, Connection: "close", ...headers };
+    if (chunked) h["Transfer-Encoding"] = "chunked"; else h["Content-Length"] = String(body.length);
+    const received = [];
+    const timer = setTimeout(() => { socket.destroy(); reject(new Error(`no complete answer within ${timeoutMs} ms`)); }, timeoutMs);
+    socket.on("data", (d) => received.push(d));
+    socket.on("error", () => {});  // an early refusal closes the connection under the rest of the body
+    socket.on("close", () => {
+      clearTimeout(timer);
+      const raw = Buffer.concat(received);
+      const split = raw.indexOf("\r\n\r\n");
+      if (split < 0) { reject(new Error(`no HTTP answer (${raw.length} bytes)`)); return; }
+      const head = raw.subarray(0, split).toString("latin1").split("\r\n");
+      const status = Number(head[0].split(" ")[1]);
+      const isChunked = head.some((l) => /^transfer-encoding:\s*chunked/i.test(l));
+      let rest = raw.subarray(split + 4);
+      if (isChunked) {
+        const parts = [];
+        for (;;) {
+          const eol = rest.indexOf("\r\n");
+          const size = parseInt(rest.subarray(0, eol).toString("latin1"), 16);
+          if (!size) break;
+          parts.push(rest.subarray(eol + 2, eol + 2 + size));
+          rest = rest.subarray(eol + 2 + size + 2);
+        }
+        rest = Buffer.concat(parts);
+      }
+      const text = rest.toString("utf8");
+      let json = null;
+      try { json = JSON.parse(text); } catch { json = null; }
+      resolve({ status, text, json });
+    });
+    socket.write(`POST ${url.pathname}${url.search} HTTP/1.1\r\n${Object.entries(h).map(([k, v]) => `${k}: ${v}\r\n`).join("")}\r\n`);
+    if (chunked) {
+      // In pieces, as a streaming client sends them.
+      for (let i = 0; i < body.length; i += 65536) {
+        const piece = body.subarray(i, i + 65536);
+        socket.write(`${piece.length.toString(16)}\r\n`);
+        socket.write(piece);
+        socket.write("\r\n");
+      }
+      socket.write("0\r\n\r\n");
+    } else {
+      socket.write(body);
+    }
+  });
+}
+
+const IMPORT = "/api/admin/instrument/import";
+const LIMIT = 5000000;
+/** Not JSON, and larger than the import limit. */
+const MALFORMED_OVERSIZED = Buffer.concat([Buffer.from('{"document": {"items": [ this is not json '), Buffer.alloc(LIMIT, 0x78)]);
+
+function signedIn(extra = {}) {
+  return { Accept: "application/json", "Content-Type": "application/json", "X-ICFWalk-Dev-Subject": adminSubject, Cookie: admin.cookie(), "X-ICFWalk-CSRF-Token": admin.csrf(), ...extra };
+}
+
+test("P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed", { skip }, async () => {
+  const before = await versionCount();
+  const anonymous = { Accept: "application/json", "Content-Type": "application/json" };
+  const complete = await rawRequest(IMPORT, anonymous, MALFORMED_OVERSIZED);
+  assert.equal(complete.status, 401, complete.text.slice(0, 300));
+  assert.equal(complete.json.error.code, "UNAUTHENTICATED");
+  const declared = await partialRequest(IMPORT, { ...anonymous, "Content-Length": "50000000" }, "{ not json");
+  assert.equal(declared.status, 401, declared.text.slice(0, 300));
+  assert.equal(declared.json.error.code, "UNAUTHENTICATED");
+  const chunked = await partialRequest(IMPORT, { ...anonymous, "Transfer-Encoding": "chunked" }, "{ not json");
+  assert.equal(chunked.status, 401, chunked.text.slice(0, 300));
+  assert.equal(chunked.json.error.code, "UNAUTHENTICATED");
+  assert.equal(await versionCount(), before);
+});
+
+test("P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read", { skip }, async () => {
+  const before = await versionCount();
+  const complete = await rawRequest(IMPORT, signedIn({ "X-ICFWalk-CSRF-Token": "f".repeat(64) }), MALFORMED_OVERSIZED);
+  assert.equal(complete.status, 403, complete.text.slice(0, 300));
+  assert.equal(complete.json.error.code, "CSRF_TOKEN_INVALID");
+  const noToken = signedIn();
+  delete noToken["X-ICFWalk-CSRF-Token"];
+  const declared = await partialRequest(IMPORT, { ...noToken, "Content-Length": "50000000" }, "{ not json");
+  assert.equal(declared.status, 403, declared.text.slice(0, 300));
+  assert.equal(declared.json.error.code, "CSRF_TOKEN_INVALID");
+  const chunked = await partialRequest(IMPORT, { ...signedIn({ "X-ICFWalk-CSRF-Token": "0".repeat(64) }), "Transfer-Encoding": "chunked" }, "{ not json");
+  assert.equal(chunked.status, 403, chunked.text.slice(0, 300));
+  assert.equal(chunked.json.error.code, "CSRF_TOKEN_INVALID");
+  // A user without instrument.manage is refused before the body too.
+  const walkerHeaders = { Accept: "application/json", "Content-Type": "application/json", "X-ICFWalk-Dev-Subject": walkerSubject, Cookie: walker.cookie(), "X-ICFWalk-CSRF-Token": walker.csrf(), "Content-Length": "50000000" };
+  const forbidden = await partialRequest(IMPORT, walkerHeaders, "{ not json");
+  assert.equal(forbidden.status, 403, forbidden.text.slice(0, 300));
+  assert.equal(forbidden.json.error.code, "FORBIDDEN");
+  assert.equal(await versionCount(), before);
+});
+
+test("P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not", { skip }, async () => {
+  const before = await versionCount();
+  // Malformed and oversized: the size is decided first, so this is 413 and not INVALID_JSON_BODY.
+  const malformed = await rawRequest(IMPORT, signedIn(), MALFORMED_OVERSIZED);
+  assert.equal(malformed.status, 413, malformed.text.slice(0, 300));
+  assert.equal(malformed.json.error.code, "DOCUMENT_TOO_LARGE");
+  assert.equal(malformed.json.error.details.limitBytes, LIMIT);
+  // Valid JSON declaring more than the limit: answered from the declared length, before a byte of
+  // the body is read -- the rest of it is never sent.
+  const valid = Buffer.from(JSON.stringify({ document: documentFor("declared-too-large") }));
+  const declared = await partialRequest(IMPORT, { ...signedIn(), "Content-Length": String(LIMIT + 1) }, valid.subarray(0, 1024));
+  assert.equal(declared.status, 413, declared.text.slice(0, 300));
+  assert.equal(declared.json.error.code, "DOCUMENT_TOO_LARGE");
+  // Exactly at the limit is not too large (it is an invalid document, refused by validation).
+  const atLimit = Buffer.concat([Buffer.from('{"document":{"padding":"'), Buffer.alloc(LIMIT - 27, 0x61), Buffer.from('"}}')]);
+  assert.equal(atLimit.length, LIMIT);
+  const exact = await rawRequest(IMPORT, signedIn(), atLimit);
+  assert.notEqual(exact.status, 413, exact.text.slice(0, 300));
+  assert.equal(exact.json.error.code, "INSTRUMENT_CONFIG_INVALID");
+  assert.equal(await versionCount(), before);
+});
+
+test("P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit", { skip }, async () => {
+  const before = await versionCount();
+  // 1,700,000 euro signs: 1.7 million characters, 5.1 million UTF-8 bytes, and no Content-Length.
+  const body = Buffer.from(`{"document":{"padding":"${"\u20ac".repeat(1700000)}"}}`, "utf8");
+  assert.ok(body.length > LIMIT && body.toString("utf8").length < LIMIT, "precondition: over the limit in bytes, under it in characters");
+  const r = await rawRequest(IMPORT, signedIn(), body, { chunked: true });
+  assert.equal(r.status, 413, r.text.slice(0, 300));
+  assert.equal(r.json.error.code, "DOCUMENT_TOO_LARGE");
+  // The same, never finished: the read stops once it is past the limit and answers.
+  const partial = await partialRequest(IMPORT, { ...signedIn(), "Transfer-Encoding": "chunked" }, body.subarray(0, LIMIT + 4096));
+  assert.equal(partial.status, 413, partial.text.slice(0, 300));
+  assert.equal(partial.json.error.code, "DOCUMENT_TOO_LARGE");
+  assert.equal(await versionCount(), before);
+});
+
+test("P6A-01: a maintenance route without its token is hidden without its body being read", { skip }, async () => {
+  const r = await partialRequest("/api/maintenance/instrument/import", { Accept: "application/json", "Content-Type": "application/json", "Content-Length": "50000000" }, "{ not json");
+  assert.equal(r.status, 404, r.text.slice(0, 300));
+  assert.equal(r.json.error.code, "NOT_FOUND");
 });
 
 // ---- ADM-02 preview --------------------------------------------------------------------------

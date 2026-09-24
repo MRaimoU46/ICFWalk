@@ -501,6 +501,229 @@ test("Excel round-trip (browser): download a workbook, edit it, upload it as a n
   await context.close();
 });
 
+/** The version as the server holds it now: checksum, and one item's prompt. */
+async function serverState(versionId, itemKey) {
+  const w = await admin.call("GET", `/api/admin/instrument/versions/${versionId}/wording?q=${encodeURIComponent(itemKey)}`);
+  assert.equal(w.status, 200, w.text);
+  const item = w.json.results.find((r) => r.target === "item" && r.key === itemKey);
+  return { checksum: w.json.version.checksum, prompt: item ? item.fields.prompt : undefined };
+}
+
+test("P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2", { skip }, async () => {
+  const base = await importVersion("two-sessions");
+  const item = SOURCE.items.find((i) => i.reviewStatus !== PLACEHOLDER_STATUS && i.itemType === "SINGLE_CHOICE");
+  const exported = await admin.call("GET", `/api/admin/instrument/versions/${base.versionId}/document`);
+  assert.equal(exported.json.version.checksum, base.checksum);
+  const workbook = await writeWorkbook(exported.json.document, { exportedFrom: exported.json.version });
+
+  const a = await newContext();
+  const b = await newContext();
+  const posts = [];
+  a.page.on("request", (r) => { if (r.method() === "POST") posts.push(new URL(r.url()).pathname); });
+  await openHome(a.page);
+  await openHome(b.page);
+  for (const page of [a.page, b.page]) assert.equal(await row(page, base.versionId).locator("code").getAttribute("title"), base.checksum, "both sessions list C1");
+
+  // Session B edits the prompt in its own page and saves: C2.
+  await row(b.page, base.versionId).getByRole("button", { name: /^Edit wording/ }).click();
+  await b.page.waitForSelector('#admin-panel form.admin-entity[data-target="version"]');
+  await idle(b.page);
+  await b.page.fill("#admin-panel input[type=search]", item.itemKey);
+  await b.page.getByRole("button", { name: "Search", exact: true }).click();
+  const form = b.page.locator(`#admin-panel form.admin-entity[data-target="item"][data-key="${item.itemKey}"]`);
+  await form.waitFor();
+  await form.locator('textarea[name="prompt"]').fill("Session B's wording, saved second");
+  await form.getByRole("button", { name: "Save changes" }).click();
+  await waitStatus(b.page, /^Saved 1 change to /);
+  const c2 = await serverState(base.versionId, item.itemKey);
+  assert.notEqual(c2.checksum, base.checksum, "B saved C2");
+  assert.equal(c2.prompt, "Session B's wording, saved second");
+
+  // Session A never reloads. Its list and its workbook both still say C1, so the page asks nothing;
+  // only the server can refuse.
+  assert.equal(await row(a.page, base.versionId).locator("code").getAttribute("title"), base.checksum, "A's page still lists C1");
+  await a.page.setInputFiles("#admin-import-file", { name: "from-c1.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(workbook) });
+  await a.page.click("#admin-import-btn");
+  await a.page.waitForSelector("#admin-error:not([hidden]), #admin-import-result .admin-summary", { timeout: 20000 });
+  await idle(a.page);
+  assert.deepEqual(posts, ["/index.cfm/api/admin/instrument/import"], "A's page sent its upload");
+  assert.equal(await a.page.locator("#admin-import-result .admin-summary").count(), 0, "nothing was reported as imported");
+  assert.match(await a.page.textContent("#admin-error"), new RegExp(`Draft ${base.versionLabel} changed after you chose to replace it, so nothing was imported\\.`));
+  const after = await serverState(base.versionId, item.itemKey);
+  assert.equal(after.checksum, c2.checksum, "B's C2 stands");
+  assert.equal(after.prompt, "Session B's wording, saved second");
+  // A's list was reloaded, so it now shows C2.
+  assert.equal(await row(a.page, base.versionId).locator("code").getAttribute("title"), c2.checksum);
+  assert.deepEqual(pageErrors, []);
+  await a.context.close();
+  await b.context.close();
+});
+
+test("P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced", { skip }, async () => {
+  const { context, page } = await newContext();
+  await openHome(page);
+  const label = `${tag}-late-${++labelCounter}`;
+  // Free when the page loaded its list...
+  assert.equal(await page.locator("#admin-versions tr", { hasText: label }).count(), 0);
+  // ...then another administrator's session creates it.
+  const theirs = documentFor("late-theirs");
+  theirs.instrument.version.versionLabel = label;
+  theirs.instrument.version.revisionNotes = "Another administrator's draft";
+  const created = await admin.call("POST", "/api/admin/instrument/import", { document: theirs });
+  assert.equal(created.status, 201, created.text);
+
+  const mine = documentFor("late-mine");
+  mine.instrument.version.versionLabel = label;
+  mine.instrument.version.revisionNotes = "This page's upload";
+  await page.setInputFiles("#admin-import-file", { name: "mine.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(mine)) });
+  await page.click("#admin-import-btn");
+  const dialog = page.getByRole("alertdialog", { name: `Replace draft ${label}?` });
+  await dialog.waitFor({ timeout: 20000 });
+  assert.match(await dialog.textContent(), /was created after this page loaded its list, so it was not replaced/);
+  assert.equal((await serverState(created.json.versionId, SOURCE.items[0].itemKey)).checksum, created.json.checksum, "nothing was replaced while the page asked");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await waitStatus(page, /^Nothing was imported\.$/);
+  await idle(page);
+  assert.equal((await serverState(created.json.versionId, SOURCE.items[0].itemKey)).checksum, created.json.checksum, "the other draft is exactly as it was");
+
+  // Asked and confirmed, it replaces exactly that draft.
+  await page.setInputFiles("#admin-import-file", { name: "mine.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(mine)) });
+  await page.click("#admin-import-btn");
+  const again = page.getByRole("alertdialog", { name: `Replace draft ${label}?` });
+  await again.waitFor({ timeout: 20000 });
+  await again.getByRole("button", { name: "Replace draft" }).click();
+  await waitStatus(page, new RegExp(`^Re-imported draft ${label}\\.$`));
+  await idle(page);
+  const replaced = await serverState(created.json.versionId, SOURCE.items[0].itemKey);
+  assert.notEqual(replaced.checksum, created.json.checksum, "the confirmed upload replaced it");
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+});
+
+/**
+ * Waits for `selector`, but fails at once, naming the error, if an exception escapes the page
+ * first -- an escaped exception is exactly what the P6A-04 cases are about, and a bare timeout
+ * would hide it.
+ */
+async function selectorOrPageError(page, selector) {
+  let onError;
+  const escaped = new Promise((_, reject) => { onError = (e) => reject(new Error(`an exception escaped the page instead: ${e.message}`)); page.on("pageerror", onError); });
+  try {
+    await Promise.race([page.waitForSelector(selector, { timeout: 20000 }), escaped]);
+  } finally {
+    page.off("pageerror", onError);
+  }
+}
+
+test("P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable", { skip }, async () => {
+  const { context, page } = await newContext();
+  const posts = [];
+  page.on("request", (r) => { if (r.method() === "POST") posts.push(new URL(r.url()).pathname); });
+  await openHome(page);
+
+  // A cell carrying a character reference past U+10FFFF: the reader used to throw RangeError out of
+  // the submit handler, before the page's guarded flow, so nothing was shown and the error escaped.
+  const exported = documentFor("bad-entity");
+  const files = await readZip(await writeWorkbook(exported, { exportedFrom: null }));
+  const itemSheet = [...files.keys()].find((k) => k.endsWith("sheet5.xml"));
+  const xml = new TextDecoder().decode(files.get(itemSheet));
+  const patched = xml.replace(/(<c r="H4"[^>]*><is><t[^>]*>)/, "$1&#999999999;");
+  assert.notEqual(patched, xml, "the cell was patched");
+  files.set(itemSheet, new TextEncoder().encode(patched));
+  const bad = await writeZip([...files].map(([name, data]) => ({ name, data })));
+  await page.setInputFiles("#admin-import-file", { name: "bad-entity.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(bad) });
+  await page.click("#admin-import-btn");
+  await selectorOrPageError(page, "#admin-import-result .admin-summary-invalid");
+  await idle(page);
+  assert.equal(await page.textContent("#admin-import-result .admin-summary-title"), "Not imported: bad-entity.xlsx has 1 problem. Nothing was sent.");
+  assert.deepEqual(await page.$$eval("#admin-import-result .admin-issues code", (els) => els.map((e) => e.textContent)), ["XML_MALFORMED"]);
+  assert.deepEqual(posts, [], "nothing was sent");
+  assert.deepEqual(pageErrors, [], "no exception escaped the page");
+
+  // The page is still usable: the next file imports.
+  const good = documentFor("after-bad-entity");
+  await page.setInputFiles("#admin-import-file", { name: "good.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(good)) });
+  await page.click("#admin-import-btn");
+  await page.waitForSelector("#admin-import-result .admin-summary:not(.admin-summary-invalid)", { timeout: 20000 });
+  await idle(page);
+  assert.equal(await page.textContent("#admin-import-result .admin-summary-title"), `Created DRAFT ${good.instrument.version.versionLabel} of ${instrumentCode} from good.json.`);
+  assert.deepEqual(posts, ["/index.cfm/api/admin/instrument/import"]);
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+});
+
+test("P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable", { skip }, async () => {
+  const { context, page } = await newContext();
+  // The file disappears or is locked between choosing it and importing it: reading it rejects.
+  await page.addInitScript(() => {
+    const original = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = function (...args) {
+      if (this.name === "vanished.json" || (window.__failNextRead && this.size > 0)) return Promise.reject(new DOMException("The requested file could not be read.", "NotReadableError"));
+      return original.apply(this, args);
+    };
+  });
+  const posts = [];
+  page.on("request", (r) => { if (r.method() === "POST") posts.push(new URL(r.url()).pathname); });
+  await openHome(page);
+  await page.evaluate(() => { window.__failNextRead = true; });
+  await page.setInputFiles("#admin-import-file", { name: "vanished.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(documentFor("vanished"))) });
+  await page.click("#admin-import-btn");
+  await selectorOrPageError(page, "#admin-error:not([hidden])");
+  await idle(page);
+  assert.match(await page.textContent("#admin-error .admin-error-message"), /^vanished\.json could not be read, so nothing was sent\./);
+  assert.deepEqual(posts, [], "nothing was sent");
+  await page.evaluate(() => { window.__failNextRead = false; });
+  const good = documentFor("after-vanished");
+  await page.setInputFiles("#admin-import-file", { name: "good.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(good)) });
+  await page.click("#admin-import-btn");
+  await page.waitForSelector("#admin-import-result .admin-summary:not(.admin-summary-invalid)", { timeout: 20000 });
+  await idle(page);
+  assert.equal(await page.textContent("#admin-import-result .admin-summary-title"), `Created DRAFT ${good.instrument.version.versionLabel} of ${instrumentCode} from good.json.`);
+  assert.equal(await page.isVisible("#admin-error"), false, "the earlier error was cleared");
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+});
+
+test("P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read", { skip }, async () => {
+  const { context, page } = await newContext();
+  // Every way a page can read a Blob, recorded with the size of what was read. A header probe is a
+  // few bytes; reading the whole file first is exactly the defect.
+  await page.addInitScript(() => {
+    window.__blobReads = [];
+    for (const m of ["arrayBuffer", "text", "stream", "bytes"]) {
+      const original = Blob.prototype[m];
+      if (typeof original !== "function") continue;
+      Blob.prototype[m] = function (...args) { window.__blobReads.push({ method: m, size: this.size }); return original.apply(this, args); };
+    }
+    for (const m of ["readAsArrayBuffer", "readAsText", "readAsBinaryString", "readAsDataURL"]) {
+      const original = FileReader.prototype[m];
+      FileReader.prototype[m] = function (blob, ...rest) { window.__blobReads.push({ method: m, size: blob.size }); return original.call(this, blob, ...rest); };
+    }
+  });
+  const posts = [];
+  page.on("request", (r) => { if (r.method() === "POST") posts.push(new URL(r.url()).pathname); });
+  await openHome(page);
+
+  const cases = [
+    { name: "huge.json", mimeType: "application/json", buffer: Buffer.alloc(5000001, 0x20), message: "That file is 5,000,001 bytes. An instrument document may be at most 5,000,000 bytes." },
+    { name: "huge.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.concat([Buffer.from([0x50, 0x4B, 0x03, 0x04]), Buffer.alloc(20000000)]), message: "That file is 20,000,004 bytes. An instrument workbook may be at most 20,000,000 bytes." },
+  ];
+  for (const c of cases) {
+    await page.evaluate(() => { window.__blobReads = []; });
+    await page.setInputFiles("#admin-import-file", { name: c.name, mimeType: c.mimeType, buffer: c.buffer });
+    await page.click("#admin-import-btn");
+    await page.waitForSelector("#admin-error:not([hidden])", { timeout: 20000 });
+    await idle(page);
+    assert.equal(await page.textContent("#admin-error .admin-error-message"), c.message, c.name);
+    const reads = await page.evaluate(() => window.__blobReads);
+    assert.ok(reads.length >= 1, `${c.name}: the type was sniffed from the file's first bytes`);
+    assert.ok(reads.every((r) => r.size <= 8), `${c.name}: only a header was read before the size was checked: ${JSON.stringify(reads)}`);
+  }
+  assert.deepEqual(posts, [], "nothing was sent");
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+});
+
 test("A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss", { skip }, async () => {
   const draft = await importVersion("a11y");
   const { context, page } = await newContext();

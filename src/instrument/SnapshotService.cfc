@@ -69,6 +69,15 @@ component output="false" {
 		return loadEntry(arguments.versionId).snapshot;
 	}
 
+	/**
+	 * The version row and its verified snapshot, from ONE read of the row: `row` is exactly the row
+	 * the snapshot was taken from (and verified against), so its checksum always names the
+	 * snapshot returned with it. { row, snapshot, model }.
+	 */
+	public struct function loadVersion(required string versionId) {
+		return loadEntry(arguments.versionId, true);
+	}
+
 	/** Render model (RenderModelBuilder output) for a version id (cached by checksum). */
 	public struct function renderModelFor(required string versionId) {
 		return loadEntry(arguments.versionId).model;
@@ -91,14 +100,16 @@ component output="false" {
 
 	// ---- internals ---------------------------------------------------------------------------
 
-	private struct function loadEntry(required string versionId) {
+	private struct function loadEntry(required string versionId, boolean withRow = false) {
 		if (!variables.db.isGuid(arguments.versionId)) variables.errors.validation("Invalid instrument version identifier.", "INVALID_VERSION_ID");
 		var id = uCase(arguments.versionId);
 		var row = variables.definitions.findVersionById(id);
 		if (structIsEmpty(row)) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
 		if (isNull(row.snapshotJson) || !len(row.snapshotJson)) variables.errors.notFound("Instrument version has no compiled snapshot.", "INSTRUMENT_SNAPSHOT_MISSING");
 		var checksum = isNull(row.checksum) ? "" : lCase(trim(row.checksum));
-		if (structKeyExists(variables.cache, id) && variables.cache[id].checksum == checksum) return variables.cache[id];
+		// A cached entry is used only when it was built for exactly the checksum this row carries, so
+		// the snapshot is this row's either way.
+		if (structKeyExists(variables.cache, id) && variables.cache[id].checksum == checksum) return withRowIf(variables.cache[id], row, arguments.withRow);
 		// Integrity before use: SHA-256 over the exact stored canonical UTF-8 snapshot must equal the
 		// stored digest. A missing or mismatched digest fails closed -- nothing is parsed into a
 		// render model, nothing is cached, and the walk surfaces answer with a configuration error
@@ -117,7 +128,15 @@ component output="false" {
 		var entry = { "checksum": checksum, "snapshot": snapshot, "model": variables.builder.build(snapshot) };
 		variables.cache[id] = entry;
 		variables.logger.info("instrument.snapshot.loaded", { "versionId": id, "checksum": checksum, "status": row.status });
-		return entry;
+		return withRowIf(entry, row, arguments.withRow);
+	}
+
+	/** The cached entry, or a copy of it carrying the row it was matched against (never cached). */
+	private struct function withRowIf(required struct entry, required struct row, required boolean withRow) {
+		if (!arguments.withRow) return arguments.entry;
+		var out = structCopy(arguments.entry);
+		out["row"] = arguments.row;
+		return out;
 	}
 
 	private struct function rowToVersion(required query q, required boolean fallback) {

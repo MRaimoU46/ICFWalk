@@ -24,6 +24,7 @@ import path from "node:path";
 import { root } from "./helpers.mjs";
 import {
   readWorkbook, writeWorkbook, readZip, writeZip, parseXml, describeLocation, looksLikeWorkbook, fileBaseName, SHEET_NAMES, WORKBOOK_FORMAT,
+  WorkbookError,
 } from "../../app/assets/js/workbook.js";
 import { canonicalize, compileSnapshot, normalizeConfig } from "../../scripts/lib/snapshot.mjs";
 
@@ -290,6 +291,85 @@ test("files that are not workbooks, or are hostile, are refused without being ex
   assert.deepEqual(codes((await readWorkbook(stored)).errors), ["ZIP_UNSUPPORTED"]);
 
   assert.throws(() => parseXml("<a><b></a>"), /Unexpected closing tag/);
+});
+
+// ---- malformed XML is a workbook problem, never a JavaScript exception (P6A-04) ------------------
+
+/** Rewrites any part of a workbook (not only a sheet), as a hand-edited or hostile file would. */
+async function patchPart(bytes, part, edit) {
+  const files = await readZip(bytes);
+  const xml = new TextDecoder().decode(files.get(part));
+  const next = edit(xml);
+  assert.notEqual(next, xml, `the patch to ${part} changed something`);
+  files.set(part, new TextEncoder().encode(next));
+  return writeZip([...files].map(([n, data]) => ({ name: n, data })));
+}
+
+/** readWorkbook must answer with a structured result; a rejected promise is the defect itself. */
+async function refused(bytes) {
+  let r;
+  try {
+    r = await readWorkbook(bytes);
+  } catch (e) {
+    assert.fail(`readWorkbook threw ${e && e.name}: ${e && e.message} -- a malformed workbook must be a structured problem, not an exception`);
+  }
+  assert.equal(r.ok, false, "the workbook is refused");
+  assert.equal(r.document, null, "and produces no document");
+  assert.equal(typeof r.locate, "function");
+  return r;
+}
+
+test("P6A-04: a numeric character reference outside Unicode is a structured XML problem", async () => {
+  // &#999999999; is a finite number, so String.fromCodePoint was handed it and threw RangeError.
+  const decimal = await patchSheet(await workbookOf(), "item_definition", (xml) => setCell(xml, "H4", inline("H4", "Before &#999999999; after")));
+  assert.deepEqual(codes((await refused(decimal)).errors), ["XML_MALFORMED"]);
+  const hex = await patchSheet(await workbookOf(), "item_definition", (xml) => setCell(xml, "H4", inline("H4", "&#x110000;")));
+  assert.deepEqual(codes((await refused(hex)).errors), ["XML_MALFORMED"]);
+  // In an attribute, which the same decoder reads.
+  const attr = await patchPart(await workbookOf(), "xl/workbook.xml", (xml) => xml.replace('name="instrument"', 'name="instrument&#99999999999;"'));
+  assert.deepEqual(codes((await refused(attr)).errors), ["XML_MALFORMED"]);
+  assert.throws(() => parseXml("<a>&#999999999;</a>"), (e) => e instanceof WorkbookError && e.code === "XML_MALFORMED");
+});
+
+test("P6A-04: surrogate and XML-forbidden character references are structured XML problems", async () => {
+  for (const ref of ["&#xD800;", "&#57343;", "&#x1;", "&#0;", "&#x1F;", "&#xFFFE;", "&#xFFFF;"]) {
+    const bytes = await patchSheet(await workbookOf(), "item_definition", (xml) => setCell(xml, "H4", inline("H4", `x${ref}y`)));
+    const r = await refused(bytes);
+    assert.deepEqual(codes(r.errors), ["XML_MALFORMED"], ref);
+    assert.throws(() => parseXml(`<a>${ref}</a>`), (e) => e instanceof WorkbookError && e.code === "XML_MALFORMED", ref);
+  }
+  // Every XML-legal scalar value still reads, at each edge of the legal ranges.
+  const legal = { "&#9;": "\t", "&#xA;": "\n", "&#x20;": " ", "&#xD7FF;": "\uD7FF", "&#xE000;": "\uE000", "&#xFFFD;": "\uFFFD", "&#x10000;": "\u{10000}", "&#x1F600;": "\u{1F600}", "&#x10FFFF;": "\u{10FFFF}" };
+  for (const [ref, ch] of Object.entries(legal)) {
+    assert.equal(textOfFirst(parseXml(`<a>x${ref}y</a>`)), `x${ch}y`, ref);
+  }
+});
+
+function textOfFirst(root) { return root.children[0].children.map((c) => c.text).join(""); }
+
+test("P6A-04: a malformed cell or row reference is a structured workbook problem", async () => {
+  // "4H" has no column letters: the reader used to dereference a failed match and throw TypeError.
+  const cellRef = await patchSheet(await workbookOf(), "item_definition", (xml) => xml.replace('<c r="H4"', '<c r="4H"'));
+  const a = await refused(cellRef);
+  assert.deepEqual(codes(a.errors), ["CELL_REFERENCE_INVALID"]);
+  assert.equal(a.errors[0].sheet, "item_definition", "the problem names its sheet");
+  for (const bad of ["$H$4", "H0", "XFE4", "H1048577", "", "H4:H5"]) {
+    const bytes = await patchSheet(await workbookOf(), "item_definition", (xml) => xml.replace('<c r="H4"', `<c r="${bad}"`));
+    assert.deepEqual(codes((await refused(bytes)).errors), ["CELL_REFERENCE_INVALID"], `cell reference "${bad}"`);
+  }
+  for (const bad of ["abc", "0", "-3", "1048577"]) {
+    const bytes = await patchSheet(await workbookOf(), "item_definition", (xml) => xml.replace('<row r="4"', `<row r="${bad}"`));
+    assert.deepEqual(codes((await refused(bytes)).errors), ["CELL_REFERENCE_INVALID"], `row number "${bad}"`);
+  }
+});
+
+test("P6A-04: any other shape the reader does not expect is a structured problem, not an exception", async () => {
+  // A <sheet> with no name used to reach name.toLowerCase() on undefined.
+  const nameless = await patchPart(await workbookOf(), "xl/workbook.xml", (xml) => xml.replace('name="instrument" ', ""));
+  const r = await refused(nameless);
+  assert.equal(r.errors.length, 1);
+  assert.match(r.errors[0].code, /^(WORKBOOK_UNREADABLE|XML_MALFORMED)$/);
+  assert.equal(typeof r.errors[0].message, "string");
 });
 
 // ---- locating server problems ---------------------------------------------------------------------

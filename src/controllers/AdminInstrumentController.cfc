@@ -15,10 +15,6 @@ component output="false" {
 		return this;
 	}
 
-	// An uploaded instrument document is ~300 KB; this leaves ample room for growth while refusing
-	// a body no administrator would send. Checked against the raw byte count, before anything else.
-	variables.MAX_IMPORT_BYTES = 5000000;
-
 	/**
 	 * GET /api/admin/instrument/versions. Every version of every instrument (by instrument, newest first), with the
 	 * one each instrument would serve now marked `isCurrent`.
@@ -28,19 +24,20 @@ component output="false" {
 	}
 
 	/**
-	 * POST /api/admin/instrument/import (ADM-01). Body `{ "document": <instrument configuration> }`.
-	 * The same import the maintenance route performs, attributed to the signed-in administrator:
-	 * full validation, a validation summary with counts, warnings and the placeholder list, and
-	 * 201 when a DRAFT was created or 200 when an existing DRAFT was re-imported.
+	 * POST /api/admin/instrument/import (ADM-01). Body `{ "document": <instrument configuration> }`,
+	 * optionally with `"replace": { "versionId", "expectedChecksum" }` naming the exact DRAFT it
+	 * replaces (P6A-02). Full validation and a validation summary with counts, warnings and the
+	 * placeholder list; 201 when a DRAFT was created, 200 when the named DRAFT was replaced.
+	 *
+	 * The size limit is not checked here. It is the route's (Router: maxBodyBytes 5,000,000),
+	 * enforced before the body is read or parsed, so no ordering of this method can bypass it.
 	 */
 	public struct function importDocument(required struct req) {
-		if (arguments.req.rawBodyLength > variables.MAX_IMPORT_BYTES) {
-			variables.c.errors.payloadTooLarge("The instrument document may be at most " & variables.MAX_IMPORT_BYTES & " bytes.", "DOCUMENT_TOO_LARGE", { "limitBytes": variables.MAX_IMPORT_BYTES });
-		}
-		onlyMembers(arguments.req.body, ["document"], "IMPORT_BODY_INVALID");
+		onlyMembers(arguments.req.body, ["document", "replace"], "IMPORT_BODY_INVALID");
 		var result = variables.c.instrumentAdminService.importDocument(
 			structKeyExists(arguments.req.body, "document") ? arguments.req.body.document : javaCast("null", ""),
-			arguments.req.principal.userId
+			arguments.req.principal.userId,
+			structKeyExists(arguments.req.body, "replace") ? arguments.req.body.replace : javaCast("null", "")
 		);
 		return { "status": result.created ? 201 : 200, "body": result };
 	}

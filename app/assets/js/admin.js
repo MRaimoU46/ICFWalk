@@ -258,42 +258,48 @@ export function mountAdmin({ api, announce = () => {} }) {
     showError("");
     const file = importFile.files && importFile.files[0];
     if (!file) { showError("Choose a workbook (.xlsx) or an instrument document (.json) to import."); importFile.focus(); return; }
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const isWorkbook = looksLikeWorkbook(bytes);
-    const limit = isWorkbook ? MAX_WORKBOOK_BYTES : MAX_DOCUMENT_BYTES;
-    if (file.size > limit) { showError(`That file is ${file.size.toLocaleString("en-US")} bytes. An instrument ${isWorkbook ? "workbook" : "document"} may be at most ${limit.toLocaleString("en-US")} bytes.`); return; }
 
-    let doc;
-    let source = { locate: null, warnings: [], meta: null };
-    if (isWorkbook) {
-      setStatus(`Reading ${file.name}...`);
-      const wb = await readWorkbook(bytes);
-      if (!wb.ok) {
-        importResult.append(problemSummary(`Not imported: ${file.name} has ${plural(wb.errors.length, "problem", "problems")}. Nothing was sent.`, wb.errors));
-        setStatus(`${file.name} was not imported: ${plural(wb.errors.length, "problem", "problems")} in the workbook.`);
-        return;
-      }
-      doc = wb.document;
-      source = { locate: wb.locate, warnings: wb.warnings, meta: wb.meta };
-    } else {
-      try {
-        doc = JSON.parse(new TextDecoder().decode(bytes));
-      } catch (e) {
-        showError(`${file.name} is neither an Excel workbook (.xlsx) nor valid JSON, so nothing was sent. ${e.message}`);
-        return;
-      }
-    }
+    // Reading and parsing the file are inside the guarded flow: whatever the file does, the answer
+    // is a message on the page, the page stays usable, and nothing is sent.
+    const prepared = await guarded(() => prepareUpload(file));
+    if (!prepared) return;
+    const { doc, source } = prepared;
 
     const label = importLabel.value.trim();
     const version = doc && typeof doc === "object" && doc.instrument && typeof doc.instrument === "object" ? doc.instrument.version : null;
     if (label && version && typeof version === "object") version.versionLabel = label;
-    if (!(await mayReplace(doc, source.meta))) { setStatus("Nothing was imported."); return; }
+    const decision = await replacementFor(doc, source.meta);
+    if (!decision) { setStatus("Nothing was imported."); return; }
 
+    // At most two sends: create-only (or the replacement agreed above), and -- only if the server
+    // says a draft took the label after this page looked, and the administrator then agrees to
+    // replace exactly that draft -- the replacement of it.
+    let replace = decision.replace;
+    for (let send = 0; send < 2; send++) {
+      const next = await submitImport(file, doc, source, replace);
+      if (!next) return;
+      replace = next;
+    }
+  }
+
+  /**
+   * One import request. Resolves to the replacement to send next when the server reported a draft
+   * under the label and the administrator agreed to replace exactly it; otherwise to null.
+   *
+   * THE SERVER DECIDES (P6A-02). A replacement names the draft's id and the checksum this page
+   * agreed to replace, and the server compares both under the version lock. What changed after the
+   * page looked is answered 409 -- DRAFT_REPLACEMENT_REQUIRED when a draft now holds a label this page
+   * thought free, DRAFT_CHANGED when the draft agreed to is not what the label holds now -- and
+   * nothing is written. The questions this page asks are how a person chooses; the token is what
+   * makes the choice hold.
+   */
+  async function submitImport(file, doc, source, replace) {
+    let conflict = null;
     await guarded(async () => {
       setStatus(`Validating ${file.name}...`);
       let result;
       try {
-        result = await api.post("/admin/instrument/import", { document: doc });
+        result = await api.post("/admin/instrument/import", replace ? { document: doc, replace } : { document: doc });
       } catch (e) {
         if (e instanceof ApiError && e.code === "INSTRUMENT_CONFIG_INVALID") {
           const issues = (e.details && e.details.issues) || [];
@@ -301,38 +307,115 @@ export function mountAdmin({ api, announce = () => {} }) {
           setStatus(`${file.name} was not imported: ${plural(issues.length, "problem", "problems")} found.`);
           return;
         }
+        if (e instanceof ApiError && (e.code === "DRAFT_REPLACEMENT_REQUIRED" || e.code === "DRAFT_CHANGED")) { conflict = e; return; }
         throw e;
       }
       importResult.append(importSummary(file.name, result, source));
       setStatus(`${result.created ? "Created" : "Re-imported"} draft ${result.versionLabel}.`);
       await loadVersions();
     }, { mutation: true });
+    if (!conflict) return null;
+
+    const label = doc.instrument.version.versionLabel;
+    setStatus("");
+    await loadVersions().catch(() => {});
+    if (conflict.code === "DRAFT_CHANGED") {
+      showError(`Draft ${label} changed after you chose to replace it, so nothing was imported. The version list has been reloaded; upload the file again to decide about the draft as it is now.`);
+      return null;
+    }
+    const current = conflict.details || {};
+    const yes = await confirmPanel(`Replace draft ${label}?`, [
+      `A draft named ${label} was created after this page loaded its list, so it was not replaced. Uploading replaces that draft entirely with the file.`,
+      "To keep both, cancel and enter a new draft label.",
+    ], "Replace draft", true);
+    if (!yes) { setStatus("Nothing was imported."); return null; }
+    return { versionId: current.versionId, expectedChecksum: current.currentChecksum };
   }
 
   /**
-   * An upload whose label names an existing DRAFT replaces that draft entirely. That is the point
-   * of editing a draft in Excel -- but not when the draft changed after the workbook was
-   * downloaded, or when the file did not come from that draft at all. Those ask first. A label that
-   * names a published or retired version is refused here with the way out; the server would refuse
-   * it anyway.
+   * The chosen file as a document, or null when it cannot be one (the reason is already shown).
+   *
+   * THE SIZE IS DECIDED BEFORE THE FILE IS READ. Which limit applies depends on whether the file is
+   * a workbook, and that is known from its first bytes, so only those are read first; `file.size`
+   * is then compared with the limit, and the whole file is read only when it is within it.
    */
-  async function mayReplace(doc, meta) {
+  async function prepareUpload(file) {
+    const unreadable = (e) => {
+      showError(`${file.name} could not be read, so nothing was sent. ${e && e.message ? e.message : ""}`.trim());
+      return null;
+    };
+    let head;
+    try {
+      head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    } catch (e) {
+      return unreadable(e);
+    }
+    const isWorkbook = looksLikeWorkbook(head);
+    const limit = isWorkbook ? MAX_WORKBOOK_BYTES : MAX_DOCUMENT_BYTES;
+    if (file.size > limit) {
+      showError(`That file is ${file.size.toLocaleString("en-US")} bytes. An instrument ${isWorkbook ? "workbook" : "document"} may be at most ${limit.toLocaleString("en-US")} bytes.`);
+      return null;
+    }
+    let bytes;
+    try {
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } catch (e) {
+      return unreadable(e);
+    }
+
+    if (isWorkbook) {
+      setStatus(`Reading ${file.name}...`);
+      // readWorkbook answers every problem with a result, never an exception (P6A-04).
+      const wb = await readWorkbook(bytes);
+      if (!wb.ok) {
+        importResult.append(problemSummary(`Not imported: ${file.name} has ${plural(wb.errors.length, "problem", "problems")}. Nothing was sent.`, wb.errors));
+        setStatus(`${file.name} was not imported: ${plural(wb.errors.length, "problem", "problems")} in the workbook.`);
+        return null;
+      }
+      setStatus("");
+      return { doc: wb.document, source: { locate: wb.locate, warnings: wb.warnings, meta: wb.meta } };
+    }
+    try {
+      return { doc: JSON.parse(new TextDecoder().decode(bytes)), source: { locate: null, warnings: [], meta: null } };
+    } catch (e) {
+      showError(`${file.name} is neither an Excel workbook (.xlsx) nor valid JSON, so nothing was sent. ${e.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * What this upload should ask the server for: `{ replace: null }` (create-only), `{ replace:
+   * token }` (replace exactly this draft), or null (nothing is sent).
+   *
+   * An upload whose label names an existing DRAFT replaces that draft entirely. That is the point of
+   * editing a draft in Excel -- but not when the draft changed after the workbook was downloaded, or
+   * when the file did not come from that draft at all. Those ask first. A label that names a
+   * published or retired version is refused here with the way out; the server would refuse it
+   * anyway.
+   *
+   * The list this reads may be out of date, so none of this is the protection: the token carries the
+   * draft's id and the checksum this administrator agreed to replace -- the one the workbook was
+   * downloaded at when nothing needed asking, the one shown in the list when it did -- and the
+   * server refuses the upload if the draft is not exactly that any more.
+   */
+  async function replacementFor(doc, meta) {
     const code = doc?.instrument?.code;
     const label = doc?.instrument?.version?.versionLabel;
-    if (typeof code !== "string" || typeof label !== "string") return true;
+    if (typeof code !== "string" || typeof label !== "string") return { replace: null };
     const existing = view.versions.find((v) => v.instrumentCode === code && v.versionLabel === label);
-    if (!existing) return true;
+    if (!existing) return { replace: null };
     if (existing.status !== "DRAFT") {
       showError(`"${label}" is the label of a ${STATUS_LABEL[existing.status].toLowerCase()} version of ${code}, which cannot change. Enter a new draft label, or change version_label in the file.`);
       importLabel.focus();
-      return false;
+      return null;
     }
     const fromThisDraft = meta && meta.versionId === existing.versionId;
-    if (fromThisDraft && meta.checksum === existing.checksum) return true;
+    if (fromThisDraft && meta.checksum === existing.checksum) return { replace: { versionId: existing.versionId, expectedChecksum: meta.checksum } };
     const reason = fromThisDraft
       ? `Draft ${label} changed after this workbook was downloaded (for example, wording edited here). Uploading replaces the draft with the file, and those changes are lost.`
       : `A draft named ${label} already exists, and this file did not come from it. Uploading replaces that draft entirely with the file.`;
-    return confirmPanel(`Replace draft ${label}?`, [reason, "To keep both, cancel and enter a new draft label."], "Replace draft", true);
+    const yes = await confirmPanel(`Replace draft ${label}?`, [reason, "To keep both, cancel and enter a new draft label."], "Replace draft", true);
+    return yes ? { replace: { versionId: existing.versionId, expectedChecksum: existing.checksum } } : null;
   }
 
   function problemSummary(title, issues, locate = null) {

@@ -18,6 +18,22 @@ component output="false" {
 	}
 
 	public void function require(required struct req, required string task) {
+		verify(arguments.req, arguments.task);
+		variables.logger.info("maintenance.invoked", { "task": arguments.task, "remoteAddress": arguments.req.remoteAddress });
+		variables.audit.record("MAINTENANCE", "", "MAINTENANCE_TASK_INVOKED", "", { "task": arguments.task, "remoteAddress": arguments.req.remoteAddress });
+	}
+
+	/**
+	 * The same checks as require(), made by the router BEFORE the request body is read (P6A-01), so a
+	 * caller without the token is answered 404 without its body being acquired or parsed. It records
+	 * nothing on success: the controller's require() still runs, and is what audits the invocation.
+	 * A denial here is logged exactly as require() logs one, under the route's action name.
+	 */
+	public void function precheck(required struct req, required string action) {
+		verify(arguments.req, "route:" & arguments.action);
+	}
+
+	private void function verify(required struct req, required string task) {
 		var remote = arguments.req.remoteAddress;
 		if (!variables.config.maintenanceEnabled) {
 			deny("maintenance.disabled", arguments.task, remote);
@@ -29,8 +45,6 @@ component output="false" {
 		if (!len(supplied) || !constantTimeEquals(supplied, variables.config.maintenanceToken)) {
 			deny("maintenance.token_invalid", arguments.task, remote);
 		}
-		variables.logger.info("maintenance.invoked", { "task": arguments.task, "remoteAddress": remote });
-		variables.audit.record("MAINTENANCE", "", "MAINTENANCE_TASK_INVOKED", "", { "task": arguments.task, "remoteAddress": remote });
 	}
 
 	public boolean function isLoopback(required string address) {

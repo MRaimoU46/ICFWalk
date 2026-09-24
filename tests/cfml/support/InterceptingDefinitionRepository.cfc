@@ -34,6 +34,11 @@
  *                               from. Armed alongside lockInstrumentByCode so the metadata barrier
  *                               specs fail on behaviour -- a lost update -- against the code that
  *                               had no locked read at all, rather than merely on a missing method.
+ *   findVersionById             the UNLOCKED read of a version by id: where the pre-correction
+ *                               discardDraftById started (P6A-03), and the first of the two reads the
+ *                               pre-correction export made (P6A-02). Armed alongside
+ *                               findVersionByIdForUpdate so a spec drives the uncorrected code to
+ *                               the same interleaving and fails there on behaviour.
  *
  * NO PRODUCTION HOOK. This is a decorator, constructed by a spec and handed to a service the spec
  * also constructs. Nothing in src/ references it, no route reaches it, and the container never
@@ -103,6 +108,14 @@ component output="false" {
 		if (arguments.lockForUpdate) trigger("before", "findVersion");
 		var result = variables.inner.findVersion(arguments.instrumentId, arguments.versionLabel, arguments.lockForUpdate);
 		if (arguments.lockForUpdate) trigger("after", "findVersion");
+		return result;
+	}
+
+	/** The unlocked read of one version row by id. */
+	public struct function findVersionById(required string versionId) {
+		trigger("before", "findVersionById");
+		var result = variables.inner.findVersionById(arguments.versionId);
+		trigger("after", "findVersionById");
 		return result;
 	}
 

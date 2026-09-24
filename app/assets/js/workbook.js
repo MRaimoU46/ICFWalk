@@ -217,11 +217,34 @@ function canonical(value) {
 
 const ENTITY = { lt: "<", gt: ">", amp: "&", quot: "\"", apos: "'" };
 
+/**
+ * The Char production of XML 1.0: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] |
+ * [#x10000-#x10FFFF]. A character reference to anything else -- past U+10FFFF, a surrogate, NUL or
+ * another C0 control, U+FFFE / U+FFFF -- is a well-formedness error, and a workbook carrying one is
+ * refused as malformed rather than handed to String.fromCodePoint, which throws RangeError past
+ * U+10FFFF and silently produces a lone surrogate below it.
+ */
+function isXmlChar(code) {
+  return code === 0x9 || code === 0xA || code === 0xD
+    || (code >= 0x20 && code <= 0xD7FF)
+    || (code >= 0xE000 && code <= 0xFFFD)
+    || (code >= 0x10000 && code <= 0x10FFFF);
+}
+
 function decodeEntities(text) {
   return text.replace(/&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);/g, (whole, body) => {
     if (body[0] === "#") {
-      const code = body[1] === "x" || body[1] === "X" ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
+      const digits = body[1] === "x" || body[1] === "X" ? body.slice(2) : body.slice(1);
+      const radix = digits === body.slice(1) ? 10 : 16;
+      // Long runs of leading zeros are legal; anything that is still more than seven significant
+      // hex digits (or eight decimal ones) is past U+10FFFF whatever it says, so it is refused
+      // before parseInt can round it.
+      const significant = digits.replace(/^0+/, "");
+      const code = significant.length > (radix === 16 ? 6 : 7) ? Infinity : parseInt(significant || "0", radix);
+      if (!isXmlChar(code)) {
+        throw new WorkbookError("XML_MALFORMED", `The character reference ${whole.length > 24 ? `${whole.slice(0, 20)}...;` : whole} does not name a character XML allows, so the file is damaged or was not written by a spreadsheet program.`);
+      }
+      return String.fromCodePoint(code);
     }
     return Object.prototype.hasOwnProperty.call(ENTITY, body) ? ENTITY[body] : whole;
   });
@@ -486,9 +509,11 @@ export async function readZip(bytes) {
 // ---- errors ------------------------------------------------------------------------------------
 
 export class WorkbookError extends Error {
-  constructor(code, message) {
+  /** `where` optionally names the sheet (and row, column, cell) the problem is in. */
+  constructor(code, message, where = {}) {
     super(message);
     this.code = code;
+    this.where = where;
   }
 }
 
@@ -674,6 +699,34 @@ function relationships(files, relsPath) {
   return out;
 }
 
+// Excel's own grid: columns A..XFD, rows 1..1048576. A reference outside it, or one that is not a
+// plain column-letters-then-row-number reference at all, is not something a spreadsheet writes.
+const MAX_COLUMN_INDEX = 16383;
+const MAX_ROW = 1048576;
+const CELL_REF = /^([A-Za-z]{1,3})([1-9][0-9]{0,6})$/;
+
+function badReference(sheetName, what) {
+  return new WorkbookError("CELL_REFERENCE_INVALID", `The sheet "${sheetName}" has ${what}, which is not a cell reference a spreadsheet writes; the file is damaged or was edited by hand.`, { sheet: sheetName });
+}
+
+/** A row's `r`: a whole number from 1 to 1048576. */
+function rowNumber(sheetName, raw) {
+  if (!/^[1-9][0-9]{0,6}$/.test(raw)) throw badReference(sheetName, `a row numbered "${String(raw).slice(0, 20)}"`);
+  const r = Number(raw);
+  if (r > MAX_ROW) throw badReference(sheetName, `a row numbered "${raw}"`);
+  return r;
+}
+
+/** A cell's `r`, e.g. "H17": its zero-based column index, checked against the row it sits in. */
+function cellColumn(sheetName, ref, row) {
+  const m = CELL_REF.exec(ref);
+  const shown = `a cell "${String(ref).slice(0, 20)}"`;
+  if (!m) throw badReference(sheetName, shown);
+  const ci = columnIndex(m[1].toUpperCase());
+  if (ci > MAX_COLUMN_INDEX || Number(m[2]) > MAX_ROW || Number(m[2]) !== row) throw badReference(sheetName, shown);
+  return ci;
+}
+
 /** Every sheet by name, each as Map(row number -> Map(column index -> cell)). */
 function loadSheets(files) {
   const dec = new TextDecoder();
@@ -699,17 +752,20 @@ function loadSheets(files) {
   const sheets = new Map();
   const sheetsEl = kid(workbook, "sheets");
   for (const s of sheetsEl ? kids(sheetsEl, "sheet") : []) {
+    if (typeof s.attrs.name !== "string" || !s.attrs.name) {
+      throw new WorkbookError("WORKBOOK_UNREADABLE", "The workbook lists a sheet without a name, which Excel never writes; the file is damaged.");
+    }
     const rid = s.attrs["r:id"] ?? Object.entries(s.attrs).find(([k]) => k.endsWith(":id"))?.[1];
     const rel = rels.get(rid);
     if (!rel) continue;
     const data = files.get(resolvePart(workbookPath, rel.target).toLowerCase());
     if (!data) continue;
-    sheets.set(s.attrs.name, { name: s.attrs.name, grid: sheetGrid(parseXml(dec.decode(data)), sharedStrings) });
+    sheets.set(s.attrs.name, { name: s.attrs.name, grid: sheetGrid(parseXml(dec.decode(data)), sharedStrings, s.attrs.name) });
   }
   return { sheets, date1904 };
 }
 
-function sheetGrid(root, sharedStrings) {
+function sheetGrid(root, sharedStrings, sheetName) {
   const grid = new Map();
   const ws = kid(root, "worksheet");
   const data = ws && kid(ws, "sheetData");
@@ -718,13 +774,17 @@ function sheetGrid(root, sharedStrings) {
   const rows = kids(data, "row");
   if (rows.length > LIMITS.rowsPerSheet) throw new WorkbookError("SHEET_TOO_LARGE", "A sheet has far more rows than an instrument could.");
   for (const row of rows) {
-    const r = row.attrs.r ? parseInt(row.attrs.r, 10) : nextRow;
+    // `r` is optional (the row then follows the previous one), but when present it must be a row
+    // number: parseInt("abc") is NaN and would have been used as a Map key.
+    const r = row.attrs.r !== undefined ? rowNumber(sheetName, row.attrs.r) : nextRow;
+    if (r > MAX_ROW) throw badReference(sheetName, `a row numbered "${r}"`);
     nextRow = r + 1;
     const cells = new Map();
     let nextCol = 0;
     for (const c of kids(row, "c")) {
       const ref = c.attrs.r;
-      const ci = ref ? columnIndex(/^[A-Z]+/i.exec(ref)[0].toUpperCase()) : nextCol;
+      const ci = ref !== undefined ? cellColumn(sheetName, ref, r) : nextCol;
+      if (ci > MAX_COLUMN_INDEX) throw badReference(sheetName, `a cell past column XFD in row ${r}`);
       nextCol = ci + 1;
       const t = c.attrs.t || "n";
       const v = kid(c, "v");
@@ -1011,7 +1071,22 @@ function makeLocator(document, found) {
  * `ok` is false when any error was found; the document is then not to be sent. Pass
  * { requireDocumentSheet: false } to read only the tables of a workbook that has no document sheet.
  */
-export async function readWorkbook(bytes, { requireDocumentSheet = true } = {}) {
+export async function readWorkbook(bytes, options = {}) {
+  try {
+    return await readWorkbookUnguarded(bytes, options);
+  } catch (e) {
+    // A file is data, and whatever it contains is answered with a problem the page can show --
+    // never with an exception that escapes to the caller. Every refusal this module decides on is
+    // a WorkbookError with its own code; anything else means the file had a shape the reader does
+    // not expect (a hand-edited or hostile part), which is reported as unreadable, by name only.
+    const problem = e instanceof WorkbookError
+      ? issue(e.code, e.message, e.where)
+      : issue("WORKBOOK_UNREADABLE", `The workbook could not be read: it is not laid out the way Excel writes a workbook (${e && e.name ? e.name : "error"}). Save it again from Excel as .xlsx, or start from a workbook downloaded here.`);
+    return { ok: false, document: null, errors: [problem], warnings: [], meta: null, locate: () => null };
+  }
+}
+
+async function readWorkbookUnguarded(bytes, { requireDocumentSheet = true } = {}) {
   const errors = [];
   const warnings = [];
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -1019,7 +1094,7 @@ export async function readWorkbook(bytes, { requireDocumentSheet = true } = {}) 
   try {
     loaded = loadSheets(await readZip(data));
   } catch (e) {
-    if (e instanceof WorkbookError) return { ok: false, document: null, errors: [issue(e.code, e.message)], warnings, meta: null, locate: () => null };
+    if (e instanceof WorkbookError) return { ok: false, document: null, errors: [issue(e.code, e.message, e.where)], warnings, meta: null, locate: () => null };
     throw e;
   }
   const { sheets, date1904 } = loaded;

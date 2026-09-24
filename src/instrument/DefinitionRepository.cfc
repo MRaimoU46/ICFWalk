@@ -1141,8 +1141,11 @@ component output="false" {
 	 * Removes a DRAFT version and every definition it owns. Refused for PUBLISHED and RETIRED like
 	 * every other mutator here: the guard throws, and each statement is status-qualified besides,
 	 * so there is no production path that deletes frozen content.
+	 *
+	 * Returns the number of icf.instrument_version rows the final statement deleted -- 1 when this
+	 * id went, 0 when it did not -- so a caller that must delete exactly this version can assert it.
 	 */
-	public void function deleteDraftVersionCascade(required string versionId) {
+	public numeric function deleteDraftVersionCascade(required string versionId) {
 		requireDraftVersion(arguments.versionId);
 		var p = { "id": variables.db.guid(arguments.versionId) };
 		variables.db.run("DELETE iv FROM [icf].[instrument_dimension_value] iv JOIN [icf].[instrument_version] v ON v.version_id = iv.version_id WHERE iv.version_id = :id AND v.status = N'DRAFT'", p);
@@ -1155,7 +1158,8 @@ component output="false" {
 		var ids = [];
 		for (var r = 1; r <= sq.recordCount; r++) arrayAppend(ids, uCase(sq.section_id[r]));
 		deleteSections(arguments.versionId, ids);
-		variables.db.run("DELETE FROM [icf].[instrument_version] WHERE version_id = :id AND status = N'DRAFT'", p);
+		var gone = variables.db.run("DELETE FROM [icf].[instrument_version] OUTPUT DELETED.version_id WHERE version_id = :id AND status = N'DRAFT'", p);
+		return gone.recordCount;
 	}
 
 	// ---- helpers ----------------------------------------------------------------------------

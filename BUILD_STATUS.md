@@ -3501,7 +3501,9 @@ working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server 2022 (16.0.4295
    transaction owner inside the Adobe `transaction` block (it must run on the transaction's own
    connection), a non-`required` argument receiving
    `null` positionally, `cfthread` in the new barrier spec, `compare()` for case-sensitive key
-   matching, and the raw body length the 413 cap reads.
+   matching, and the raw body length the 413 cap reads (since the audit corrections, the router's
+   bounded byte read of the servlet container's input stream, P6A-01 below -- the unwrapping of the
+   engine's request is exactly the part to re-prove on Adobe ColdFusion).
 2. **The approved wording for the 17 placeholder prompts is still the district's to supply.** The
    tooling to apply it exists; the content does not.
 3. **Structure is not editable in the browser** by decision; a structural change is a document edit
@@ -3590,13 +3592,139 @@ exact commit**, recorded in `docs/evidence/excel-roundtrip-release-gate.txt` in 
    has to understand the sheets. That is what the later in-app editor is for.
 4. **Uploading under an existing draft's label replaces that draft.** The page asks first when the
    draft changed since the download or the file did not come from it; the server itself does not
-   compare checksums on import.
+   compare checksums on import. *(Superseded by audit correction P6A-02 below: an administrator's
+   import is now create-only unless it names the draft's id and the checksum agreed to, which the
+   server compares under the version lock.)*
 5. **Not independently audited**, like the rest of Phase 6 administration and Phase 7.
 
-## Submitted for audit
+## Submitted for audit (superseded by the audit corrections below)
 
 Phase 6 administration and the Excel round-trip are submitted for independent audit as an
 implementation candidate: range `0c6fa10..786e572`. What to audit, where each claim is, the changes
 outside Phase 6 files, where to look first and the known gaps are in
 `docs/evidence/phase6-admin-audit-handoff.md`; the environment is in
 `docs/evidence/phase6-admin-environment.md`. Not accepted, frozen or complete until the audit says so.
+
+## Phase 6 administration audit corrections (P6A-01 to P6A-04)
+
+An independent audit of the Phase 6 administration candidate at
+`2a3f2ecb4f070401cba00518c0db8a2de823a29d` (branch `claude/icfwalk-phase-6-admin-publish`) found it
+not ready to freeze, with four findings. They are corrected on
+`claude/icfwalk-phase-6-admin-audit-corrections`, created from that exact commit. Each correction
+was preceded by a regression that failed on the candidate for the intended reason
+(`docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`). No schema migration, no
+dependency, no test removed, skipped or loosened. **Implementation candidate submitted for
+independent re-audit; not accepted, frozen or complete.**
+
+### What was wrong, and what each fix is
+
+**P6A-01 -- bodies were read and parsed before anyone asked who sent them.** `Router.dispatch` built
+the request by reading and deserializing the whole body, then authenticated, then checked CSRF;
+the import's 5,000,000-byte limit was the controller's, after all of that; the chunked fallback
+measured `len()` of text (characters); the page read a whole file before checking its size.
+*Fix:* `Router.handle(source)` matches the route and reads metadata only; runs the maintenance
+token check, or authentication, CSRF and the permission; only then reads the body, under the
+route's `maxBodyBytes` (route metadata: 5,000,000 for the import, else the 20,000,000-byte server
+maximum) -- a declared length over it is refused without reading, otherwise at most one byte past it
+is read from the servlet container's stream and counted in bytes; then parses (`JsonBodyParser`);
+then decides the one body-dependent permission (walk creation's `orgUnitBody`). New
+`HttpRequestSource` (reads the container's stream underneath Lucee's wrapper, which otherwise copies
+the whole body into memory first; falls back to the engine's buffered body measured in UTF-8 bytes)
+and `JsonBodyParser`; `MaintenanceGuard.precheck`. The controller's own size check is gone.
+`admin.js` reads the first 8 bytes to tell a workbook from JSON, compares `file.size` with 20 MB / 5
+MB, and only then reads the file.
+
+**P6A-02 -- re-import had no server-side concurrency control.** The page compared the workbook with
+its cached version list and sent `{ document }`; the server overwrote whatever DRAFT held the label.
+*Fix:* the administrator's import is create-only (409 `DRAFT_REPLACEMENT_REQUIRED`, with the DRAFT's
+id and current checksum) unless it sends `replace: { versionId, expectedChecksum }`; both are compared
+in `writeNormalizedDraft` on the row its `UPDLOCK, HOLDLOCK` read holds, and any other state is 409
+`DRAFT_CHANGED` (or the existing immutable/in-use 409s) with nothing written and one refusal audit.
+A replacement never creates. Success audits `replacedVersionId` and `previousChecksum`. The page
+keeps its confirmation, sends the token (the workbook's checksum when nothing needed asking, the
+listed checksum when it asked), asks about exactly the DRAFT the server reports when a label was
+taken after it looked, and on `DRAFT_CHANGED` says so, reloads and imports nothing. The export takes
+metadata and document from one read (`SnapshotService.loadVersion`). The maintenance import is
+deliberately unchanged (label re-import, the seed path).
+
+**P6A-03 -- a discard by id could delete a different version.** `discardDraftById` read the row
+unlocked and delegated to the label-addressed `discardDraft`. *Fix:* one transaction: lock the path
+id (`findVersionByIdForUpdate`), derive everything from that row, require a DRAFT no walk references,
+delete that id (`deleteDraftVersionCascade` now returns the version rows deleted; exactly one is
+required), audit and return that id. The label-addressed discard stays, for the maintenance route.
+
+**P6A-04 -- malformed workbook XML escaped as a JavaScript exception.** `&#999999999;` reached
+`String.fromCodePoint` (`RangeError`), a malformed cell reference threw `TypeError`, `readWorkbook`
+converted only `WorkbookError`, and the import handler parsed outside its guarded flow. *Fix:*
+character references must name an XML 1.0 `Char` (else `XML_MALFORMED`); row and cell references must
+be spreadsheet references within A..XFD / 1..1048576, the cell's row matching its row (else
+`CELL_REFERENCE_INVALID` with the sheet); `readWorkbook` returns any other failure as a
+`WORKBOOK_UNREADABLE` problem; the page reads and parses inside `guarded`, so a rejected file shows
+its problems, sends nothing and leaves the page usable.
+
+### Files changed (audit corrections)
+
+| File | Change |
+| --- | --- |
+| `src/http/Router.cfc` | `handle(source)`, the ordered pipeline, route `maxBodyBytes`, `declaredLength`, 413 before parsing. |
+| `src/http/HttpRequestSource.cfc`, `src/http/JsonBodyParser.cfc` | New: request metadata and the bounded byte read; the one body parser. |
+| `src/http/MaintenanceGuard.cfc` | `precheck` (the token check before the body); `require` unchanged in effect. |
+| `src/Bootstrap.cfc` | Wires the two new components. |
+| `src/controllers/AdminInstrumentController.cfc` | Import: `replace` accepted and passed through; the size check removed (it is the route's). |
+| `src/instrument/InstrumentAdminService.cfc` | `importDocument`: create-only or a validated replacement token (400 `REPLACE_INVALID`); `exportDocument` from one read. |
+| `src/instrument/InstrumentImportService.cfc` | `importConfig` options; `createOnly` / `replaceVersionId` decided under the version lock; replacement audit; `discardDraftById` rewritten as one id-addressed transaction. |
+| `src/instrument/SnapshotService.cfc` | `loadVersion`: the row and its verified snapshot from one read. |
+| `src/instrument/DefinitionRepository.cfc` | `deleteDraftVersionCascade` returns the version rows deleted. |
+| `app/assets/js/admin.js` | Header-first size check; read and parse inside `guarded`; replacement tokens; 409 handling. |
+| `app/assets/js/workbook.js` | Character-reference and cell-reference validation; `readWorkbook` never throws. |
+| `tests/cfml/specs/RouterBodyOrderTest.cfc` (12), `DraftReplacementConcurrencyTest.cfc` (6), `DiscardIdentityBarrierTest.cfc` (2) | New. |
+| `tests/cfml/support/FakeRequestSource.cfc`, `SpyJsonBodyParser.cfc`, `RouterTestDoubles.cfc` | New, test-only. |
+| `tests/cfml/support/InterceptingDefinitionRepository.cfc` | A `findVersionById` seam. |
+| `tests/node/admin-instrument.test.mjs` | 6 new cases (P6A-01 x5, P6A-02); the ADM-01 re-import case now also proves the create-only refusal before the explicit replacement's 200. |
+| `tests/node/browser-admin.test.mjs` | 5 new cases (P6A-02 x2, P6A-04 x2, P6A-01). |
+| `tests/node/workbook.test.mjs` | 4 new cases (P6A-04). |
+| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/ACCEPTANCE_TRACKING.md`, `docs/LOCAL_SETUP.md`, `BUILD_STATUS.md`, `manifest.json` | Records. |
+
+One existing assertion changed, deliberately and by the audit's instruction: the ADM-01 HTTP case
+(`admin-instrument.test.mjs`) re-imported the same label with `{ document }` and expected 200. That
+is now refused 409 `DRAFT_REPLACEMENT_REQUIRED` (asserted, with the row version unmoved), and the same
+re-import with the exact replacement token is what answers 200, with every original assertion on
+that 200 kept.
+
+### Tests and results (development runs, before the commit)
+
+| Run | Result |
+| --- | --- |
+| `RouterBodyOrderTest` | 12/12 |
+| `DraftReplacementConcurrencyTest` | 6/6 |
+| `DiscardIdentityBarrierTest` | 2/2 |
+| `InstrumentAdministrationTest`, `InstrumentImmutabilityTest`, `InstrumentImportServiceTest` | 17/17, 15/15, 10/10 |
+| `workbook.test.mjs` | 16/16 (12 + 4) |
+| `admin-instrument.test.mjs` | 19/19 (13 + 6) |
+| `browser-admin.test.mjs` | 12/12 (7 + 5) |
+| Whole suite, `ICFWALK_REQUIRE_APP=1 npm test`, before the manifest refresh | CFML 475/475 (455 + 20 new); Node/HTTP/Playwright 239/240 -- the one failure was PKG-01, the manifest hashes of `docs/DATA_CONTRACT.md` and `docs/OPEN_DECISIONS.md`, edited during the run and refreshed afterwards with `scripts/refresh-manifest.mjs` |
+
+**The authoritative result is the full gate on the exact code commit**, recorded in the commit after
+it (`docs/evidence/phase6-admin-audit-corrections-release-gate.txt`).
+
+### Unresolved and not verified (audit corrections)
+
+1. **Adobe ColdFusion 2023, SQL Server 2016, IIS were not available and were not run.** The parts
+   most likely to differ: `HttpRequestSource`'s unwrapping of the engine's request
+   (`ServletRequestWrapper.getRequest()` on ColdFusion) and whether ColdFusion has already consumed
+   the body (then the fallback applies and the connector's "Maximum size of post data" is what bounds
+   a chunked body); `isInstanceOf` with Java class names; the barrier specs' use of
+   `sys.dm_exec_requests` (needs `VIEW SERVER STATE` for the test login); `DELETE ... OUTPUT
+   DELETED` through the Adobe datasource.
+2. **The connector limits are documented, not verified.** ColdFusion's "Maximum size of post data",
+   IIS `maxAllowedContentLength` and Apache `LimitRequestBody` (docs/LOCAL_SETUP.md) have not been
+   exercised; the verification runtime configures no connector limit, so the application's limits
+   are the ones tested.
+3. **Microsoft Excel was not used; no screen reader was used.**
+4. **Adjacent, not changed (outside the four findings).** `preview`, `wording`, `placeholders`,
+   `compareVersions` and `editDraft` still read the version row and then its snapshot in two reads,
+   as the export did. For the reads that is a display mismatch at worst; `editDraft` is protected by
+   its under-lock checksum comparison except in an A-B-A sequence (the DRAFT changes and changes
+   back between its two reads). Worth the same one-read treatment in a later round.
+5. **Not independently audited.**
+

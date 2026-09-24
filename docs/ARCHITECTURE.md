@@ -162,6 +162,27 @@ permission, unit, and record id only.
 synchronizer CSRF token header. Maintenance routes (seed, org-unit import, user provisioning, role
 assignment, test runner, fixture cleanup) remain token-guarded and never use the session.
 
+**The body comes last (P6A-01).** `Router.handle(source)` works in a fixed order: match the route and
+read the request's metadata only (`HttpRequestSource`: method, path, headers via
+`getHttpRequestData(false)`, query, remote address); run the policy's checks that need no body (the
+maintenance token via `MaintenanceGuard.precheck`, or authentication, CSRF and the permission); only
+then acquire the body, under the route's byte limit (`maxBodyBytes` in the route's metadata --
+5,000,000 for the import, the 20,000,000-byte server maximum otherwise); parse it
+(`JsonBodyParser`); decide a permission that depends on a body member (`orgUnitBody`, walk
+creation); and call the controller. A declared `Content-Length` over the limit is refused 413
+without reading; otherwise `HttpRequestSource.readBody` reads the servlet container's own input
+stream, at most one byte past the limit, counting bytes -- so a chunked body cannot run past the
+limit and multibyte text cannot slip under it. It reads the container's stream rather than the
+engine's because Lucee's request wrapper copies the whole body into memory on first access
+(`HTTPServletRequestWrap.getInputStream` -> `storeEL`); the source unwraps it (Lucee's
+`getOriginalRequest()`, then any standard `ServletRequestWrapper` chain, which is how Adobe
+ColdFusion wraps its request). If an engine has already consumed the stream, the body is taken from
+`getHttpRequestData(true)` and measured in UTF-8 bytes before anything parses it; in that case the
+connector's own limit is what bounds the engine's buffering (docs/LOCAL_SETUP.md, "Request size
+limits"). The source and the parser are container entries, so `RouterBodyOrderTest` drives the real
+router with a `FakeRequestSource` that records every body read and a `SpyJsonBodyParser` that counts
+every parse.
+
 **Bootstrap of a deployment**: import org units (`config/org-units.example.json` as a template),
 provision the first administrator, assign `MASTER_INSTRUMENT_ADMIN`, then assign walk/report roles
 per district or school, all through the maintenance endpoints (documented in `docs/LOCAL_SETUP.md`).
@@ -499,7 +520,8 @@ and no route reaches it, so there is no configuration in which a client can acti
 ```
 browser  admin.js -> /api/admin/instrument/*            (Router: permission instrument.manage; CSRF on every POST)
             |
-AdminInstrumentController  (body contracts: only named members; no body on publish/discard; 5 MB import cap)
+AdminInstrumentController  (body contracts: only named members; no body on publish/discard; the 5 MB import
+            |               limit is the route's, enforced by the Router before the body is read)
             |
 InstrumentAdminService ----- reads ----> SnapshotService (checksum-verified snapshot -> render model)
      |        |                           InstrumentVersionComparer (row-by-row diff on logical keys)
@@ -513,9 +535,41 @@ InstrumentPublishService.publish / .retire   (version row lock, then instrument;
 instrument document handed to `InstrumentImportService.writeNormalizedDraft`: the same definition
 validation, renderer preflight, version lock, compile, round-trip proof and refusal audit an import
 gets. Its options say what kind of write it is (`operation` IMPORT / CLONE / EDIT, `mustCreate` for a
-clone, `targetVersionId` + `expectedChecksum` for an edit, `skipWhenUnchanged`, the success event and
-extra audit details). `InstrumentAdminService` never writes a definition row, so there is no second,
+clone, `createOnly` or `replaceVersionId` + `expectedChecksum` for an administrator's import,
+`targetVersionId` + `expectedChecksum` for an edit, `skipWhenUnchanged`, the success event and extra
+audit details). `InstrumentAdminService` never writes a definition row, so there is no second,
 weaker authoring path to keep in step.
+
+**Replacing a DRAFT is the server's decision (P6A-02).** An administrator's import is create-only
+unless it names the DRAFT it replaces: `replace: { versionId, expectedChecksum }`. Both are compared
+inside `writeNormalizedDraft`'s transaction, on the row `findVersion(..., lock = true)` holds
+(`UPDLOCK, HOLDLOCK`) -- the same lock the write, an edit, a publish and a discard take on that row --
+so a DRAFT created, edited, discarded or published after the administrator chose is found by the
+comparison, and the import is refused (409 `DRAFT_REPLACEMENT_REQUIRED` without a token, 409
+`DRAFT_CHANGED` for any other state) with nothing written and one refusal audit. `HOLDLOCK` on a
+label that does not exist yet holds its key range, so a create-only import that queues behind the
+creation of its label sees the new DRAFT and is refused rather than taking it over. The
+confirmation in the page is how a person chooses; it is never what protects the draft. A successful
+replacement audits `replacedVersionId` and `previousChecksum`. The maintenance import passes no
+option and keeps re-importing by label: it is the operator's seed path, behind the maintenance
+guard. `DraftReplacementConcurrencyTest` forces both interleavings through the two-sided barrier,
+releasing the holder only after SQL Server reports the competitor blocked behind its session
+(`sys.dm_exec_requests.blocking_session_id`).
+
+**An export is one state.** `exportDocument` takes the version's metadata and its snapshot from one
+read of the row (`SnapshotService.loadVersion`), and the snapshot is verified against that row's
+checksum, so the checksum a workbook records as "downloaded from" is always the state its content
+is. It used to read the row, then the snapshot again, so an edit committed in between paired one
+state's checksum with the other's content.
+
+**A discard deletes the version it names (P6A-03).** `discardDraftById` is one transaction on the
+path's id: `findVersionByIdForUpdate` locks that row, the instrument, label, status and checksum are
+taken from it, the id must be a DRAFT no walk references, `deleteDraftVersionCascade` deletes that id
+and reports how many version rows went (exactly one is required), and the audit and the response name
+that id. It used to read the row unlocked and hand its label to the label-addressed `discardDraft`,
+which deleted whatever row held the label by then -- so a request naming V1 could delete a V2 created
+under V1's label in between. The label-addressed `discardDraft` remains, for the maintenance route
+only. `DiscardIdentityBarrierTest` forces that interleaving and proves V2 survives.
 
 **Wording, not structure, is edited in the browser.** `DraftEditor` allows the fields the acceptance
 criteria and the placeholder queue need -- section title, instructions and review status; item
@@ -604,6 +658,17 @@ a small XML reader that refuses any DOCTYPE, so no entity or external reference 
 Size limits stop a file that inflates far past what an instrument could be, and every zip part's
 CRC is checked.
 
+**A hostile or damaged file is a problem on the page, never an exception (P6A-04).** A numeric
+character reference is decoded only when it names a character XML allows (`#x9`, `#xA`, `#xD`,
+`#x20-#xD7FF`, `#xE000-#xFFFD`, `#x10000-#x10FFFF`); anything else -- past U+10FFFF, a surrogate,
+NUL or another control, U+FFFE/U+FFFF -- is `XML_MALFORMED`. Row and cell references must be what a
+spreadsheet writes (column letters A..XFD then the row number, 1..1048576, matching the row), or
+they are `CELL_REFERENCE_INVALID` naming the sheet. And `readWorkbook` answers anything else it did
+not expect with a `WORKBOOK_UNREADABLE` problem instead of letting the exception escape. In the page,
+the size is checked from the file's first bytes and `file.size` before the whole file is read (20 MB
+for a workbook, 5 MB for a document), and reading and parsing happen inside the view's guarded flow:
+a rejected file shows its problems, sends nothing, and leaves the page usable.
+
 **The export is an exact inverse.** Compiled snapshots keep every row's authoring id, so
 `InstrumentDocumentExporter` gives each row its id back and resolves each key reference to the id
 of the row that owns it. `InstrumentDocumentExporterTest` proves the supplied instrument exports and
@@ -625,7 +690,12 @@ whose rows the server sorts by key, by reproducing that sort.
 **A draft is not replaced by surprise.** Uploading under the label of an existing DRAFT replaces
 it, which is how a draft is edited in Excel. The workbook records which version and checksum it was
 downloaded from, so the page asks first when that draft changed after the download, or when the file
-did not come from it at all; a published version's label is refused with the way out.
+did not come from it at all; a published version's label is refused with the way out. The page's list
+can be out of date, so the question is not the protection: every replacement names the draft's id
+and the checksum the administrator agreed to replace, and the server refuses it if the draft is no
+longer exactly that (P6A-02, above). When the server reports a draft under a label the page thought
+free, the page asks about that exact draft; when the draft agreed to has changed, it says so, reloads
+the list and imports nothing.
 
 ## Aggregate reporting (Phase 7)
 

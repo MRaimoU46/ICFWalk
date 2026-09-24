@@ -174,6 +174,10 @@ The same holds for `InstrumentImportService`, and for **every** refusing branch 
 | `VERSION_NOT_DRAFT` | The version is PUBLISHED or RETIRED |
 | `VERSION_IN_USE` | The version is a DRAFT that walks already reference |
 | `SHARED_METADATA_CONFLICT` | The document disagrees with the shared `icf.instrument` row about `active` |
+| `REPLACEMENT_REQUIRED` | An administrator's create-only import found a DRAFT under its label (P6A-02) |
+| `REPLACED_VERSION_MISMATCH` | A replacing import named a DRAFT, and the label holds a different version (P6A-02; the event is recorded against the version the request named) |
+| `REPLACED_VERSION_MISSING` | A replacing import named a DRAFT, and nothing holds the label (P6A-02; recorded against the version the request named) |
+| `DRAFT_CHANGED` | An edit's, or a replacing import's, checksum is not the DRAFT's checksum under the lock |
 
 `VERSION_IN_USE` is the one that was missing: both branches threw without marking the refusal, so
 the catch had nothing to persist and the attempt left no trace at all. Being DRAFTs, they had no
@@ -355,6 +359,23 @@ edit each become a normalized instrument document and are written by
 validation of the whole document (every issue reported), the renderer preflight, the version lock,
 the compile, the round-trip checksum proof, and a durable refusal audit written after the rollback.
 
+- **Upload (P6A-02).** An administrator's import creates a DRAFT, and replaces one only when it names
+  it: `replace = { versionId, expectedChecksum }`. The DRAFT under the document's label must be that
+  id with that checksum, compared under the version row lock the write holds; otherwise nothing is
+  written (409 `DRAFT_REPLACEMENT_REQUIRED` with no token, 409 `DRAFT_CHANGED` for a different
+  version, a changed checksum or no version at all; the existing 409s for a frozen or in-use
+  version). A replacement never creates a version and keeps the replaced version's id. Its
+  `INSTRUMENT_VERSION_REIMPORTED` event carries `replacedVersionId` and `previousChecksum` -- the
+  version and the checksum it had under the lock -- with the new `checksum` and counts, and never
+  instrument content. The maintenance import is unchanged: it re-imports an existing DRAFT by label.
+- **Export.** A version's document and the `version` metadata returned with it come from one read of
+  the row, the document from the snapshot that row carries, verified against that row's checksum.
+- **Discard (P6A-03).** The administration discard deletes exactly the version its path names: one
+  transaction locks that id, derives the instrument, label, status and checksum from the locked row,
+  requires a DRAFT no walk references, deletes that id (one version row, asserted), and audits
+  `INSTRUMENT_VERSION_DISCARDED` against that id with `{ versionLabel, instrumentCode, checksum }`. It
+  never resolves a label. The maintenance discard remains label-addressed and instrument-scoped.
+
 - **Clone.** The new DRAFT's content is the source version's compiled snapshot, read back into the
   normalized form (`DraftEditor.normalizedFromSnapshot`, the exact inverse of the compiler: the
   clone's `definitionsChecksum` equals the source's). Only the version label and, optionally, its
@@ -433,12 +454,22 @@ the browser (`app/assets/js/workbook.js`); what is sent to the server is the doc
   a summary that already agrees is left exactly as it was.
 - **Where it came from.** `export.versionId`, `export.versionLabel`, `export.status`,
   `export.checksum`, `export.instrumentCode`, `export.exportedAt` and `export.format`
-  (`icfwalk-instrument-workbook/1`) record the download. The page uses them only to ask before an
-  upload replaces a draft that changed since, or that the file did not come from.
+  (`icfwalk-instrument-workbook/1`) record the download, and `export.checksum` is always the checksum
+  of the content the workbook carries. The page uses them to ask before an upload replaces a draft
+  that changed since, or that the file did not come from, and to name the state an unasked
+  replacement agreed to (`replace.expectedChecksum`); the server's comparison is what protects the
+  draft.
 - **Limits.** At most 2,000 zip parts, 20 MB per part and 64 MB in all once inflated, 20,000 rows per
-  sheet, 32,767 characters per cell (Excel's own), a 20 MB file. A DOCTYPE, an encrypted workbook,
-  a compression method other than stored or deflate, and a part whose size or CRC does not match are
-  refused.
+  sheet, 32,767 characters per cell (Excel's own), a 20 MB file (a JSON document: 5 MB). The page
+  compares the file's size with its limit from the first bytes and `file.size`, before reading the
+  whole file. A DOCTYPE, an encrypted workbook, a compression method other than stored or deflate,
+  and a part whose size or CRC does not match are refused.
+- **Malformed XML (P6A-04).** A numeric character reference must name a character XML 1.0 allows
+  (`#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]`); anything else is
+  `XML_MALFORMED`. A row number must be 1..1048576 and a cell reference column letters A..XFD followed
+  by its own row's number; anything else is `CELL_REFERENCE_INVALID` with the sheet. Any other shape
+  the reader does not expect is `WORKBOOK_UNREADABLE`. Each is a problem in the result, never an
+  exception, and a refused workbook sends nothing.
 
 ## Publisher attribution
 
@@ -464,9 +495,9 @@ an authorized remediation decision and not a migration's to make.
 ### The publish request-body contract, exactly
 
 The route takes **no request body**, and that is now what it enforces. It asks whether any body
-bytes arrived -- from `Content-Length`, falling back to the parsed content for a chunked request --
-rather than whether the parsed struct is empty, because no body and a literal `{}` both parse to an
-empty struct. So:
+bytes arrived -- the bytes the router read from the connection (P6A-01), chunked or not -- rather
+than whether the parsed struct is empty, because no body and a literal `{}` both parse to an empty
+struct. So:
 
 | Request body | Result |
 | --- | --- |
