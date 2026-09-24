@@ -3,23 +3,29 @@
 Scope of this record: **Phase 0 (baseline), Phase 1 (application and database foundation),
 Phase 2 (identity, roles, authorization, organizational scope), Phase 3 (instrument engine and
 visual shell), Phase 4 (walk persistence, autosave, completion, concurrency, audit), Phase 5
-(summary export and teacher email draft), the Phase 6 publish foundation (ADM-03/04/05 at the
-service and endpoint level), and Phase 7 (aggregate reporting, RPT-01..07)** from
-`docs/IMPLEMENTATION_PLAN.md`. The rest of Phase 6 -- ADM-02 preview, ADM-06 clone-and-compare,
-ADM-07 retirement, ADM-08 placeholder review, and all administration UI -- has **not** been started.
+(summary export and teacher email draft), all of Phase 6 (the publish foundation, ADM-03/04/05;
+preview, clone and compare, retirement, the placeholder queue and the administration UI, ADM-01 to
+ADM-08; the Excel round-trip the owner requested, which has no acceptance ID; and the audit and
+re-audit corrections P6A-01 to P6A-04 and P6A-R01), and Phase 7 (aggregate reporting,
+RPT-01..07)** from `docs/IMPLEMENTATION_PLAN.md`.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 7 aggregate reporting candidate, awaiting independent audit.** Branch
-`claude/icfwalk-phase-6-admin-publish`, on top of the Phase 6 commit
-`a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`, which the project owner identified as the independently
-verified and frozen Phase 0-6 baseline for this phase. Phase 7 is **not** frozen and **not**
-accepted; see the Phase 7 section at the end.
+**Current state: Phase 6 is frozen, on the project owner's direction, at code commit
+`158debca5da2c4f3a07f602689cd08af9db9bd6e`** (branch `claude/icfwalk-phase-6-admin-audit-corrections`; the commits after it
+are records only), after the re-audit correction P6A-R01 and a complete exact-commit gate on that
+commit (Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped). The Phase 0-6 publish foundation `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` had been
+frozen earlier. **Phase 7 is not frozen and not accepted**: the Phase 7 commit in this history
+(`0c6fa10`, beneath Phase 6 administration) is the original one, and a separate branch that carries
+Phase 7 corrections (`claude/icfwalk-phase-7-correction-n62s25`) is not merged here. Adobe ColdFusion
+2023 and SQL Server 2016 have still not been run. See "Phase 6 frozen" at the end and
+`docs/evidence/phase6-freeze.md`.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
-the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, and
-finally **Phase 7**, which is the current state of the build.
+the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
+Phase 6 administration, the Excel round-trip, the audit corrections, the re-audit correction
+P6A-R01, and finally **Phase 6 frozen**, which is the current state of the build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -3794,6 +3800,8 @@ are outside it, and the documentation now says so.
 
 **The authoritative result is the full gate on the exact code commit**, recorded in the commit after
 it (`docs/evidence/phase6-admin-read-bound-release-gate.txt`).
+**Result on `158debca5da2c4f3a07f602689cd08af9db9bd6e`: Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped**, run from a clean tree on a freshly created database with migration
+`006` re-applied; working tree and HEAD unchanged afterwards. Lucee 6.2.8.20 and SQL Server 2022 only.
 
 ### P6A-R02: found while verifying, not by the re-audit -- a race in an existing test's client
 
@@ -3819,4 +3827,26 @@ ColdFusion 2023, SQL Server 2016, IIS or any connector-level limit, Microsoft Ex
 reader were not used. On ColdFusion in particular, whether the engine has consumed the body before
 `HttpRequestSource` reads it decides whether this bound applies there at all or the measured
 fallback does.
+
+## Phase 6 frozen
+
+On the project owner's direction -- after the independent re-audit of the audit corrections, correct
+P6A-R01, rerun the complete exact-commit gate, then freeze Phase 6 -- **Phase 6 is frozen at code
+commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`**, the exact commit the gate ran on (Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped). The commit after it
+adds only records. The freeze is the owner's decision; this session implemented the correction and
+ran the gate, and did not audit its own work.
+
+What the freeze covers and what it does not, the commits that make up Phase 6, what was and was not
+verified, and the known limitations carried into it are in `docs/evidence/phase6-freeze.md`. In short:
+
+- **Covered:** the Phase 6 publish foundation, Phase 6 administration (ADM-01 to ADM-08 and the
+  administration UI), the Excel round-trip, and the corrections P6A-01 to P6A-04 and P6A-R01 (with
+  P6A-R02, a test-client race found while verifying it).
+- **Not covered: Phase 7.** Its original commit `0c6fa10` is in this history beneath Phase 6
+  administration; its corrections are on a separate branch, not merged here.
+- **Not verified:** Adobe ColdFusion 2023, SQL Server 2016, IIS or any connector limit, Microsoft
+  Excel, a screen reader. Every CFML-backed result still has to be re-run on Adobe ColdFusion 2023
+  before handoff (`docs/ACCEPTANCE_TRACKING.md`).
+- **No tag** was created; the project's earlier freezes were recorded by commit. If one is wanted, it
+  belongs on `158debca5da2c4f3a07f602689cd08af9db9bd6e`.
 

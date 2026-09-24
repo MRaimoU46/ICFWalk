@@ -1,5 +1,9 @@
 # Phase 6 administration audit corrections: handoff for re-audit
 
+> **Later:** after the re-audit, correction P6A-R01 (`158debca5da2c4f3a07f602689cd08af9db9bd6e`) and its
+> gate, Phase 6 was frozen on the project owner's direction -- see `phase6-freeze.md`. This handoff is
+> kept as it was submitted, apart from the P6A-R01 erratum below.
+
 **Status: an implementation candidate submitted for independent re-audit. It is not accepted,
 frozen, production-ready or audited.**
 

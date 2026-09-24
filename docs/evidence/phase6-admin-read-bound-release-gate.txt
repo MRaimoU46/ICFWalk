@@ -1,0 +1,2345 @@
+Phase 6 re-audit correction P6A-R01 release gate -- transcript
+Commit under test: 158debca5da2c4f3a07f602689cd08af9db9bd6e (branch claude/icfwalk-phase-6-admin-audit-corrections)
+Re-audited starting commit: 3e1168663c14d069d3f033cd62456653f2bf369d (verified an ancestor in section 0).
+Run from a completely clean tree, on a freshly created icfwalk_dev database, with screenshots written
+outside the repository (ICFWALK_SCREENSHOT_DIR). The tree and HEAD were unchanged afterwards (section 10).
+Result: Node/HTTP/Playwright 240/240, CFML 483/483 (Lucee 6.2.8.20, 6 parts), test:package 19/19;
+0 failed, 0 skipped. validate:handoff ok (51 checks).
+Adobe ColdFusion 2023, SQL Server 2016, IIS, Microsoft Excel and a screen reader were not used.
+Redactions: the JVM's proxy/truststore options line (container networking, not the application) and
+the scratch path of the screenshot directory. Nothing else was edited.
+------------------------------------------------------------------------------------------------------
+
+========================================================================
+== 0. Repository state before the gate
+========================================================================
+claude/icfwalk-phase-6-admin-audit-corrections
+158debca5da2c4f3a07f602689cd08af9db9bd6e
+--- working tree (tracked + untracked) ---
+porcelain lines: 0
+--- ancestry ---
+audited candidate 2a3f2ecb4f070401cba00518c0db8a2de823a29d is an ancestor: yes
+audit-corrections code commit 06660a238c8dd6c62cacd8a27ed970e757ef22a1 is an ancestor: yes
+re-audited tip 3e1168663c14d069d3f033cd62456653f2bf369d is an ancestor: yes
+phase 5 baseline e55ec08af5b8622db5823b6e353423b891918549 is an ancestor: yes
+phase 0-6 foundation a219d9e0987b85b1a0b587fd62effa4e0ad1ffde is an ancestor: yes
+--- phase-5-freeze tag, local and remote ---
+local:  0 matching tag(s)
+remote: 0 matching ref(s)
+
+========================================================================
+== 1. Versions as executed
+========================================================================
+os     Ubuntu 24.04.4 LTS (6.18.44-fc-v37, x86_64)
+node   v22.22.2
+npm    10.9.7
+Picked up JAVA_TOOL_OPTIONS: [redacted: container proxy and truststore settings]
+openjdk version "21.0.10" 2026-01-20
+OpenJDK Runtime Environment (build 21.0.10+7-Ubuntu-124.04)
+OpenJDK 64-Bit Server VM (build 21.0.10+7-Ubuntu-124.04, mixed mode, sharing)
+docker Docker version 29.3.1, build c2be9cc
+sqlserver 16.0.4295.3 Developer Edition (64-bit)
+sqlserver image mcr.microsoft.com/mssql/server:2022-latest @ sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090
+lucee  jetty-runner.jar lucee-light.jar mssql-jdbc.jar 
+
+========================================================================
+== 2. npm ci
+========================================================================
+
+added 76 packages, and audited 77 packages in 3s
+
+15 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[exit 0]
+playwright 1.56.1
+playwright-core 1.56.1
+mssql 12.7.2
+axe-core 4.13.0
+Chromium 141.0.7390.37
+
+========================================================================
+== 3. npm run validate:handoff
+========================================================================
+
+> icfwalk@0.1.0 validate:handoff
+> node scripts/validate-handoff.mjs
+
+{
+  "ok": true,
+  "checks": 51,
+  "errors": 0,
+  "counts": {
+    "sections": 23,
+    "items": 144,
+    "responseSets": 29,
+    "responseOptions": 138,
+    "rules": 12,
+    "dimensions": 10,
+    "dimensionValues": 95,
+    "instrumentDimensions": 10
+  }
+}
+[exit 0]
+
+========================================================================
+== 4. npm run test:package
+========================================================================
+
+> icfwalk@0.1.0 test:package
+> node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs
+
+TAP version 13
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 1 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 2.219927
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 2 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.340023
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 3 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.275766
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 4 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 258.925011
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 5 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.055632
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 6 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.274871
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 7 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.767422
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 8 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 4.251678
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 9 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.503464
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 10 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.167395
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 11 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.127608
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 12 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.212857
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 13 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.484737
+  type: 'test'
+  ...
+# Subtest: 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+ok 14 - 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+  ---
+  duration_ms: 0.449479
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 15 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 1.495368
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 16 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.247395
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 17 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 21.465467
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 18 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 15.629288
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 19 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 11.714336
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 431.712845
+[exit 0]
+
+========================================================================
+== 5. JavaScript and MJS syntax checks
+========================================================================
+checked 45 JavaScript/MJS files: all parse
+
+========================================================================
+== 6. Clean database creation through the documented scripts
+========================================================================
+Stopped Lucee (pid 1603)
+Nonqualified transactions are being rolled back. Estimated rollback completion: 0%.
+Nonqualified transactions are being rolled back. Estimated rollback completion: 100%.
+icfwalk_dev dropped and recreated
+tables before the schema: 0
+(node:3723) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "001_schema.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk database objects created successfully.",
+      "table_count": "20"
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "002_alignment_patch.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk alignment patch applied successfully.",
+      "response_option_definition_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "003_walk_mutation.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk walk mutation log applied successfully.",
+      "walk_mutation_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "004_mutation_fingerprint.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk mutation fingerprint patch applied successfully.",
+      "request_fingerprint_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "005_org_unit_dimension_map.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk org-unit dimension mapping patch applied successfully.",
+      "org_unit_dimension_map_available": 1,
+      "identifying_value_constraint_present": 1,
+      "non_identifying_rows_removed": 0,
+      "mapping_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "006_version_scoped_dimensions.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk version-scoped dimension patch applied successfully.",
+      "version_scoped_dimension_columns_available": 1,
+      "instrument_dimension_value_available": 1,
+      "publisher_required_constraint_present": 1,
+      "legacy_membership_backfill_state": "COMPLETED",
+      "legacy_membership_backfill_ran_now": 1,
+      "version_dimension_rows": 0,
+      "version_dimension_value_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+
+========================================================================
+== 7. Migration 006 immediate re-application (idempotence)
+========================================================================
+(node:3733) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "006_version_scoped_dimensions.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk version-scoped dimension patch applied successfully.",
+      "version_scoped_dimension_columns_available": 1,
+      "instrument_dimension_value_available": 1,
+      "publisher_required_constraint_present": 1,
+      "legacy_membership_backfill_state": "COMPLETED",
+      "legacy_membership_backfill_ran_now": 0,
+      "version_dimension_rows": 0,
+      "version_dimension_value_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+
+========================================================================
+== 8. Restart the application on the clean database, then seed the aligned DRAFT
+========================================================================
+Starting Lucee/Jetty on port 8888 (pid 3752, log /home/user/ICFWalk/.runtime/lucee.log)
+curl: (7) Failed to connect to 127.0.0.1 port 8888 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 8888 after 0 ms: Couldn't connect to server
+Health: {"application":"ICFWalk","checks":{"database":"ok","schema":"present"},"correlationId":"f4a6fc7c-f899-4f6a-8695-48e80db3216b","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+[exit 0]
+{
+  "status": 201,
+  "created": true,
+  "versionId": "9BC48AC2-2BFB-4D65-AC92-F08391F3DEA6",
+  "versionLabel": "2026-09-17 aligned prototype",
+  "versionStatus": "DRAFT",
+  "checksum": "c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9",
+  "definitionsChecksum": "7df87ad01b10027fe19b8b559bc2c1cd10f33411dba0070aab35b8e4d6dfcb5f",
+  "counts": {
+    "dimensionValues": 95,
+    "dimensions": 10,
+    "instrumentDimensions": 10,
+    "items": 144,
+    "placeholders": 17,
+    "responseOptions": 138,
+    "responseSets": 29,
+    "rules": 12,
+    "sections": 23
+  },
+  "warningCount": 17,
+  "placeholderCount": 17,
+  "elapsedMs": 2910
+}
+[exit 0]
+
+========================================================================
+== 9. ICFWALK_REQUIRE_APP=1 npm test  (all Node, HTTP, Playwright and CFML tests)
+========================================================================
+
+> icfwalk@0.1.0 test
+> node --test --test-concurrency=1 "tests/node/*.test.mjs"
+
+TAP version 13
+# (node:3837) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+ok 1 - every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+  ---
+  duration_ms: 2781.329328
+  type: 'test'
+  ...
+# Subtest: ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+ok 2 - ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+  ---
+  duration_ms: 4474.828879
+  type: 'test'
+  ...
+# Subtest: P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+ok 3 - P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+  ---
+  duration_ms: 7331.248468
+  type: 'test'
+  ...
+# Subtest: ADM-01: an invalid document is refused with every issue and writes nothing
+ok 4 - ADM-01: an invalid document is refused with every issue and writes nothing
+  ---
+  duration_ms: 108.896877
+  type: 'test'
+  ...
+# Subtest: ADM-01: the import body contract and the size cap
+ok 5 - ADM-01: the import body contract and the size cap
+  ---
+  duration_ms: 97.455264
+  type: 'test'
+  ...
+# Subtest: P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+ok 6 - P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+  ---
+  duration_ms: 32.683164
+  type: 'test'
+  ...
+# Subtest: P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+ok 7 - P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+  ---
+  duration_ms: 50.686824
+  type: 'test'
+  ...
+# Subtest: P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+ok 8 - P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+  ---
+  duration_ms: 313.519493
+  type: 'test'
+  ...
+# Subtest: P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+ok 9 - P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+  ---
+  duration_ms: 82.655262
+  type: 'test'
+  ...
+# Subtest: P6A-01: a maintenance route without its token is hidden without its body being read
+ok 10 - P6A-01: a maintenance route without its token is hidden without its body being read
+  ---
+  duration_ms: 15.911975
+  type: 'test'
+  ...
+# Subtest: ADM-02: preview returns exactly the render model the walk runtime serves
+ok 11 - ADM-02: preview returns exactly the render model the walk runtime serves
+  ---
+  duration_ms: 2312.525831
+  type: 'test'
+  ...
+# Subtest: ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+ok 12 - ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+  ---
+  duration_ms: 6941.68849
+  type: 'test'
+  ...
+# Subtest: ADM-06: malformed edit requests are refused with their paths
+ok 13 - ADM-06: malformed edit requests are refused with their paths
+  ---
+  duration_ms: 1677.710895
+  type: 'test'
+  ...
+# Subtest: ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+ok 14 - ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+  ---
+  duration_ms: 4989.293397
+  type: 'test'
+  ...
+# Subtest: ADM-07: retiring the only version in service needs explicit confirmation
+ok 15 - ADM-07: retiring the only version in service needs explicit confirmation
+  ---
+  duration_ms: 4247.00864
+  type: 'test'
+  ...
+# Subtest: ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+ok 16 - ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+  ---
+  duration_ms: 3574.600675
+  type: 'test'
+  ...
+# Subtest: a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+ok 17 - a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+  ---
+  duration_ms: 4327.434759
+  type: 'test'
+  ...
+# Subtest: Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+ok 18 - Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+  ---
+  duration_ms: 6140.522187
+  type: 'test'
+  ...
+# Subtest: Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+ok 19 - Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+  ---
+  duration_ms: 3576.916749
+  type: 'test'
+  ...
+# (node:3887) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: publish refuses an anonymous request and discloses nothing
+ok 20 - publish refuses an anonymous request and discloses nothing
+  ---
+  duration_ms: 1776.997872
+  type: 'test'
+  ...
+# Subtest: publish refuses a signed-in user without instrument.manage
+ok 21 - publish refuses a signed-in user without instrument.manage
+  ---
+  duration_ms: 1720.036605
+  type: 'test'
+  ...
+# Subtest: publish refuses a missing and an invalid CSRF token
+ok 22 - publish refuses a missing and an invalid CSRF token
+  ---
+  duration_ms: 1610.263224
+  type: 'test'
+  ...
+# Subtest: publish refuses a malformed version id
+ok 23 - publish refuses a malformed version id
+  ---
+  duration_ms: 9.878428
+  type: 'test'
+  ...
+# Subtest: publish answers 404 for an unknown version without disclosing or mutating anything
+ok 24 - publish answers 404 for an unknown version without disclosing or mutating anything
+  ---
+  duration_ms: 23.361801
+  type: 'test'
+  ...
+# Subtest: publish takes no request body, and a client cannot name the publisher
+ok 25 - publish takes no request body, and a client cannot name the publisher
+  ---
+  duration_ms: 2469.078245
+  type: 'test'
+  ...
+# Subtest: the publish route's no-body contract is exact: {}, whitespace and null are all bodies
+ok 26 - the publish route's no-body contract is exact: {}, whitespace and null are all bodies
+  ---
+  duration_ms: 2506.749704
+  type: 'test'
+  ...
+# Subtest: an administrator publishes a DRAFT: frozen bytes, stored publisher, one audit
+ok 27 - an administrator publishes a DRAFT: frozen bytes, stored publisher, one audit
+  ---
+  duration_ms: 2432.305485
+  type: 'test'
+  ...
+# Subtest: a checksum-matching semantically invalid DRAFT is refused with the validation response and changes nothing
+ok 28 - a checksum-matching semantically invalid DRAFT is refused with the validation response and changes nothing
+  ---
+  duration_ms: 1910.256839
+  type: 'test'
+  ...
+# Subtest: publishing twice is a deterministic conflict and creates no second success event
+ok 29 - publishing twice is a deterministic conflict and creates no second success event
+  ---
+  duration_ms: 2445.693641
+  type: 'test'
+  ...
+# Subtest: a retry after an assumed-lost successful response cannot publish twice or alter the frozen state
+ok 30 - a retry after an assumed-lost successful response cannot publish twice or alter the frozen state
+  ---
+  duration_ms: 2353.986176
+  type: 'test'
+  ...
+# Subtest: two concurrent publishes produce exactly one transition and one deterministic refusal
+ok 31 - two concurrent publishes produce exactly one transition and one deterministic refusal
+  ---
+  duration_ms: 2402.939792
+  type: 'test'
+  ...
+# Subtest: a publish racing a mutation ends in one serial order, and published content never changes after
+ok 32 - a publish racing a mutation ends in one serial order, and published content never changes after
+  ---
+  duration_ms: 4897.711328
+  type: 'test'
+  ...
+# Subtest: repeated publish/mutation races never deadlock: the two paths share one lock order
+ok 33 - repeated publish/mutation races never deadlock: the two paths share one lock order
+  ---
+  duration_ms: 9413.178176
+  type: 'test'
+  ...
+# Subtest: fixtures: org units, users, and roles through maintenance endpoints
+ok 34 - fixtures: org units, users, and roles through maintenance endpoints
+  ---
+  duration_ms: 106.813442
+  type: 'test'
+  ...
+# Subtest: AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+ok 35 - AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+  ---
+  duration_ms: 24.368718
+  type: 'test'
+  ...
+# Subtest: signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+ok 36 - signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+  ---
+  duration_ms: 46.993809
+  type: 'test'
+  ...
+# Subtest: AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+ok 37 - AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+  ---
+  duration_ms: 57.40151
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints stay token-guarded even for signed-in admins
+ok 38 - maintenance endpoints stay token-guarded even for signed-in admins
+  ---
+  duration_ms: 4.243218
+  type: 'test'
+  ...
+# Subtest: ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+ok 39 - ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+  ---
+  duration_ms: 3649.359979
+  type: 'test'
+  ...
+# Subtest: ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+ok 40 - ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+  ---
+  duration_ms: 4085.053904
+  type: 'test'
+  ...
+# Subtest: ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+ok 41 - ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+  ---
+  duration_ms: 11101.011804
+  type: 'test'
+  ...
+# Subtest: ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+ok 42 - ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+  ---
+  duration_ms: 4903.717397
+  type: 'test'
+  ...
+# Subtest: ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+ok 43 - ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+  ---
+  duration_ms: 3913.38009
+  type: 'test'
+  ...
+# Subtest: Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+ok 44 - Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+  ---
+  duration_ms: 9930.376957
+  type: 'test'
+  ...
+# Subtest: P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+ok 45 - P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+  ---
+  duration_ms: 6868.349389
+  type: 'test'
+  ...
+# Subtest: P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+ok 46 - P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+  ---
+  duration_ms: 5659.383019
+  type: 'test'
+  ...
+# Subtest: P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+ok 47 - P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+  ---
+  duration_ms: 3060.252697
+  type: 'test'
+  ...
+# Subtest: P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+ok 48 - P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+  ---
+  duration_ms: 2981.077806
+  type: 'test'
+  ...
+# Subtest: P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+ok 49 - P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+  ---
+  duration_ms: 7111.719292
+  type: 'test'
+  ...
+# Subtest: A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+ok 50 - A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+  ---
+  duration_ms: 9105.789548
+  type: 'test'
+  ...
+# Subtest: SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 51 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+  ---
+  duration_ms: 2969.303117
+  type: 'test'
+  ...
+# Subtest: SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 52 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+  ---
+  duration_ms: 2756.253994
+  type: 'test'
+  ...
+# Subtest: SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+ok 53 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+  ---
+  duration_ms: 3146.400219
+  type: 'test'
+  ...
+# Subtest: SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+ok 54 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+  ---
+  duration_ms: 3320.92744
+  type: 'test'
+  ...
+# Subtest: SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 55 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+  ---
+  duration_ms: 2585.238906
+  type: 'test'
+  ...
+# Subtest: exporting follows the read decision: a reader may, a report-only role may not
+ok 56 - exporting follows the read decision: a reader may, a report-only role may not
+  ---
+  duration_ms: 2648.130656
+  type: 'test'
+  ...
+# Subtest: SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 57 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+  ---
+  duration_ms: 3795.661633
+  type: 'test'
+  ...
+# Subtest: SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 58 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+  ---
+  duration_ms: 4758.866577
+  type: 'test'
+  ...
+# Subtest: SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 59 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+  ---
+  duration_ms: 3887.036904
+  type: 'test'
+  ...
+# Subtest: SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 60 - SUM-09: Clear empties the generated text and leaves every other answer alone
+  ---
+  duration_ms: 4228.656732
+  type: 'test'
+  ...
+# Subtest: read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 61 - read-only: the server refuses a reader's save, and every composer control is one the editor disables
+  ---
+  duration_ms: 3546.866325
+  type: 'test'
+  ...
+# Subtest: A11Y-01: the composer is fully operable from the keyboard
+ok 62 - A11Y-01: the composer is fully operable from the keyboard
+  ---
+  duration_ms: 3435.17955
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violation in either composer state
+ok 63 - A11Y-03: axe-core finds no serious or critical violation in either composer state
+  ---
+  duration_ms: 4496.387614
+  type: 'test'
+  ...
+# Subtest: a save in flight and an edit behind it are both flushed before the summary is fetched
+ok 64 - a save in flight and an edit behind it are both flushed before the summary is fetched
+  ---
+  duration_ms: 1932.668248
+  type: 'test'
+  ...
+# Subtest: a definitive 4xx save rejection produces no download and an accurate message
+ok 65 - a definitive 4xx save rejection produces no download and an accurate message
+  ---
+  duration_ms: 3640.628447
+  type: 'test'
+  ...
+# Subtest: a conflict produces no download and leaves the conflict workflow open
+ok 66 - a conflict produces no download and leaves the conflict workflow open
+  ---
+  duration_ms: 3605.864945
+  type: 'test'
+  ...
+# Subtest: an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+ok 67 - an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  ---
+  duration_ms: 3609.632426
+  type: 'test'
+  ...
+# Subtest: a genuine transport failure produces a browser-generated file from the screen state
+ok 68 - a genuine transport failure produces a browser-generated file from the screen state
+  ---
+  duration_ms: 652.672314
+  type: 'test'
+  ...
+# Subtest: a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+ok 69 - a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+  ---
+  duration_ms: 3607.419948
+  type: 'test'
+  ...
+# Subtest: an unresolved save stays retryable under its own mutation id and frozen request
+ok 70 - an unresolved save stays retryable under its own mutation id and frozen request
+  ---
+  duration_ms: 3641.71412
+  type: 'test'
+  ...
+# Subtest: an unexpected failure while reading the save response blocks the export
+ok 71 - an unexpected failure while reading the save response blocks the export
+  ---
+  duration_ms: 3596.135918
+  type: 'test'
+  ...
+# Subtest: a response that breaks after its headers blocks the export rather than falling back
+ok 72 - a response that breaks after its headers blocks the export rather than falling back
+  ---
+  duration_ms: 3563.003934
+  type: 'test'
+  ...
+# Subtest: a clean export with nothing unsent uses the authenticated summary GET
+ok 73 - a clean export with nothing unsent uses the authenticated summary GET
+  ---
+  duration_ms: 569.864659
+  type: 'test'
+  ...
+# Subtest: a read-only viewer exports straight from the server route
+ok 74 - a read-only viewer exports straight from the server route
+  ---
+  duration_ms: 482.90408
+  type: 'test'
+  ...
+# Subtest: SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+ok 75 - SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+  ---
+  duration_ms: 5029.629483
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+ok 76 - WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+  ---
+  duration_ms: 1977.141422
+  type: 'test'
+  ...
+# Subtest: SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+ok 77 - SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+  ---
+  duration_ms: 1786.896173
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+ok 78 - SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+  ---
+  duration_ms: 4163.545567
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+ok 79 - WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+  ---
+  duration_ms: 2415.983615
+  type: 'test'
+  ...
+# Subtest: WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+ok 80 - WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+  ---
+  duration_ms: 287.569966
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+ok 81 - A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+  ---
+  duration_ms: 2384.583955
+  type: 'test'
+  ...
+# Subtest: CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+ok 82 - CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+  ---
+  duration_ms: 2452.401208
+  type: 'test'
+  ...
+# Subtest: CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+ok 83 - CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+  ---
+  duration_ms: 1262.599359
+  type: 'test'
+  ...
+# Subtest: CORR: beforeunload protects in-flight and queued saves, not only dirty state
+ok 84 - CORR: beforeunload protects in-flight and queued saves, not only dirty state
+  ---
+  duration_ms: 1732.540874
+  type: 'test'
+  ...
+# Subtest: CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+ok 85 - CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+  ---
+  duration_ms: 1396.001403
+  type: 'test'
+  ...
+# Subtest: CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+ok 86 - CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+  ---
+  duration_ms: 3069.701198
+  type: 'test'
+  ...
+# Subtest: CORR2: a VOID committed but lost is retried from its record, not from the edited input
+ok 87 - CORR2: a VOID committed but lost is retried from its record, not from the edited input
+  ---
+  duration_ms: 2306.026274
+  type: 'test'
+  ...
+# Subtest: CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+ok 88 - CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+  ---
+  duration_ms: 4470.531251
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+ok 89 - CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+  ---
+  duration_ms: 3678.769894
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+ok 90 - CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+  ---
+  duration_ms: 3700.78864
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+ok 91 - CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+  ---
+  duration_ms: 3530.675715
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+ok 92 - CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+  ---
+  duration_ms: 1747.107404
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+ok 93 - CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+  ---
+  duration_ms: 4375.773298
+  type: 'test'
+  ...
+# Subtest: CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+ok 94 - CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+  ---
+  duration_ms: 3599.804281
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+ok 95 - CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+  ---
+  duration_ms: 4245.967526
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+ok 96 - CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+  ---
+  duration_ms: 2784.720868
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+ok 97 - CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+  ---
+  duration_ms: 1630.535802
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+ok 98 - CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+  ---
+  duration_ms: 2862.966207
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+ok 99 - CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+  ---
+  duration_ms: 1882.059229
+  type: 'test'
+  ...
+# Subtest: CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+ok 100 - CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+  ---
+  duration_ms: 1628.814754
+  type: 'test'
+  ...
+# Subtest: CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+ok 101 - CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+  ---
+  duration_ms: 2086.607557
+  type: 'test'
+  ...
+# Subtest: RPT-03 (browser): a report-only user lands on Reports and never requests walk data
+ok 102 - RPT-03 (browser): a report-only user lands on Reports and never requests walk data
+  ---
+  duration_ms: 1991.36917
+  type: 'test'
+  ...
+# Subtest: RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+ok 103 - RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+  ---
+  duration_ms: 1520.977501
+  type: 'test'
+  ...
+# Subtest: a refused filter is announced and leaves no stale results behind
+ok 104 - a refused filter is announced and leaves no stale results behind
+  ---
+  duration_ms: 1322.896743
+  type: 'test'
+  ...
+# Subtest: a walk user moves between My walks and Reports and sees only their own scope
+ok 105 - a walk user moves between My walks and Reports and sees only their own scope
+  ---
+  duration_ms: 1522.0553
+  type: 'test'
+  ...
+# Subtest: SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+ok 106 - SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+  ---
+  duration_ms: 1066.66022
+  type: 'test'
+  ...
+# Subtest: A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+ok 107 - A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+  ---
+  duration_ms: 4510.260013
+  type: 'test'
+  ...
+# Subtest: WALK-01 empty My Walks state with the prototype wording and a New walk action
+ok 108 - WALK-01 empty My Walks state with the prototype wording and a New walk action
+  ---
+  duration_ms: 1515.781321
+  type: 'test'
+  ...
+# Subtest: editor renders every section, item, and option from the served instrument model
+ok 109 - editor renders every section, item, and option from the served instrument model
+  ---
+  duration_ms: 525.21584
+  type: 'test'
+  ...
+# Subtest: COND-01..05 grade choices follow the school of the walk's org unit
+ok 110 - COND-01..05 grade choices follow the school of the walk's org unit
+  ---
+  duration_ms: 4752.642435
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+ok 111 - COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+  ---
+  duration_ms: 52.088803
+  type: 'test'
+  ...
+# Subtest: COND-07..10 conditional classroom sections and retained hidden answers
+ok 112 - COND-07..10 conditional classroom sections and retained hidden answers
+  ---
+  duration_ms: 735.616893
+  type: 'test'
+  ...
+# Subtest: COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+ok 113 - COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+  ---
+  duration_ms: 435.727985
+  type: 'test'
+  ...
+# Subtest: COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+ok 114 - COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+  ---
+  duration_ms: 2239.580286
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+ok 115 - A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+  ---
+  duration_ms: 62.315745
+  type: 'test'
+  ...
+# Subtest: A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+ok 116 - A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+  ---
+  duration_ms: 1243.169454
+  type: 'test'
+  ...
+# Subtest: My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+ok 117 - My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+  ---
+  duration_ms: 858.38768
+  type: 'test'
+  ...
+# Subtest: A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ok 118 - A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+  ---
+  duration_ms: 1361.409229
+  type: 'test'
+  ...
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 119 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.34648
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 120 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.216224
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 121 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.104642
+  type: 'test'
+  ...
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 122 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 14.181523
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 123 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 8.792437
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 124 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 16.788726
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+ok 125 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 439441.011859
+  type: 'test'
+  ...
+# SnapshotServiceTest.testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: passed
+# SnapshotServiceTest.testInvalidAndUnknownVersionsFailClosed: passed
+# SnapshotServiceTest.testProductionSemanticsRequireAPublishedVersion: passed
+# SnapshotServiceTest.testSnapshotIsParsedOnceAndCachedByChecksum: passed
+# DiscardIdentityBarrierTest.testADiscardNamingV1NeverDeletesTheV2ThatTookItsLabel: passed
+# DiscardIdentityBarrierTest.testTheIdAddressedDiscardRefusesExactlyAsBefore: passed
+# RouterBodyOrderTest.testABodyDependentPermissionStillAuthenticatesFirstAndThenSeesTheBody: passed
+# RouterBodyOrderTest.testACsrfInvalidLargeMalformedImportIsRefusedWithoutReadingOrParsing: passed
+# RouterBodyOrderTest.testAMaintenanceRouteWithoutItsTokenIsHiddenWithoutReadingOrParsing: passed
+# RouterBodyOrderTest.testAMalformedBodyWithinTheLimitIsStillInvalidJsonForAnAuthorizedCaller: passed
+# RouterBodyOrderTest.testAnAuthorizedImportWithinTheLimitIsParsedOnceAndReachesTheController: passed
+# RouterBodyOrderTest.testAnAuthorizedMalformedImportOverTheLimitIs413NotInvalidJson: passed
+# RouterBodyOrderTest.testAnAuthorizedValidImportOverTheLimitIs413WithoutDeserialization: passed
+# RouterBodyOrderTest.testAnUnauthenticatedLargeMalformedImportIsRefusedWithoutReadingOrParsing: passed
+# RouterBodyOrderTest.testAUserWithoutThePermissionIsRefusedWithoutReadingOrParsing: passed
+# RouterBodyOrderTest.testEveryOtherRouteIsBoundedByTheServerMaximum: passed
+# RouterBodyOrderTest.testMultibyteTextIsMeasuredInUtf8BytesAndCannotSlipUnderTheLimit: passed
+# RouterBodyOrderTest.testWhitespaceIsABodyThatParsesToNothing: passed
+# InstrumentVersionComparerTest.testAddedAndRemovedRowsAreReported: passed
+# InstrumentVersionComparerTest.testIdenticalSnapshotsAreReportedIdentical: passed
+# InstrumentVersionComparerTest.testOnePromptChangeIsReportedExactly: passed
+# InstrumentVersionComparerTest.testOptionsRulesReportabilityAndReviewStateAreCompared: passed
+# InstrumentVersionComparerTest.testStructuredValuesAreComparedCanonicallyAndTypeExactly: passed
+# InstrumentVersionComparerTest.testVersionAndInstrumentFactsAreReportedAsMetadata: passed
+# DraftReplacementConcurrencyTest.testACorrectReplacementSucceedsOnceAndIsAuditedAgainstTheExactPriorVersion: passed
+# DraftReplacementConcurrencyTest.testACreateOnlyImportQueuedBehindTheCreationOfItsLabelIsRefused: passed
+# DraftReplacementConcurrencyTest.testAnExportNeverPairsOneStatesMetadataWithAnotherStatesDocument: passed
+# DraftReplacementConcurrencyTest.testAReplacementNamingAnOlderChecksumCannotOverwriteTheNewerDraft: passed
+# DraftReplacementConcurrencyTest.testAReplacementQueuedBehindAnEditMadeAfterItWasConfirmedIsRefused: passed
+# DraftReplacementConcurrencyTest.testAReplacementThatNamesAnythingElseIsRefusedAndWritesNothing: passed
+# InstrumentConfigValidatorTest.testABlankStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testALowerCaseStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testAMissingStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testAnExactDraftStatusIsAccepted: passed
+# InstrumentConfigValidatorTest.testANonStringStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testANullStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testBadParentSectionIsReported: passed
+# InstrumentConfigValidatorTest.testChoiceItemWithoutResponseSetIsRejected: passed
+# InstrumentConfigValidatorTest.testConditionMismatchIsReported: passed
+# InstrumentConfigValidatorTest.testCorruptConditionsJsonIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateItemKeyIsReported: passed
+# InstrumentConfigValidatorTest.testDuplicateOptionOrderIsReported: passed
+# InstrumentConfigValidatorTest.testMissingResponseSetIsReportedWithSpecificReference: passed
+# InstrumentConfigValidatorTest.testNonDraftStatusIsRejected: passed
+# InstrumentConfigValidatorTest.testRetiredSipContentIsRejected: passed
+# InstrumentConfigValidatorTest.testStructuralFailureStopsEarlyWithoutCrashing: passed
+# InstrumentConfigValidatorTest.testSuppliedConfigurationIsValidWithSeventeenPlaceholderWarnings: passed
+# InstrumentConfigValidatorTest.testUnsupportedRuleEffectIsReported: passed
+# IdentityTest.testAuthenticationProvisionsAndBuildsPrincipal: passed
+# IdentityTest.testConfigLoaderRejectsUnsafeIdentitySettings: passed
+# IdentityTest.testDevelopmentStubCannotBeConstructedWhenNotPermitted: passed
+# IdentityTest.testDevelopmentStubReadsOnlyItsOwnHeaders: passed
+# IdentityTest.testHeaderProviderRejectsMissingOrMalformedSubjects: passed
+# IdentityTest.testHeaderProviderRequiresSharedSecretWhenConfigured: passed
+# IdentityTest.testHeaderProviderTrustsOnlyListedProxies: passed
+# IdentityTest.testHeaderProviderWithNoProxyListTrustsNobody: passed
+# IdentityTest.testInactiveUserIsRejectedByAuthentication: passed
+# IdentityTest.testProvisioningIsKeyedBySubjectAndTolerantOfEmailCollisions: passed
+# LoggerTest.testEntrySerializesAsSingleJsonLine: passed
+# LoggerTest.testLevelThresholds: passed
+# LoggerTest.testRedactsSensitiveKeysAndTruncatesLongText: passed
+# WalkSummaryCoherenceTest.testASummaryExportCannotStraddleAConcurrentSave: passed
+# WalkSummaryCoherenceTest.testEveryMutationPathTakesTheSameWalkLock: passed
+# WalkSummaryCoherenceTest.testTheConcurrencySeamFiresBetweenTheTwoAggregateReads: passed
+# WalkSummaryCoherenceTest.testTheLockedExportStillWritesNothingAboutTheWalk: passed
+# WalkMutationResponseTest.testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: passed
+# WalkMutationResponseTest.testANoopSaveOnACompletedWalkIsAlsoCoherent: passed
+# WalkMutationResponseTest.testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: passed
+# WalkMutationResponseTest.testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt: passed
+# WalkMutationResponseTest.testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete: passed
+# CanonicalJsonTest.testBracketKeysPreserveCase: passed
+# CanonicalJsonTest.testDateFormatting: passed
+# CanonicalJsonTest.testDecimalsFromDatabaseStyleValuesFormatPlainly: passed
+# CanonicalJsonTest.testExplicitNullAssignmentSerializesAsNull: passed
+# CanonicalJsonTest.testNullValuedKeysAreRetainedFromJson: passed
+# CanonicalJsonTest.testSharedVectorsProduceIdenticalCanonicalText: passed
+# WalkSummaryFormatterTest.testAnUnsafeFileNamePatternIsRefused: passed
+# WalkSummaryFormatterTest.testAverageTextMatchesTheSharedRoundingVectors: passed
+# WalkSummaryFormatterTest.testComponentAverageUsesAnsweredScoresOnly: passed
+# WalkSummaryFormatterTest.testConditionalCardsFollowThePrototypeExportOrder: passed
+# WalkSummaryFormatterTest.testEmailDraftPartsAndTemplates: passed
+# WalkSummaryFormatterTest.testFileLabelSanitizationMatchesTheSharedVectors: passed
+# WalkSummaryFormatterTest.testFileNameSanitization: passed
+# WalkSummaryFormatterTest.testHiddenSectionsAndHiddenPeriodAreExcluded: passed
+# WalkSummaryFormatterTest.testMatchesTheSharedSummaryVectorsExactly: passed
+# WalkSummaryFormatterTest.testStoredMarkupIsExportedVerbatimAsText: passed
+# WalkSummaryFormatterTest.testTextShapeIsStable: passed
+# WalkSummaryFormatterTest.testUnresolvablePartFailsLoudly: passed
+# AuthorizationTest.testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools: passed
+# AuthorizationTest.testAuth04SchoolRoleCannotReachWalkInUnassignedSchool: passed
+# AuthorizationTest.testAuth05ReportOnlyRolesCannotOpenOrEditWalks: passed
+# AuthorizationTest.testAuth06InstrumentAdminHasNoWalkOrReportAccess: passed
+# AuthorizationTest.testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing: passed
+# AuthorizationTest.testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch: passed
+# AuthorizationTest.testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected: passed
+# AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens: passed
+# AuthorizationTest.testEndingAnAssignmentRevokesAccessImmediately: passed
+# AuthorizationTest.testInactiveOrgUnitAssignmentGrantsNothing: passed
+# AuthorizationTest.testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable: passed
+# AuthorizationTest.testSchoolWalkRoleWorksInsideItsOwnSchool: passed
+# InstrumentScopeTest.testACorruptedSnapshotFailsClosedOnAnUncachedLoad: passed
+# InstrumentScopeTest.testASecondInstrumentNeverSuppliesTheCurrentVersion: passed
+# InstrumentScopeTest.testDiscardDraftCannotReachAnotherInstrumentsSameLabelDraft: passed
+# InstrumentScopeTest.testFutureAndExpiredIcfwalkVersionsAreNotSelected: passed
+# SnapshotCompilerTest.testCompiledSnapshotMatchesReferenceGolden: passed
+# SnapshotCompilerTest.testRuleTargetsResolveToKeysNotLogicalIds: passed
+# SnapshotCompilerTest.testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior: passed
+# ReportServiceTest.testCsvExportIsRfc4180AndNeutralizesFormulas: passed
+# ReportServiceTest.testInstrumentAdminAndRolelessUsersAreRefused: passed
+# ReportServiceTest.testRetainedAnswersOfAHiddenSectionAreCountedAsHidden: passed
+# ReportServiceTest.testRpt01SchoolRoleReportsOnlyItsAssignedSchool: passed
+# ReportServiceTest.testRpt02DistrictRoleAggregatesDescendantSchoolsOnly: passed
+# ReportServiceTest.testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier: passed
+# ReportServiceTest.testRpt04OnlyAnsweredScoresEnterTheAverage: passed
+# ReportServiceTest.testRpt05SectionMeansArePooledFromItemLevelResponses: passed
+# ReportServiceTest.testRpt06NarrativeEmailAndTeacherFieldsNeverLeave: passed
+# ReportServiceTest.testRpt07EveryFilterNarrowsThePopulationWithinScope: passed
+# ReportServiceTest.testSuppressionThresholdWithholdsSmallGroupsOnlyWhenConfigured: passed
+# ReportServiceTest.testTheCatalogIsDerivedFromTheVersionAndItsEngine: passed
+# ReportServiceTest.testUnknownMalformedAndOutOfContractFiltersAreRefused: passed
+# ReportServiceTest.testVoidedWalksNeverCountAndDraftsOnlyOnRequest: passed
+# ReportServiceTest.testWalksOfAnotherVersionNeverJoinTheReport: passed
+# DimensionVersionIsolationTest.testNormalizedDefinitionsForV1AreUnchangedAfterTheNextImport: passed
+# DimensionVersionIsolationTest.testPublishedSnapshotIsByteForByteUnchangedAfterTheNextImport: passed
+# DimensionVersionIsolationTest.testReportingIdentityIsSharedAcrossVersions: passed
+# DimensionVersionIsolationTest.testTheWalkIndexOfAPinnedVersionIsUnaffectedByTheNextImport: passed
+# DimensionVersionIsolationTest.testV1KeepsItsOwnDimensionAndValueSemantics: passed
+# DimensionVersionIsolationTest.testV1StillPassesTheChecksPublicationMadeAboutIt: passed
+# DimensionVersionIsolationTest.testV2SeesItsOwnChangedSemantics: passed
+# DimensionVersionIsolationTest.testWritingTheGlobalIdentityRowsDoesNotChangeAPublishedVersion: passed
+# InstrumentPublishServiceTest.testACountStoredAsTheExactMatchingStringIsRefused: passed
+# InstrumentPublishServiceTest.testAPublishedVersionBecomesSelectableAsCurrent: passed
+# InstrumentPublishServiceTest.testAPublishedVersionCannotBeReimported: passed
+# InstrumentPublishServiceTest.testAssertDraftForWriteRefusesAPublishedVersion: passed
+# InstrumentPublishServiceTest.testATopLevelArraySnapshotIsRefused: passed
+# InstrumentPublishServiceTest.testATopLevelNullSnapshotIsARefusalAndNotAnEngineError: passed
+# InstrumentPublishServiceTest.testATopLevelScalarSnapshotIsRefused: passed
+# InstrumentPublishServiceTest.testDefinitionsDriftIsRefusedAndNothingChanges: passed
+# InstrumentPublishServiceTest.testDuplicateLogicalKeysCannotBePersistedAtAll: passed
+# InstrumentPublishServiceTest.testEnvelopeWithAnUnexpectedCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithAnyMissingCountMemberIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithEmptyCountsIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithFractionalCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNegativeCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNoCountsIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNonNumericCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNoPlaceholderCountIsRefused: passed
+# InstrumentPublishServiceTest.testMarkPublishedRefusesAnEmptyPublisher: passed
+# InstrumentPublishServiceTest.testNegativeFractionalAndOversizedCountsAreRefused: passed
+# InstrumentPublishServiceTest.testNoncanonicalSnapshotBytesAreRefusedEvenWithAMatchingChecksum: passed
+# InstrumentPublishServiceTest.testPublishFreezesTheImportedSnapshotByteForByte: passed
+# InstrumentPublishServiceTest.testPublishingAnUnknownVersionIsNotFound: passed
+# InstrumentPublishServiceTest.testPublishingAPublishedVersionIsRefusedAndAudited: passed
+# InstrumentPublishServiceTest.testPublishingRefusesAMalformedVersionId: passed
+# InstrumentPublishServiceTest.testPublishingWithoutAValidPublisherIsRefusedAndChangesNothing: passed
+# InstrumentPublishServiceTest.testPublishRecordsTheAuthenticatedPublisher: passed
+# InstrumentPublishServiceTest.testSemanticActiveItemWithInactiveResponseSetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticBadSectionParentIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticChoiceItemWithNoActiveOptionIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticChoiceItemWithoutResponseSetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticDuplicateDimensionValueOrderIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticEmptyDefinitionsAreRefused: passed
+# InstrumentPublishServiceTest.testSemanticInvalidDimensionDataTypeIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticInvalidOptionOrderIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticItemOrphanedByAnInactiveSectionIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticListPlacementWithNoActiveValuesIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticMalformedConditionsAreRefused: passed
+# InstrumentPublishServiceTest.testSemanticMultiChoiceItemTypeIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticNoActiveRootIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticOptionInAForeignResponseSetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticPlacementOfInactiveDimensionIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticPlacementWithMissingRuleIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticResponseSetWithoutOptionsIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticRuleWithMissingTargetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticSectionOrphanedByAnInactiveParentIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticShortTextItemTypeIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticSnapshotCountsMismatchIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticSnapshotFormatIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticSnapshotIdentityMismatchIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticTwoActiveRootsAreRefused: passed
+# InstrumentPublishServiceTest.testSemanticUnknownOptionFilterIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticUnsupportedRuleEffectIsRefused: passed
+# InstrumentPublishServiceTest.testSnapshotWithNoncanonicalKeyOrderIsRefused: passed
+# WalkServiceTest.testAuditAndMutationLogsContainNoNarrativeContent: passed
+# WalkServiceTest.testAuth09TamperedKeysCodesAndIdentifiersAreRejectedAndAudited: passed
+# WalkServiceTest.testCond05And06GradeFilterClearsAndHiddenPeriodIsRetained: passed
+# WalkServiceTest.testCond10HiddenSectionAnswersArePersistedAsHiddenAndReturn: passed
+# WalkServiceTest.testCond12And13SkippableComponentClearsRatingsKeepsNotesInOneTransaction: passed
+# WalkServiceTest.testCreateRequiresAnInScopeActiveOrgUnit: passed
+# WalkServiceTest.testCrossScopeAccessFailsClosedThroughTheService: passed
+# WalkServiceTest.testEmailDraftRoundTripAndSchema: passed
+# WalkServiceTest.testEmailDraftSchemaRejectionsWriteNothing: passed
+# WalkServiceTest.testPostCompletionEditAppendsARevisionAndMustStayComplete: passed
+# WalkServiceTest.testSave04StaleWriteIsRejectedWithoutOverwriting: passed
+# WalkServiceTest.testSave06RetryWithSameMutationIdCommitsOneLogicalChange: passed
+# WalkServiceTest.testSaveRoundTripPersistsTypedValuesAndSurvivesRetrieval: passed
+# WalkServiceTest.testServiceSummaryMatchesTheFormatterForAPersistedWalk: passed
+# WalkServiceTest.testSummaryAuditCarriesNoNarrative: passed
+# WalkServiceTest.testSummaryAuthorizationMatchesOpen: passed
+# WalkServiceTest.testSummaryOfAVoidedWalkExportsAndWritesNothing: passed
+# WalkServiceTest.testWalk02CreatePinsCurrentVersionOwnerAndDefaults: passed
+# WalkServiceTest.testWalk03CreateRetryWithSameMutationIdCreatesOneWalk: passed
+# WalkServiceTest.testWalk04ListSortsByUpdatedAtDescendingWithCardDimensions: passed
+# WalkServiceTest.testWalk06And08VoidLifecycleAndDeleteRefusal: passed
+# WalkServiceTest.testWalk09CompletionRejectsMissingRequiredResponsesAndKeepsTheDraft: passed
+# WalkServiceTest.testWalk10CompletionSetsStatusTimestampRevisionAndAudit: passed
+# WalkServiceTest.testWalk11OlderWalkRendersFromItsPinnedSnapshotAfterANewVersion: passed
+# WalkCorrectionTest.testCorr01CreateReplayIsReauthorizedAfterAccessIsRevoked: passed
+# WalkCorrectionTest.testCorr02ReplayOfARecordedMutationOutsideScopeIsNotFound: passed
+# WalkCorrectionTest.testCorr03SameMutationIdWithAnAlteredRequestIsRefused: passed
+# WalkCorrectionTest.testCorr04CreateReplaySurvivesANewerPublishedVersion: passed
+# WalkCorrectionTest.testCorr05OmittedHiddenValueIsRetained: passed
+# WalkCorrectionTest.testCorr06HiddenValueInjectionIsIgnored: passed
+# WalkCorrectionTest.testCorr07HideThenShowRestoresTheStoredValue: passed
+# WalkCorrectionTest.testCorr08OmittingAVisibleValueClearsIt: passed
+# WalkCorrectionTest.testCorr09NotApplicableClearsRatingsAndKeepsNotes: passed
+# WalkCorrectionTest.testCorr10EveryMutationRequiresAClientMutationId: passed
+# WalkCorrectionTest.testCorr11SaveCompleteAndVoidRequireARowVersionButCreateDoesNot: passed
+# WalkCorrectionTest.testCorr12AStaleVoidIsARefusalThatChangesNothing: passed
+# WalkCorrectionTest.testCorr13IdenticalCompletedSaveIsANoOpAndAMaterialOneAppendsOneRevision: passed
+# WalkCorrectionTest.testCorr14VisitDateSetThenClearedFallsBackToTheCreationInstant: passed
+# WalkCorrectionTest.testCorr15WholeStateSaveRequiresBothRootContainers: passed
+# WalkCorrectionTest.testCorr16JsonPrimitiveTypesAreCheckedNotCoerced: passed
+# WalkCorrectionTest.testCorr17ClientAssertedResponseStateCannotControlPersistedState: passed
+# SharedMetadataConcurrencyBarrierTest.testAConflictRefusalMovesNothingAndLeavesOneDurableAudit: passed
+# SharedMetadataConcurrencyBarrierTest.testADeactivationIsNotLostByAConcurrentRename: passed
+# SharedMetadataConcurrencyBarrierTest.testARenameIsNotLostByAConcurrentDeactivation: passed
+# SharedMetadataConcurrencyBarrierTest.testEachAuditDescribesTheRowItActuallyReplaced: passed
+# SharedMetadataConcurrencyBarrierTest.testImportDecidesTheSharedConflictOnTheLockedCurrentRowNotItsEarlierLookup: passed
+# SharedMetadataConcurrencyBarrierTest.testImportQueuesForTheSharedRowAndThenDecidesOnIt: passed
+# InstrumentMetadataServiceTest.testACaseOnlyDescriptionChangeIsMaterial: passed
+# InstrumentMetadataServiceTest.testACaseOnlyNameChangeIsMaterial: passed
+# InstrumentMetadataServiceTest.testAKnownUserWithNoRoleAtAllIsDeniedAndChangesNothing: passed
+# InstrumentMetadataServiceTest.testAKnownUserWithoutInstrumentManageIsDeniedAndChangesNothing: passed
+# InstrumentMetadataServiceTest.testAMalformedActiveIsRefusedRatherThanCoerced: passed
+# InstrumentMetadataServiceTest.testAMissingInstrumentIsRefusedWithoutAuditingSuccess: passed
+# InstrumentMetadataServiceTest.testAnEmptyPatchIsRefusedWithoutAWrite: passed
+# InstrumentMetadataServiceTest.testAnInvalidDescriptionIsRefusedWithoutAWrite: passed
+# InstrumentMetadataServiceTest.testAnInvalidNameIsRefusedWithoutAWrite: passed
+# InstrumentMetadataServiceTest.testAnUnknownPatchMemberIsRefusedWithoutAWrite: passed
+# InstrumentMetadataServiceTest.testAPartialPatchKeepsTheStoredValueOfWhatItOmits: passed
+# InstrumentMetadataServiceTest.testAPatchWithNoMaterialDifferenceIsAnAuditFreeNoOp: passed
+# InstrumentMetadataServiceTest.testAUserWithAnEffectiveInstrumentManageAssignmentSucceeds: passed
+# InstrumentMetadataServiceTest.testTheAuditActorIsTheAuthorizedPrincipalAndCannotBeOverridden: passed
+# InstrumentMetadataServiceTest.testTheAuditNamesChangedFieldsWithoutCopyingNarrativeContent: passed
+# InstrumentMetadataServiceTest.testTheOperationRemainsUnreachableFromHttpAndControllers: passed
+# InstrumentMetadataServiceTest.testTheOperationRequiresAPrincipalRatherThanAnActorId: passed
+# InstrumentImmutabilityTest.testAChildOfAnotherVersionCannotBeWrittenThroughThisOne: passed
+# InstrumentImmutabilityTest.testARefusedGlobalIdentityCreationWritesNothing: passed
+# InstrumentImmutabilityTest.testEveryMutatorIsRefusedForAPublishedVersion: passed
+# InstrumentImmutabilityTest.testEveryMutatorIsRefusedForARetiredVersion: passed
+# InstrumentImmutabilityTest.testEveryRepositoryMutatorIsCoveredHere: passed
+# InstrumentImmutabilityTest.testEverySharedOrGlobalMutatorEnforcesItsOwnContract: passed
+# InstrumentImmutabilityTest.testGlobalIdentityCreationStillWorksForADraft: passed
+# InstrumentImmutabilityTest.testRefusalAuditCarriesLifecycleFactsAndNoContent: passed
+# InstrumentImmutabilityTest.testRefusedDiscardOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit: passed
+# InstrumentImmutabilityTest.testRefusedDiscardRollsBackAndLeavesExactlyOneDurableAudit: passed
+# InstrumentImmutabilityTest.testRefusedImportOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit: passed
+# InstrumentImmutabilityTest.testRefusedImportRollsBackAndLeavesExactlyOneDurableAudit: passed
+# InstrumentImmutabilityTest.testTheLifecycleTransitionsEnforceTheirOwnContract: passed
+# InstrumentImmutabilityTest.testTheSameMutatorsStillWriteForADraft: passed
+# InstrumentImmutabilityTest.testTheSharedAndGlobalInventoryNamesOnlyRealMethods: passed
+# ValidatorRendererContractTest.testActiveChoiceItemWhoseSetHasNoActiveOptionIsRefused: passed
+# ValidatorRendererContractTest.testActiveItemInAnInactiveSectionIsRefused: passed
+# ValidatorRendererContractTest.testActiveItemReferencingAnInactiveResponseSetIsRefused: passed
+# ValidatorRendererContractTest.testActiveListPlacementWithNoActiveValuesIsRefused: passed
+# ValidatorRendererContractTest.testActivePlacementOfAnInactiveDimensionIsRefused: passed
+# ValidatorRendererContractTest.testActiveRuleSourcedFromInactiveContentIsRefused: passed
+# ValidatorRendererContractTest.testActiveRuleTargetingInactiveContentIsRefused: passed
+# ValidatorRendererContractTest.testActiveSectionDetachedFromTheRootIsRefused: passed
+# ValidatorRendererContractTest.testActiveSectionUnderAnInactiveParentIsRefused: passed
+# ValidatorRendererContractTest.testARepresentativeMinimalInstrumentIsAcceptedAndBuildsCompletely: passed
+# ValidatorRendererContractTest.testMultiChoiceIsRefusedBecauseTheRuntimeDoesNotImplementIt: passed
+# ValidatorRendererContractTest.testNoActiveRootSectionIsRefused: passed
+# ValidatorRendererContractTest.testRetiredItemTypesAreRefusedAtImportToo: passed
+# ValidatorRendererContractTest.testShortTextIsRefusedBecauseTheRuntimeDoesNotImplementIt: passed
+# ValidatorRendererContractTest.testTheSuppliedInstrumentIsAcceptedAndBuildsCompletely: passed
+# ValidatorRendererContractTest.testTheSupportedOptionFilterIsAccepted: passed
+# ValidatorRendererContractTest.testTwoActiveRootSectionsAreRefused: passed
+# ValidatorRendererContractTest.testUnknownOptionFilterIsRefused: passed
+# Migration006LifecycleTest.testReapplying006AfterV2AddsANewValueLeavesPublishedV1Untouched: passed
+# Migration006LifecycleTest.testTheMigrationRecordsItsTransitionStateDurably: passed
+# Migration006LifecycleTest.testV2KeepsItsOwnNewValueAfterTheReapplication: passed
+# InstrumentAdministrationTest.testACloneOntoAnExistingLabelIsRefusedAndAudited: passed
+# InstrumentAdministrationTest.testADraftCanBeDiscardedButAPublishedVersionCannot: passed
+# InstrumentAdministrationTest.testAMalformedCloneRequestIsRefused: passed
+# InstrumentAdministrationTest.testAMalformedEditRequestIsRefused: passed
+# InstrumentAdministrationTest.testAnEditThatBreaksTheInstrumentIsRefusedByTheSharedRules: passed
+# InstrumentAdministrationTest.testAnEditThatChangesNothingWritesNothing: passed
+# InstrumentAdministrationTest.testAnImportWithoutADocumentIsRefused: passed
+# InstrumentAdministrationTest.testAPublishedVersionCannotBeEdited: passed
+# InstrumentAdministrationTest.testCloneEditAndCompareShowTheExactPromptChange: passed
+# InstrumentAdministrationTest.testImportOfTheSuppliedDocumentReturnsTheValidationSummary: passed
+# InstrumentAdministrationTest.testOnlyAPublishedVersionCanBeRetired: passed
+# InstrumentAdministrationTest.testPreviewIsTheRenderModelWalksRender: passed
+# InstrumentAdministrationTest.testReportsStillOpenWhenNoVersionIsInService: passed
+# InstrumentAdministrationTest.testRetiringAVersionInUseStopsNewWalksButNotHistoricalOnes: passed
+# InstrumentAdministrationTest.testRetiringTheOnlyInServiceVersionRequiresConfirmation: passed
+# InstrumentAdministrationTest.testStaleEditsAreRefusedAndChangeNothing: passed
+# InstrumentAdministrationTest.testThePlaceholderQueueListsExactlySeventeenWithSourceAndStatus: passed
+# RetireConcurrencyBarrierTest.testARetirementInsideCreationsWindowRefusesTheWalk: passed
+# RetireConcurrencyBarrierTest.testARetirementQueuesBehindAWalkAlreadyPinnedToTheVersion: passed
+# RetireConcurrencyBarrierTest.testTwoRetirementsCannotTogetherLeaveNothingInService: passed
+# WalkReplayCoherenceTest.testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto: passed
+# WalkReplayCoherenceTest.testAnAlteredRequestAgainstALegacyRowIsTheSameRefusal: passed
+# WalkReplayCoherenceTest.testAnExactLookingRetryAgainstALegacyRowIsARefusal: passed
+# WalkReplayCoherenceTest.testAnOldSaveReplayedAfterALaterSaveCannotOverwriteIt: passed
+# WalkReplayCoherenceTest.testAReplayIsStillIdempotentWhileTheAggregateHasNotMoved: passed
+# WalkReplayCoherenceTest.testASupersededReplayNeverMaterializesTheNewerAggregate: passed
+# WalkReplayCoherenceTest.testAuthorizationAnswersBeforeTheLegacyConflict: passed
+# WalkReplayCoherenceTest.testCreateCompleteAndVoidReplaysAreAlsoRefusedOnceSuperseded: passed
+# DraftEditorTest.testAnEditToTheSameValueIsNotAChange: passed
+# DraftEditorTest.testAnUnrelatedEditLeavesTheContentReviewSummaryAlone: passed
+# DraftEditorTest.testKeysAreMatchedExactlyNotCaseInsensitively: passed
+# DraftEditorTest.testMalformedRequestsAreRefusedWithStableCodes: passed
+# DraftEditorTest.testMarkingAnItemAsAPlaceholderAppendsItToTheSummary: passed
+# DraftEditorTest.testNullableFieldsClearAndRequiredFieldsRefuseBlank: passed
+# DraftEditorTest.testOnePromptEditChangesExactlyThatPrompt: passed
+# DraftEditorTest.testResolvingAPlaceholderUpdatesTheContentReviewSummaryInOrder: passed
+# DraftEditorTest.testSearchFindsEditableRowsByKeyAndWording: passed
+# DraftEditorTest.testSectionOptionAndVersionFieldsAreEditable: passed
+# DraftEditorTest.testTheNormalizedDocumentIsTheExactInverseOfCompilation: passed
+# ReportCoherenceTest.testAReportThatNeverSeesAStableStateIsRefused: passed
+# ReportCoherenceTest.testAReportThatStraddlesACommittedSaveIsRecomputedCoherently: passed
+# ReportCoherenceTest.testAStablePopulationIsReportedOnTheFirstAttempt: passed
+# ReportCoherenceTest.testAWalkVoidedMidReportLeavesThePopulationCleanly: passed
+# WalkSchoolScopeTest.testANonIdentifyingValueIsRefusedAsAnIdentityMapping: passed
+# WalkSchoolScopeTest.testASchoolUnitCodedOtherStaysUnmappedAndFailsClosed: passed
+# WalkSchoolScopeTest.testAWalkAuthorizedAtSchoolACannotBeSubmittedAsSchoolB: passed
+# WalkSchoolScopeTest.testCodeEqualityAloneMapsNothing: passed
+# WalkSchoolScopeTest.testDistrictUserMaySelectAnAuthorizedDescendantSchool: passed
+# WalkSchoolScopeTest.testExplicitMappingIsFilledAndLocked: passed
+# WalkSchoolScopeTest.testOneSchoolValueBelongsToOneOrgUnit: passed
+# WalkSchoolScopeTest.testUnmappedSchoolUnitsAcceptNoSchoolValue: passed
+# ExactAssertionTest.testAnUnreadRowVersionIsRefusedRatherThanCompared: passed
+# ExactAssertionTest.testAssertThrowsComparesTheErrorcodeExactly: passed
+# ExactAssertionTest.testExactJsonKeepsTheCaseOfCodesAndKeys: passed
+# ExactAssertionTest.testExactTextNeverReadsTextAsANumberOrABoolean: passed
+# ExactAssertionTest.testExactTextRefusesNullAndStructuresInsteadOfStringifyingThem: passed
+# ExactAssertionTest.testExactTextTellsACaseOnlyDifferenceApart: passed
+# ExactAssertionTest.testIdenticalRowVersionsFailTheChangedHelper: passed
+# ExactAssertionTest.testIdenticalRowVersionsPassTheEqualsHelper: passed
+# ExactAssertionTest.testIdenticalTextFailsTheNotEqualsHelper: passed
+# ExactAssertionTest.testIdenticalTextPassesTheEqualsHelper: passed
+# ExactAssertionTest.testNoSpecSendsARowVersionOrALiteralTextThroughTheCoercivePath: passed
+# ExactAssertionTest.testRowVersionsAreNeverNormalized: passed
+# ExactAssertionTest.testRowVersionsE988AndE989AreDifferentTokens: passed
+# ExactAssertionTest.testTheCoerciveHelpersRefuseARowVersionToken: passed
+# SharedInstrumentBoundaryTest.testARefusedSharedMetadataConflictChangesNothingAndIsAudited: passed
+# SharedInstrumentBoundaryTest.testImportingV2CannotAlterWhatTheRuntimeServesForV1: passed
+# SharedInstrumentBoundaryTest.testImportingV2RenamesOnlyItsOwnVersionAndNotTheSharedRow: passed
+# SharedInstrumentBoundaryTest.testImportingV2WithAnInactiveInstrumentCannotHidePublishedV1: passed
+# SharedInstrumentBoundaryTest.testTheAuthorizedOperationCanChangeSharedMetadataAndAuditsIt: passed
+# SharedInstrumentBoundaryTest.testTheAuthorizedOperationHasNoRoute: passed
+# SharedInstrumentBoundaryTest.testTheAuthorizedOperationRefusesACallerThatIsNotAPrincipal: passed
+# ConfigLoaderTest.testDefaultsFailClosedToProduction: passed
+# ConfigLoaderTest.testDescribeOmitsSecrets: passed
+# ConfigLoaderTest.testDevIdentityStubCannotBeEnabledInProduction: passed
+# ConfigLoaderTest.testDevIdentityStubIsOnlyForDevelopmentOrTest: passed
+# ConfigLoaderTest.testEnvFileParsing: passed
+# ConfigLoaderTest.testInvalidEnvironmentAndLogLevelAreRejected: passed
+# ConfigLoaderTest.testMaintenanceRequiresLongToken: passed
+# ConfigLoaderTest.testReportSuppressionThresholdIsAWholeNumberOrRefused: passed
+# ConfigLoaderTest.testTestRunnerIsNeverEnabledInProduction: passed
+# ConfigLoaderTest.testUnpublishedInstrumentRenderingIsRefusedInProduction: passed
+# InstrumentDocumentExporterTest.testAPublishedVersionExportsToADraftWithTheSameDefinitions: passed
+# InstrumentDocumentExporterTest.testEveryCollectionExportsEveryRow: passed
+# InstrumentDocumentExporterTest.testEveryRowKeepsItsAuthoringIdAndItsReferences: passed
+# InstrumentDocumentExporterTest.testRowsComeOutInReadingOrder: passed
+# InstrumentDocumentExporterTest.testTheExportNormalizesBackToTheSameVersion: passed
+# InstrumentDocumentExporterTest.testTheExportPassesTheAuthoringValidatorLikeTheSuppliedDocument: passed
+# RenderModelTest.testLayoutsAndNumberingComeFromResponseSetsAndOrder: passed
+# RenderModelTest.testModelSerializesToCanonicalJsonWithoutGuids: passed
+# RenderModelTest.testPlacementsCarryDimensionMetadataInAuthoredOrder: passed
+# RenderModelTest.testPresentationIsDerivedFromStructureNotNames: passed
+# RenderModelTest.testPromptsAndPlaceholdersComeFromTheConfiguration: passed
+# RenderModelTest.testResponseOptionsAndDefinitionsMatchTheConfigurationExactly: passed
+# RenderModelTest.testRulesArePassedThroughAndUnsupportedEffectsAreRefused: passed
+# RenderModelTest.testSkippableComponentsDeriveApplicabilityFromRules: passed
+# RenderModelTest.testTreeFollowsAuthoredParentsAndDisplayOrder: passed
+# PublishConcurrencyBarrierTest.testImportVersusPublishQueuesRatherThanDeadlocking: passed
+# PublishConcurrencyBarrierTest.testPublishVersusImportReachesOneSerialOutcome: passed
+# PublishConcurrencyBarrierTest.testPublishVersusNewDimensionIdentityReachesOneSerialOutcome: passed
+# PublishConcurrencyBarrierTest.testPublishVersusNewDimensionValueIdentityReachesOneSerialOutcome: passed
+# PublishConcurrencyBarrierTest.testPublishVersusPublishReachesOneSerialOutcome: passed
+# RequestBodyReadBoundTest.testABodyWithinTheLimitIsReadWholeAndExactly: passed
+# RequestBodyReadBoundTest.testMultibyteTextIsBoundedInBytes: passed
+# RequestBodyReadBoundTest.testShortReadsLikeANetworkStreamStopAtTheSameByte: passed
+# RequestBodyReadBoundTest.testTheReaderConsumesExactlyOneBytePastTheLimitWhenTheWholeBodyHasArrived: passed
+# RequestBodyReadBoundTest.testTheRouterReadsABodyWithinTheLimitToItsEndAndParsesItOnce: passed
+# RequestBodyReadBoundTest.testTheRouterRefusesAnOversizedChunkedImportAfterReadingExactlyOneBytePast: passed
+# RequestBodyReadBoundTest.testTheRouterTakesNothingFromTheStreamBeforeAuthenticationCsrfOrADeclaredOversizedLength: passed
+# RequestBodyReadBoundTest.testTheServerMaximumIsBoundTheSameWay: passed
+# GlobalIdentityBoundaryTest.testAFrozenVersionCannotMintIdentityAndNothingMoves: passed
+# GlobalIdentityBoundaryTest.testAnAbsentVersionCannotMintIdentity: passed
+# GlobalIdentityBoundaryTest.testBothCreatorsWriteForADraftOutsideAnyTransaction: passed
+# GlobalIdentityBoundaryTest.testMintingIdentityIsQualifiedByItsOwnStatement: passed
+# GlobalIdentityBoundaryTest.testWhenTheMintWinsExactlyOneIdentityAppearsAndPublishStillSucceeds: passed
+# GlobalIdentityBoundaryTest.testWhenTheValueMintWinsExactlyOneIdentityAppearsAndPublishStillSucceeds: passed
+# ImportPublishEquivalenceTest.testBlankSectionTitleIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testChoiceItemWithoutAResponseSetIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testDuplicateAuthoringIdIsImportOnly: passed
+# ImportPublishEquivalenceTest.testInactiveResponseSetIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testInactiveRootIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testInvalidDimensionDataTypeIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testInvalidDisplayOrderIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testNonDraftDeclarationIsImportOnly: passed
+# ImportPublishEquivalenceTest.testRetiredContentIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testUnknownOptionFilterIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testUnparseableConditionsJsonIsImportOnly: passed
+# ImportPublishEquivalenceTest.testUnresolvableAuthoringReferenceIsDiagnosedOnlyByImport: passed
+# ImportPublishEquivalenceTest.testUnsupportedItemTypeIsReportedIdenticallyByBothPaths: passed
+# ImportPublishEquivalenceTest.testUnsupportedRuleEffectIsReportedIdenticallyByBothPaths: passed
+# VisibilityEngineTest.testAnsweredRequiresAValidOptionAndUnansweredIsNeverNumeric: passed
+# VisibilityEngineTest.testBlankStateAppliesConfiguredDefaults: passed
+# VisibilityEngineTest.testConditionalClassroomSectionsFollowGradeClassTypeAndContent: passed
+# VisibilityEngineTest.testGradeFilteringFollowsSchoolGroup: passed
+# VisibilityEngineTest.testHiddenConditionalAnswersAreRetainedAndReappear: passed
+# VisibilityEngineTest.testInvalidGradeIsClearedAndDependentVisibilityRecalculates: passed
+# VisibilityEngineTest.testMatchesTheSharedVectorsExactly: passed
+# VisibilityEngineTest.testPeriodVisibilityAndHiddenRetentionPolicy: passed
+# VisibilityEngineTest.testSkippableComponentClearsRatingsKeepsNotesAndReturnsUnanswered: passed
+# VisibilityEngineTest.testUnsupportedOperatorsAreRefused: passed
+# DefinitionValidatorTest.testARealNumericCountThatMatchesIsAccepted: passed
+# DefinitionValidatorTest.testAValidEnvelopeIsAccepted: passed
+# DefinitionValidatorTest.testBadSectionParentIsReported: passed
+# DefinitionValidatorTest.testBlankOptionLabelIsReported: passed
+# DefinitionValidatorTest.testChoiceItemWithoutResponseSetIsReported: passed
+# DefinitionValidatorTest.testConditionsDocumentShapeIsReported: passed
+# DefinitionValidatorTest.testCountsRefuseArraysAndObjects: passed
+# DefinitionValidatorTest.testCountsRefuseNegativeFractionalAndOversizedNumbers: passed
+# DefinitionValidatorTest.testDimensionValueWithMissingDimensionIsReported: passed
+# DefinitionValidatorTest.testDuplicateDimensionCodeIsReported: passed
+# DefinitionValidatorTest.testDuplicateDimensionValueOrderIsReported: passed
+# DefinitionValidatorTest.testDuplicateItemKeyIsReported: passed
+# DefinitionValidatorTest.testDuplicateOptionCodeIsReported: passed
+# DefinitionValidatorTest.testDuplicateOptionOrderIsReported: passed
+# DefinitionValidatorTest.testDuplicateRuleKeyIsReported: passed
+# DefinitionValidatorTest.testDuplicateSectionKeyIsReported: passed
+# DefinitionValidatorTest.testEmptyDefinitionsAreReported: passed
+# DefinitionValidatorTest.testEnvelopeCountsMismatchIsReported: passed
+# DefinitionValidatorTest.testEnvelopeIdentityMismatchIsReported: passed
+# DefinitionValidatorTest.testEnvelopeWithoutDefinitionsIsReported: passed
+# DefinitionValidatorTest.testErrorPathsAreRootedAtTheCallersPath: passed
+# DefinitionValidatorTest.testEveryCountMemberRefusesABoolean: passed
+# DefinitionValidatorTest.testEveryCountMemberRefusesAJsonStringEvenWhenItNamesTheRightNumber: passed
+# DefinitionValidatorTest.testFlatFieldsDisagreeingWithTheDocumentAreReported: passed
+# DefinitionValidatorTest.testInConditionWithoutAnArrayIsReported: passed
+# DefinitionValidatorTest.testInvalidDimensionDataTypeIsReported: passed
+# DefinitionValidatorTest.testInvalidEffectiveInstantIsReported: passed
+# DefinitionValidatorTest.testInvalidRuleEffectIsReported: passed
+# DefinitionValidatorTest.testInvalidRuleOperatorIsReported: passed
+# DefinitionValidatorTest.testInvalidSelectionModeIsReported: passed
+# DefinitionValidatorTest.testItemWithMissingSectionIsReported: passed
+# DefinitionValidatorTest.testKeyCaseCollisionIsReported: passed
+# DefinitionValidatorTest.testMissingCollectionIsReported: passed
+# DefinitionValidatorTest.testMissingConditionsDocumentIsReported: passed
+# DefinitionValidatorTest.testNonChoiceItemWithAResponseSetIsReported: passed
+# DefinitionValidatorTest.testNonObjectDefinitionsAreReported: passed
+# DefinitionValidatorTest.testOptionOrderOutOfRangeIsReported: passed
+# DefinitionValidatorTest.testPlacementWithMissingDimensionIsReported: passed
+# DefinitionValidatorTest.testPlacementWithMissingRuleIsReported: passed
+# DefinitionValidatorTest.testPlacementWithMissingSectionIsReported: passed
+# DefinitionValidatorTest.testResponseSetUsedByAnItemButEmptyIsReported: passed
+# DefinitionValidatorTest.testRetiredSipContentIsReported: passed
+# DefinitionValidatorTest.testRuleWithMissingSourceIsReported: passed
+# DefinitionValidatorTest.testRuleWithMissingTargetIsReported: passed
+# DefinitionValidatorTest.testSectionCycleIsReported: passed
+# DefinitionValidatorTest.testSelfParentedSectionIsReported: passed
+# DefinitionValidatorTest.testTheSuppliedInstrumentIsValid: passed
+# DefinitionValidatorTest.testUnknownSnapshotFormatIsReported: passed
+# DefinitionValidatorTest.testUnsupportedItemTypeIsReported: passed
+# DefinitionValidatorTest.testUnsupportedRuleEffectIsReported: passed
+# InstrumentImportServiceTest.testDb04ImportCreatesDraftWithMappedGuidsAndSnapshot: passed
+# InstrumentImportServiceTest.testDb05ReimportIsIdempotentWithStableGuidsAndChecksum: passed
+# InstrumentImportServiceTest.testDb06ImportAgainstPublishedVersionIsRefusedWithoutChanges: passed
+# InstrumentImportServiceTest.testDb07MissingResponseSetRollsBackWithSpecificError: passed
+# InstrumentImportServiceTest.testDb08CorruptConditionsJsonRollsBack: passed
+# InstrumentImportServiceTest.testDb09ResponseOptionDefinitionsMatchTheJsonExactly: passed
+# InstrumentImportServiceTest.testDiscardDraftRemovesVersionAndChildren: passed
+# InstrumentImportServiceTest.testListVersionsIncludesImportedDraft: passed
+# InstrumentImportServiceTest.testReorderedReimportSucceedsAndReturnsToGolden: passed
+# InstrumentImportServiceTest.testTransactionRollsBackWhenDatabaseRejectsAWrite: passed
+# engine=Lucee 6.2.8.20 passed=483 failed=0 skipped=0 ms=439302 parts=6
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 126 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 3558.923415
+  type: 'test'
+  ...
+# (node:5349) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: DB-01..03 supplied scripts against an empty SQL Server database
+ok 127 - DB-01..03 supplied scripts against an empty SQL Server database
+  ---
+  duration_ms: 1529.732107
+  type: 'test'
+  ...
+# SQL Server 16.0.4295.3 Developer Edition (64-bit)
+# (node:5359) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: 006 on a clean database runs the transition once and records it, and a re-apply is a no-op
+ok 128 - 006 on a clean database runs the transition once and records it, and a re-apply is a no-op
+  ---
+  duration_ms: 899.939329
+  type: 'test'
+  ...
+# Subtest: 006 adopts a database the earlier form already migrated, and infers no membership there
+ok 129 - 006 adopts a database the earlier form already migrated, and infers no membership there
+  ---
+  duration_ms: 1003.92039
+  type: 'test'
+  ...
+# Subtest: 006 refuses a half-finished transition rather than guessing membership
+ok 130 - 006 refuses a half-finished transition rather than guessing membership
+  ---
+  duration_ms: 896.497341
+  type: 'test'
+  ...
+# Subtest: a placement of a dimension that has no values at all is not ambiguous
+ok 131 - a placement of a dimension that has no values at all is not ambiguous
+  ---
+  duration_ms: 908.386881
+  type: 'test'
+  ...
+# Subtest: no mail-delivery construct exists anywhere in the shipped source
+ok 132 - no mail-delivery construct exists anywhere in the shipped source
+  ---
+  duration_ms: 21.525746
+  type: 'test'
+  ...
+# Subtest: the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+ok 133 - the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+  ---
+  duration_ms: 0.509528
+  type: 'test'
+  ...
+# Subtest: mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+ok 134 - mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+  ---
+  duration_ms: 16.501189
+  type: 'test'
+  ...
+# Subtest: no route, controller action, or configuration key accepts a recipient
+ok 135 - no route, controller action, or configuration key accepts a recipient
+  ---
+  duration_ms: 1.550072
+  type: 'test'
+  ...
+# Subtest: the summary export is the only new endpoint and it is read-only
+ok 136 - the summary export is the only new endpoint and it is read-only
+  ---
+  duration_ms: 32.420652
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 137 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 200.987027
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 138 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.098079
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 139 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.33089
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 140 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.664054
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 141 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 4.600667
+  type: 'test'
+  ...
+# (node:5399) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: the documented remediation removes only the approved (dimension_code, value_code) pair
+ok 142 - the documented remediation removes only the approved (dimension_code, value_code) pair
+  ---
+  duration_ms: 1385.789086
+  type: 'test'
+  ...
+# remediation verified on icfwalk_remediation_mug25ktb
+# Subtest: RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+ok 143 - RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+  ---
+  duration_ms: 1.395446
+  type: 'test'
+  ...
+# Subtest: reports are driven by the instrument, not by names written into the report code
+ok 144 - reports are driven by the instrument, not by names written into the report code
+  ---
+  duration_ms: 1.550225
+  type: 'test'
+  ...
+# Subtest: SEC-02 (structural): the reports view builds its DOM without HTML strings
+ok 145 - SEC-02 (structural): the reports view builds its DOM without HTML strings
+  ---
+  duration_ms: 0.999779
+  type: 'test'
+  ...
+# Subtest: AUTH-01: every report route requires an identity and discloses nothing without one
+ok 146 - AUTH-01: every report route requires an identity and discloses nothing without one
+  ---
+  duration_ms: 1252.054979
+  type: 'test'
+  ...
+# Subtest: AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+ok 147 - AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+  ---
+  duration_ms: 77.764604
+  type: 'test'
+  ...
+# Subtest: RPT-01: a school report role gets its school; another school is 404 over HTTP
+ok 148 - RPT-01: a school report role gets its school; another school is 404 over HTTP
+  ---
+  duration_ms: 244.724343
+  type: 'test'
+  ...
+# Subtest: RPT-02: a district report role aggregates its descendant schools and nothing else
+ok 149 - RPT-02: a district report role aggregates its descendant schools and nothing else
+  ---
+  duration_ms: 189.045047
+  type: 'test'
+  ...
+# Subtest: RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+ok 150 - RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+  ---
+  duration_ms: 144.144726
+  type: 'test'
+  ...
+# Subtest: report routes are read-only: other methods are refused before anything runs
+ok 151 - report routes are read-only: other methods are refused before anything runs
+  ---
+  duration_ms: 41.382971
+  type: 'test'
+  ...
+# Subtest: the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+ok 152 - the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+  ---
+  duration_ms: 125.014233
+  type: 'test'
+  ...
+# Subtest: SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+ok 153 - SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+  ---
+  duration_ms: 339.511178
+  type: 'test'
+  ...
+# Subtest: options describe the version, the scope and the reportable surface only
+ok 154 - options describe the version, the scope and the reportable surface only
+  ---
+  duration_ms: 63.613778
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 155 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.611122
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 156 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.20661
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 157 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.145918
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 158 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.287287
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 159 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.457293
+  type: 'test'
+  ...
+# Subtest: 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+ok 160 - 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+  ---
+  duration_ms: 0.551358
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 161 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 1.876304
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 162 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.292656
+  type: 'test'
+  ...
+# Subtest: fixtures
+ok 163 - fixtures
+  ---
+  duration_ms: 131.602243
+  type: 'test'
+  ...
+# Subtest: AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+ok 164 - AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+  ---
+  duration_ms: 29.728076
+  type: 'test'
+  ...
+# Subtest: users without any capability are forbidden; walk, report, and admin roles may load the instrument
+ok 165 - users without any capability are forbidden; walk, report, and admin roles may load the instrument
+  ---
+  duration_ms: 612.954912
+  type: 'test'
+  ...
+# Subtest: shell page is served to signed-in users with a strict CSP and no embedded content
+ok 166 - shell page is served to signed-in users with a strict CSP and no embedded content
+  ---
+  duration_ms: 23.047094
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 167 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 22.118592
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 168 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 13.515681
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 169 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 11.78542
+  type: 'test'
+  ...
+# Subtest: JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+ok 170 - JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+  ---
+  duration_ms: 241.004381
+  type: 'test'
+  ...
+# Subtest: the stored states are already normalized, so a vector describes a real persisted walk
+ok 171 - the stored states are already normalized, so a vector describes a real persisted walk
+  ---
+  duration_ms: 4.768462
+  type: 'test'
+  ...
+# Subtest: averageText matches JavaScript toFixed(1) on every shared rounding vector
+ok 172 - averageText matches JavaScript toFixed(1) on every shared rounding vector
+  ---
+  duration_ms: 0.178482
+  type: 'test'
+  ...
+# Subtest: SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+ok 173 - SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+  ---
+  duration_ms: 0.934543
+  type: 'test'
+  ...
+# Subtest: SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+ok 174 - SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+  ---
+  duration_ms: 0.423989
+  type: 'test'
+  ...
+# Subtest: SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+ok 175 - SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+  ---
+  duration_ms: 0.660081
+  type: 'test'
+  ...
+# Subtest: SUM-05 file names carry only safe characters and no path can be steered through them
+ok 176 - SUM-05 file names carry only safe characters and no path can be steered through them
+  ---
+  duration_ms: 1.34407
+  type: 'test'
+  ...
+# Subtest: the file name is driven by behavior.export.fileNamePattern, not by a restated list
+ok 177 - the file name is driven by behavior.export.fileNamePattern, not by a restated list
+  ---
+  duration_ms: 1.384251
+  type: 'test'
+  ...
+# Subtest: SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+ok 178 - SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+  ---
+  duration_ms: 1.047251
+  type: 'test'
+  ...
+# Subtest: every selectable part the instrument offers resolves to a section, and a bad one throws
+ok 179 - every selectable part the instrument offers resolves to a section, and a bad one throws
+  ---
+  duration_ms: 0.590878
+  type: 'test'
+  ...
+# Subtest: brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+ok 180 - brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+  ---
+  duration_ms: 0.423145
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+ok 181 - SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+  ---
+  duration_ms: 0.31076
+  type: 'test'
+  ...
+# Subtest: the text shape is stable: LF only, no trailing newline, no BOM
+ok 182 - the text shape is stable: LF only, no trailing newline, no BOM
+  ---
+  duration_ms: 0.25411
+  type: 'test'
+  ...
+# Subtest: the composer's document serializes to the server's canonical form and survives a round trip
+ok 183 - the composer's document serializes to the server's canonical form and survives a round trip
+  ---
+  duration_ms: 12.727899
+  type: 'test'
+  ...
+# Subtest: the formatter is pure: it never mutates the state or the model it is given
+ok 184 - the formatter is pure: it never mutates the state or the model it is given
+  ---
+  duration_ms: 2.130447
+  type: 'test'
+  ...
+# Subtest: JS engine reproduces every shared vector (parity contract with the CFML engine)
+ok 185 - JS engine reproduces every shared vector (parity contract with the CFML engine)
+  ---
+  duration_ms: 257.251458
+  type: 'test'
+  ...
+# Subtest: COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+ok 186 - COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+  ---
+  duration_ms: 1.329129
+  type: 'test'
+  ...
+# Subtest: COND-05 an invalid grade is cleared and dependent visibility recalculates
+ok 187 - COND-05 an invalid grade is cleared and dependent visibility recalculates
+  ---
+  duration_ms: 0.816432
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+ok 188 - COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+  ---
+  duration_ms: 2.243684
+  type: 'test'
+  ...
+# Subtest: COND-07..09 conditional classroom sections
+ok 189 - COND-07..09 conditional classroom sections
+  ---
+  duration_ms: 1.371975
+  type: 'test'
+  ...
+# Subtest: COND-10 hidden conditional answers are retained and reappear
+ok 190 - COND-10 hidden conditional answers are retained and reappear
+  ---
+  duration_ms: 0.649592
+  type: 'test'
+  ...
+# Subtest: COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+ok 191 - COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+  ---
+  duration_ms: 1.149961
+  type: 'test'
+  ...
+# Subtest: COND-15 answered requires a valid option; unanswered never becomes zero
+ok 192 - COND-15 answered requires a valid option; unanswered never becomes zero
+  ---
+  duration_ms: 0.571405
+  type: 'test'
+  ...
+# Subtest: engine rejects unsupported operators instead of guessing
+ok 193 - engine rejects unsupported operators instead of guessing
+  ---
+  duration_ms: 2.694154
+  type: 'test'
+  ...
+# Subtest: walk-state helpers: a blank state presets no School value; display text; rating summary
+ok 194 - walk-state helpers: a blank state presets no School value; display text; rating summary
+  ---
+  duration_ms: 1.249215
+  type: 'test'
+  ...
+# Subtest: AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+ok 195 - AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+  ---
+  duration_ms: 326.587799
+  type: 'test'
+  ...
+# Subtest: AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+ok 196 - AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+  ---
+  duration_ms: 264.79154
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+ok 197 - WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+  ---
+  duration_ms: 322.352333
+  type: 'test'
+  ...
+# Subtest: WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+ok 198 - WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+  ---
+  duration_ms: 191.054315
+  type: 'test'
+  ...
+# Subtest: AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+ok 199 - AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+  ---
+  duration_ms: 529.542845
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+ok 200 - SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+  ---
+  duration_ms: 244.561793
+  type: 'test'
+  ...
+# Subtest: COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+ok 201 - COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+  ---
+  duration_ms: 188.881698
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+ok 202 - WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+  ---
+  duration_ms: 463.412516
+  type: 'test'
+  ...
+# Subtest: WALK-11: the walk instrument route serves the walk's pinned version render model
+ok 203 - WALK-11: the walk instrument route serves the walk's pinned version render model
+  ---
+  duration_ms: 413.547576
+  type: 'test'
+  ...
+# Subtest: CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+ok 204 - CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+  ---
+  duration_ms: 263.135018
+  type: 'test'
+  ...
+# Subtest: CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+ok 205 - CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+  ---
+  duration_ms: 537.080116
+  type: 'test'
+  ...
+# Subtest: CORR: a create mutation id from a school the caller lost never discloses that walk
+ok 206 - CORR: a create mutation id from a school the caller lost never discloses that walk
+  ---
+  duration_ms: 132.359439
+  type: 'test'
+  ...
+# (node:5464) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+ok 207 - CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+  ---
+  duration_ms: 456.241751
+  type: 'test'
+  ...
+# Subtest: CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+ok 208 - CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+  ---
+  duration_ms: 401.735353
+  type: 'test'
+  ...
+# Subtest: CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+ok 209 - CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+  ---
+  duration_ms: 244.437809
+  type: 'test'
+  ...
+# Subtest: CORR2: the School dimension follows an explicit mapping and fails closed without one
+ok 210 - CORR2: the School dimension follows an explicit mapping and fails closed without one
+  ---
+  duration_ms: 668.279647
+  type: 'test'
+  ...
+# Subtest: CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+ok 211 - CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+  ---
+  duration_ms: 72.474675
+  type: 'test'
+  ...
+# Subtest: CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+ok 212 - CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+  ---
+  duration_ms: 607.239074
+  type: 'test'
+  ...
+# Subtest: CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+ok 213 - CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+  ---
+  duration_ms: 105.876238
+  type: 'test'
+  ...
+# Subtest: CORR3: the School dimension's free-text value is never stored as a school's identity
+ok 214 - CORR3: the School dimension's free-text value is never stored as a school's identity
+  ---
+  duration_ms: 281.432436
+  type: 'test'
+  ...
+# Subtest: SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+ok 215 - SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+  ---
+  duration_ms: 208.628659
+  type: 'test'
+  ...
+# Subtest: SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+ok 216 - SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+  ---
+  duration_ms: 229.491197
+  type: 'test'
+  ...
+# Subtest: SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+ok 217 - SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+  ---
+  duration_ms: 155.200149
+  type: 'test'
+  ...
+# Subtest: SUM-05 a punctuated label cannot steer the Content-Disposition file name
+ok 218 - SUM-05 a punctuated label cannot steer the Content-Disposition file name
+  ---
+  duration_ms: 141.950189
+  type: 'test'
+  ...
+# Subtest: AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+ok 219 - AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+  ---
+  duration_ms: 269.300474
+  type: 'test'
+  ...
+# Subtest: a voided walk still exports for a reader, and the export never mutates the walk
+ok 220 - a voided walk still exports for a reader, and the export never mutates the walk
+  ---
+  duration_ms: 181.015405
+  type: 'test'
+  ...
+# Subtest: SEC-05 the export audit event carries identifiers and counts only, never narrative text
+ok 221 - SEC-05 the export audit event carries identifiers and counts only, never narrative text
+  ---
+  duration_ms: 210.228245
+  type: 'test'
+  ...
+# Subtest: SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+ok 222 - SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+  ---
+  duration_ms: 329.264023
+  type: 'test'
+  ...
+# Subtest: SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+ok 223 - SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+  ---
+  duration_ms: 131.987918
+  type: 'test'
+  ...
+# Subtest: SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+ok 224 - SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+  ---
+  duration_ms: 291.930934
+  type: 'test'
+  ...
+# Subtest: the reviewed aligned workbook in config/ reads to exactly the supplied instrument
+ok 225 - the reviewed aligned workbook in config/ reads to exactly the supplied instrument
+  ---
+  duration_ms: 122.013638
+  type: 'test'
+  ...
+# Subtest: download then upload with no change gives back the exact document, and the bytes are reproducible
+ok 226 - download then upload with no change gives back the exact document, and the bytes are reproducible
+  ---
+  duration_ms: 139.270345
+  type: 'test'
+  ...
+# Subtest: a workbook LibreOffice Calc opened and saved reads back unchanged
+ok 227 - a workbook LibreOffice Calc opened and saved reads back unchanged
+  ---
+  duration_ms: 66.517171
+  type: 'test'
+  ...
+# Subtest: edits made in LibreOffice Calc come back exactly, and nothing else moves
+ok 228 - edits made in LibreOffice Calc come back exactly, and nothing else moves
+  ---
+  duration_ms: 53.744318
+  type: 'test'
+  ...
+# Subtest: text survives exactly: markup, quotes, accents, emoji, line breaks, edge spaces, Excel escapes, long text
+ok 229 - text survives exactly: markup, quotes, accents, emoji, line breaks, edge spaces, Excel escapes, long text
+  ---
+  duration_ms: 79.524146
+  type: 'test'
+  ...
+# Subtest: cells typed in a spreadsheet's own ways are read as their column means them
+ok 230 - cells typed in a spreadsheet's own ways are read as their column means them
+  ---
+  duration_ms: 127.814087
+  type: 'test'
+  ...
+# Subtest: problems in a workbook are reported by sheet, row and column, and nothing is produced
+ok 231 - problems in a workbook are reported by sheet, row and column, and nothing is produced
+  ---
+  duration_ms: 169.759084
+  type: 'test'
+  ...
+# Subtest: a missing sheet, a missing column, a duplicate column and a damaged document sheet are each named
+ok 232 - a missing sheet, a missing column, a duplicate column and a damaged document sheet are each named
+  ---
+  duration_ms: 154.557537
+  type: 'test'
+  ...
+# Subtest: files that are not workbooks, or are hostile, are refused without being expanded
+ok 233 - files that are not workbooks, or are hostile, are refused without being expanded
+  ---
+  duration_ms: 173.364371
+  type: 'test'
+  ...
+# Subtest: P6A-04: a numeric character reference outside Unicode is a structured XML problem
+ok 234 - P6A-04: a numeric character reference outside Unicode is a structured XML problem
+  ---
+  duration_ms: 171.484685
+  type: 'test'
+  ...
+# Subtest: P6A-04: surrogate and XML-forbidden character references are structured XML problems
+ok 235 - P6A-04: surrogate and XML-forbidden character references are structured XML problems
+  ---
+  duration_ms: 388.496621
+  type: 'test'
+  ...
+# Subtest: P6A-04: a malformed cell or row reference is a structured workbook problem
+ok 236 - P6A-04: a malformed cell or row reference is a structured workbook problem
+  ---
+  duration_ms: 671.521419
+  type: 'test'
+  ...
+# Subtest: P6A-04: any other shape the reader does not expect is a structured problem, not an exception
+ok 237 - P6A-04: any other shape the reader does not expect is a structured problem, not an exception
+  ---
+  duration_ms: 50.752679
+  type: 'test'
+  ...
+# Subtest: every path the server reports is located on the sheet row it came from
+ok 238 - every path the server reports is located on the sheet row it came from
+  ---
+  duration_ms: 55.144
+  type: 'test'
+  ...
+# Subtest: the placeholder summary follows the items and is otherwise left exactly as it was
+ok 239 - the placeholder summary follows the items and is otherwise left exactly as it was
+  ---
+  duration_ms: 94.04878
+  type: 'test'
+  ...
+# Subtest: file names are safe and the format is named
+ok 240 - file names are safe and the format is named
+  ---
+  duration_ms: 0.435323
+  type: 'test'
+  ...
+1..240
+# tests 240
+# suites 0
+# pass 240
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 810006.516456
+[npm test exit 0]
+
+========================================================================
+== 10. Repository state after the gate (must be unchanged and clean)
+========================================================================
+158debca5da2c4f3a07f602689cd08af9db9bd6e
+porcelain lines: 0
+screenshots written to: <a directory outside the repository> (22 files)
+GATE_EXIT=0

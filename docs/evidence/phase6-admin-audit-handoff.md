@@ -1,5 +1,10 @@
 # Phase 6 administration: handoff for audit
 
+> **Later:** the audit's findings P6A-01 to P6A-04 were corrected (`06660a238c8dd6c62cacd8a27ed970e757ef22a1`),
+> the re-audit's P6A-R01 after them (`158debca5da2c4f3a07f602689cd08af9db9bd6e`), and Phase 6 was then
+> frozen on the project owner's direction -- see `phase6-freeze.md`. This handoff is kept as it was
+> submitted.
+
 **Status: an implementation candidate submitted for independent audit. It is not accepted, frozen
 or complete until that audit says so.**
 
