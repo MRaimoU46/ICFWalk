@@ -3486,7 +3486,11 @@ and every new check failing against the base source.
 **The authoritative result is the full gate on the exact commit**, from a clean tree on a freshly
 created database with screenshots written outside the repository. Its transcript is
 `docs/evidence/phase6-admin-release-gate.txt`, added in the commit that follows this one, because
-recording it here would change the commit it describes.
+recording it here would change the commit it describes. **Result on
+`407b0cdb5616575ef92cfb84ac57566b87f6424d`: Node/HTTP/Playwright 210/210 (193 + 11 `admin-instrument` +
+6 `browser-admin`), CFML 449/449 (411 + 17 + 11 + 6 + 3 + 1 new `InstrumentImmutabilityTest` case), 0
+failed, 0 skipped**, `validate:handoff` ok (51 checks), migration `006` re-application idempotent,
+working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server 2022 (16.0.4295.3) only.
 
 ### Unresolved and not verified (Phase 6 administration)
 
