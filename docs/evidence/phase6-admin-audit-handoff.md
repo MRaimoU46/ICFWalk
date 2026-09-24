@@ -11,6 +11,7 @@ or complete until that audit says so.**
 | Range | `0c6fa10..786e572` (`git diff 0c6fa10 786e572`) |
 | Code commits | `407b0cd` Phase 6 administration; `0a784d5` Excel round-trip |
 | Transcript commits | `2b68cc0` (gate of `407b0cd`), `786e572` (gate of `0a784d5`): transcript, result text in `BUILD_STATUS.md`, refreshed `manifest.json` only |
+| Branch tip | The commit after `786e572` adds only this note, the environment record and a pointer in `BUILD_STATUS.md` (records, no code); audit the branch tip |
 | Underneath, not in scope | `0c6fa10` Phase 7 (aggregate reporting), built by another session before this work and also **not yet audited**. This range changes one line of it (below). |
 | Frozen baseline below that | `a219d9e` (Phase 0-6 publish foundation) |
 
