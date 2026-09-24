@@ -3592,3 +3592,11 @@ exact commit**, recorded in `docs/evidence/excel-roundtrip-release-gate.txt` in 
    draft changed since the download or the file did not come from it; the server itself does not
    compare checksums on import.
 5. **Not independently audited**, like the rest of Phase 6 administration and Phase 7.
+
+## Submitted for audit
+
+Phase 6 administration and the Excel round-trip are submitted for independent audit as an
+implementation candidate: range `0c6fa10..786e572`. What to audit, where each claim is, the changes
+outside Phase 6 files, where to look first and the known gaps are in
+`docs/evidence/phase6-admin-audit-handoff.md`; the environment is in
+`docs/evidence/phase6-admin-environment.md`. Not accepted, frozen or complete until the audit says so.
