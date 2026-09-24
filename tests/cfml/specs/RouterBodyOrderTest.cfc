@@ -18,6 +18,10 @@
  * Router over a FakeRequestSource that records every body read and a SpyJsonBodyParser that counts
  * every parse, so "not read" and "not parsed" are observed counts, not inferences from a status.
  *
+ * FakeRequestSource states the reader's contract (at most limit + 1 bytes); it does not prove the
+ * production reader keeps it. RequestBodyReadBoundTest does (P6A-R01): it runs HttpRequestSource's own
+ * readBody loop over a real stream and measures exactly how many bytes it takes.
+ *
  * The HTTP twins in tests/node/admin-instrument.test.mjs prove the same order on the running
  * server, by sending a body that never finishes: only a server that decides first can answer it.
  */

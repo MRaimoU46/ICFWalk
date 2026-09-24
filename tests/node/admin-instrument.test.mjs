@@ -348,8 +348,13 @@ test("ADM-01: the import body contract and the size cap", { skip }, async () => 
   const notObject = await admin.call("POST", "/api/admin/instrument/import", { document: "a string" });
   assert.equal(notObject.status, 400, notObject.text);
   assert.equal(notObject.json.error.code, "DOCUMENT_REQUIRED");
-  const huge = JSON.stringify({ document: { padding: "x".repeat(5000001) } });
-  const tooLarge = await admin.call("POST", "/api/admin/instrument/import", undefined, { rawBody: huge });
+  // The same bytes, the same signed-in headers and the same assertions as before, sent over a raw
+  // socket (rawRequest, below). Since P6A-01 the server refuses a body over the limit from its declared
+  // length, before reading it, and closes the connection while the client may still be uploading;
+  // fetch can then report its own refused write ("fetch failed", cause EPIPE) instead of the 413 the
+  // server sent -- reproduced 1 time in 100 on a reused keep-alive connection, 0 in 300 this way.
+  const huge = Buffer.from(JSON.stringify({ document: { padding: "x".repeat(5000001) } }));
+  const tooLarge = await rawRequest("/api/admin/instrument/import", signedIn(), huge);
   assert.equal(tooLarge.status, 413, tooLarge.text.slice(0, 300));
   assert.equal(tooLarge.json.error.code, "DOCUMENT_TOO_LARGE");
   assert.equal(await versionCount(), before, "no refused body wrote anything");
@@ -512,7 +517,9 @@ test("P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text can
   const r = await rawRequest(IMPORT, signedIn(), body, { chunked: true });
   assert.equal(r.status, 413, r.text.slice(0, 300));
   assert.equal(r.json.error.code, "DOCUMENT_TOO_LARGE");
-  // The same, never finished: the read stops once it is past the limit and answers.
+  // The same, never finished: the reader stops one byte past the limit and answers. (That it takes
+  // exactly limit + 1 bytes from the stream is measured on the production loop by the CFML
+  // RequestBodyReadBoundTest, P6A-R01; from here only the prompt answer is observable.)
   const partial = await partialRequest(IMPORT, { ...signedIn(), "Transfer-Encoding": "chunked" }, body.subarray(0, LIMIT + 4096));
   assert.equal(partial.status, 413, partial.text.slice(0, 300));
   assert.equal(partial.json.error.code, "DOCUMENT_TOO_LARGE");

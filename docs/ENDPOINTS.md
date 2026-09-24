@@ -42,8 +42,14 @@ every route, in this order, each step running only if the one before it passed:
    `DOCUMENT_TOO_LARGE`), every other route the server maximum of 20,000,000 bytes (413
    `PAYLOAD_TOO_LARGE`); both with `details.limitBytes`. A `Content-Length` over the limit is refused
    without reading the body at all. Otherwise (including a chunked request, whose length is not
-   declared) at most one byte past the limit is read and a longer body is refused. The count is of
-   the bytes on the wire -- UTF-8 bytes of a JSON body -- never of characters.
+   declared) the servlet container's input stream is read in requests of at most
+   `min(65,536, limit - bytes read so far + 1)` bytes, so the application takes at most one byte past
+   the limit from it -- exactly one byte past when the body is longer -- and refuses the body (P6A-R01).
+   The count is of the bytes on the wire -- UTF-8 bytes of a JSON body -- never of characters. Two
+   things this does not bound: what the container has already received from the network into its own
+   buffers, and a body an engine had already buffered before the application read it, which is
+   measured in bytes (and refused if it is over the limit) but was read whole by the engine; the
+   connector's limit bounds that (docs/LOCAL_SETUP.md, "Request size limits").
 4. A body within the limit that is not blank is parsed: anything that is not a JSON object is 400
    `INVALID_JSON_BODY`.
 5. The permission of the body-member policy; then the controller.

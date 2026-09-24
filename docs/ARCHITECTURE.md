@@ -171,17 +171,24 @@ then acquire the body, under the route's byte limit (`maxBodyBytes` in the route
 (`JsonBodyParser`); decide a permission that depends on a body member (`orgUnitBody`, walk
 creation); and call the controller. A declared `Content-Length` over the limit is refused 413
 without reading; otherwise `HttpRequestSource.readBody` reads the servlet container's own input
-stream, at most one byte past the limit, counting bytes -- so a chunked body cannot run past the
-limit and multibyte text cannot slip under it. It reads the container's stream rather than the
+stream, each read asking for `min(65,536, limit - total + 1)` bytes, counting bytes -- so the
+application takes at most one byte past the limit from the stream (exactly one when the body is
+longer), a chunked body cannot run past the limit, and multibyte text cannot slip under it. (Until
+P6A-R01 each read asked for a fixed 65,536 bytes and the total was compared afterwards, so up to
+65,536 bytes past the limit could be taken.) The bound is on what the application consumes; the
+container may have buffered more from the network. It reads the container's stream rather than the
 engine's because Lucee's request wrapper copies the whole body into memory on first access
 (`HTTPServletRequestWrap.getInputStream` -> `storeEL`); the source unwraps it (Lucee's
 `getOriginalRequest()`, then any standard `ServletRequestWrapper` chain, which is how Adobe
 ColdFusion wraps its request). If an engine has already consumed the stream, the body is taken from
 `getHttpRequestData(true)` and measured in UTF-8 bytes before anything parses it; in that case the
 connector's own limit is what bounds the engine's buffering (docs/LOCAL_SETUP.md, "Request size
-limits"). The source and the parser are container entries, so `RouterBodyOrderTest` drives the real
-router with a `FakeRequestSource` that records every body read and a `SpyJsonBodyParser` that counts
-every parse.
+limits"): that copy is measured, not bounded. The source and the parser are container entries, so
+`RouterBodyOrderTest` drives the real router with a `FakeRequestSource` that records every body read
+and a `SpyJsonBodyParser` that counts every parse; and `RequestBodyReadBoundTest` runs the production
+`readBody` loop itself (through `StreamedRequestSource`, which replaces only where the stream comes
+from) over a real `java.io.ByteArrayInputStream`, measuring exactly how many bytes it takes and what
+each read asks for.
 
 **Bootstrap of a deployment**: import org units (`config/org-units.example.json` as a template),
 provision the first administrator, assign `MASTER_INSTRUMENT_ADMIN`, then assign walk/report roles

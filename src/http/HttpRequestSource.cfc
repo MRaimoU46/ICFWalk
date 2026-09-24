@@ -8,10 +8,16 @@
  * alone parsed. headers() uses getHttpRequestData(false), which does not touch the body.
  *
  * THE BODY IS READ AS BYTES, BOUNDED. readBody(maxBytes) reads the servlet container's own input
- * stream, at most maxBytes + 1 bytes, and stops: a chunked request (no trustworthy Content-Length)
- * cannot make the application read more than one byte past the route's limit, and the count is of
- * the bytes on the wire -- UTF-8 bytes of a JSON body -- never of characters (CFML len() on text
- * counts UTF-16 code units, which is how multibyte text used to slip under the limit).
+ * stream, and every read asks for min(65,536, maxBytes - total + 1) bytes. An InputStream returns at
+ * most what it is asked for, so the reader consumes at most maxBytes + 1 bytes from the stream --
+ * exactly maxBytes + 1 when the body is longer -- and then stops: a chunked request (no trustworthy
+ * Content-Length) cannot make the application take more than one byte past the route's limit from
+ * the stream. (It used to ask for a fixed 65,536 bytes each time and compare afterwards, which could
+ * consume up to 65,536 bytes past the limit: P6A-R01.) The count is of the bytes on the wire --
+ * UTF-8 bytes of a JSON body -- never of characters (CFML len() on text counts UTF-16 code units,
+ * which is how multibyte text used to slip under the limit). What this bounds is what the
+ * application takes from the stream; the container may already have received more from the network
+ * into its own buffers.
  *
  * The CONTAINER's stream, not the engine's. Lucee wraps the servlet request, and the wrapper's
  * getInputStream() first copies the entire body into memory (HTTPServletRequestWrap.storeEL), which
@@ -21,11 +27,14 @@
  *
  * If the engine has already consumed the stream (a servlet container or engine that buffers the
  * body itself), the stream yields nothing; the body is then taken from getHttpRequestData(true) and
- * measured by re-encoding it to UTF-8 bytes, before anything parses it. In that case what bounds the
- * engine's own buffering is the connector's limit (docs/LOCAL_SETUP.md, "Request size limits").
+ * measured by re-encoding it to UTF-8 bytes, before anything parses it. That copy is MEASURED, not
+ * bounded -- the engine read all of it before this code ran -- and what bounds the engine's own
+ * buffering is the connector's limit (docs/LOCAL_SETUP.md, "Request size limits").
  *
  * The router talks to this component through the application container, so a spec can hand the
- * router a FakeRequestSource instead (tests/cfml/support) and observe every body read.
+ * router a FakeRequestSource instead (tests/cfml/support) and observe every body read; and
+ * StreamedRequestSource (tests/cfml/support) extends this component, replacing only where the stream
+ * comes from, so RequestBodyReadBoundTest measures this readBody loop itself.
  */
 component output="false" {
 
@@ -55,10 +64,12 @@ component output="false" {
 	public string function remoteAddress() { return cgi.remote_addr; }
 
 	/**
-	 * At most maxBytes + 1 bytes of the body.
+	 * The body, consuming at most maxBytes + 1 bytes from the container's stream.
 	 *
-	 * @return { exceeded: true, byteCount } when the body is longer than maxBytes (reading stopped
-	 *         there, and nothing read is returned), else { exceeded: false, byteCount, bytes }.
+	 * @return { exceeded: true, byteCount: maxBytes + 1 } when the body is longer than maxBytes
+	 *         (reading stopped one byte past the limit, and nothing read is returned), else
+	 *         { exceeded: false, byteCount, bytes }. On the engine-buffered fallback an exceeded
+	 *         byteCount is the whole body's length (measured, not bounded).
 	 */
 	public struct function readBody(required numeric maxBytes) {
 		var limit = arguments.maxBytes;
@@ -67,7 +78,10 @@ component output="false" {
 		var chunk = variables.Array.newInstance(variables.ByteType, javaCast("int", variables.CHUNK));
 		var total = 0;
 		while (true) {
-			var n = input.read(chunk, javaCast("int", 0), javaCast("int", variables.CHUNK));
+			// Never ask for more than one byte past the limit (P6A-R01). While total <= limit this is
+			// at least 1, and a stream returns at most what is asked, so total never passes limit + 1.
+			var want = min(variables.CHUNK, limit - total + 1);
+			var n = input.read(chunk, javaCast("int", 0), javaCast("int", want));
 			if (n < 0) break;
 			total += n;
 			if (total > limit) return { "exceeded": true, "byteCount": total };

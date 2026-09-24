@@ -3626,7 +3626,9 @@ measured `len()` of text (characters); the page read a whole file before checkin
 token check, or authentication, CSRF and the permission; only then reads the body, under the
 route's `maxBodyBytes` (route metadata: 5,000,000 for the import, else the 20,000,000-byte server
 maximum) -- a declared length over it is refused without reading, otherwise at most one byte past it
-is read from the servlet container's stream and counted in bytes; then parses (`JsonBodyParser`);
+is read from the servlet container's stream and counted in bytes *(erratum, P6A-R01 below: not true
+at this commit -- each read asked for 65,536 bytes, so up to 65,536 bytes past the limit could be
+read)*; then parses (`JsonBodyParser`);
 then decides the one body-dependent permission (walk creation's `orgUnitBody`). New
 `HttpRequestSource` (reads the container's stream underneath Lucee's wrapper, which otherwise copies
 the whole body into memory first; falls back to the engine's buffered body measured in UTF-8 bytes)
@@ -3744,3 +3746,77 @@ where to look first and what was not performed are in
 `docs/evidence/phase6-admin-audit-corrections-handoff.md`; the environment is in
 `docs/evidence/phase6-admin-audit-corrections-environment.md`. Not accepted, frozen, production-ready
 or audited.
+
+## Phase 6 administration re-audit correction (P6A-R01)
+
+The independent re-audit of the audit corrections (`3e1168663c14d069d3f033cd62456653f2bf369d`) found
+one remaining defect, P6A-R01, and specified its fix. Red before green:
+`docs/evidence/phase6-admin-read-bound-red-before-fix.md`. No schema migration, no dependency, no
+test removed, skipped or loosened.
+
+### What was wrong, and the fix
+
+`HttpRequestSource.readBody` asked the container's stream for a fixed 65,536 bytes on every read and
+compared the running total with the limit afterwards, so it could consume up to 65,536 bytes past
+the limit before refusing the body -- 5,046,272 bytes for the 5,000,000-byte import limit and
+20,054,016 for the 20,000,000-byte server maximum, measured on the unmodified loop. The records said
+"at most one byte past", and the router spec could not see the difference because it drives
+`FakeRequestSource`. *Fix (as specified):* every read asks for `min(65536, maxBytes - total + 1)`
+bytes, so the reader takes at most `maxBytes + 1` bytes from the stream, exactly that many when the
+body is longer. The bound is on what the application consumes; bytes the container has already
+received into its own buffers, and a body an engine had already buffered (measured, not bounded),
+are outside it, and the documentation now says so.
+
+### Files changed (P6A-R01)
+
+| File | Change |
+| --- | --- |
+| `src/http/HttpRequestSource.cfc` | The read size (the two lines of the fix); its documentation made exact. |
+| `src/http/Router.cfc` | Comments only: the bound stated as it is. |
+| `tests/cfml/specs/RequestBodyReadBoundTest.cfc` (8) | New: the production `readBody` loop over a real `ByteArrayInputStream`, measuring bytes consumed and every read's size, alone and through `Router.handle`. |
+| `tests/cfml/support/StreamedRequestSource.cfc`, `RecordingInputStream.cfc` | New, test-only: the production reader with only its stream's origin and metadata replaced; the recording stream. |
+| `tests/cfml/specs/RouterBodyOrderTest.cfc`, `tests/cfml/support/FakeRequestSource.cfc` | Comments only: the fake states the contract; the new spec measures the production reader. |
+| `tests/node/admin-instrument.test.mjs` | A comment on the P6A-01 chunked case; and P6A-R02 below: the size-cap request of "ADM-01: the import body contract and the size cap" is sent with the file's raw-socket helper instead of `fetch` -- the same bytes, headers and assertions. No assertion changed. |
+| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/LOCAL_SETUP.md` | The bound stated exactly, with what it does not cover. |
+| `docs/evidence/phase6-admin-audit-corrections-handoff.md`, `docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`, this file's audit-corrections section | A visible erratum where the previous round stated the bound (CORR7-03 precedent); nothing else in them changed. |
+| `docs/evidence/phase6-admin-read-bound-red-before-fix.md`, `docs/ACCEPTANCE_TRACKING.md` | Records. |
+
+### Tests and results (development runs, before the commit)
+
+| Run | Result |
+| --- | --- |
+| `RequestBodyReadBoundTest` on the committed reader of `3e11686` | 2/8 -- red for the intended reason (5,046,272 and 20,054,016 bytes consumed; reads of 65,536 where the bound was 1 or 4,466) |
+| `RequestBodyReadBoundTest` after the fix | 8/8 |
+| `RouterBodyOrderTest` | 12/12 |
+| `admin-instrument.test.mjs`, the five P6A-01 cases | 5/5 |
+| `admin-publish`, `auth`, `walks`, `admin-instrument` together, before the P6A-R02 fix | 67/68 -- the P6A-R02 failure (below) |
+| `admin-instrument.test.mjs` after the P6A-R02 fix, three runs; then the same four files together | 19/19 each; 68/68 |
+
+**The authoritative result is the full gate on the exact code commit**, recorded in the commit after
+it (`docs/evidence/phase6-admin-read-bound-release-gate.txt`).
+
+### P6A-R02: found while verifying, not by the re-audit -- a race in an existing test's client
+
+A development run of four HTTP files together failed once in "ADM-01: the import body contract and
+the size cap", a case that passed in the previous gate. The application log for that run shows the
+server answered the case's 5,000,029-byte request with 413 `DOCUMENT_TOO_LARGE`, as it should, so the
+failure was the client's. Reproduced with that case's exact sequence -- three small requests on one
+keep-alive connection, then the oversized body through `fetch`: 1 of 100 attempts rejected with
+`TypeError: fetch failed (cause: EPIPE: write EPIPE)`. Since P6A-01 the server refuses such a body
+from its declared length, before reading it, and closes the connection while the client may still be
+uploading; `fetch` then sometimes reports its own refused write instead of the server's answer.
+Before P6A-01 the server read the whole body first, so the race could not occur; the previous gate
+passed it by chance. It is a defect of the test's client, not of the application, and has nothing
+to do with P6A-R01. *Fix:* that one request is sent with the raw-socket helper the P6A-01 cases
+already use, which reads the server's answer whatever happens to its own write: the same bytes,
+headers and assertions; 0 failures in 300 attempts of the same sequence. Details in
+`docs/evidence/phase6-admin-read-bound-red-before-fix.md`.
+
+### Unresolved and not verified (P6A-R01)
+
+Everything listed under "Unresolved and not verified (audit corrections)" above still holds: Adobe
+ColdFusion 2023, SQL Server 2016, IIS or any connector-level limit, Microsoft Excel and a screen
+reader were not used. On ColdFusion in particular, whether the engine has consumed the body before
+`HttpRequestSource` reads it decides whether this bound applies there at all or the measured
+fallback does.
+

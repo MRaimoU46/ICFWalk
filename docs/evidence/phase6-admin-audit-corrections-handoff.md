@@ -3,6 +3,16 @@
 **Status: an implementation candidate submitted for independent re-audit. It is not accepted,
 frozen, production-ready or audited.**
 
+> **Erratum (P6A-R01, found by the re-audit).** The P6A-01 row below says the reader takes "at most
+> one byte past the limit" from the servlet container's stream. At `06660a2` that was not true: every
+> read asked for a fixed 65,536 bytes and the total was compared with the limit afterwards, so up to
+> 65,536 bytes past the limit could be consumed -- 5,046,272 bytes for the 5,000,000-byte import
+> limit, 20,054,016 for the 20,000,000-byte server maximum, measured on the unmodified loop. The
+> re-audit's correction makes each read ask for `min(65,536, limit - total + 1)` bytes, which makes
+> the statement true; see `BUILD_STATUS.md`, "Phase 6 administration re-audit correction (P6A-R01)",
+> and `docs/evidence/phase6-admin-read-bound-red-before-fix.md`. The rest of this handoff is as
+> submitted.
+
 ## What to audit
 
 | | |

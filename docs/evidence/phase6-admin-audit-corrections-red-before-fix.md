@@ -130,7 +130,10 @@ the parse; its fallback measured `len(content)` (characters); `onImport` read th
 **Correction.** `Router.handle`: metadata only, then the policy's pre-body checks
 (`MaintenanceGuard.precheck`, or authentication, CSRF and the permission), then a bounded byte read
 under the route's `maxBodyBytes` (413 from a declared length without reading), then
-`JsonBodyParser`, then the body-dependent permission. `HttpRequestSource` reads the servlet
+`JsonBodyParser`, then the body-dependent permission. *(Erratum, P6A-R01: at this round the bound
+was loose -- each read asked for 65,536 bytes, so up to 65,536 bytes past the limit could be read
+before the refusal. Made exact by the re-audit's correction; see
+`phase6-admin-read-bound-red-before-fix.md`.)* `HttpRequestSource` reads the servlet
 container's stream beneath Lucee's wrapper. `admin.js` reads 8 bytes, checks `file.size`, then reads.
 
 **Found while making it green.** The first corrected build still hung on a never-finished chunked

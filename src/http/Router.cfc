@@ -27,8 +27,10 @@
  *      CSRF token for a mutating method, and the permission unless the policy reads a body member
  *      (`orgUnitBody`);
  *   3. the body, under the route's byte limit (`maxBodyBytes`, else the server maximum): a
- *      declared Content-Length over it is refused 413 without reading, otherwise at most one byte
- *      past it is read and a longer body is refused 413 -- counted in bytes, never characters;
+ *      declared Content-Length over it is refused 413 without reading; otherwise the container's
+ *      stream is read in requests of at most min(65,536, limit - total + 1) bytes, so at most one
+ *      byte past the limit is taken from it, and a longer body is refused 413 -- counted in bytes,
+ *      never characters (HttpRequestSource; an engine-buffered body is measured, not bounded);
  *   4. JSON parsing of a body that passed all of that (JsonBodyParser);
  *   5. the permission of an `orgUnitBody` policy, which needs the parsed member;
  *   6. the controller.
@@ -282,7 +284,8 @@ component output="false" {
 	 * Steps 3 and 4. The declared length is trusted only as a plain decimal Content-Length on a
 	 * request without a transfer coding (HTTP: Transfer-Encoding overrides Content-Length); a
 	 * declared length over the limit is refused without reading anything. Whatever the declaration,
-	 * the source reads at most one byte past the limit, and the count of bytes actually read is
+	 * the source takes at most one byte past the limit from the container's stream (each read asks
+	 * for min(65,536, limit - total + 1) bytes: P6A-R01), and the count of bytes actually read is
 	 * compared again -- so a chunked or mis-declared body cannot slip past. Only a body within the
 	 * limit is decoded (UTF-8) and, if it is not blank, parsed.
 	 */

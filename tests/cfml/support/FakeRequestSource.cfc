@@ -7,7 +7,9 @@
  *
  * readBody(maxBytes) keeps HttpRequestSource's contract exactly: it reads at most maxBytes + 1 bytes
  * and stops, reporting `exceeded` when there was more; byteCount is the UTF-8 byte length of what
- * it read, counted on the bytes (java.lang.reflect.Array), never with len() on text.
+ * it read, counted on the bytes (java.lang.reflect.Array), never with len() on text. That the
+ * production reader keeps the same bound is measured separately, on its own loop, by
+ * RequestBodyReadBoundTest (P6A-R01) -- this double only states it.
  *
  * TEST-ONLY. Lives under tests/cfml; nothing in src/ references it.
  */
