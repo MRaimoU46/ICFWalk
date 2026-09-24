@@ -219,6 +219,11 @@ component output="false" {
 		try {
 			walkId = variables.db.transact(function() {
 				var id = walks.insertWalk(current.versionId, orgUnitId, me, observedAtOf(normalized.state));
+				if (!len(id)) {
+					// The version this walk was about to be pinned to was retired after it was chosen
+					// (ADM-07). Nothing was inserted; the client reloads onto the current version.
+					variables.errors.conflict("The instrument version has changed; reload before starting a walk.", "INSTRUMENT_VERSION_CHANGED", { "retiredVersionId": current.versionId });
+				}
 				var plan = planState(id, current.versionId, model, index, normalized.state, validated.resolved, evaluation, {}, {});
 				applyPlan(plan.ops);
 				walks.touchWalk(id, observedAtOf(normalized.state));

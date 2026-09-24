@@ -89,6 +89,8 @@ export function createApi(baseUrl) {
   return {
     get: (path) => call("GET", path),
     post: (path, body) => call("POST", path, body ?? {}),
+    // A POST with no body bytes at all, for the routes that refuse any body (publish, discard, retire).
+    postEmpty: (path) => call("POST", path),
     put: (path, body) => call("PUT", path, body ?? {}),
     del: (path) => call("DELETE", path),
     setCsrfToken(token) { csrfToken = token || ""; },

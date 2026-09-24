@@ -51,6 +51,16 @@ component output="false" {
 	}
 
 	/**
+	 * The shared semantic rule set this validator delegates to. Exposed so a caller that already
+	 * holds a NORMALIZED document -- a clone of a stored snapshot, or a DRAFT after wording edits --
+	 * runs exactly the rules an import runs, without a second copy of them and without a
+	 * constructor change for everything that builds the import service.
+	 */
+	public any function definitionValidator() {
+		return variables.definitionValidator;
+	}
+
+	/**
 	 * @return { valid: boolean, errors: [], warnings: [], placeholders: [] }
 	 */
 	public struct function validate(required any config) {

@@ -74,6 +74,16 @@ component output="false" {
 
 		c["snapshotService"] = new icfwalk.instrument.SnapshotService(c.config, c.db, c.definitionRepository, c.renderModelBuilder, c.errors, c.logger, c.canonicalJson);
 
+		// Instrument administration (Phase 6): preview, clone, wording edits, compare and the
+		// placeholder queue. Clone and edit write through InstrumentImportService's one validated
+		// DRAFT write path; every read is of a checksum-verified snapshot through SnapshotService.
+		c["draftEditor"] = new icfwalk.instrument.DraftEditor(c.definitionValidator.placeholderReviewStatus());
+		c["instrumentVersionComparer"] = new icfwalk.instrument.InstrumentVersionComparer(c.canonicalJson);
+		c["instrumentAdminService"] = new icfwalk.instrument.InstrumentAdminService(
+			c.config, c.db, c.errors, c.logger, c.definitionRepository, c.snapshotService,
+			c.instrumentImportService, c.draftEditor, c.instrumentVersionComparer, c.snapshotCompiler
+		);
+
 		// Walk persistence (Phase 4).
 		c["walkRepository"] = new icfwalk.walks.WalkRepository(c.db, c.canonicalJson, c.definitionRepository);
 		c["walkPayloadValidator"] = new icfwalk.walks.WalkPayloadValidator(c.errors, c.canonicalJson);

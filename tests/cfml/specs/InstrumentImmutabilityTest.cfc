@@ -56,6 +56,16 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		"createDimensionIdentity", "createDimensionValueIdentity"
 	];
 
+	/**
+	 * LIFECYCLE transitions that are not refused for a frozen version, because acting on a frozen
+	 * version is what they are for. Contract: named per method in
+	 * testTheLifecycleTransitionsEnforceTheirOwnContract.
+	 *
+	 *   markRetired   PUBLISHED -> RETIRED only (Phase 6, ADM-07); a DRAFT or an already RETIRED
+	 *                 version is left exactly as it was, and the frozen snapshot never moves.
+	 */
+	variables.LIFECYCLE = ["markRetired"];
+
 	public string function skipReason() {
 		return schemaPresent() ? "" : "icf schema is not present in datasource '" & variables.c.db.datasourceName() & "'.";
 	}
@@ -110,9 +120,39 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			if (structKeyExists(variables.NOT_A_WRITE, f.name)) continue;
 			if (arrayFindNoCase(variables.covered, f.name)) continue;
 			if (arrayFindNoCase(variables.SHARED_OR_GLOBAL, f.name)) continue;
+			if (arrayFindNoCase(variables.LIFECYCLE, f.name)) continue;
 			arrayAppend(uncovered, f.name);
 		}
 		assertEquals(0, arrayLen(uncovered), "DefinitionRepository mutators with no immutability coverage: " & arrayToList(uncovered));
+	}
+
+	/**
+	 * markRetired: only a PUBLISHED version becomes RETIRED, the frozen snapshot, checksum and
+	 * publisher never move, and a DRAFT or an already RETIRED version is left exactly as it was --
+	 * its row version included -- by the statement itself, not only by the service in front of it.
+	 */
+	public void function testTheLifecycleTransitionsEnforceTheirOwnContract() {
+		var draft = variables.importSvc.importConfig(config(label("lifecycle-draft")));
+		var draftBefore = variables.repo.findVersionById(draft.versionId);
+		assertEquals(0, variables.repo.markRetired(draft.versionId), "a DRAFT is not retired");
+		var draftAfter = variables.repo.findVersionById(draft.versionId);
+		assertExactTextEquals("DRAFT", draftAfter.status);
+		assertRowVersionEquals(draftBefore.rowVersion, draftAfter.rowVersion, "and the DRAFT row did not move");
+
+		var retiredBefore = variables.repo.findVersionById(variables.retired.versionId);
+		assertEquals(0, variables.repo.markRetired(variables.retired.versionId), "a RETIRED version is not retired again");
+		assertRowVersionEquals(retiredBefore.rowVersion, variables.repo.findVersionById(variables.retired.versionId).rowVersion, "and did not move");
+
+		var live = variables.importSvc.importConfig(config(label("lifecycle-live")));
+		variables.publishSvc.publish(live.versionId, variables.publisher);
+		var liveBefore = variables.repo.findVersionById(live.versionId);
+		assertEquals(1, variables.repo.markRetired(live.versionId), "a PUBLISHED version is retired");
+		var liveAfter = variables.repo.findVersionById(live.versionId);
+		assertExactTextEquals("RETIRED", liveAfter.status);
+		assertExactTextEquals(liveBefore.snapshotJson, liveAfter.snapshotJson, "with its frozen snapshot unchanged");
+		assertExactTextEquals(liveBefore.checksum, liveAfter.checksum, "and its checksum");
+		assertExactTextEquals(liveBefore.publishedByUserId, liveAfter.publishedByUserId, "and its publisher");
+		assertEquals(0, variables.repo.markRetired(live.versionId), "and a second call retires nothing");
 	}
 
 	/**
@@ -128,6 +168,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var missing = [];
 		for (var name in variables.SHARED_OR_GLOBAL) if (!structKeyExists(present, name)) arrayAppend(missing, name);
 		for (var name in structKeyArray(variables.NOT_A_WRITE)) if (!structKeyExists(present, name)) arrayAppend(missing, name);
+		for (var name in variables.LIFECYCLE) if (!structKeyExists(present, name)) arrayAppend(missing, name);
 		assertEquals(0, arrayLen(missing), "the inventory names methods that no longer exist: " & arrayToList(missing));
 		assertEquals(0, arrayLen(structFindKey({ "x": variables.SHARED_OR_GLOBAL }, "updateInstrument", "all")), "updateInstrument is gone; updateInstrumentMetadata replaced it");
 	}

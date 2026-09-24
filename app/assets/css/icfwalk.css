@@ -241,3 +241,57 @@ a.btn{display:inline-block;text-decoration:none;line-height:normal}
 h4.report-section-title{font-size:14px}
 .report-item{margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
 .report-q{font-size:13.5px;font-weight:600;margin:0 0 4px;line-height:1.4;color:var(--ink)}
+
+/* Phase 6: instrument administration */
+.admin-status{display:block;min-height:1.2em;margin:0 0 10px}
+.admin-import input[type=file]{display:block;font-size:13px;max-width:100%}
+.admin-summary{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--tint)}
+.admin-summary-invalid{background:#FDECEC;border-color:#F0B4B4}
+.admin-summary-title{font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 8px}
+.admin-summary-subtitle{font-size:13px;font-weight:600;margin:10px 0 4px}
+.admin-summary code,.admin-versions-table code{font-size:12px;overflow-wrap:anywhere}
+.admin-counts{max-width:360px;background:var(--card)}
+.admin-issues{margin:6px 0 0;padding-left:20px;font-size:13px}
+.admin-issues li{margin:3px 0;overflow-wrap:anywhere}
+.admin-error-message{margin:0}
+.admin-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.admin-versions-table{min-width:720px}
+.admin-versions-table thead th,.admin-ph-table thead th{white-space:nowrap}
+.admin-versions-table td,.admin-versions-table th{overflow-wrap:break-word}
+.admin-versions-table td code{white-space:nowrap}
+.admin-action-row{display:flex;flex-wrap:wrap;gap:6px}
+.admin-actions{min-width:220px}
+.admin-status-draft{color:#6B3A00;background:#FFF4E5;border-color:#F1C58E}
+.admin-status-published{color:#0E5132;background:#E6F4EC;border-color:#A7D7BC}
+.admin-status-retired{color:var(--gray);background:#F1F3F5}
+.admin-current{color:#fff;background:var(--navy);border-color:var(--navy)}
+.admin-panel-head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+.admin-panel-head .section-title{margin:0}
+.admin-preview-note{margin-bottom:12px}
+.admin-preview-editor{border-top:1px solid var(--line);padding-top:12px}
+.admin-search{margin:0 0 12px}
+.admin-search-row{display:flex;gap:8px;align-items:center}
+.admin-search-row input{flex:1;min-width:0;width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px}
+.admin-search-row input:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+.admin-entity{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0 0 12px;background:var(--card)}
+.admin-entity-title{font-size:14px;color:var(--navy);margin:0 0 8px;overflow-wrap:anywhere}
+.admin-field{margin:0 0 10px}
+.admin-field textarea{background:var(--card);border:1px solid var(--line);min-height:44px}
+.admin-field textarea:disabled,.admin-field input:disabled{background:#F3F4F6;color:var(--gray)}
+.admin-ph-table{min-width:640px}
+.admin-change{margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
+.admin-change-title{font-size:13.5px;color:var(--ink);margin:0 0 4px;overflow-wrap:anywhere}
+.admin-change-label{font-size:13px;margin:0 0 6px}
+.admin-change-added{color:#0E5132;background:#E6F4EC;border-color:#A7D7BC}
+.admin-change-removed{color:#7A1C1C;background:#FDECEC;border-color:#F0B4B4}
+.admin-change-changed{color:#6B3A00;background:#FFF4E5;border-color:#F1C58E}
+.admin-diff{table-layout:fixed}
+.admin-diff th:first-child{width:22%}
+.admin-before{background:#FDF3F3}
+.admin-after{background:#F0F8F3}
+.admin-confirm{margin:0}
+@media (max-width:600px){
+  .admin-search-row{flex-wrap:wrap}
+  .admin-panel-head{flex-wrap:wrap}
+}
+.admin-table-scroll:focus-visible{outline:3px solid var(--blue);outline-offset:2px}

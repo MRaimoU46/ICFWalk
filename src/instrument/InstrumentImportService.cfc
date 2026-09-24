@@ -96,14 +96,66 @@ component output="false" {
 	}
 
 	public struct function importConfig(required any config, string actorUserId = "") {
-		var started = getTickCount();
 		var validation = variables.validator.validate(arguments.config);
 		if (!validation.valid) {
 			variables.logger.warn("instrument.import.rejected", { "errorCount": arrayLen(validation.errors), "firstCode": validation.errors[1].code });
 			variables.errors.importValidation("Instrument configuration failed validation with " & arrayLen(validation.errors) & " error(s). First: " & validation.errors[1].message, validation.errors);
 		}
-
 		var normalized = variables.normalizer.fromConfig(arguments.config);
+		// The authoring-document validation above already ran the shared semantic rule set over
+		// exactly this normalized form (InstrumentConfigValidator.checkDefinitions).
+		return writeNormalizedDraft(normalized, arguments.actorUserId, {
+			"operation": "IMPORT", "warnings": validation.warnings, "definitionsValidated": true
+		});
+	}
+
+	/**
+	 * THE ONE WRITE PATH FOR A DRAFT'S CONTENT (Phase 6).
+	 *
+	 * An import, a clone of an existing version (ADM-06) and a wording edit to a DRAFT (ADM-06,
+	 * ADM-08) all end here, with a normalized instrument document, so none of them can be judged
+	 * by a different predicate or written through a weaker transaction than the others:
+	 *
+	 *   1. the shared semantic rule set (DefinitionValidator), unless the caller already ran it
+	 *      over this exact document -- an import has, inside InstrumentConfigValidator;
+	 *   2. compilation, and the REAL renderer building the compiled snapshot;
+	 *   3. one transaction: the version row under its lock, the lifecycle refusals, the shared
+	 *      metadata conflict decided on the locked current instrument row, the definition writes,
+	 *      the round-trip checksum proof, the snapshot, and the audit event;
+	 *   4. every refusal decided inside that transaction audited durably after the rollback.
+	 *
+	 * options (all optional):
+	 *   operation            IMPORT | CLONE | EDIT; recorded on refusal audits (default IMPORT)
+	 *   warnings             inbound-document warnings to return with the result
+	 *   definitionsValidated true when step 1 has already run over this document
+	 *   mustCreate           CLONE: refuse (409 VERSION_LABEL_EXISTS) if the label is taken
+	 *   targetVersionId      EDIT: the version the caller read; a different or vanished row is refused
+	 *   expectedChecksum     EDIT: the snapshot checksum the caller's edits were made against;
+	 *                        compared under the version lock (409 DRAFT_CHANGED)
+	 *   skipWhenUnchanged    EDIT: when the compiled snapshot equals the stored one, write nothing,
+	 *                        audit nothing, and report changed = false
+	 *   successEvent         the audit event for a successful write (default CREATED / REIMPORTED)
+	 *   auditDetails         extra lifecycle facts for that event (identifiers and counts only)
+	 */
+	public struct function writeNormalizedDraft(required struct normalized, string actorUserId = "", struct options = {}) {
+		var started = getTickCount();
+		var opts = {
+			"operation": "IMPORT", "warnings": [], "definitionsValidated": false, "mustCreate": false,
+			"targetVersionId": "", "expectedChecksum": "", "skipWhenUnchanged": false,
+			"successEvent": "", "auditDetails": {}
+		};
+		structAppend(opts, arguments.options, true);
+		var normalized = arguments.normalized;
+		var validation = { "warnings": opts.warnings };
+
+		if (!opts.definitionsValidated) {
+			var semantic = variables.validator.definitionValidator().validate(normalized.definitions, { "path": "$.definitions" });
+			if (!semantic.valid) {
+				variables.logger.warn("instrument.draft.rejected", { "operation": opts.operation, "errorCount": arrayLen(semantic.errors), "firstCode": semantic.errors[1].code });
+				variables.errors.importValidation("The instrument failed validation with " & arrayLen(semantic.errors) & " error(s). First: " & semantic.errors[1].message, semantic.errors);
+			}
+		}
+
 		var compiled = variables.compiler.compile(normalized);
 
 		// The renderer really does build what this document compiles to. The shared semantic rules
@@ -139,12 +191,32 @@ component output="false" {
 			var existing = variables.repo.findVersion(instrumentId, normalized.version.versionLabel, true);
 			var created = false;
 			var versionId = "";
+			var operation = opts.operation;
 			if (structIsEmpty(existing)) {
+				if (len(opts.targetVersionId)) {
+					// An edit names a DRAFT that no longer exists (it was discarded after it was
+					// read). Refuse rather than silently creating a new version under its label.
+					variables.errors.notFound("The DRAFT being edited no longer exists.", "INSTRUMENT_VERSION_NOT_FOUND");
+				}
 				versionId = variables.repo.createDraftVersion(instrumentId, normalized.version.versionLabel, actor);
 				created = true;
 			} else {
+				if (opts.mustCreate) {
+					// A clone creates a NEW version. Taking over an existing label would re-import
+					// whatever DRAFT carries it, or be refused as immutable, neither of which is
+					// what the caller asked for.
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_LABEL_EXISTS", actor);
+					variables.errors.conflict(
+						"A version labelled '" & normalized.version.versionLabel & "' already exists for this instrument. Choose a new label.",
+						"VERSION_LABEL_EXISTS", { "versionLabel": normalized.version.versionLabel, "versionId": existing.versionId }
+					);
+				}
+				if (len(opts.targetVersionId) && compare(existing.versionId, uCase(trim(opts.targetVersionId))) != 0) {
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_MISMATCH", actor);
+					variables.errors.conflict("The edited document names a different version than the one being edited.", "VERSION_MISMATCH");
+				}
 				if (existing.status != "DRAFT") {
-					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, "IMPORT", "VERSION_NOT_DRAFT", actor);
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_NOT_DRAFT", actor);
 					variables.errors.importPublishedVersion(normalized.version.versionLabel, existing.status);
 				}
 				var walkCount = variables.repo.countWalksForVersion(existing.versionId);
@@ -154,8 +226,25 @@ component output="false" {
 					// the refusal, so the catch below had nothing to persist and the attempt
 					// vanished with the rollback -- the one defect the post-rollback audit pattern
 					// exists to prevent.
-					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, "IMPORT", "VERSION_IN_USE", actor);
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_IN_USE", actor);
 					variables.errors.importVersionInUse(normalized.version.versionLabel, walkCount);
+				}
+				var storedChecksum = isNull(existing.checksum) ? "" : lCase(trim(existing.checksum));
+				if (len(opts.expectedChecksum) && compare(storedChecksum, lCase(trim(opts.expectedChecksum))) != 0) {
+					// Optimistic concurrency for DRAFT edits, decided under the version lock: the
+					// edits were made against a snapshot that is no longer the DRAFT's content.
+					// Applying them would silently discard whatever changed it.
+					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "DRAFT_CHANGED", actor);
+					variables.errors.conflict(
+						"This DRAFT changed after it was read. Reload it and make the edit again.",
+						"DRAFT_CHANGED", { "versionId": existing.versionId, "currentChecksum": storedChecksum }
+					);
+				}
+				if (opts.skipWhenUnchanged && compare(storedChecksum, compiled.checksum) == 0) {
+					// Nothing to write: the edited document compiles to exactly the stored snapshot.
+					// No row is touched and nothing is audited, so updated_at and row_version do not
+					// move for a change that did not happen.
+					return self.unchangedResult(existing.versionId, instrumentId, normalized, compiled);
 				}
 				versionId = existing.versionId;
 			}
@@ -190,12 +279,12 @@ component output="false" {
 				if (structIsEmpty(current)) {
 					// The instrument existed a moment ago and does not now. Refuse rather than
 					// re-create it: an import does not own the shared row's existence either.
-					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", "IMPORT", "SHARED_METADATA_CONFLICT", actor);
+					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", operation, "SHARED_METADATA_CONFLICT", actor);
 					variables.errors.notFound("No instrument with code '" & normalized.instrument.code & "' exists.", "INSTRUMENT_NOT_FOUND");
 				}
 				var conflicts = sharedMetadataConflicts(current, normalized.instrument);
 				if (arrayLen(conflicts)) {
-					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", "IMPORT", "SHARED_METADATA_CONFLICT", actor);
+					self.markRefusal(refusal, versionId, normalized.version.versionLabel, "DRAFT", operation, "SHARED_METADATA_CONFLICT", actor);
 					variables.errors.importValidation(
 						"The document's instrument metadata differs from the shared icf.instrument row, which an import does not own. Change it through the authorized instrument-level operation, or align the document.",
 						conflicts
@@ -219,7 +308,7 @@ component output="false" {
 			for (var w in writeWarnings) arrayAppend(warnings, w);
 			var placeholders = variables.compiler.placeholders(normalized.definitions);
 
-			variables.audit.record("INSTRUMENT_VERSION", versionId, created ? "INSTRUMENT_VERSION_CREATED" : "INSTRUMENT_VERSION_REIMPORTED", actor, {
+			var auditDetails = {
 				"versionLabel": normalized.version.versionLabel,
 				"instrumentCode": normalized.instrument.code,
 				"checksum": compiled.checksum,
@@ -227,7 +316,10 @@ component output="false" {
 				"counts": compiled.counts,
 				"warningCount": arrayLen(warnings),
 				"placeholderCount": arrayLen(placeholders)
-			});
+			};
+			structAppend(auditDetails, opts.auditDetails, true);
+			var successEvent = len(opts.successEvent) ? opts.successEvent : (created ? "INSTRUMENT_VERSION_CREATED" : "INSTRUMENT_VERSION_REIMPORTED");
+			variables.audit.record("INSTRUMENT_VERSION", versionId, successEvent, actor, auditDetails);
 
 			return {
 				"instrumentId": instrumentId,
@@ -236,6 +328,7 @@ component output="false" {
 				"instrumentCode": normalized.instrument.code,
 				"status": "DRAFT",
 				"created": created,
+				"changed": true,
 				"checksum": compiled.checksum,
 				"definitionsChecksum": compiled.definitionsChecksum,
 				"snapshotFormat": variables.compiler.snapshotFormat(),
@@ -253,8 +346,57 @@ component output="false" {
 		}
 
 		outcome["elapsedMs"] = getTickCount() - started;
-		variables.logger.info("instrument.import.completed", { "versionId": outcome.versionId, "created": outcome.created, "checksum": outcome.checksum, "counts": outcome.counts, "warningCount": arrayLen(outcome.warnings), "elapsedMs": outcome.elapsedMs });
+		variables.logger.info("instrument.draft.written", { "operation": opts.operation, "versionId": outcome.versionId, "created": outcome.created, "changed": outcome.changed, "checksum": outcome.checksum, "counts": outcome.counts, "warningCount": arrayLen(outcome.warnings), "elapsedMs": outcome.elapsedMs });
 		return outcome;
+	}
+
+	/**
+	 * The result of an edit that changed nothing. Public only because the transaction closure above
+	 * reaches it through `self`.
+	 */
+	public struct function unchangedResult(required string versionId, required string instrumentId, required struct normalized, required struct compiled) {
+		return {
+			"instrumentId": arguments.instrumentId,
+			"versionId": arguments.versionId,
+			"versionLabel": arguments.normalized.version.versionLabel,
+			"instrumentCode": arguments.normalized.instrument.code,
+			"status": "DRAFT",
+			"created": false,
+			"changed": false,
+			"checksum": arguments.compiled.checksum,
+			"definitionsChecksum": arguments.compiled.definitionsChecksum,
+			"snapshotFormat": variables.compiler.snapshotFormat(),
+			"counts": arguments.compiled.counts,
+			"warnings": [],
+			"placeholders": variables.compiler.placeholders(arguments.normalized.definitions)
+		};
+	}
+
+	/**
+	 * Records a refusal that was decided OUTSIDE a transaction -- a precondition an administration
+	 * operation checked before it began any write -- in exactly the shape the post-rollback path
+	 * uses, so every refused write of a given kind leaves the same single durable event whether it
+	 * was caught before the lock or under it.
+	 */
+	public void function recordRefusal(
+		required string versionId, required string versionLabel, required string status,
+		required string operation, required string reason, string actorUserId = ""
+	) {
+		var refusal = {};
+		markRefusal(refusal, arguments.versionId, arguments.versionLabel, arguments.status, arguments.operation, arguments.reason, arguments.actorUserId);
+		writeRefusalAudit(refusal);
+	}
+
+	/**
+	 * discardDraft, addressed by version id rather than by label (the administration route knows the
+	 * id). The label and instrument code are read from the row and handed to discardDraft, which
+	 * takes the version lock and makes every decision again under it.
+	 */
+	public struct function discardDraftById(required string versionId, string actorUserId = "") {
+		if (!variables.db.isGuid(arguments.versionId)) variables.errors.validation("versionId must be a GUID.", "INVALID_VERSION_ID");
+		var row = variables.repo.findVersionById(arguments.versionId);
+		if (structIsEmpty(row)) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
+		return discardDraft(row.versionLabel, arguments.actorUserId, row.instrumentCode);
 	}
 
 	/**

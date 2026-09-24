@@ -494,6 +494,95 @@ metadata/metadata and import's shared-state check against an authorized metadata
 (`SharedMetadataConcurrencyBarrierTest`). The decorator is test-only: the container never holds it
 and no route reaches it, so there is no configuration in which a client can activate a lock hook.
 
+## Instrument administration (Phase 6)
+
+```
+browser  admin.js -> /api/admin/instrument/*            (Router: permission instrument.manage; CSRF on every POST)
+            |
+AdminInstrumentController  (body contracts: only named members; no body on publish/discard; 5 MB import cap)
+            |
+InstrumentAdminService ----- reads ----> SnapshotService (checksum-verified snapshot -> render model)
+     |        |                           InstrumentVersionComparer (row-by-row diff on logical keys)
+     |        |                           DraftEditor (pure: which wording may change, and how)
+     |        '-- writes ---> InstrumentImportService.writeNormalizedDraft  (the one DRAFT write path)
+     |
+InstrumentPublishService.publish / .retire   (version row lock, then instrument; refusals audited after rollback)
+```
+
+**One write path for every DRAFT.** An upload, a clone and a wording edit all end as a normalized
+instrument document handed to `InstrumentImportService.writeNormalizedDraft`: the same definition
+validation, renderer preflight, version lock, compile, round-trip proof and refusal audit an import
+gets. Its options say what kind of write it is (`operation` IMPORT / CLONE / EDIT, `mustCreate` for a
+clone, `targetVersionId` + `expectedChecksum` for an edit, `skipWhenUnchanged`, the success event and
+extra audit details). `InstrumentAdminService` never writes a definition row, so there is no second,
+weaker authoring path to keep in step.
+
+**Wording, not structure, is edited in the browser.** `DraftEditor` allows the fields the acceptance
+criteria and the placeholder queue need -- section title, instructions and review status; item
+prompt, help text, placeholder, review status and revision notes; option label and definition;
+version review status and notes -- and nothing that changes structure (keys, types, response sets,
+rules, dimensions, order). Structure is authored in the instrument document and imported, as before.
+Keys match exactly. When an edit changes an item's prompt or review status, the document's
+`contentReview.unresolvedPlaceholders` summary is rebuilt from the items; otherwise it is untouched,
+so an unrelated edit cannot move snapshot bytes. Because `behavior` and item `settings` are never
+editable here, an in-app edit cannot change the summary export or the email draft
+(`behavior.export.fileNamePattern`, `settings.selectableParts`): the summary vectors stay valid.
+
+**Lost updates are refused, not merged.** An edit carries the checksum of the DRAFT it was made
+against. It is compared before the edit is built and again under the version row's lock inside the
+write; a mismatch is 409 `DRAFT_CHANGED` with the current checksum and a durable refusal audit.
+
+**Preview is the runtime's model.** `preview` returns `SnapshotService.renderModelFor(versionId)` --
+the builder, the verified snapshot and the cache walks use -- and the browser renders it with the same
+`renderer.js`, over a blank state that is never saved. For the version `/api/instrument/current`
+serves, the preview model is byte-identical (`admin-instrument.test.mjs`).
+
+**Comparison is on logical keys, exactly.** `InstrumentVersionComparer.diff` keys each collection by
+its logical key (sections by `sectionKey`, options by `setKey/optionKey`, and so on) and compares rows
+through canonical JSON, so a type change (`"1"` versus `1`) is a change and struct key order is not.
+It reports added, removed and changed rows with field-level before and after, plus a fixed list of
+version metadata.
+
+**Retirement.** `InstrumentPublishService.retire` takes the version row with `UPDLOCK, ROWLOCK` (the
+single lock order: version row, then instrument), refuses anything but PUBLISHED, and refuses
+leaving the instrument with no version in service unless the caller confirms
+(`allowNoCurrentVersion`). `DefinitionRepository.markRetired` sets `status = RETIRED` and
+`effective_end` (strictly after `effective_start`, which the schema's check requires); snapshot,
+checksum, publisher and publication time are untouched, and `InstrumentImmutabilityTest` now carries
+`markRetired` in its lifecycle inventory. Retirements of one instrument are serialized: after its
+version lock, `retire` takes a transaction-owned `sp_getapplock` named for the instrument
+(`DefinitionRepository.lockRetirement`) before it checks what stays in service. Without it, two
+administrators retiring the two in-service versions at once could each count on the other's
+version and both commit, leaving nothing in service unconfirmed
+(`RetireConcurrencyBarrierTest.testTwoRetirementsCannotTogetherLeaveNothingInService`, red before
+the lock). Only retirement takes that lock, so it adds no edge to the version-then-instrument order
+the other operations share. Who retired a version is recorded in the audit event, not a
+new column: no migration was needed.
+
+**A walk is never pinned to a retired version.** `WalkService.create` resolves the current version,
+then inserts the walk. Retirement could commit between the two. `WalkRepository.insertWalk` is now a
+status-qualified `INSERT ... SELECT` from the version row `WITH (HOLDLOCK, ROWLOCK)` with `OUTPUT
+INSERTED`: nothing inserted means the version is RETIRED, and the service answers 409
+`INSTRUMENT_VERSION_CHANGED`. The shared range lock also makes a retirement that arrives after the
+insert queue behind the walk's transaction. Before this change a barrier test produced both failure
+modes -- a walk pinned to a RETIRED version, and a SQL Server deadlock victim
+(`RetireConcurrencyBarrierTest`, red evidence in `docs/evidence/phase6-admin-red-before-fix.md`).
+Existing walks are unaffected: they open, save, complete, export and report against their pinned
+version whatever its status.
+
+**The view.** `app/assets/js/admin.js` is its own view in the one shell, like Reports. A user whose
+only capability is `instrument.manage` lands on it and never calls a walk or report route. Actions
+are offered by status (Preview, Compare, Placeholders and New draft for every version; Edit wording,
+Publish and Discard for a DRAFT; Retire for a PUBLISHED one), but every decision is the server's and
+a refusal is shown as the server gave it. Publish, retire and discard ask first in an inline
+`alertdialog` with focus on Cancel; retiring the only in-service version asks a second time. A
+mutation whose answer never arrived is reported as unknown and the list is reloaded, never assumed
+done. All text reaches the page through `textContent`; the CSP is unchanged.
+
+**Reports after a retirement.** Phase 7 already reports PUBLISHED and RETIRED versions. The one
+change there: when nothing is in service, the default report version is the newest frozen version
+instead of a 404, so the Reports view still opens (`InstrumentAdministrationTest.testReportsStillOpenWhenNoVersionIsInService`).
+
 ## Aggregate reporting (Phase 7)
 
 ```

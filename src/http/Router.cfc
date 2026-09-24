@@ -44,6 +44,17 @@ component output="false" {
 		// Publishing (Phase 6). State-changing, so it carries the same CSRF and permission posture
 		// as every other POST; the service refuses anything that is not a DRAFT.
 		add("POST", "^/api/admin/instrument/versions/([^/]+)/publish$", "adminInstrumentController", "publishVersion", { "permission": "instrument.manage" });
+		// The rest of instrument administration (Phase 6). Every route requires instrument.manage;
+		// every POST also requires the CSRF token (enforcePolicy). Reads are GETs and change nothing.
+		add("POST", "^/api/admin/instrument/import$", "adminInstrumentController", "importDocument", { "permission": "instrument.manage" });
+		add("GET", "^/api/admin/instrument/compare$", "adminInstrumentController", "compareVersions", { "permission": "instrument.manage" });
+		add("GET", "^/api/admin/instrument/versions/([^/]+)/preview$", "adminInstrumentController", "previewVersion", { "permission": "instrument.manage" });
+		add("GET", "^/api/admin/instrument/versions/([^/]+)/wording$", "adminInstrumentController", "wording", { "permission": "instrument.manage" });
+		add("GET", "^/api/admin/instrument/versions/([^/]+)/placeholders$", "adminInstrumentController", "placeholders", { "permission": "instrument.manage" });
+		add("POST", "^/api/admin/instrument/versions/([^/]+)/clone$", "adminInstrumentController", "cloneVersion", { "permission": "instrument.manage" });
+		add("POST", "^/api/admin/instrument/versions/([^/]+)/edits$", "adminInstrumentController", "editDraft", { "permission": "instrument.manage" });
+		add("POST", "^/api/admin/instrument/versions/([^/]+)/discard$", "adminInstrumentController", "discardVersion", { "permission": "instrument.manage" });
+		add("POST", "^/api/admin/instrument/versions/([^/]+)/retire$", "adminInstrumentController", "retireVersion", { "permission": "instrument.manage" });
 
 		// Walk persistence (Phase 4). Report-only and instrument-admin roles hold none of these
 		// capabilities and are refused before any controller runs; record-level scope/owner checks

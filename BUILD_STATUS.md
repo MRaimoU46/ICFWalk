@@ -3387,6 +3387,126 @@ the commit they describe.
    that changes on every one of three attempts is refused (409), which on a very busy district could
    surface during heavy editing of completed walks; drafts are excluded by default, so ordinary
    autosave traffic does not affect a default report.
-6. **The remainder of Phase 6** (ADM-02, ADM-06, ADM-07, ADM-08, administration UI) is not built.
+6. **The remainder of Phase 6** (ADM-02, ADM-06, ADM-07, ADM-08, administration UI) was not built by this session. It was built afterwards, on top of Phase 7: see "Phase 6 administration" below.
 7. **This is an implementation candidate.** Phase 7 has not been independently audited and is not
    frozen or accepted.
+
+## Phase 6 administration: preview, clone and compare, retire, placeholder queue, and the UI
+
+**Starting point.** The branch was fast-forwarded (clean tree, ancestor, no reset, rebase, force or
+rewrite) from `a8e97f22ae1639faef5b6e68bf7255dea838f8e2` to
+`0c6fa10972593043508f502538534c2aa95c671b` (the fourth and fifth publish-foundation corrections and
+Phase 7, all by other sessions). On that untouched commit against a fresh database:
+**Node/HTTP/Playwright 193/193 and CFML 411/411, 0 failed, 0 skipped.** The `phase-5-freeze` tag
+exists neither locally nor on the remote; it was not created, moved or deleted.
+
+**Scope.** The remainder of `docs/IMPLEMENTATION_PLAN.md` Phase 6 named in "Exact recommended
+starting point for the rest of Phase 6": ADM-02 preview, ADM-06 new DRAFT from a published version
+with an edited prompt and a compare view, ADM-07 retire, ADM-08 the placeholder review queue, and the
+administration UI for all of it, including ADM-01 import and ADM-04 publish from the browser.
+
+### What it adds
+
+| Piece | What it does |
+| --- | --- |
+| `src/instrument/InstrumentAdminService.cfc` | Version list (`isCurrent`, `isRuntimeInstrument`), preview, import, clone, wording search and edit, compare, placeholder queue, discard. Reads snapshots through `SnapshotService`; every DRAFT write goes through `writeNormalizedDraft`. |
+| `src/instrument/DraftEditor.cfc` | Pure: which wording fields may change (and their limits), applying an edit set with every issue and its path, keeping `contentReview.unresolvedPlaceholders` consistent, search. |
+| `src/instrument/InstrumentVersionComparer.cfc` | Pure: row-by-row diff of two snapshots on logical keys, exact and type-aware, plus version metadata. |
+| `InstrumentImportService.writeNormalizedDraft` | The one DRAFT write path, now shared by import, clone and edit (options: operation, `mustCreate`, `targetVersionId` + `expectedChecksum`, `skipWhenUnchanged`, success event and audit details). `importConfig` calls it. |
+| `InstrumentPublishService.retire` + `DefinitionRepository.markRetired` / `lockRetirement` | PUBLISHED to RETIRED under the version lock, `effective_end` set, nothing else touched; refuses leaving no version in service unless confirmed, with retirements of one instrument serialized so two at once cannot defeat that check; refusals audited after rollback. |
+| Routes (`docs/ENDPOINTS.md`) | `POST /api/admin/instrument/import`, `GET .../versions/{id}/preview`, `/wording`, `/placeholders`, `POST .../clone`, `/edits`, `/retire`, `/discard`, `GET /api/admin/instrument/compare`; all `instrument.manage`, CSRF on every POST. |
+| `app/assets/js/admin.js` + shell | The administration view: import with the validation summary, the version list with status and in-service badges, preview through `renderer.js`, compare, placeholder queue, wording editor, new draft, publish / retire / discard confirmations. An admin-only user lands on it. |
+
+Design and decisions (`docs/ARCHITECTURE.md` "Instrument administration (Phase 6)",
+`docs/DATA_CONTRACT.md` "Instrument administration writes and retirement (Phase 6)",
+`docs/OPEN_DECISIONS.md`):
+
+* **Wording only in the browser.** Structure stays authored in the document and imported. Behavior
+  and item settings are not editable, so no in-app edit can change the summary export or the email
+  draft; the summary vectors stay valid without regeneration.
+* **Placeholders are resolved by DRAFT edit** (the recorded safe default), and the queue shrinks.
+* **Lost updates are refused**: an edit names the checksum it was made against (409 `DRAFT_CHANGED`).
+* **Retirement is attributed in the audit event**, with `effective_end`; no column, no migration.
+  Retiring the only version in service needs explicit confirmation (asked twice in the UI).
+* **Any instrument code may be administered**; only `ICFWALK_INSTRUMENT_CODE` is what walks use.
+* **The shared-metadata operation stays unrouted**; nobody has decided who may rename or take an
+  instrument out of service.
+
+### Narrow changes to earlier-phase files
+
+| File | Change | Why it was necessary |
+| --- | --- | --- |
+| `src/walks/WalkRepository.cfc` (`insertWalk`) | Status-qualified `INSERT ... SELECT` from the version row `WITH (HOLDLOCK, ROWLOCK)`, `OUTPUT INSERTED`; returns `""` when nothing was inserted. | Without it a retirement between version resolution and insert pinned a new walk to a RETIRED version, and the other ordering deadlocked (red evidence 1). |
+| `src/walks/WalkService.cfc` (`create`) | Nothing inserted: 409 `INSTRUMENT_VERSION_CHANGED` with `retiredVersionId`. | The existing code for "the version changed; reload". |
+| `src/reports/ReportService.cfc` (`resolveVersion`) | With nothing in service, default to the newest frozen version. | Retiring the only version made `/api/reports/options` 404 and the Reports view unopenable (red evidence 3). |
+| `src/controllers/AdminInstrumentController.cfc` (`publishVersion`) | Uses the shared `refuseAnyBody` helper. | Same contract and codes; the helper is shared with discard. |
+| `src/instrument/InstrumentImportService.cfc` | `importConfig` delegates its write to `writeNormalizedDraft`; `unchangedResult`, `recordRefusal`, `discardDraftById` added. | One write path for import, clone and edit. The existing import tests pass unchanged. |
+| `src/instrument/InstrumentPublishService.cfc` | `retire` added beside `publish`. | Retirement is the other lifecycle transition and shares publish's lock, refusal-audit and actor rules; `publish` is unchanged. |
+| `src/instrument/DefinitionRepository.cfc` | `markRetired`, `lockRetirement`, `findCurrentVersionExcluding`, `currentVersionIds`. | Retirement, its per-instrument serialization (red evidence 4), and the list's in-service marker (the same predicate as `SnapshotService.currentVersion`). |
+| `src/instrument/InstrumentConfigValidator.cfc` | `definitionValidator()` accessor. | The write path validates edited definitions with the one shared rule set. |
+| `src/core/Errors.cfc` | `retireNotPublished` (409), `payloadTooLarge` (413). | New refusals, mapped centrally. |
+| `src/Bootstrap.cfc`, `src/http/Router.cfc` | Wiring and the nine routes. | Nothing existing moved; no existing route or policy changed. |
+| `src/views/shell.html`, `app/assets/js/app.js`, `app/assets/js/api.js`, `app/assets/css/icfwalk.css` | Admin nav button and view; `canAdmin` from `/api/me` (a boolean for the global permission); admin-only users land on it; `api.postEmpty` for the no-body routes; styles appended. | The view. Walk and report users see exactly what they saw before, plus the button when they also hold `instrument.manage`. |
+| `tests/cfml/specs/InstrumentImmutabilityTest.cfc` | `markRetired` in a new lifecycle inventory, with its own contract test. | The mutator inventory test fails on any unlisted mutator, by design. |
+| `tests/cfml/support/Intercepting{Definition,Walk}Repository.cfc` | `markRetired`, `lockRetirement`, `findCurrentVersionExcluding` and `insertWalk` barrier seams. | Test-only, like every other seam: nothing in `src/` references them and no route, flag or hook reaches them. |
+| `package.json` | `test:admin`; `browser-admin` added to `test:browser`. | Scripts only; no dependency added. |
+
+No schema migration, dependency, framework or infrastructure was added. No existing test was
+removed, skipped, weakened or rewritten.
+
+### Files changed
+
+| File | Status |
+| --- | --- |
+| `src/instrument/InstrumentAdminService.cfc`, `src/instrument/DraftEditor.cfc`, `src/instrument/InstrumentVersionComparer.cfc`, `app/assets/js/admin.js` | New |
+| `tests/cfml/specs/InstrumentAdministrationTest.cfc` (17), `DraftEditorTest.cfc` (11), `InstrumentVersionComparerTest.cfc` (6), `RetireConcurrencyBarrierTest.cfc` (3) | New |
+| `tests/node/admin-instrument.test.mjs` (11), `tests/node/browser-admin.test.mjs` (6) | New |
+| `docs/evidence/phase6-admin-red-before-fix.md`, `docs/evidence/screenshots/admin-*.png` | New |
+| The files in the table above | Changed |
+| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/LOCAL_SETUP.md`, `docs/ACCEPTANCE_TRACKING.md`, `BUILD_STATUS.md` | Records |
+| `manifest.json` | Refreshed (`node scripts/refresh-manifest.mjs`) |
+
+### Tests and results (development runs, before the commit)
+
+Environment: Lucee 6.2.8.20, SQL Server 2022 Developer in Docker, Node 22.22.2, Playwright 1.56.1
+with Chromium, axe-core 4.13.0.
+
+| Run | Result |
+| --- | --- |
+| Base `0c6fa10`, fresh database | Node/HTTP/Playwright 193/193, CFML 411/411 |
+| New and affected CFML specs | `InstrumentAdministrationTest` 17/17, `DraftEditorTest` 11/11, `InstrumentVersionComparerTest` 6/6, `RetireConcurrencyBarrierTest` 3/3, `InstrumentImmutabilityTest` 15/15, `ReportServiceTest` 15/15, `ReportCoherenceTest` 4/4 |
+| New HTTP and browser files | `admin-instrument` 11/11, `browser-admin` 6/6 |
+| Neighbouring suites after the shell and router changes | `shell`, `visibility`, `admin-publish`, `walks`, `browser`, `browser-reports`, `browser-persistence`: 102/102 |
+
+Red before green (`docs/evidence/phase6-admin-red-before-fix.md`): the retire race (a walk pinned
+to a RETIRED version; a deadlock victim), a 500 for an import without a document, Reports
+unopenable after retiring the only version, two concurrent retirements leaving nothing in service,
+and every new check failing against the base source.
+
+**The authoritative result is the full gate on the exact commit**, from a clean tree on a freshly
+created database with screenshots written outside the repository. Its transcript is
+`docs/evidence/phase6-admin-release-gate.txt`, added in the commit that follows this one, because
+recording it here would change the commit it describes.
+
+### Unresolved and not verified (Phase 6 administration)
+
+1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New engine-sensitive constructs
+   to re-run there: `WITH (HOLDLOCK, ROWLOCK)` on the `INSERT ... SELECT` source with `OUTPUT
+   INSERTED` (SQL Server 2016 syntax, but the lock behavior under the Adobe datasource's isolation
+   level must be re-proved by `RetireConcurrencyBarrierTest`), `sp_getapplock` with a
+   transaction owner inside the Adobe `transaction` block (it must run on the transaction's own
+   connection), a non-`required` argument receiving
+   `null` positionally, `cfthread` in the new barrier spec, `compare()` for case-sensitive key
+   matching, and the raw body length the 413 cap reads.
+2. **The approved wording for the 17 placeholder prompts is still the district's to supply.** The
+   tooling to apply it exists; the content does not.
+3. **Structure is not editable in the browser** by decision; a structural change is a document edit
+   and import.
+4. **Screen readers were not tested.** The view passes axe-core (WCAG 2.1 A/AA, serious and critical)
+   and keyboard checks; that is not the same thing.
+5. **On a phone the version list scrolls sideways inside its own region** (no page overflow). It is
+   usable, not designed for 375 px; administrators are expected on a desktop.
+6. **A 422 publish refusal is not browser-tested** (ADM-03 row). The service and HTTP evidence is
+   unchanged.
+7. **Nothing here is independently audited.** Phase 6 administration and Phase 7 are implementation
+   candidates: not frozen, not accepted.

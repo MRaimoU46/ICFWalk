@@ -14,6 +14,8 @@
  *   ICFWalk.Import.PublishedVersion 409  Import targeted a PUBLISHED/RETIRED version
  *   ICFWalk.Publish.NotDraft        409  Publish or edit targeted a version that is not a DRAFT
  *   ICFWalk.Publish.Validation      422  A DRAFT was not publishable; nothing was changed
+ *   ICFWalk.Retire.NotPublished     409  Retirement targeted a version that is not PUBLISHED
+ *   ICFWalk.PayloadTooLarge      413  A request body exceeded the route's documented limit
  *   ICFWalk.Import.VersionInUse  409  A DRAFT already referenced by walks cannot be rewritten
  *   ICFWalk.Configuration        500  Deployment configuration is invalid
  */
@@ -74,6 +76,23 @@ component output="false" {
 		);
 	}
 
+	/**
+	 * Retirement (Phase 6, ADM-07). Only a PUBLISHED version can be retired: a DRAFT is discarded
+	 * instead, and a RETIRED version is already out of service.
+	 */
+	public void function retireNotPublished(required string versionLabel, required string status) {
+		raise(
+			"ICFWalk.Retire.NotPublished",
+			"Instrument version '" & arguments.versionLabel & "' is " & arguments.status & " and cannot be retired. Only a PUBLISHED version can be retired.",
+			"INSTRUMENT_VERSION_NOT_PUBLISHED",
+			{ "versionLabel": arguments.versionLabel, "status": arguments.status }
+		);
+	}
+
+	public void function payloadTooLarge(required string message, string code = "PAYLOAD_TOO_LARGE", any details = "") {
+		raise("ICFWalk.PayloadTooLarge", arguments.message, arguments.code, arguments.details);
+	}
+
 	public void function publishValidation(required string message, required array issues) {
 		raise("ICFWalk.Publish.Validation", arguments.message, "INSTRUMENT_VERSION_NOT_PUBLISHABLE", { "issues": arguments.issues });
 	}
@@ -107,6 +126,8 @@ component output="false" {
 			case "ICFWalk.Import.Validation": return 422;
 			case "ICFWalk.Publish.NotDraft": return 409;
 			case "ICFWalk.Publish.Validation": return 422;
+			case "ICFWalk.Retire.NotPublished": return 409;
+			case "ICFWalk.PayloadTooLarge": return 413;
 			case "ICFWalk.Configuration": return 500;
 		}
 		return 500;

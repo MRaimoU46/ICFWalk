@@ -389,6 +389,125 @@ component output="false" {
 		);
 	}
 
+	/**
+	 * Serializes retirements of one instrument (Phase 6, ADM-07), for the rest of the caller's
+	 * transaction.
+	 *
+	 * Retirement refuses to leave an instrument with no version in service unless confirmed, and
+	 * decides that from the OTHER versions' rows, which it reads without locking them. Two
+	 * retirements of the two in-service versions, each holding only its own version row, could
+	 * therefore each see the other still in service and both commit: nothing in service, nobody
+	 * confirmed it (RetireConcurrencyBarrierTest.testTwoRetirementsCannotTogetherLeaveNothingInService).
+	 *
+	 * This takes an exclusive, transaction-owned application lock named for the instrument. Only
+	 * retirement takes it, after its version row lock, so it adds no edge to the lock order the
+	 * other operations share (version row, then instrument row): a second retirement of the same
+	 * instrument queues here and decides after the first has committed. The lock is released by the
+	 * commit or rollback; there is nothing to release by hand.
+	 */
+	public void function lockRetirement(required string instrumentId) {
+		var granted = variables.db.scalar(
+			"SET NOCOUNT ON;
+			 DECLARE @result int;
+			 EXEC @result = sp_getapplock @Resource = :resource, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 30000;
+			 SELECT @result AS granted;",
+			{ "resource": variables.db.nvarchar("icfwalk:retire:" & uCase(arguments.instrumentId), 255) },
+			-999
+		);
+		// 0 granted at once, 1 granted after waiting; anything negative is a timeout, a deadlock
+		// or a call outside a transaction, and retirement must not proceed unserialized.
+		if (granted < 0) {
+			variables.errors.conflict("Another retirement of this instrument is still in progress. Try again.", "RETIRE_IN_PROGRESS", { "applockResult": granted });
+		}
+	}
+
+	/**
+	 * Retirement (Phase 6, ADM-07): PUBLISHED -> RETIRED, as one status-qualified statement.
+	 *
+	 * The row keeps everything publication froze -- snapshot, checksum, publisher, published_at,
+	 * effective_start -- because walks already pinned to the version keep rendering from exactly
+	 * that snapshot. Two things change: the status, which takes the version out of
+	 * SnapshotService.currentVersion()'s predicate so no new walk can be created against it, and
+	 * effective_end, which records when it stopped being in service. effective_end must be after
+	 * effective_start (CK_instrument_version_dates), so a version retired in the same millisecond it
+	 * took effect ends one millisecond later rather than failing the constraint.
+	 *
+	 * The WHERE clause re-asserts PUBLISHED, so a DRAFT cannot be retired (it is discarded instead)
+	 * and a second retirement matches nothing. Only PUBLISHED may become RETIRED; the caller locks
+	 * the row first (findVersionByIdForUpdate) and decides under that lock, and this statement is
+	 * the structural half that holds even if a caller did not. Returns 1 when this call retired the
+	 * version, read back rather than trusted from a driver row count.
+	 *
+	 * Attribution is the INSTRUMENT_VERSION_RETIRED audit event the caller writes in the same
+	 * transaction; the schema carries no retired-by column and this adds none
+	 * (docs/OPEN_DECISIONS.md).
+	 */
+	public numeric function markRetired(required string versionId) {
+		var params = { "id": variables.db.guid(arguments.versionId) };
+		var before = variables.db.run(
+			"SELECT status FROM [icf].[instrument_version] WITH (UPDLOCK, ROWLOCK) WHERE version_id = :id",
+			params
+		);
+		if (!before.recordCount) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
+		if (before.status[1] != "PUBLISHED") return 0;
+		variables.db.run(
+			"UPDATE [icf].[instrument_version]
+			    SET status = N'RETIRED',
+			        effective_end = CASE WHEN SYSUTCDATETIME() > effective_start THEN SYSUTCDATETIME()
+			                             ELSE DATEADD(millisecond, 1, effective_start) END,
+			        updated_at = SYSUTCDATETIME()
+			  WHERE version_id = :id AND status = N'PUBLISHED'",
+			params
+		);
+		return variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[instrument_version] WHERE version_id = :id AND status = N'RETIRED' AND effective_end IS NOT NULL",
+			params
+		);
+	}
+
+	/**
+	 * The version the runtime would serve for this instrument if `excludingVersionId` were not
+	 * there, by the same predicate SnapshotService.currentVersion() uses (PUBLISHED, a snapshot,
+	 * in effect now, newest first). Empty when there is none. Retirement uses it to tell an
+	 * administrator that retiring this version leaves nothing for new walks.
+	 */
+	public struct function findCurrentVersionExcluding(required string instrumentId, required string excludingVersionId) {
+		var q = variables.db.run(
+			"SELECT TOP 1 v.version_id, v.version_label
+			   FROM [icf].[instrument_version] v
+			  WHERE v.instrument_id = :instrumentId AND v.version_id <> :excluding
+			    AND v.status = N'PUBLISHED' AND v.compiled_snapshot_json IS NOT NULL
+			    AND v.effective_start IS NOT NULL AND v.effective_start <= SYSUTCDATETIME()
+			    AND (v.effective_end IS NULL OR v.effective_end > SYSUTCDATETIME())
+			  ORDER BY v.effective_start DESC, v.published_at DESC, v.created_at DESC",
+			{ "instrumentId": variables.db.guid(arguments.instrumentId), "excluding": variables.db.guid(arguments.excludingVersionId) }
+		);
+		if (!q.recordCount) return {};
+		return { "versionId": uCase(q.version_id[1]), "versionLabel": q.version_label[1] };
+	}
+
+	/**
+	 * For each instrument, the version the runtime would serve now -- the same predicate as
+	 * SnapshotService.currentVersion(), including the shared row's `active` -- as a set of version
+	 * ids. Read-only; the administration list marks these as current.
+	 */
+	public struct function currentVersionIds() {
+		var q = variables.db.run(
+			"SELECT ranked.version_id FROM (
+			    SELECT v.version_id,
+			           ROW_NUMBER() OVER (PARTITION BY v.instrument_id ORDER BY v.effective_start DESC, v.published_at DESC, v.created_at DESC) AS rn
+			      FROM [icf].[instrument_version] v
+			      JOIN [icf].[instrument] i ON i.instrument_id = v.instrument_id
+			     WHERE i.active = 1 AND v.status = N'PUBLISHED' AND v.compiled_snapshot_json IS NOT NULL
+			       AND v.effective_start IS NOT NULL AND v.effective_start <= SYSUTCDATETIME()
+			       AND (v.effective_end IS NULL OR v.effective_end > SYSUTCDATETIME())
+			 ) ranked WHERE ranked.rn = 1"
+		);
+		var out = {};
+		for (var r = 1; r <= q.recordCount; r++) out[uCase(q.version_id[r])] = true;
+		return out;
+	}
+
 	public string function createDraftVersion(required string instrumentId, required string versionLabel, string createdByUserId = "") {
 		var id = variables.db.newGuid();
 		variables.db.run(

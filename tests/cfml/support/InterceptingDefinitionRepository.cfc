@@ -27,6 +27,9 @@
  *   lockInstrumentById          import's locked re-read of icf.instrument, after the version lock
  *   createDimensionIdentity     the DRAFT-qualified mint of a global dimension identity
  *   createDimensionValueIdentity  the same, for a global dimension-value identity
+ *   markRetired                 retirement's PUBLISHED -> RETIRED transition (Phase 6, ADM-07)
+ *   lockRetirement              retirement's per-instrument serialization, before its successor check
+ *   findCurrentVersionExcluding retirement's successor check (armed after: "what stays in service")
  *   findInstrumentByCode        the pre-correction UNLOCKED read the metadata service used to start
  *                               from. Armed alongside lockInstrumentByCode so the metadata barrier
  *                               specs fail on behaviour -- a lost update -- against the code that
@@ -160,6 +163,37 @@ component output="false" {
 		trigger("before", "createDimensionValueIdentity");
 		var result = variables.inner.createDimensionValueIdentity(arguments.versionId, arguments.dimensionId, arguments.row);
 		trigger("after", "createDimensionValueIdentity");
+		return result;
+	}
+
+	/**
+	 * Retirement's status transition (Phase 6, ADM-07). Its UPDATE is the statement that needs an
+	 * exclusive lock on the version row, so it is where a retirement queues behind a walk that is
+	 * being pinned to that version.
+	 */
+	public numeric function markRetired(required string versionId) {
+		trigger("before", "markRetired");
+		var result = variables.inner.markRetired(arguments.versionId);
+		trigger("after", "markRetired");
+		return result;
+	}
+
+	/**
+	 * Retirement's per-instrument serialization (Phase 6, ADM-07): where a second retirement of the
+	 * same instrument queues. `findCurrentVersionExcluding` is the successor check that follows it,
+	 * armed AFTER so a spec is inside the first retirement once it has decided what stays in service.
+	 * Against code without `lockRetirement` the before-seam simply never fires.
+	 */
+	public void function lockRetirement(required string instrumentId) {
+		trigger("before", "lockRetirement");
+		variables.inner.lockRetirement(arguments.instrumentId);
+		trigger("after", "lockRetirement");
+	}
+
+	public struct function findCurrentVersionExcluding(required string instrumentId, required string excludingVersionId) {
+		trigger("before", "findCurrentVersionExcluding");
+		var result = variables.inner.findCurrentVersionExcluding(arguments.instrumentId, arguments.excludingVersionId);
+		trigger("after", "findCurrentVersionExcluding");
 		return result;
 	}
 

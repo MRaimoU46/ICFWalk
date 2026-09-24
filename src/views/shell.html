@@ -20,6 +20,7 @@
     <span class="status" id="user-name"></span>
     <button type="button" class="btn btn-ghost" id="nav-list-btn" hidden>My walks</button>
     <button type="button" class="btn btn-ghost" id="nav-reports-btn" hidden>Reports</button>
+    <button type="button" class="btn btn-ghost" id="nav-admin-btn" hidden>Instrument admin</button>
   </div>
 </header>
 
@@ -84,6 +85,33 @@
     <p class="status report-status" id="report-status" role="status" aria-live="polite"></p>
     <div id="report-error" class="app-message error" role="alert" hidden></div>
     <div id="report-results"></div>
+  </section>
+
+  <!-- INSTRUMENT ADMINISTRATION VIEW (Phase 6): instrument.manage only; built by assets/js/admin.js -->
+  <section id="view-admin" hidden aria-labelledby="admin-heading">
+    <div class="list-header">
+      <div>
+        <h1 id="admin-heading" tabindex="-1">Instrument administration</h1>
+        <p class="muted list-sub">Import, review, publish and retire instrument versions. Published versions never change.</p>
+      </div>
+    </div>
+    <p class="status admin-status" id="admin-status" role="status" aria-live="polite"></p>
+    <div id="admin-error" class="app-message error" role="alert" hidden></div>
+    <form id="admin-import-form" class="section-card admin-import" novalidate aria-labelledby="admin-import-title">
+      <h2 class="section-title" id="admin-import-title">Import an instrument document</h2>
+      <p class="section-sub" id="admin-import-hint">The document is validated in full before anything is written. A valid document becomes a DRAFT; nothing is published until you publish it.</p>
+      <label for="admin-import-file">Instrument document (.json)</label>
+      <input type="file" id="admin-import-file" accept=".json,application/json" aria-describedby="admin-import-hint">
+      <div class="row-actions">
+        <button type="submit" class="btn btn-primary" id="admin-import-btn">Validate and import</button>
+      </div>
+      <div id="admin-import-result" aria-live="polite"></div>
+    </form>
+    <section class="section-card" aria-labelledby="admin-versions-title">
+      <h2 class="section-title" id="admin-versions-title">Versions</h2>
+      <div id="admin-versions"></div>
+    </section>
+    <section id="admin-panel" class="section-card admin-panel" hidden></section>
   </section>
 
   <!-- WALK VIEW -->

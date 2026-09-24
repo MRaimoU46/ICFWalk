@@ -324,7 +324,9 @@ instrument row, then children. Publication, import, every version-content mutato
 identity creators take it in that order, so a publish racing an edit queues on one row instead of
 interleaving, and no pair of them can deadlock by taking two rows in opposite orders. The one write
 that does not start from a version -- `createInstrument` -- happens before the instrument has any
-versions. The shared-metadata operation takes **only** `icf.instrument`, and requests no version
+versions. Retirement (Phase 6) adds one lock that nothing else takes: after its version row, an
+exclusive transaction-owned application lock per instrument, so concurrent retirements queue on it
+without joining any other operation's order. The shared-metadata operation takes **only** `icf.instrument`, and requests no version
 lock at all, so it cannot invert the order either; import takes the version row first and then
 re-reads `icf.instrument` under its own lock, in that order, to decide the shared-metadata
 conflict on the current row rather than on the unlocked read it used to resolve the instrument id.
@@ -344,6 +346,57 @@ There is **no unchecked deletion path**. `deleteDraftVersionCascade` refuses a n
 every other mutator. Test fixtures that must remove a frozen fixture version use the test-only
 harness `tests/cfml/support/FixtureCleanup.cfc`, which no application code references and no HTTP
 route reaches, or the `ICFWALK_TESTS_ENABLED`-gated maintenance cleanup.
+
+## Instrument administration writes and retirement (Phase 6)
+
+**Every DRAFT write is an import.** An administrator's upload, a clone of any version and a wording
+edit each become a normalized instrument document and are written by
+`InstrumentImportService.writeNormalizedDraft`, under the same rules as the maintenance import:
+validation of the whole document (every issue reported), the renderer preflight, the version lock,
+the compile, the round-trip checksum proof, and a durable refusal audit written after the rollback.
+
+- **Clone.** The new DRAFT's content is the source version's compiled snapshot, read back into the
+  normalized form (`DraftEditor.normalizedFromSnapshot`, the exact inverse of the compiler: the
+  clone's `definitionsChecksum` equals the source's). Only the version label and, optionally, its
+  revision notes change. The source, of any status, is read and never written. A label already used
+  by that instrument is refused (409 `VERSION_LABEL_EXISTS`).
+- **Wording edit.** Editable fields only (section title, instructions, review status; item prompt,
+  help text, placeholder, review status, revision notes; response option label and definition;
+  version review status and revision notes). Keys, types, response sets, rules, dimensions, order,
+  `behavior` and item `settings` are not editable in the browser; they are authored in the document.
+  An edit names the checksum it was made against and is refused (409 `DRAFT_CHANGED`) if the DRAFT
+  moved, before the edit is built and again under the version lock. An edit that produces an
+  invalid instrument is refused exactly as the same content imported would be (422). An edit set
+  that changes nothing writes nothing and audits nothing.
+- **Placeholder summary.** `contentReview.unresolvedPlaceholders` is derived from the items whose
+  review status is the placeholder status. When an applied edit changes an item's prompt or review
+  status the summary is rebuilt (surviving entries keep their order, entries no longer marked are
+  dropped, newly marked items are appended by key); any other edit leaves it byte-for-byte alone.
+  Resolving a placeholder is therefore a DRAFT edit: replace the prompt and change the review status.
+
+**Retirement.** Only a PUBLISHED version can be retired. Under the version row's lock, `status`
+becomes `RETIRED` and `effective_end` is set to the retirement instant (or one millisecond after
+`effective_start`, if that is later, so `CK_instrument_version_dates` holds). Nothing else
+changes: snapshot, checksum, publisher, `published_at` and every definition row stay exactly as
+frozen, and the DRAFT-only write boundary still refuses every content mutator. The actor and the
+facts (walk count, successor, whether the instrument was left with no version in service) are in the
+`INSTRUMENT_VERSION_RETIRED` audit event; there is no retirement column. Retiring the only version in
+service is refused unless the administrator confirms it, and that check cannot be defeated by two
+retirements at once: retirements of one instrument are serialized by a transaction-owned
+application lock (`sp_getapplock`, exclusive, named for the instrument) taken after the version row
+lock, so the second decides only after the first has committed.
+
+A RETIRED version leaves the current-version predicate (its `effective_end` is not in the future),
+so no new walk starts on it. **A walk already pinned to it keeps working**: it opens, renders from its
+own snapshot, saves, completes, exports and is reported, exactly as before. The walk insert itself is
+status-qualified: `INSERT ... SELECT` from the version row `WITH (HOLDLOCK, ROWLOCK)` where the status
+is not RETIRED, with `OUTPUT INSERTED`. A retirement that commits between version resolution and the
+insert therefore inserts nothing (409 `INSTRUMENT_VERSION_CHANGED`), and one that arrives after the
+insert waits for the walk's transaction. A walk row can never name a version that was already RETIRED
+when it was written.
+
+Reports (Phase 7) already include RETIRED versions. With nothing in service, the default report
+version is the newest frozen version.
 
 ## Publisher attribution
 
@@ -794,7 +847,7 @@ submitted one.
 - The current version is scoped to the ICFWalk instrument itself (`ICFWALK_INSTRUMENT_CODE`): the
   newest PUBLISHED version whose `effective_start` is at or before the current UTC instant and
   whose `effective_end` is absent or still in the future. A version scheduled for a future term, an
-  expired one, and a version of any other instrument that happens to share a label are all
+  expired or retired one (retirement sets `effective_end`, Phase 6), and a version of any other instrument that happens to share a label are all
   excluded. The development-only DRAFT preview is scoped to the same instrument and has no
   effective window.
 - Draft import and draft discard resolve a version by `(instrument_id, version_label)`. A version

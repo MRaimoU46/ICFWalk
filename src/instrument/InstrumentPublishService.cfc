@@ -360,6 +360,113 @@ component output="false" {
 	}
 
 	/**
+	 * Retires one PUBLISHED version on behalf of one authenticated user (Phase 6, ADM-07).
+	 *
+	 * WHAT RETIRING IS. The version stops being served for NEW walks and nothing else about it
+	 * changes. Its snapshot, checksum, publisher and publication time stay exactly as frozen, so
+	 * every walk already pinned to it keeps opening, rendering, summarizing and reporting against
+	 * the version it was conducted under. The status leaves SnapshotService.currentVersion()'s
+	 * predicate, and effective_end records when it went out of service.
+	 *
+	 * WHAT IT PROVES, under the version row's lock (the same lock, in the same order, as publish
+	 * and every definition write):
+	 *   - the version exists and is PUBLISHED. A DRAFT is discarded, not retired; a RETIRED version
+	 *     is already out of service. Both are refused (409 INSTRUMENT_VERSION_NOT_PUBLISHED).
+	 *   - the actor is a known application user (integrity for the audit's foreign key; the ROUTE
+	 *     is what requires instrument.manage).
+	 *   - retiring it would not leave the instrument with no version for new walks -- unless the
+	 *     caller says so explicitly (`allowNoCurrentVersion`). Taking the only in-service version
+	 *     out of service stops every new walk; that is a legitimate decision, and it is made on
+	 *     purpose rather than as a side effect (409 RETIRE_LEAVES_NO_CURRENT_VERSION otherwise).
+	 *
+	 * NEW WALKS CANNOT SLIP PAST IT. A walk is created against whatever currentVersion() returned a
+	 * moment earlier, so without more a walk could be pinned to a version retired in between.
+	 * WalkRepository.insertWalk therefore inserts only while the version is not RETIRED, holding a
+	 * shared lock on the version row until the walk commits: a retirement that committed first
+	 * makes the insert match nothing (409 INSTRUMENT_VERSION_CHANGED, the client reloads), and a
+	 * walk that got there first is committed before the retirement can be.
+	 *
+	 * Every refusal rolls back and writes exactly one INSTRUMENT_VERSION_RETIRE_REFUSED event after
+	 * the rollback; success writes one INSTRUMENT_VERSION_RETIRED event naming the actor.
+	 */
+	public struct function retire(required string versionId, required string actorUserId, boolean allowNoCurrentVersion = false) {
+		if (!variables.db.isGuid(arguments.versionId)) {
+			variables.errors.validation("versionId must be a GUID.", "INVALID_VERSION_ID");
+		}
+		if (!variables.db.isGuid(arguments.actorUserId)) {
+			variables.errors.validation("The retiring user must be a valid user id.", "RETIRER_INVALID");
+		}
+		var actor = uCase(trim(arguments.actorUserId));
+		var wanted = arguments.versionId;
+		var allowNone = arguments.allowNoCurrentVersion;
+		var self = this;
+		var refusal = {};
+		var outcome = "";
+		try {
+			outcome = variables.db.transact(function() {
+				var version = variables.repo.findVersionByIdForUpdate(wanted);
+				if (structIsEmpty(version)) {
+					variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
+				}
+				if (version.status != "PUBLISHED") {
+					self.markRefusal(refusal, version, "NOT_PUBLISHED", {});
+					variables.errors.retireNotPublished(version.versionLabel, version.status);
+				}
+				if (!variables.repo.userExists(actor)) {
+					self.markRefusal(refusal, version, "RETIRER_UNKNOWN", { "attemptedRetirerUserId": actor });
+					variables.errors.validation("The retiring user does not exist.", "RETIRER_UNKNOWN");
+				}
+				// Serialize retirements of this instrument before deciding what stays in service: two
+				// retirements must not each count on the other's version (DefinitionRepository.lockRetirement).
+				variables.repo.lockRetirement(version.instrumentId);
+				var successor = variables.repo.findCurrentVersionExcluding(version.instrumentId, version.versionId);
+				if (structIsEmpty(successor) && !allowNone) {
+					self.markRefusal(refusal, version, "LEAVES_NO_CURRENT_VERSION", {});
+					variables.errors.conflict(
+						"Retiring '" & version.versionLabel & "' would leave instrument '" & version.instrumentCode & "' with no version for new walks. Publish a replacement first, or confirm that new walks should stop.",
+						"RETIRE_LEAVES_NO_CURRENT_VERSION",
+						{ "versionLabel": version.versionLabel, "instrumentCode": version.instrumentCode }
+					);
+				}
+				var retired = variables.repo.markRetired(version.versionId);
+				if (retired != 1) {
+					// Unreachable while the lock above is held; asserted rather than assumed.
+					throw(type = "ICFWalk.Retire.NotPublished", message = "Instrument version '" & version.versionLabel & "' was not retired; the transaction was rolled back.", errorcode = "INSTRUMENT_VERSION_RETIRE_FAILED");
+				}
+				var walkCount = variables.repo.countWalksForVersion(version.versionId);
+				var frozen = variables.repo.findVersionById(version.versionId);
+				variables.audit.record("INSTRUMENT_VERSION", version.versionId, "INSTRUMENT_VERSION_RETIRED", actor, {
+					"versionLabel": version.versionLabel,
+					"instrumentCode": version.instrumentCode,
+					"checksum": frozen.checksum,
+					"walkCount": walkCount,
+					"successorVersionId": structIsEmpty(successor) ? javaCast("null", "") : successor.versionId,
+					"leftNoCurrentVersion": structIsEmpty(successor)
+				});
+				return {
+					"versionId": version.versionId,
+					"versionLabel": version.versionLabel,
+					"instrumentCode": version.instrumentCode,
+					"status": "RETIRED",
+					"checksum": frozen.checksum,
+					"walkCount": walkCount,
+					"successorVersionId": structIsEmpty(successor) ? javaCast("null", "") : successor.versionId,
+					"successorVersionLabel": structIsEmpty(successor) ? javaCast("null", "") : successor.versionLabel,
+					"leftNoCurrentVersion": structIsEmpty(successor)
+				};
+			});
+		} catch (any e) {
+			if (!structIsEmpty(refusal)) {
+				var auditActor = variables.repo.userExists(actor) ? actor : "";
+				variables.audit.record("INSTRUMENT_VERSION", refusal.versionId, "INSTRUMENT_VERSION_RETIRE_REFUSED", auditActor, refusal.details);
+			}
+			rethrow;
+		}
+		variables.logger.info("instrument.retire.completed", { "versionId": outcome.versionId, "versionLabel": outcome.versionLabel, "walkCount": outcome.walkCount });
+		return outcome;
+	}
+
+	/**
 	 * ADM-05, stated as a callable guard for code that wants the answer before it starts work.
 	 *
 	 * This is a convenience, not the mechanism. The DRAFT-only write boundary is enforced inside

@@ -13,6 +13,7 @@ import { renderEditor } from "./renderer.js";
 import { createBlankState, dimensionDisplay } from "./walk-state.js";
 import { fileName as summaryFileName, summaryText } from "./summary.js";
 import { mountReports } from "./reports.js";
+import { mountAdmin } from "./admin.js";
 
 // Presentation configuration for the My Walks card (dimension codes, not instrument content):
 // title = grade · content; meta = school · date · relative update time (prototype behavior).
@@ -60,11 +61,13 @@ const store = new ApiWalkStore(api);
 const $ = (id) => document.getElementById(id);
 // Aggregate reports (Phase 7): its own view and its own routes; nothing here reaches walk data.
 const reports = mountReports({ api, apiBase: body.dataset.apiBase });
+// Instrument administration (Phase 6): its own view and its own routes, all behind instrument.manage.
+const admin = mountAdmin({ api, announce });
 const WALK_CAPABILITIES = ["walk.create", "walk.read", "walk.edit_owned"];
 
 const app = {
   me: null, instrument: null, model: null, policies: null,
-  canWalk: false, canReport: false,   // from /api/me: which views this person has anything in
+  canWalk: false, canReport: false, canAdmin: false,   // from /api/me: which views this person has anything in
   models: {},                // versionId -> { model, policies, version }
   current: null, editor: null, dirty: false,
   baseline: null,            // state as last loaded from / committed to the server (for conflict review)
@@ -530,19 +533,29 @@ function showView(name) {
   $("view-list").hidden = name !== "list";
   $("view-walk").hidden = name !== "walk";
   $("view-reports").hidden = name !== "reports";
+  $("view-admin").hidden = name !== "admin";
   $("nav-list-btn").hidden = name === "list" || !app.canWalk;
   $("nav-reports-btn").hidden = name === "reports" || !app.canReport;
+  $("nav-admin-btn").hidden = name === "admin" || !app.canAdmin;
   if (name !== "walk") $("export-btn").hidden = true;
   // The unfinished-operations bar belongs to neither view, so it is re-asserted on every switch.
   renderPendingOps();
   if (name === "list") $("list-heading").focus?.();
   if (name === "reports") $("reports-heading").focus?.();
+  if (name === "admin") $("admin-heading").focus?.();
 }
 
 async function openReports() {
   await leaveEditor(async () => {
     showView("reports");
     await reports.show();
+  });
+}
+
+async function openAdmin() {
+  await leaveEditor(async () => {
+    showView("admin");
+    await admin.show();
   });
 }
 
@@ -1485,7 +1498,10 @@ async function init() {
     const held = (p) => Array.isArray(app.me.permissions[p]) && app.me.permissions[p].length > 0;
     app.canWalk = WALK_CAPABILITIES.some(held);
     app.canReport = held("report.view");
+    // instrument.manage is global, so /api/me carries it as a boolean rather than a unit list.
+    app.canAdmin = app.me.permissions["instrument.manage"] === true;
     $("nav-reports-btn").addEventListener("click", openReports);
+    $("nav-admin-btn").addEventListener("click", openAdmin);
     // A report-only role has nothing in My walks (every walk route refuses it), so it lands on
     // Reports and never loads walk data at all.
     if (!app.canWalk && app.canReport) {
@@ -1493,6 +1509,14 @@ async function init() {
       showView("reports");
       body.dataset.ready = "true";
       await reports.show();
+      return;
+    }
+    // Likewise an instrument administrator with no walk or report scope lands on administration.
+    if (!app.canWalk && app.canAdmin) {
+      $("global-status").textContent = "";
+      showView("admin");
+      body.dataset.ready = "true";
+      await admin.show();
       return;
     }
     app.instrument = await api.get("/instrument/current");

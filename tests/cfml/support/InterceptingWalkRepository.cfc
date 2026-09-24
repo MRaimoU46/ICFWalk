@@ -86,7 +86,19 @@ component output="false" {
 	// Every signature mirrors WalkRepository exactly so the decorated object is substitutable.
 
 	public boolean function isRowVersion(any value) { return variables.inner.isRowVersion(argumentCollection = arguments); }
-	public string function insertWalk(required string versionId, required string orgUnitId, required string ownerUserId, any observedAt) { return variables.inner.insertWalk(argumentCollection = arguments); }
+	/**
+	 * Two seams around the walk insert (Phase 6, ADM-07), both hooked here rather than passed
+	 * through: "insertWalk" fires BEFORE the insert, which is the gap between the version
+	 * WalkService.create chose and the row that pins a walk to it; "afterInsertWalk" fires once the
+	 * insert has returned, with the creating transaction still open and holding whatever the
+	 * insert locked. RetireConcurrencyBarrierTest forces a retirement into each.
+	 */
+	public string function insertWalk(required string versionId, required string orgUnitId, required string ownerUserId, any observedAt) {
+		trigger("insertWalk");
+		var id = variables.inner.insertWalk(argumentCollection = arguments);
+		trigger("afterInsertWalk");
+		return id;
+	}
 	public void function touchWalk(required string walkId, any observedAt) { variables.inner.touchWalk(argumentCollection = arguments); }
 	public void function markCompleted(required string walkId) { variables.inner.markCompleted(argumentCollection = arguments); }
 	public void function markVoided(required string walkId, required string reason) { variables.inner.markVoided(argumentCollection = arguments); }

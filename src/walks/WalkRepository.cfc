@@ -46,19 +46,47 @@ component output="false" {
 		return rowToWalk(q, 1);
 	}
 
+	/**
+	 * Inserts a new walk pinned to `versionId`, only while that version is not RETIRED.
+	 *
+	 * WHY THE INSERT READS THE VERSION (Phase 6, ADM-07). WalkService.create chooses the version
+	 * from SnapshotService.currentVersion() and inserts afterwards, so a retirement committing in
+	 * between would pin a brand-new walk to a version that is out of service -- and, because this
+	 * insert used to hold no lock on the version row, a retirement arriving while the walk's
+	 * transaction was still open deadlocked with it under RetireConcurrencyBarrierTest (the two took
+	 * their locks in no agreed order; the deadlock graph was not captured).
+	 *
+	 * So the insert's source is the version row itself, read under HOLDLOCK and predicated on
+	 * `status <> 'RETIRED'`, and the shared lock is kept until the walk commits:
+	 *   - a retirement that committed first makes the insert match nothing, and the caller refuses
+	 *     the create (409 INSTRUMENT_VERSION_CHANGED) so the client reloads onto the successor;
+	 *   - a retirement that arrives after the insert waits for the walk to commit, so the walk was
+	 *     created while the version was in service and is an ordinary historical walk of it.
+	 * A DRAFT is still accepted: outside production the runtime may fall back to the newest DRAFT
+	 * (ICFWALK_ALLOW_UNPUBLISHED_INSTRUMENT), and publication does not retire anything.
+	 *
+	 * OUTPUT INSERTED returns the row actually inserted; an empty result means the version was
+	 * retired (or never existed) and the caller is told so rather than handed a GUID for nothing.
+	 *
+	 * @return the new walk id, or "" when the version is no longer eligible
+	 */
 	public string function insertWalk(required string versionId, required string orgUnitId, required string ownerUserId, any observedAt) {
 		var id = variables.db.newGuid();
 		var params = {
 			"id": variables.db.guid(id), "version": variables.db.guid(arguments.versionId), "org": variables.db.guid(arguments.orgUnitId),
 			"owner": variables.db.guid(arguments.ownerUserId)
 		};
-		if (!isNull(arguments.observedAt) && isDate(arguments.observedAt)) {
-			params["observed"] = variables.db.timestamp(arguments.observedAt);
-			variables.db.run("INSERT INTO [icf].[walk] (walk_id, version_id, org_unit_id, owner_user_id, status, observed_at) VALUES (:id, :version, :org, :owner, N'DRAFT', :observed)", params);
-		} else {
-			variables.db.run("INSERT INTO [icf].[walk] (walk_id, version_id, org_unit_id, owner_user_id, status) VALUES (:id, :version, :org, :owner, N'DRAFT')", params);
-		}
-		return id;
+		var observed = !isNull(arguments.observedAt) && isDate(arguments.observedAt);
+		if (observed) params["observed"] = variables.db.timestamp(arguments.observedAt);
+		var inserted = variables.db.run(
+			"INSERT INTO [icf].[walk] (walk_id, version_id, org_unit_id, owner_user_id, status" & (observed ? ", observed_at" : "") & ")
+			 OUTPUT INSERTED.[walk_id] AS created_id
+			 SELECT :id, v.version_id, :org, :owner, N'DRAFT'" & (observed ? ", :observed" : "") & "
+			   FROM [icf].[instrument_version] v WITH (HOLDLOCK, ROWLOCK)
+			  WHERE v.version_id = :version AND v.status <> N'RETIRED'",
+			params
+		);
+		return inserted.recordCount ? uCase(inserted.created_id[1]) : "";
 	}
 
 	/**

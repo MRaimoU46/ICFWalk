@@ -675,6 +675,10 @@ component output="false" {
 		var versions = reportableVersions();
 		if (!len(arguments.versionId)) {
 			for (var v in versions) if (v.isCurrent) return { "versionId": v.versionId, "versionLabel": v.versionLabel, "status": v.status };
+			// Nothing is in service (Phase 6: the only version was retired with confirmation), but its
+			// walks are still reportable. The default is then the newest frozen version, which is
+			// first in the list, rather than a refusal that would leave the Reports view unable to open.
+			if (arrayLen(versions)) return { "versionId": versions[1].versionId, "versionLabel": versions[1].versionLabel, "status": versions[1].status };
 			variables.errors.notFound("No instrument version is available to report on yet.", "REPORT_VERSION_NOT_AVAILABLE");
 		}
 		if (!variables.db.isGuid(arguments.versionId)) filterRefused("INVALID_VERSION_ID", "versionId", "versionId is not a valid identifier.");
