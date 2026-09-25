@@ -13,7 +13,9 @@ RPT-01..07, with the corrections for its audit findings P7-01, P7-02 and P7C-01 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
 **Current state (branch `claude/icfwalk-phase-6-7-integration`): a Phase 6 and Phase 7 integration
-candidate, awaiting a focused independent integration audit.** It merges two branches:
+candidate, awaiting a focused independent integration audit.** The merge commit
+`68f9026d39ba0ff44d12d6398c5e933971dad2f4` passed its exact-commit gate (Node/HTTP/Playwright 245/245, CFML
+517/517; 0 failed, 0 skipped). It merges two branches:
 
 - **Phase 6, accepted and frozen** at code commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the
   verified scope, after the independent re-audit passed. Its records tip is
@@ -4326,6 +4328,15 @@ and 0 cancelled; and the working tree clean and HEAD unmoved afterwards. Two che
 merge: every code difference from each parent must be a file the other parent changed, with each file
 both changed equal to one side plus exactly the other side's changed lines; and the suite's totals
 must be exactly the 245 Node and 517 CFML tests the two sides predict.
+
+**Result on `68f9026d39ba0ff44d12d6398c5e933971dad2f4`: GATE PASSED.** Node/HTTP/Playwright 245/245 and CFML
+517/517, 0 failed, 0 skipped, 0 todo, 0 cancelled; `test:package` 20/20; `validate:handoff` ok (51
+checks); 45 JavaScript files parse; a brand-new SQL Server container with `001` to `007` applied, `002`
+to `007` each re-applied and `001` refused; every code difference from each parent accounted for;
+the tree clean and HEAD unmoved afterwards. Lucee 6.2.8.20 and SQL Server 2022 (16.0.4295.3) only.
+The transcript, the gate script, the remerge diff and the environment record are in
+`docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/`, and the handoff for the integration
+audit is `docs/evidence/phase6-7-integration-handoff.md`.
 
 ### Unresolved and not verified (integration)
 

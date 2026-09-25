@@ -11,7 +11,9 @@ commands are identical (`npm test`). Items whose behavior depends on Adobe-speci
 marked explicitly.
 
 **Current status (branch `claude/icfwalk-phase-6-7-integration`):** a Phase 6 and Phase 7 integration
-candidate, awaiting a focused independent integration audit. Phase 6 is accepted and frozen at code
+candidate, awaiting a focused independent integration audit. Its merge commit
+`68f9026d39ba0ff44d12d6398c5e933971dad2f4` passed its exact-commit gate: Node/HTTP/Playwright 245/245, CFML
+517/517, 0 failed, 0 skipped (`docs/evidence/phase6-7-integration-handoff.md`). Phase 6 is accepted and frozen at code
 commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the verified scope: the independent re-audit
 passed and P6A-R01 is closed (`docs/evidence/phase6-freeze.md`, "Acceptance"). That acceptance
 covers `158debc`, not this merge. The Phase 7 corrections merged here

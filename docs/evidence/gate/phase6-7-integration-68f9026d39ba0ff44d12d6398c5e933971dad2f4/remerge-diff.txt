@@ -1,0 +1,1121 @@
+commit 68f9026d39ba0ff44d12d6398c5e933971dad2f4
+Merge: 64507de e034214
+Author:     Claude <noreply@anthropic.com>
+AuthorDate: Fri Sep 25 14:09:02 2026 +0000
+Commit:     Claude <noreply@anthropic.com>
+CommitDate: Fri Sep 25 14:09:02 2026 +0000
+
+    Integrate Phase 7 corrections (e034214) with accepted Phase 6 (158debc)
+    
+    Merge of the Phase 7 tip e0342143074f727475ae2d4cb6933fa279902f85
+    (claude/icfwalk-phase-7-correction-n62s25, third correction round, gated
+    code 98321a1) into a new branch created from the Phase 6 records tip
+    64507deb075e267761179d78be966b7a4d3972cc, whose code is the accepted and
+    frozen 158debca5da2c4f3a07f602689cd08af9db9bd6e. Merge base 0c6fa10.
+    Neither source branch is changed. This is a new integration candidate,
+    not a change to the Phase 6 freeze, and it does not accept Phase 7.
+    
+    Merged by git without conflict, reviewed:
+    - src/http/Router.cfc: Phase 6's router plus Phase 7's one new route,
+      POST /api/reports/releases, which now passes Phase 6's pre-body
+      authentication, CSRF and permission checks and the server maximum.
+    - src/views/shell.html: Phase 6's admin view plus Phase 7's release form.
+    - src/reports/ReportService.cfc: Phase 7's rewrite plus Phase 6's
+      retired-version default in resolveVersion, which Phase 7 left unchanged.
+    - docs/ARCHITECTURE.md, DATA_CONTRACT.md, LOCAL_SETUP.md, OPEN_DECISIONS.md.
+    
+    Conflicts, resolved by hand:
+    - BUILD_STATUS.md: header rewritten for this branch; both sides'
+      appended sections kept verbatim (Phase 7's rounds, then Phase 6's);
+      a new final section "Phase 6 and Phase 7 integration".
+    - docs/ACCEPTANCE_TRACKING.md: Phase 6's ADM rows with Phase 7's
+      corrected RPT rows; Phase 7's ledger, then Phase 6's audit section;
+      the current status line rewritten for this branch.
+    - docs/ENDPOINTS.md: Phase 7's report rows with Phase 6's
+      default-version clause re-applied to the options row.
+    - manifest.json: the two conflicting hashes recomputed with
+      scripts/refresh-manifest.mjs after the merged tree was final.
+    
+    No code, test, configuration or migration file was edited by hand.
+    Development run on the merged tree before this commit: Node 245/245,
+    CFML 517/517, 0 failed, 0 skipped, exactly the totals the two sides
+    predict. The authoritative gate runs on this exact commit and is
+    recorded in the next, records-only commit.
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_0158deEYTvf6VsxZimapatnn
+
+diff --git a/BUILD_STATUS.md b/BUILD_STATUS.md
+remerge CONFLICT (content): Merge conflict in BUILD_STATUS.md
+index dece654..c2d67e5 100644
+--- a/BUILD_STATUS.md
++++ b/BUILD_STATUS.md
+@@ -7,44 +7,38 @@ visual shell), Phase 4 (walk persistence, autosave, completion, concurrency, aud
+ preview, clone and compare, retirement, the placeholder queue and the administration UI, ADM-01 to
+ ADM-08; the Excel round-trip the owner requested, which has no acceptance ID; and the audit and
+ re-audit corrections P6A-01 to P6A-04 and P6A-R01), and Phase 7 (aggregate reporting,
+-RPT-01..07)** from `docs/IMPLEMENTATION_PLAN.md`.
++RPT-01..07, with the corrections for its audit findings P7-01, P7-02 and P7C-01 to P7C-04)** from
++`docs/IMPLEMENTATION_PLAN.md`.
+ 
+ Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
+ 
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-**Current state: Phase 6 is accepted and frozen at code commit
+-`158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the verified scope.** The independent re-audit of that commit passed and
+-P6A-R01 is closed. Branch `claude/icfwalk-phase-6-admin-audit-corrections`; the commits after the
+-code commit are records only. The freeze followed the re-audit correction P6A-R01 and a complete
+-exact-commit gate on that commit (Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped). The Phase 0-6 publish foundation `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` had been
+-frozen earlier. **Phase 7 is not frozen and not accepted**: the Phase 7 commit in this history
+-(`0c6fa10`, beneath Phase 6 administration) is the original one, and a separate branch that carries
+-Phase 7 corrections (`claude/icfwalk-phase-7-correction-n62s25`) is not merged here. Phase 6 and
+-Phase 7 are integrated on a separate branch, `claude/icfwalk-phase-6-7-integration`. Adobe ColdFusion 2023,
+-SQL Server 2016, connector-level limits, Microsoft Excel and a screen reader have still not been
+-used, so the application is **not production-certified**. See "Phase 6 accepted" at the end and
+-`docs/evidence/phase6-freeze.md`.
+-=======
+-**Current state: Phase 7 correction, third round (re-audit findings P7C-03 and P7C-04), awaiting
+-independent re-audit.** See "Phase 7 correction, third round" at the end: its gated commit sits on
+-the re-audited `9ef9b97b5b4ee20dd51d6ca023c0841b7ca872ba`, and the commit after it adds only that
+-gate's evidence. Earlier: branch `claude/icfwalk-phase-7-correction-n62s25`, the second-round
+-commits sit on the audited correction `0c74dbd5a8a79684d38ba0b169dce2682a54fad6`, which sits on the
+-first audited Phase 7 candidate `0c6fa10972593043508f502538534c2aa95c671b` and the frozen Phase 0-6
+-baseline `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde`. Phase 7 is **not** frozen and **not**
+-accepted; see "Phase 7 correction, second round" at the end.
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
++**Current state (branch `claude/icfwalk-phase-6-7-integration`): a Phase 6 and Phase 7 integration
++candidate, awaiting a focused independent integration audit.** It merges two branches:
++
++- **Phase 6, accepted and frozen** at code commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the
++  verified scope, after the independent re-audit passed. Its records tip is
++  `64507deb075e267761179d78be966b7a4d3972cc` on `claude/icfwalk-phase-6-admin-audit-corrections`, which
++  stays unchanged as the Phase 6 audit record. See "Phase 6 accepted".
++- **The Phase 7 corrections, third round**, at `e0342143074f727475ae2d4cb6933fa279902f85` on
++  `claude/icfwalk-phase-7-correction-n62s25` (gated code commit
++  `98321a16df64005f9b55fcd9bc3b9b4d4a071e4e`), awaiting independent re-audit. Phase 7 is **not**
++  frozen and **not** accepted. See "Phase 7 correction, third round".
++
++Phase 6's acceptance covers `158debc`, not this merge. The merge is a new candidate with its own gate
++and audit. The Phase 0-6 publish foundation `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` was frozen
++earlier. Adobe ColdFusion 2023, SQL Server 2016, connector-level limits, Microsoft Excel and a screen
++reader have still not been used, so the application is **not production-certified**. See "Phase 6 and
++Phase 7 integration" at the end.
+ 
+ Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
+ Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
+ the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-Phase 6 administration, the Excel round-trip, the audit corrections, the re-audit correction
+-P6A-R01, **Phase 6 frozen**, and finally **Phase 6 accepted**, which is the current state of the
+-build.
+-=======
+-the Phase 7 correction, and finally **its second round**, which is the current state of the build.
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
++the Phase 7 correction and its second and third rounds, Phase 6 administration, the Excel
++round-trip, the audit corrections, the re-audit correction P6A-R01, **Phase 6 frozen**, **Phase 6
++accepted**, and finally **Phase 6 and Phase 7 integration**, which is the current state of this
++branch. The Phase 7 correction sections and the Phase 6 administration sections were written on two
++branches from the same commit, `0c6fa10`, and appear in the order they were delivered (Phase 7's on
++2026-09-23, Phase 6's from 2026-09-24), each block exactly as its branch delivered it.
+ Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
+ them; where they disagree, the later section is the record.
+ 
+@@ -3423,177 +3417,6 @@ the commit they describe.
+ 7. **This is an implementation candidate.** Phase 7 has not been independently audited and is not
+    frozen or accepted.
+ 
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-## Phase 6 administration: preview, clone and compare, retire, placeholder queue, and the UI
+-
+-**Starting point.** The branch was fast-forwarded (clean tree, ancestor, no reset, rebase, force or
+-rewrite) from `a8e97f22ae1639faef5b6e68bf7255dea838f8e2` to
+-`0c6fa10972593043508f502538534c2aa95c671b` (the fourth and fifth publish-foundation corrections and
+-Phase 7, all by other sessions). On that untouched commit against a fresh database:
+-**Node/HTTP/Playwright 193/193 and CFML 411/411, 0 failed, 0 skipped.** The `phase-5-freeze` tag
+-exists neither locally nor on the remote; it was not created, moved or deleted.
+-
+-**Scope.** The remainder of `docs/IMPLEMENTATION_PLAN.md` Phase 6 named in "Exact recommended
+-starting point for the rest of Phase 6": ADM-02 preview, ADM-06 new DRAFT from a published version
+-with an edited prompt and a compare view, ADM-07 retire, ADM-08 the placeholder review queue, and the
+-administration UI for all of it, including ADM-01 import and ADM-04 publish from the browser.
+-
+-### What it adds
+-
+-| Piece | What it does |
+-| --- | --- |
+-| `src/instrument/InstrumentAdminService.cfc` | Version list (`isCurrent`, `isRuntimeInstrument`), preview, import, clone, wording search and edit, compare, placeholder queue, discard. Reads snapshots through `SnapshotService`; every DRAFT write goes through `writeNormalizedDraft`. |
+-| `src/instrument/DraftEditor.cfc` | Pure: which wording fields may change (and their limits), applying an edit set with every issue and its path, keeping `contentReview.unresolvedPlaceholders` consistent, search. |
+-| `src/instrument/InstrumentVersionComparer.cfc` | Pure: row-by-row diff of two snapshots on logical keys, exact and type-aware, plus version metadata. |
+-| `InstrumentImportService.writeNormalizedDraft` | The one DRAFT write path, now shared by import, clone and edit (options: operation, `mustCreate`, `targetVersionId` + `expectedChecksum`, `skipWhenUnchanged`, success event and audit details). `importConfig` calls it. |
+-| `InstrumentPublishService.retire` + `DefinitionRepository.markRetired` / `lockRetirement` | PUBLISHED to RETIRED under the version lock, `effective_end` set, nothing else touched; refuses leaving no version in service unless confirmed, with retirements of one instrument serialized so two at once cannot defeat that check; refusals audited after rollback. |
+-| Routes (`docs/ENDPOINTS.md`) | `POST /api/admin/instrument/import`, `GET .../versions/{id}/preview`, `/wording`, `/placeholders`, `POST .../clone`, `/edits`, `/retire`, `/discard`, `GET /api/admin/instrument/compare`; all `instrument.manage`, CSRF on every POST. |
+-| `app/assets/js/admin.js` + shell | The administration view: import with the validation summary, the version list with status and in-service badges, preview through `renderer.js`, compare, placeholder queue, wording editor, new draft, publish / retire / discard confirmations. An admin-only user lands on it. |
+-
+-Design and decisions (`docs/ARCHITECTURE.md` "Instrument administration (Phase 6)",
+-`docs/DATA_CONTRACT.md` "Instrument administration writes and retirement (Phase 6)",
+-`docs/OPEN_DECISIONS.md`):
+-
+-* **Wording only in the browser.** Structure stays authored in the document and imported. Behavior
+-  and item settings are not editable, so no in-app edit can change the summary export or the email
+-  draft; the summary vectors stay valid without regeneration.
+-* **Placeholders are resolved by DRAFT edit** (the recorded safe default), and the queue shrinks.
+-* **Lost updates are refused**: an edit names the checksum it was made against (409 `DRAFT_CHANGED`).
+-* **Retirement is attributed in the audit event**, with `effective_end`; no column, no migration.
+-  Retiring the only version in service needs explicit confirmation (asked twice in the UI).
+-* **Any instrument code may be administered**; only `ICFWALK_INSTRUMENT_CODE` is what walks use.
+-* **The shared-metadata operation stays unrouted**; nobody has decided who may rename or take an
+-  instrument out of service.
+-
+-### Narrow changes to earlier-phase files
+-
+-| File | Change | Why it was necessary |
+-| --- | --- | --- |
+-| `src/walks/WalkRepository.cfc` (`insertWalk`) | Status-qualified `INSERT ... SELECT` from the version row `WITH (HOLDLOCK, ROWLOCK)`, `OUTPUT INSERTED`; returns `""` when nothing was inserted. | Without it a retirement between version resolution and insert pinned a new walk to a RETIRED version, and the other ordering deadlocked (red evidence 1). |
+-| `src/walks/WalkService.cfc` (`create`) | Nothing inserted: 409 `INSTRUMENT_VERSION_CHANGED` with `retiredVersionId`. | The existing code for "the version changed; reload". |
+-| `src/reports/ReportService.cfc` (`resolveVersion`) | With nothing in service, default to the newest frozen version. | Retiring the only version made `/api/reports/options` 404 and the Reports view unopenable (red evidence 3). |
+-| `src/controllers/AdminInstrumentController.cfc` (`publishVersion`) | Uses the shared `refuseAnyBody` helper. | Same contract and codes; the helper is shared with discard. |
+-| `src/instrument/InstrumentImportService.cfc` | `importConfig` delegates its write to `writeNormalizedDraft`; `unchangedResult`, `recordRefusal`, `discardDraftById` added. | One write path for import, clone and edit. The existing import tests pass unchanged. |
+-| `src/instrument/InstrumentPublishService.cfc` | `retire` added beside `publish`. | Retirement is the other lifecycle transition and shares publish's lock, refusal-audit and actor rules; `publish` is unchanged. |
+-| `src/instrument/DefinitionRepository.cfc` | `markRetired`, `lockRetirement`, `findCurrentVersionExcluding`, `currentVersionIds`. | Retirement, its per-instrument serialization (red evidence 4), and the list's in-service marker (the same predicate as `SnapshotService.currentVersion`). |
+-| `src/instrument/InstrumentConfigValidator.cfc` | `definitionValidator()` accessor. | The write path validates edited definitions with the one shared rule set. |
+-| `src/core/Errors.cfc` | `retireNotPublished` (409), `payloadTooLarge` (413). | New refusals, mapped centrally. |
+-| `src/Bootstrap.cfc`, `src/http/Router.cfc` | Wiring and the nine routes. | Nothing existing moved; no existing route or policy changed. |
+-| `src/views/shell.html`, `app/assets/js/app.js`, `app/assets/js/api.js`, `app/assets/css/icfwalk.css` | Admin nav button and view; `canAdmin` from `/api/me` (a boolean for the global permission); admin-only users land on it; `api.postEmpty` for the no-body routes; styles appended. | The view. Walk and report users see exactly what they saw before, plus the button when they also hold `instrument.manage`. |
+-| `tests/cfml/specs/InstrumentImmutabilityTest.cfc` | `markRetired` in a new lifecycle inventory, with its own contract test. | The mutator inventory test fails on any unlisted mutator, by design. |
+-| `tests/cfml/support/Intercepting{Definition,Walk}Repository.cfc` | `markRetired`, `lockRetirement`, `findCurrentVersionExcluding` and `insertWalk` barrier seams. | Test-only, like every other seam: nothing in `src/` references them and no route, flag or hook reaches them. |
+-| `package.json` | `test:admin`; `browser-admin` added to `test:browser`. | Scripts only; no dependency added. |
+-
+-No schema migration, dependency, framework or infrastructure was added. No existing test was
+-removed, skipped, weakened or rewritten.
+-
+-### Files changed
+-
+-| File | Status |
+-| --- | --- |
+-| `src/instrument/InstrumentAdminService.cfc`, `src/instrument/DraftEditor.cfc`, `src/instrument/InstrumentVersionComparer.cfc`, `app/assets/js/admin.js` | New |
+-| `tests/cfml/specs/InstrumentAdministrationTest.cfc` (17), `DraftEditorTest.cfc` (11), `InstrumentVersionComparerTest.cfc` (6), `RetireConcurrencyBarrierTest.cfc` (3) | New |
+-| `tests/node/admin-instrument.test.mjs` (11), `tests/node/browser-admin.test.mjs` (6) | New |
+-| `docs/evidence/phase6-admin-red-before-fix.md`, `docs/evidence/screenshots/admin-*.png` | New |
+-| The files in the table above | Changed |
+-| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/LOCAL_SETUP.md`, `docs/ACCEPTANCE_TRACKING.md`, `BUILD_STATUS.md` | Records |
+-| `manifest.json` | Refreshed (`node scripts/refresh-manifest.mjs`) |
+-
+-### Tests and results (development runs, before the commit)
+-
+-Environment: Lucee 6.2.8.20, SQL Server 2022 Developer in Docker, Node 22.22.2, Playwright 1.56.1
+-with Chromium, axe-core 4.13.0.
+-
+-| Run | Result |
+-| --- | --- |
+-| Base `0c6fa10`, fresh database | Node/HTTP/Playwright 193/193, CFML 411/411 |
+-| New and affected CFML specs | `InstrumentAdministrationTest` 17/17, `DraftEditorTest` 11/11, `InstrumentVersionComparerTest` 6/6, `RetireConcurrencyBarrierTest` 3/3, `InstrumentImmutabilityTest` 15/15, `ReportServiceTest` 15/15, `ReportCoherenceTest` 4/4 |
+-| New HTTP and browser files | `admin-instrument` 11/11, `browser-admin` 6/6 |
+-| Neighbouring suites after the shell and router changes | `shell`, `visibility`, `admin-publish`, `walks`, `browser`, `browser-reports`, `browser-persistence`: 102/102 |
+-
+-Red before green (`docs/evidence/phase6-admin-red-before-fix.md`): the retire race (a walk pinned
+-to a RETIRED version; a deadlock victim), a 500 for an import without a document, Reports
+-unopenable after retiring the only version, two concurrent retirements leaving nothing in service,
+-and every new check failing against the base source.
+-
+-**The authoritative result is the full gate on the exact commit**, from a clean tree on a freshly
+-created database with screenshots written outside the repository. Its transcript is
+-`docs/evidence/phase6-admin-release-gate.txt`, added in the commit that follows this one, because
+-recording it here would change the commit it describes. **Result on
+-`407b0cdb5616575ef92cfb84ac57566b87f6424d`: Node/HTTP/Playwright 210/210 (193 + 11 `admin-instrument` +
+-6 `browser-admin`), CFML 449/449 (411 + 17 + 11 + 6 + 3 + 1 new `InstrumentImmutabilityTest` case), 0
+-failed, 0 skipped**, `validate:handoff` ok (51 checks), migration `006` re-application idempotent,
+-working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server 2022 (16.0.4295.3) only.
+-
+-### Unresolved and not verified (Phase 6 administration)
+-
+-1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New engine-sensitive constructs
+-   to re-run there: `WITH (HOLDLOCK, ROWLOCK)` on the `INSERT ... SELECT` source with `OUTPUT
+-   INSERTED` (SQL Server 2016 syntax, but the lock behavior under the Adobe datasource's isolation
+-   level must be re-proved by `RetireConcurrencyBarrierTest`), `sp_getapplock` with a
+-   transaction owner inside the Adobe `transaction` block (it must run on the transaction's own
+-   connection), a non-`required` argument receiving
+-   `null` positionally, `cfthread` in the new barrier spec, `compare()` for case-sensitive key
+-   matching, and the raw body length the 413 cap reads (since the audit corrections, the router's
+-   bounded byte read of the servlet container's input stream, P6A-01 below -- the unwrapping of the
+-   engine's request is exactly the part to re-prove on Adobe ColdFusion).
+-2. **The approved wording for the 17 placeholder prompts is still the district's to supply.** The
+-   tooling to apply it exists; the content does not.
+-3. **Structure is not editable in the browser** by decision; a structural change is a document edit
+-   and import.
+-4. **Screen readers were not tested.** The view passes axe-core (WCAG 2.1 A/AA, serious and critical)
+-   and keyboard checks; that is not the same thing.
+-5. **On a phone the version list scrolls sideways inside its own region** (no page overflow). It is
+-   usable, not designed for 375 px; administrators are expected on a desktop.
+-6. **A 422 publish refusal is not browser-tested** (ADM-03 row). The service and HTTP evidence is
+-   unchanged.
+-7. **Nothing here is independently audited.** Phase 6 administration and Phase 7 are implementation
+-   candidates: not frozen, not accepted.
+-
+-## Excel round-trip for the yearly instrument update
+-
+-**Why.** The product owner confirmed the instrument changes once a year, in summer, and chose to
+-make structural changes in Excel first, with a friendlier in-app editor scoped after the first
+-summer shows what actually changes. The plan and its status are in the Phase 6 review document.
+-
+-**Starting point.** `2b68cc06db98bf335b375529088ca5adef7132fb` (Phase 6 administration and its gate
+-transcript), clean tree, remote equal to HEAD.
+-
+-### What it adds
+-
+-| Piece | What it does |
+-| --- | --- |
+-| `src/instrument/InstrumentDocumentExporter.cfc` | Pure: a version's normalized content back to the authoring document, the exact inverse of `ConfigNormalizer` (rows keep their authoring ids; references resolve to the ids they had; the version declares DRAFT; rows in reading order). |
+-| `GET /api/admin/instrument/versions/{id}/document` | `InstrumentAdminService.exportDocument`: any version as that document, from its checksum-verified snapshot. |
+-| `app/assets/js/workbook.js` | Dependency-free .xlsx writer and reader in the page: the aligned workbook's layout plus Start Here and document sheets; typed cell handling; problems by sheet, row and column; `locate()` for server paths; limits, CRC checks, no DOCTYPE. |
+-| Admin view | Download on every version (Excel workbook or JSON document). Import takes a workbook or a JSON document and an optional new draft label, lists workbook problems by cell, locates server problems on their cells, and asks before replacing a draft that changed since the download or that the file did not come from. |
+-
+-The server never parses a spreadsheet: an uploaded workbook becomes the same JSON document any
+-upload sends, through the unchanged import route. No schema migration, dependency, framework or
+-infrastructure was added. `libreoffice-calc` was installed into this build container to produce and
+-check fixtures; nothing in the project depends on it.
+-
+-### Changes to existing files
+-
+-| File | Change |
+-| --- | --- |
+-| `src/instrument/InstrumentAdminService.cfc` | `exportDocument`; the exporter is a new constructor argument. |
+-| `src/controllers/AdminInstrumentController.cfc`, `src/http/Router.cfc`, `src/Bootstrap.cfc` | The action, the route (`instrument.manage`), the wiring. |
+-| `app/assets/js/admin.js`, `src/views/shell.html` | Download panel; the import card accepts .xlsx and an optional draft label; problems located on cells; the replace check. |
+-| `tests/node/admin-instrument.test.mjs`, `tests/node/browser-admin.test.mjs` | New cases (below); the document route joins the 401/403 table; one assertion updated for deliberately changed wording. |
+-| `package.json` | `test:workbook`; the workbook test joins `test:admin`. |
+-
+-### Files changed
+-
+-| File | Status |
+-| --- | --- |
+-| `src/instrument/InstrumentDocumentExporter.cfc`, `app/assets/js/workbook.js` | New |
+-| `tests/cfml/specs/InstrumentDocumentExporterTest.cfc` (6), `tests/node/workbook.test.mjs` (12) | New |
+-| `tests/fixtures/workbooks/` (two LibreOffice-saved workbooks, the script that edited one, a README) | New |
+-| `docs/evidence/excel-roundtrip-red-before-green.md`, `docs/evidence/screenshots/admin-download-desktop.png` | New |
+-| The files in the table above; `docs/evidence/screenshots/admin-*.png` refreshed | Changed |
+-| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/ACCEPTANCE_TRACKING.md`, `docs/LOCAL_SETUP.md`, `BUILD_STATUS.md`, `manifest.json` | Records |
+-=======
+ ## Phase 7 correction: RPT-03 privacy rule and exact-commit evidence (superseded in part by the second round below)
+ 
+ **Starting point, verified before any edit.** Branch `claude/icfwalk-phase-7-correction-n62s25` at
+@@ -3799,68 +3622,380 @@ status before and after the run.
+ | `tests/node/reports.test.mjs` | A structural test: no fixed or global population table name, and the membership is only written or used to exclude, never read out. |
+ | `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `database/README.md`, `docs/ARCHITECTURE.md`, `docs/ENDPOINTS.md`, `docs/ACCEPTANCE_TRACKING.md`, `manifest.json` | The rule as now enforced, the P7C ledger, and the refreshed manifest. |
+ | `docs/evidence/phase7-correction-2-red-before-fix.md` (new) | The red-before-fix record. |
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
+ 
+ ### Tests and results (development runs, before the commit)
+ 
+ | Run | Result |
+ | --- | --- |
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-| `InstrumentDocumentExporterTest` | 6/6 |
+-| `workbook.test.mjs` | 12/12 |
+-| `admin-instrument.test.mjs` | 13/13 (2 new: an edited workbook imports as a draft with exactly the edit; the LibreOffice-edited workbook imports and the comparison shows exactly its five edits) |
+-| `browser-admin.test.mjs` | 7/7 (1 new: download, upload, problems by cell, nothing sent for a workbook problem, the replace check; the download panel added to the accessibility case) |
++| The audited correction `0c74dbd`, its own exact-commit gate | Node/HTTP/Playwright **197/197**, CFML **435/435**; 0 failed, 0 skipped |
++| This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198** (197 + 1 structural), CFML **444/444** (435 + 7 `ReportIsolationTest` + 2 `ReportReleaseMembershipTest`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
++| With the `ReportReleaseTest` fixture fix, on the failed gate's database (no active unit left but the seed's), `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198**, CFML **444/444**; 0 failed, 0 cancelled, 0 skipped, 0 todo |
+ 
+-Red before green: `docs/evidence/excel-roundtrip-red-before-green.md` (every new check fails without
+-the new source; no product defect was found). **The authoritative result is the full gate on the
+-exact commit**, recorded in `docs/evidence/excel-roundtrip-release-gate.txt` in the commit after it.
+-**Result on `0a784d58f66d6796d7ce6d55b1965f6e7d408340`: Node/HTTP/Playwright 225/225 (210 + 12
+-`workbook` + 2 HTTP + 1 browser), CFML 455/455 (449 + 6 `InstrumentDocumentExporterTest`), 0 failed,
+-0 skipped**, `validate:handoff` ok, working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server
+-2022 only.
++These are development runs; the authoritative totals are the exact-commit gate's.
+ 
+-### Unresolved and not verified (Excel round-trip)
++### The first gate of this round failed
+ 
+-1. **Not opened in Microsoft Excel.** Excel is not available in this environment. The reader is
+-   proven against the aligned workbook written by other software and against LibreOffice Calc 24.2
+-   output; the writer's files open in LibreOffice. A check in real Excel (open, edit, save, upload)
+-   belongs in the spring practice run.
+-2. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** The exporter is plain CFML
+-   (closures passed to `arraySort`, recursive private methods); re-run
+-   `InstrumentDocumentExporterTest` there.
+-3. **Editing structure in Excel is still technical.** Rows point at each other by id, and rules and
+-   settings are JSON in cells. Validation catches mistakes and names the cell, but the admin still
+-   has to understand the sheets. That is what the later in-app editor is for.
+-4. **Uploading under an existing draft's label replaces that draft.** The page asks first when the
+-   draft changed since the download or the file did not come from it; the server itself does not
+-   compare checksums on import. *(Superseded by audit correction P6A-02 below: an administrator's
+-   import is now create-only unless it names the draft's id and the checksum agreed to, which the
+-   server compares under the version lock.)*
+-5. **Not independently audited**, like the rest of Phase 6 administration and Phase 7.
++The exact-commit gate of the round's first commit, `b67df76a9fe46eefe38d47f7919a89d19c1b5d79`,
++failed: part 1 of the CFML suite reported
++`ReportReleaseTest.testOnlySomeoneWhoCanOpenEveryWalkMayRelease` ("Expected an exception of type
++[ICFWalk.Forbidden] but nothing was thrown"), and the suite stopped there. The cause is in the first
++round's test, not in this round's code. The test expects DR's district walk-and-report user to be
++refused a release because some active unit lies outside DR, but it never created such a unit: it
++relied on another spec having left one behind. Adding two specs changed how specs are dealt into the
++suite's six parts, so on the gate's brand-new database `ReportReleaseTest` ran before any such unit
++existed. There the user could open every walk, and was rightly allowed to release. Reproduced on that
++database (0 other active units: 14 passed, 1 failed); fixed by giving the test its own district
++outside DR (15 passed on the same database). The HTTP suite already had one ("elsewhere"). The
++refusal assertion is unchanged. The failed gate's raw transcript is delivered with the handoff as a
++superseded record, and the gate was run again on the fixing commit.
+ 
+-## Submitted for audit (superseded by the audit corrections below)
++### Red before fix
+ 
+-Phase 6 administration and the Excel round-trip are submitted for independent audit as an
+-implementation candidate: range `0c6fa10..786e572`. What to audit, where each claim is, the changes
+-outside Phase 6 files, where to look first and the known gaps are in
+-`docs/evidence/phase6-admin-audit-handoff.md`; the environment is in
+-`docs/evidence/phase6-admin-environment.md`. Not accepted, frozen or complete until the audit says so.
++`docs/evidence/phase7-correction-2-red-before-fix.md`: on the audited build, served against its own
++database built from its own migrations, P7C-02 reproduces (release B counted a released walk again);
++P7C-01's barrier tests pass (the tables were already connection-local), fail when the tables are
++made global, and the guard tests fail because the guards are new. Sixteen deliberate mutations of this
++round's code -- the first round's eleven re-run, and five new ones for P7C-01 and P7C-02 -- each turn
++tests red for the reason targeted, and each file is restored byte for byte.
+ 
+-## Phase 6 administration audit corrections (P6A-01 to P6A-04)
++### Unresolved and not verified (second round)
+ 
+-An independent audit of the Phase 6 administration candidate at
+-`2a3f2ecb4f070401cba00518c0db8a2de823a29d` (branch `claude/icfwalk-phase-6-admin-publish`) found it
+-not ready to freeze, with four findings. They are corrected on
+-`claude/icfwalk-phase-6-admin-audit-corrections`, created from that exact commit. Each correction
+-was preceded by a regression that failed on the candidate for the intended reason
+-(`docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`). No schema migration, no
+-dependency, no test removed, skipped or loosened. **Implementation candidate submitted for
+-independent re-audit; not accepted, frozen or complete.**
++1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New engine-sensitive constructs:
++   `CURRENT_TRANSACTION_ID()` in a default and in triggers (SQL Server 2016 and later), `@@SPID` and
++   `@@TRANCOUNT` checks inside `cftransaction`, and `cfthread` in the barrier tests (Lucee only here).
++   The connection check fails closed if an engine moves a transaction's statements between
++   connections; it does not make such an engine work.
++2. **Whole-release deletion** in the database is not refused; it would free the release's dates and
++   walks. Nothing in the application deletes a release.
++3. **Utility.** A walk corrected into dates already released is never released, and a released
++   walk's later corrections never reach any release.
++4. The accepted residuals of the approved rule are unchanged (100% blocks, collusion and outside
++   knowledge, live figures for walk-and-report roles in their own scope).
++5. **The remainder of Phase 6** is still not built, and **Phase 7 is still not frozen or accepted.**
+ 
+-### What was wrong, and what each fix is
++## Phase 7 correction, third round: re-audit findings P7C-03 and P7C-04 (current state)
+ 
+-**P6A-01 -- bodies were read and parsed before anyone asked who sent them.** `Router.dispatch` built
+-the request by reading and deserializing the whole body, then authenticated, then checked CSRF;
++**Starting point, verified before any edit.** Branch at `9ef9b97b5b4ee20dd51d6ca023c0841b7ca872ba`
++(tree `0c9387dfc1af39d83105d788c8f69bc5ca890a4f`), equal to the remote branch, clean including
++untracked files. The re-audit of that commit: **NOT READY TO FREEZE PHASE 7**. P7C-01 and P7C-02
++closed at source level ("no further redesign ... is indicated"); P7C-03 open; P7C-04 new.
++
++### P7C-03: why the evidence did not arrive, and what changed
++
++The handoff bundle for `9ef9b97` was built and verified (its own `SHA256SUMS`, a clone of its git
++bundle, ancestry, the source tree) and delivered, but what reached the auditor was GitHub's download
++of the branch and a narrative listing hashes of files that download does not contain. The evidence
++now travels inside the branch as well. After the gated commit is pushed and its exact-commit gate
++passes, one more commit adds `docs/evidence/gate/` with a directory named after the gated commit's
++full SHA: the raw gate transcript, the environment record, the push record, the raw mutation
++transcript, the scripts that produced them, `SHA256SUMS` and a README saying how to check them. That
++commit changes nothing else, so any download of the branch carries the evidence, and the downloaded
++tree less that directory must equal the gated commit's tree, which the transcript prints. The
++handoff bundle, with a git bundle of the branch for commit and ancestry checks, is delivered too.
++This is a departure from CORR8-03 ("never commit the evidence"), made deliberately: the evidence
++still describes a commit it is not part of, and the one-directory difference is checkable without
++git.
++
++### P7C-04: no part of a release is ever deleted
++
++**What was found.** The release triggers refused UPDATE but not DELETE. Reproduced on the re-audited
++schema: through the database, one cell could be deleted, and so could a block with its cells and
++walks, or the whole release in the order the keys allow, each leaving a release that reads
++differently (or not at all) under the same identity. The second round's own database test deleted a
++whole release that way and expected success.
++
++**What changed.** The audit offered enforcement, a controlled deletion procedure, or owner
++acceptance of the risk. Enforcement was taken: it is the reading of the owner's "frozen releases"
++that withholds more, and it needs no new decision.
++
++| Change | Why |
++| --- | --- |
++| `007_report_release.sql`: `TR_report_release_no_delete`, `_block_no_delete`, `_cell_no_delete`, `_walk_no_delete`, each `INSTEAD OF DELETE`, refusing with 50068 before anything is deleted. | No release row is deleted, one at a time or all together. `INSTEAD OF` makes the refusal the first and only one, whatever else a deletion would violate. |
++| `database/README.md`: the runtime login holds data permissions only -- never ALTER, CONTROL, `db_owner` or `db_ddladmin`; migrations use a separate, privileged login. | A trigger cannot stop a principal allowed to change the schema: it could switch the guard off or truncate a table. The boundary is tested (below). |
++| `tests/cfml/support/Fixtures.cfc` `deleteRelease` and the test-only `MaintenanceController.cleanupFixtures` switch the four delete guards off inside their own transaction, delete in key order, and switch them on again before committing. | Tests still remove their own releases. That needs ALTER, which a development login has and the production runtime login must not; the route is also disabled wherever the test runner is. A failure rolls the whole thing back, guards included. |
++| The four report specs call `fx.deleteRelease`. | One cleanup path. |
++
++### Tests changed in this round, and why
++
++* **New:** `ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted` -- one cell, one block, one
++  recorded walk, the release row, a block with its cells and walks, and the whole release in key
++  order, each in a transaction that is always rolled back, each refused with 50068, and the release
++  reads identically afterwards. `db-scripts.test.mjs` -- the same refusals by error number; a
++  principal with data permissions only (`CREATE USER ... WITHOUT LOGIN`, `EXECUTE AS`) can neither
++  delete a release row nor disable, drop or truncate past the guard; a privileged removal with the
++  guards off still has to go in key order (50065), and leaves every guard enabled.
++* **Replaced expectations** (both encoded the P7C-04 gap): `db-scripts.test.mjs` deleted a whole
++  release in key order and expected success -- it now expects 50068, and the removal succeeds only
++  on the privileged path; it expected a recorded walk's deletion to be refused with 50065 -- the
++  delete guard now refuses it first, with 50068 (50065 is still tested, on the privileged path).
++* **Adjusted, no assertion changed:** `schema-contract.test.mjs` lists the four new triggers and
++  checks each is `INSTEAD OF DELETE`; the guard count in `db-scripts.test.mjs` is 12. The four report
++  specs' release cleanup goes through `fx.deleteRelease`.
++
++### Tests and results (development run, before the commit)
++
++| Run | Result |
++| --- | --- |
++| The re-audited `9ef9b97`, its own exact-commit gate | Node/HTTP/Playwright **198/198**, CFML **444/444**; 0 failed, 0 skipped |
++| This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198**, CFML **445/445** (444 + `testNoPartOfAReleaseCanBeDeleted`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
++
++The authoritative totals are the exact-commit gate's, in `docs/evidence/gate/`.
++
++### Red before fix
++
++The sixteen deliberate mutations of the second round were run again against this round's tests (the
++three report source files they patch are byte-identical to the second round's): each still turns
++tests red, and each file is restored byte-identical. The only differences are the new case passing
++beside each failure, and failing with the rest under M10, where the whole spec's setup fails. The raw
++output is in the gate evidence directory.
++
++`docs/evidence/phase7-correction-3-red-before-fix.md`. On the re-audited schema the new CFML case
++failed with six deletions not refused (one cell deleted outright; one block and the release row
++stopped only by foreign keys; one recorded walk stopped only by the membership guard; a block with
++its cells and walks, and the whole release, deleted), and the new database test failed at "one cell
++is never deleted".
++
++### Unresolved and not verified (third round)
++
++1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New: `INSTEAD OF DELETE`
++   triggers (available in SQL Server 2016), and the fixture cleanup's in-transaction
++   `DISABLE TRIGGER`/`ENABLE TRIGGER`, which takes a schema lock on the release tables for its
++   duration (test environments only).
++2. **Privileged principals.** A login allowed to alter the schema can still remove or change a
++   release. That is an operational control: the runtime login must not be one.
++3. **No withdrawal.** A release made in error cannot be withdrawn by the application.
++4. The residuals of the second round and of the approved rule are unchanged, and **the remainder of
++   Phase 6** is still not built. **Phase 7 is still not frozen or accepted.**
++
++## Phase 6 administration: preview, clone and compare, retire, placeholder queue, and the UI
++
++**Starting point.** The branch was fast-forwarded (clean tree, ancestor, no reset, rebase, force or
++rewrite) from `a8e97f22ae1639faef5b6e68bf7255dea838f8e2` to
++`0c6fa10972593043508f502538534c2aa95c671b` (the fourth and fifth publish-foundation corrections and
++Phase 7, all by other sessions). On that untouched commit against a fresh database:
++**Node/HTTP/Playwright 193/193 and CFML 411/411, 0 failed, 0 skipped.** The `phase-5-freeze` tag
++exists neither locally nor on the remote; it was not created, moved or deleted.
++
++**Scope.** The remainder of `docs/IMPLEMENTATION_PLAN.md` Phase 6 named in "Exact recommended
++starting point for the rest of Phase 6": ADM-02 preview, ADM-06 new DRAFT from a published version
++with an edited prompt and a compare view, ADM-07 retire, ADM-08 the placeholder review queue, and the
++administration UI for all of it, including ADM-01 import and ADM-04 publish from the browser.
++
++### What it adds
++
++| Piece | What it does |
++| --- | --- |
++| `src/instrument/InstrumentAdminService.cfc` | Version list (`isCurrent`, `isRuntimeInstrument`), preview, import, clone, wording search and edit, compare, placeholder queue, discard. Reads snapshots through `SnapshotService`; every DRAFT write goes through `writeNormalizedDraft`. |
++| `src/instrument/DraftEditor.cfc` | Pure: which wording fields may change (and their limits), applying an edit set with every issue and its path, keeping `contentReview.unresolvedPlaceholders` consistent, search. |
++| `src/instrument/InstrumentVersionComparer.cfc` | Pure: row-by-row diff of two snapshots on logical keys, exact and type-aware, plus version metadata. |
++| `InstrumentImportService.writeNormalizedDraft` | The one DRAFT write path, now shared by import, clone and edit (options: operation, `mustCreate`, `targetVersionId` + `expectedChecksum`, `skipWhenUnchanged`, success event and audit details). `importConfig` calls it. |
++| `InstrumentPublishService.retire` + `DefinitionRepository.markRetired` / `lockRetirement` | PUBLISHED to RETIRED under the version lock, `effective_end` set, nothing else touched; refuses leaving no version in service unless confirmed, with retirements of one instrument serialized so two at once cannot defeat that check; refusals audited after rollback. |
++| Routes (`docs/ENDPOINTS.md`) | `POST /api/admin/instrument/import`, `GET .../versions/{id}/preview`, `/wording`, `/placeholders`, `POST .../clone`, `/edits`, `/retire`, `/discard`, `GET /api/admin/instrument/compare`; all `instrument.manage`, CSRF on every POST. |
++| `app/assets/js/admin.js` + shell | The administration view: import with the validation summary, the version list with status and in-service badges, preview through `renderer.js`, compare, placeholder queue, wording editor, new draft, publish / retire / discard confirmations. An admin-only user lands on it. |
++
++Design and decisions (`docs/ARCHITECTURE.md` "Instrument administration (Phase 6)",
++`docs/DATA_CONTRACT.md` "Instrument administration writes and retirement (Phase 6)",
++`docs/OPEN_DECISIONS.md`):
++
++* **Wording only in the browser.** Structure stays authored in the document and imported. Behavior
++  and item settings are not editable, so no in-app edit can change the summary export or the email
++  draft; the summary vectors stay valid without regeneration.
++* **Placeholders are resolved by DRAFT edit** (the recorded safe default), and the queue shrinks.
++* **Lost updates are refused**: an edit names the checksum it was made against (409 `DRAFT_CHANGED`).
++* **Retirement is attributed in the audit event**, with `effective_end`; no column, no migration.
++  Retiring the only version in service needs explicit confirmation (asked twice in the UI).
++* **Any instrument code may be administered**; only `ICFWALK_INSTRUMENT_CODE` is what walks use.
++* **The shared-metadata operation stays unrouted**; nobody has decided who may rename or take an
++  instrument out of service.
++
++### Narrow changes to earlier-phase files
++
++| File | Change | Why it was necessary |
++| --- | --- | --- |
++| `src/walks/WalkRepository.cfc` (`insertWalk`) | Status-qualified `INSERT ... SELECT` from the version row `WITH (HOLDLOCK, ROWLOCK)`, `OUTPUT INSERTED`; returns `""` when nothing was inserted. | Without it a retirement between version resolution and insert pinned a new walk to a RETIRED version, and the other ordering deadlocked (red evidence 1). |
++| `src/walks/WalkService.cfc` (`create`) | Nothing inserted: 409 `INSTRUMENT_VERSION_CHANGED` with `retiredVersionId`. | The existing code for "the version changed; reload". |
++| `src/reports/ReportService.cfc` (`resolveVersion`) | With nothing in service, default to the newest frozen version. | Retiring the only version made `/api/reports/options` 404 and the Reports view unopenable (red evidence 3). |
++| `src/controllers/AdminInstrumentController.cfc` (`publishVersion`) | Uses the shared `refuseAnyBody` helper. | Same contract and codes; the helper is shared with discard. |
++| `src/instrument/InstrumentImportService.cfc` | `importConfig` delegates its write to `writeNormalizedDraft`; `unchangedResult`, `recordRefusal`, `discardDraftById` added. | One write path for import, clone and edit. The existing import tests pass unchanged. |
++| `src/instrument/InstrumentPublishService.cfc` | `retire` added beside `publish`. | Retirement is the other lifecycle transition and shares publish's lock, refusal-audit and actor rules; `publish` is unchanged. |
++| `src/instrument/DefinitionRepository.cfc` | `markRetired`, `lockRetirement`, `findCurrentVersionExcluding`, `currentVersionIds`. | Retirement, its per-instrument serialization (red evidence 4), and the list's in-service marker (the same predicate as `SnapshotService.currentVersion`). |
++| `src/instrument/InstrumentConfigValidator.cfc` | `definitionValidator()` accessor. | The write path validates edited definitions with the one shared rule set. |
++| `src/core/Errors.cfc` | `retireNotPublished` (409), `payloadTooLarge` (413). | New refusals, mapped centrally. |
++| `src/Bootstrap.cfc`, `src/http/Router.cfc` | Wiring and the nine routes. | Nothing existing moved; no existing route or policy changed. |
++| `src/views/shell.html`, `app/assets/js/app.js`, `app/assets/js/api.js`, `app/assets/css/icfwalk.css` | Admin nav button and view; `canAdmin` from `/api/me` (a boolean for the global permission); admin-only users land on it; `api.postEmpty` for the no-body routes; styles appended. | The view. Walk and report users see exactly what they saw before, plus the button when they also hold `instrument.manage`. |
++| `tests/cfml/specs/InstrumentImmutabilityTest.cfc` | `markRetired` in a new lifecycle inventory, with its own contract test. | The mutator inventory test fails on any unlisted mutator, by design. |
++| `tests/cfml/support/Intercepting{Definition,Walk}Repository.cfc` | `markRetired`, `lockRetirement`, `findCurrentVersionExcluding` and `insertWalk` barrier seams. | Test-only, like every other seam: nothing in `src/` references them and no route, flag or hook reaches them. |
++| `package.json` | `test:admin`; `browser-admin` added to `test:browser`. | Scripts only; no dependency added. |
++
++No schema migration, dependency, framework or infrastructure was added. No existing test was
++removed, skipped, weakened or rewritten.
++
++### Files changed
++
++| File | Status |
++| --- | --- |
++| `src/instrument/InstrumentAdminService.cfc`, `src/instrument/DraftEditor.cfc`, `src/instrument/InstrumentVersionComparer.cfc`, `app/assets/js/admin.js` | New |
++| `tests/cfml/specs/InstrumentAdministrationTest.cfc` (17), `DraftEditorTest.cfc` (11), `InstrumentVersionComparerTest.cfc` (6), `RetireConcurrencyBarrierTest.cfc` (3) | New |
++| `tests/node/admin-instrument.test.mjs` (11), `tests/node/browser-admin.test.mjs` (6) | New |
++| `docs/evidence/phase6-admin-red-before-fix.md`, `docs/evidence/screenshots/admin-*.png` | New |
++| The files in the table above | Changed |
++| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/LOCAL_SETUP.md`, `docs/ACCEPTANCE_TRACKING.md`, `BUILD_STATUS.md` | Records |
++| `manifest.json` | Refreshed (`node scripts/refresh-manifest.mjs`) |
++
++### Tests and results (development runs, before the commit)
++
++Environment: Lucee 6.2.8.20, SQL Server 2022 Developer in Docker, Node 22.22.2, Playwright 1.56.1
++with Chromium, axe-core 4.13.0.
++
++| Run | Result |
++| --- | --- |
++| Base `0c6fa10`, fresh database | Node/HTTP/Playwright 193/193, CFML 411/411 |
++| New and affected CFML specs | `InstrumentAdministrationTest` 17/17, `DraftEditorTest` 11/11, `InstrumentVersionComparerTest` 6/6, `RetireConcurrencyBarrierTest` 3/3, `InstrumentImmutabilityTest` 15/15, `ReportServiceTest` 15/15, `ReportCoherenceTest` 4/4 |
++| New HTTP and browser files | `admin-instrument` 11/11, `browser-admin` 6/6 |
++| Neighbouring suites after the shell and router changes | `shell`, `visibility`, `admin-publish`, `walks`, `browser`, `browser-reports`, `browser-persistence`: 102/102 |
++
++Red before green (`docs/evidence/phase6-admin-red-before-fix.md`): the retire race (a walk pinned
++to a RETIRED version; a deadlock victim), a 500 for an import without a document, Reports
++unopenable after retiring the only version, two concurrent retirements leaving nothing in service,
++and every new check failing against the base source.
++
++**The authoritative result is the full gate on the exact commit**, from a clean tree on a freshly
++created database with screenshots written outside the repository. Its transcript is
++`docs/evidence/phase6-admin-release-gate.txt`, added in the commit that follows this one, because
++recording it here would change the commit it describes. **Result on
++`407b0cdb5616575ef92cfb84ac57566b87f6424d`: Node/HTTP/Playwright 210/210 (193 + 11 `admin-instrument` +
++6 `browser-admin`), CFML 449/449 (411 + 17 + 11 + 6 + 3 + 1 new `InstrumentImmutabilityTest` case), 0
++failed, 0 skipped**, `validate:handoff` ok (51 checks), migration `006` re-application idempotent,
++working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server 2022 (16.0.4295.3) only.
++
++### Unresolved and not verified (Phase 6 administration)
++
++1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New engine-sensitive constructs
++   to re-run there: `WITH (HOLDLOCK, ROWLOCK)` on the `INSERT ... SELECT` source with `OUTPUT
++   INSERTED` (SQL Server 2016 syntax, but the lock behavior under the Adobe datasource's isolation
++   level must be re-proved by `RetireConcurrencyBarrierTest`), `sp_getapplock` with a
++   transaction owner inside the Adobe `transaction` block (it must run on the transaction's own
++   connection), a non-`required` argument receiving
++   `null` positionally, `cfthread` in the new barrier spec, `compare()` for case-sensitive key
++   matching, and the raw body length the 413 cap reads (since the audit corrections, the router's
++   bounded byte read of the servlet container's input stream, P6A-01 below -- the unwrapping of the
++   engine's request is exactly the part to re-prove on Adobe ColdFusion).
++2. **The approved wording for the 17 placeholder prompts is still the district's to supply.** The
++   tooling to apply it exists; the content does not.
++3. **Structure is not editable in the browser** by decision; a structural change is a document edit
++   and import.
++4. **Screen readers were not tested.** The view passes axe-core (WCAG 2.1 A/AA, serious and critical)
++   and keyboard checks; that is not the same thing.
++5. **On a phone the version list scrolls sideways inside its own region** (no page overflow). It is
++   usable, not designed for 375 px; administrators are expected on a desktop.
++6. **A 422 publish refusal is not browser-tested** (ADM-03 row). The service and HTTP evidence is
++   unchanged.
++7. **Nothing here is independently audited.** Phase 6 administration and Phase 7 are implementation
++   candidates: not frozen, not accepted.
++
++## Excel round-trip for the yearly instrument update
++
++**Why.** The product owner confirmed the instrument changes once a year, in summer, and chose to
++make structural changes in Excel first, with a friendlier in-app editor scoped after the first
++summer shows what actually changes. The plan and its status are in the Phase 6 review document.
++
++**Starting point.** `2b68cc06db98bf335b375529088ca5adef7132fb` (Phase 6 administration and its gate
++transcript), clean tree, remote equal to HEAD.
++
++### What it adds
++
++| Piece | What it does |
++| --- | --- |
++| `src/instrument/InstrumentDocumentExporter.cfc` | Pure: a version's normalized content back to the authoring document, the exact inverse of `ConfigNormalizer` (rows keep their authoring ids; references resolve to the ids they had; the version declares DRAFT; rows in reading order). |
++| `GET /api/admin/instrument/versions/{id}/document` | `InstrumentAdminService.exportDocument`: any version as that document, from its checksum-verified snapshot. |
++| `app/assets/js/workbook.js` | Dependency-free .xlsx writer and reader in the page: the aligned workbook's layout plus Start Here and document sheets; typed cell handling; problems by sheet, row and column; `locate()` for server paths; limits, CRC checks, no DOCTYPE. |
++| Admin view | Download on every version (Excel workbook or JSON document). Import takes a workbook or a JSON document and an optional new draft label, lists workbook problems by cell, locates server problems on their cells, and asks before replacing a draft that changed since the download or that the file did not come from. |
++
++The server never parses a spreadsheet: an uploaded workbook becomes the same JSON document any
++upload sends, through the unchanged import route. No schema migration, dependency, framework or
++infrastructure was added. `libreoffice-calc` was installed into this build container to produce and
++check fixtures; nothing in the project depends on it.
++
++### Changes to existing files
++
++| File | Change |
++| --- | --- |
++| `src/instrument/InstrumentAdminService.cfc` | `exportDocument`; the exporter is a new constructor argument. |
++| `src/controllers/AdminInstrumentController.cfc`, `src/http/Router.cfc`, `src/Bootstrap.cfc` | The action, the route (`instrument.manage`), the wiring. |
++| `app/assets/js/admin.js`, `src/views/shell.html` | Download panel; the import card accepts .xlsx and an optional draft label; problems located on cells; the replace check. |
++| `tests/node/admin-instrument.test.mjs`, `tests/node/browser-admin.test.mjs` | New cases (below); the document route joins the 401/403 table; one assertion updated for deliberately changed wording. |
++| `package.json` | `test:workbook`; the workbook test joins `test:admin`. |
++
++### Files changed
++
++| File | Status |
++| --- | --- |
++| `src/instrument/InstrumentDocumentExporter.cfc`, `app/assets/js/workbook.js` | New |
++| `tests/cfml/specs/InstrumentDocumentExporterTest.cfc` (6), `tests/node/workbook.test.mjs` (12) | New |
++| `tests/fixtures/workbooks/` (two LibreOffice-saved workbooks, the script that edited one, a README) | New |
++| `docs/evidence/excel-roundtrip-red-before-green.md`, `docs/evidence/screenshots/admin-download-desktop.png` | New |
++| The files in the table above; `docs/evidence/screenshots/admin-*.png` refreshed | Changed |
++| `docs/ENDPOINTS.md`, `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/OPEN_DECISIONS.md`, `docs/ACCEPTANCE_TRACKING.md`, `docs/LOCAL_SETUP.md`, `BUILD_STATUS.md`, `manifest.json` | Records |
++
++### Tests and results (development runs, before the commit)
++
++| Run | Result |
++| --- | --- |
++| `InstrumentDocumentExporterTest` | 6/6 |
++| `workbook.test.mjs` | 12/12 |
++| `admin-instrument.test.mjs` | 13/13 (2 new: an edited workbook imports as a draft with exactly the edit; the LibreOffice-edited workbook imports and the comparison shows exactly its five edits) |
++| `browser-admin.test.mjs` | 7/7 (1 new: download, upload, problems by cell, nothing sent for a workbook problem, the replace check; the download panel added to the accessibility case) |
++
++Red before green: `docs/evidence/excel-roundtrip-red-before-green.md` (every new check fails without
++the new source; no product defect was found). **The authoritative result is the full gate on the
++exact commit**, recorded in `docs/evidence/excel-roundtrip-release-gate.txt` in the commit after it.
++**Result on `0a784d58f66d6796d7ce6d55b1965f6e7d408340`: Node/HTTP/Playwright 225/225 (210 + 12
++`workbook` + 2 HTTP + 1 browser), CFML 455/455 (449 + 6 `InstrumentDocumentExporterTest`), 0 failed,
++0 skipped**, `validate:handoff` ok, working tree unchanged afterwards. Lucee 6.2.8.20 and SQL Server
++2022 only.
++
++### Unresolved and not verified (Excel round-trip)
++
++1. **Not opened in Microsoft Excel.** Excel is not available in this environment. The reader is
++   proven against the aligned workbook written by other software and against LibreOffice Calc 24.2
++   output; the writer's files open in LibreOffice. A check in real Excel (open, edit, save, upload)
++   belongs in the spring practice run.
++2. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** The exporter is plain CFML
++   (closures passed to `arraySort`, recursive private methods); re-run
++   `InstrumentDocumentExporterTest` there.
++3. **Editing structure in Excel is still technical.** Rows point at each other by id, and rules and
++   settings are JSON in cells. Validation catches mistakes and names the cell, but the admin still
++   has to understand the sheets. That is what the later in-app editor is for.
++4. **Uploading under an existing draft's label replaces that draft.** The page asks first when the
++   draft changed since the download or the file did not come from it; the server itself does not
++   compare checksums on import. *(Superseded by audit correction P6A-02 below: an administrator's
++   import is now create-only unless it names the draft's id and the checksum agreed to, which the
++   server compares under the version lock.)*
++5. **Not independently audited**, like the rest of Phase 6 administration and Phase 7.
++
++## Submitted for audit (superseded by the audit corrections below)
++
++Phase 6 administration and the Excel round-trip are submitted for independent audit as an
++implementation candidate: range `0c6fa10..786e572`. What to audit, where each claim is, the changes
++outside Phase 6 files, where to look first and the known gaps are in
++`docs/evidence/phase6-admin-audit-handoff.md`; the environment is in
++`docs/evidence/phase6-admin-environment.md`. Not accepted, frozen or complete until the audit says so.
++
++## Phase 6 administration audit corrections (P6A-01 to P6A-04)
++
++An independent audit of the Phase 6 administration candidate at
++`2a3f2ecb4f070401cba00518c0db8a2de823a29d` (branch `claude/icfwalk-phase-6-admin-publish`) found it
++not ready to freeze, with four findings. They are corrected on
++`claude/icfwalk-phase-6-admin-audit-corrections`, created from that exact commit. Each correction
++was preceded by a regression that failed on the candidate for the intended reason
++(`docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`). No schema migration, no
++dependency, no test removed, skipped or loosened. **Implementation candidate submitted for
++independent re-audit; not accepted, frozen or complete.**
++
++### What was wrong, and what each fix is
++
++**P6A-01 -- bodies were read and parsed before anyone asked who sent them.** `Router.dispatch` built
++the request by reading and deserializing the whole body, then authenticated, then checked CSRF;
+ the import's 5,000,000-byte limit was the controller's, after all of that; the chunked fallback
+ measured `len()` of text (characters); the page read a whole file before checking its size.
+ *Fix:* `Router.handle(source)` matches the route and reads metadata only; runs the maintenance
+@@ -4108,145 +4243,97 @@ is empty.
+ 
+ The acceptance is recorded in `docs/evidence/phase6-freeze.md` ("Acceptance") and in
+ `docs/ACCEPTANCE_TRACKING.md`.
+-=======
+-| The audited correction `0c74dbd`, its own exact-commit gate | Node/HTTP/Playwright **197/197**, CFML **435/435**; 0 failed, 0 skipped |
+-| This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198** (197 + 1 structural), CFML **444/444** (435 + 7 `ReportIsolationTest` + 2 `ReportReleaseMembershipTest`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
+-| With the `ReportReleaseTest` fixture fix, on the failed gate's database (no active unit left but the seed's), `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198**, CFML **444/444**; 0 failed, 0 cancelled, 0 skipped, 0 todo |
+-
+-These are development runs; the authoritative totals are the exact-commit gate's.
+-
+-### The first gate of this round failed
+-
+-The exact-commit gate of the round's first commit, `b67df76a9fe46eefe38d47f7919a89d19c1b5d79`,
+-failed: part 1 of the CFML suite reported
+-`ReportReleaseTest.testOnlySomeoneWhoCanOpenEveryWalkMayRelease` ("Expected an exception of type
+-[ICFWalk.Forbidden] but nothing was thrown"), and the suite stopped there. The cause is in the first
+-round's test, not in this round's code. The test expects DR's district walk-and-report user to be
+-refused a release because some active unit lies outside DR, but it never created such a unit: it
+-relied on another spec having left one behind. Adding two specs changed how specs are dealt into the
+-suite's six parts, so on the gate's brand-new database `ReportReleaseTest` ran before any such unit
+-existed. There the user could open every walk, and was rightly allowed to release. Reproduced on that
+-database (0 other active units: 14 passed, 1 failed); fixed by giving the test its own district
+-outside DR (15 passed on the same database). The HTTP suite already had one ("elsewhere"). The
+-refusal assertion is unchanged. The failed gate's raw transcript is delivered with the handoff as a
+-superseded record, and the gate was run again on the fixing commit.
+ 
+-### Red before fix
++## Phase 6 and Phase 7 integration
+ 
+-`docs/evidence/phase7-correction-2-red-before-fix.md`: on the audited build, served against its own
+-database built from its own migrations, P7C-02 reproduces (release B counted a released walk again);
+-P7C-01's barrier tests pass (the tables were already connection-local), fail when the tables are
+-made global, and the guard tests fail because the guards are new. Sixteen deliberate mutations of this
+-round's code -- the first round's eleven re-run, and five new ones for P7C-01 and P7C-02 -- each turn
+-tests red for the reason targeted, and each file is restored byte for byte.
++**Starting point.** On the project owner's direction, after Phase 6 was accepted, a new branch,
++`claude/icfwalk-phase-6-7-integration`, was created from the Phase 6 records tip
++`64507deb075e267761179d78be966b7a4d3972cc` (whose code is the accepted
++`158debca5da2c4f3a07f602689cd08af9db9bd6e`), and the Phase 7 tip
++`e0342143074f727475ae2d4cb6933fa279902f85` was merged into it with `git merge --no-ff`. The merge base
++is `0c6fa10972593043508f502538534c2aa95c671b`, the original Phase 7 commit. Neither source branch was
++changed: `claude/icfwalk-phase-6-admin-audit-corrections` stays at `64507de` as the Phase 6 audit
++record, and `claude/icfwalk-phase-7-correction-n62s25` stays at `e034214`. Nothing was rebased,
++amended or force-pushed.
+ 
+-### Unresolved and not verified (second round)
++**This merge is a new integration candidate.** It does not modify the Phase 6 freeze and does not
++accept Phase 7. Phase 6's acceptance covers `158debc` and nothing merged after it.
+ 
+-1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New engine-sensitive constructs:
+-   `CURRENT_TRANSACTION_ID()` in a default and in triggers (SQL Server 2016 and later), `@@SPID` and
+-   `@@TRANCOUNT` checks inside `cftransaction`, and `cfthread` in the barrier tests (Lucee only here).
+-   The connection check fails closed if an engine moves a transaction's statements between
+-   connections; it does not make such an engine work.
+-2. **Whole-release deletion** in the database is not refused; it would free the release's dates and
+-   walks. Nothing in the application deletes a release.
+-3. **Utility.** A walk corrected into dates already released is never released, and a released
+-   walk's later corrections never reach any release.
+-4. The accepted residuals of the approved rule are unchanged (100% blocks, collusion and outside
+-   knowledge, live figures for walk-and-report roles in their own scope).
+-5. **The remainder of Phase 6** is still not built, and **Phase 7 is still not frozen or accepted.**
++### What each side brought, since `0c6fa10`
+ 
+-## Phase 7 correction, third round: re-audit findings P7C-03 and P7C-04 (current state)
++| Side | Files | What |
++| --- | --- | --- |
++| Phase 6, to `64507de` | 79 (50 code, test or configuration) | Phase 6 administration (ADM-01 to ADM-08 and the administration UI), the Excel round-trip, the audit corrections P6A-01 to P6A-04 and the re-audit correction P6A-R01, and their records. No migration. |
++| Phase 7, to `e034214` | 49 (27 code, test or configuration) | The corrections for Phase 7's audit findings P7-01, P7-02 and P7C-01 to P7C-04: the owner-approved RPT-03 rule (k = 3, frozen releases for report-only users, disclosure control), connection-local report tables, one release per walk, append-only releases (migration `007_report_release.sql`), and their records and gate evidence. |
+ 
+-**Starting point, verified before any edit.** Branch at `9ef9b97b5b4ee20dd51d6ca023c0841b7ca872ba`
+-(tree `0c9387dfc1af39d83105d788c8f69bc5ca890a4f`), equal to the remote branch, clean including
+-untracked files. The re-audit of that commit: **NOT READY TO FREEZE PHASE 7**. P7C-01 and P7C-02
+-closed at source level ("no further redesign ... is indicated"); P7C-03 open; P7C-04 new.
++Eleven files were changed by both. Git merged seven of them and stopped on four.
+ 
+-### P7C-03: why the evidence did not arrive, and what changed
++### Files both sides changed, and how each was resolved
+ 
+-The handoff bundle for `9ef9b97` was built and verified (its own `SHA256SUMS`, a clone of its git
+-bundle, ancestry, the source tree) and delivered, but what reached the auditor was GitHub's download
+-of the branch and a narrative listing hashes of files that download does not contain. The evidence
+-now travels inside the branch as well. After the gated commit is pushed and its exact-commit gate
+-passes, one more commit adds `docs/evidence/gate/` with a directory named after the gated commit's
+-full SHA: the raw gate transcript, the environment record, the push record, the raw mutation
+-transcript, the scripts that produced them, `SHA256SUMS` and a README saying how to check them. That
+-commit changes nothing else, so any download of the branch carries the evidence, and the downloaded
+-tree less that directory must equal the gated commit's tree, which the transcript prints. The
+-handoff bundle, with a git bundle of the branch for commit and ancestry checks, is delivered too.
+-This is a departure from CORR8-03 ("never commit the evidence"), made deliberately: the evidence
+-still describes a commit it is not part of, and the one-directory difference is checkable without
+-git.
++| File | Git | Resolution |
++| --- | --- | --- |
++| `src/http/Router.cfc` | merged | Phase 6's router (the bounded body reader, authentication, CSRF and permission before the body, per-route limits) with Phase 7's one new route, `POST /api/reports/releases` (`report.view`). The route takes the server maximum (20,000,000 bytes) and passes through the same checks as every POST: authentication, CSRF, `report.view`, then the bounded read and the parse. `ReportController.createRelease` reads `req.principal` and `req.body`, which Phase 6's router still provides. |
++| `src/views/shell.html` | merged | Phase 6's administration view and nav button, and Phase 7's release form in the Reports view. Separate regions, both kept. |
++| `src/reports/ReportService.cfc` | merged | Phase 7's rewrite, with Phase 6's four lines in `resolveVersion`: with no version in service, the default is the newest frozen version rather than a 404 that leaves Reports unopenable. Phase 7 did not change `resolveVersion`, `reportableVersions` or `ReportRepository.listFrozenVersions` (newest first), so the four lines mean what they meant. |
++| `docs/ARCHITECTURE.md`, `docs/DATA_CONTRACT.md`, `docs/LOCAL_SETUP.md`, `docs/OPEN_DECISIONS.md` | merged | Read through after the merge: Phase 6's administration and request-body text and Phase 7's release and privacy text sit in different sections, and nothing in one contradicts the other: the release route falls under the general 20,000,000-byte limit and the CSRF rule for every POST, and the migration lists name `001` to `007`. No change. |
++| `BUILD_STATUS.md` | conflict | The header rewritten for this branch. Both sides' appended sections are kept exactly as delivered: Phase 7's three correction rounds directly after the Phase 7 section they correct, then Phase 6's sections from "Phase 6 administration" to "Phase 6 accepted", then this section. The scope line names Phase 7's corrections. |
++| `docs/ACCEPTANCE_TRACKING.md` | conflict | Phase 6's ADM-02, ADM-06, ADM-07, ADM-08, Excel round-trip and administration UI rows (Phase 7 had not changed the PENDING row they replace) and Phase 7's corrected RPT-01, RPT-02 and RPT-03 rows (Phase 6 had not changed them). Phase 7's correction ledger stays under its section, followed by Phase 6's audit-corrections section. The current status line is rewritten for this branch. |
++| `docs/ENDPOINTS.md` | conflict | Phase 7's four report rows (options, aggregate, CSV, and the new releases route), with Phase 6's one change to the options row re-applied: with no version in service, the default version is the newest frozen one. |
++| `manifest.json` | conflict | Only the sizes and SHA-256 values of `docs/DATA_CONTRACT.md` and `docs/OPEN_DECISIONS.md`, which both sides changed. The file list is the same on both sides. The values were recomputed with `node scripts/refresh-manifest.mjs` once the merged tree was final. |
+ 
+-### P7C-04: no part of a release is ever deleted
++The resolution, hunk by hunk, is the merge commit's remerge diff (`git show --remerge-diff` on the
++merge commit), recorded with the gate in the commit after it.
+ 
+-**What was found.** The release triggers refused UPDATE but not DELETE. Reproduced on the re-audited
+-schema: through the database, one cell could be deleted, and so could a block with its cells and
+-walks, or the whole release in the order the keys allow, each leaving a release that reads
+-differently (or not at all) under the same identity. The second round's own database test deleted a
+-whole release that way and expected success.
++### Statements in the delivered sections that this merge supersedes
+ 
+-**What changed.** The audit offered enforcement, a controlled deletion procedure, or owner
+-acceptance of the risk. Enforcement was taken: it is the reading of the owner's "frozen releases"
+-that withholds more, and it needs no new decision.
++They are kept as delivered, under the rule at the top of this file. On this branch:
+ 
+-| Change | Why |
+-| --- | --- |
+-| `007_report_release.sql`: `TR_report_release_no_delete`, `_block_no_delete`, `_cell_no_delete`, `_walk_no_delete`, each `INSTEAD OF DELETE`, refusing with 50068 before anything is deleted. | No release row is deleted, one at a time or all together. `INSTEAD OF` makes the refusal the first and only one, whatever else a deletion would violate. |
+-| `database/README.md`: the runtime login holds data permissions only -- never ALTER, CONTROL, `db_owner` or `db_ddladmin`; migrations use a separate, privileged login. | A trigger cannot stop a principal allowed to change the schema: it could switch the guard off or truncate a table. The boundary is tested (below). |
+-| `tests/cfml/support/Fixtures.cfc` `deleteRelease` and the test-only `MaintenanceController.cleanupFixtures` switch the four delete guards off inside their own transaction, delete in key order, and switch them on again before committing. | Tests still remove their own releases. That needs ALTER, which a development login has and the production runtime login must not; the route is also disabled wherever the test runner is. A failure rolls the whole thing back, guards included. |
+-| The four report specs call `fx.deleteRelease`. | One cleanup path. |
++- Phase 6's sections say the Phase 7 corrections are not merged. They are merged here.
++- Phase 7's sections say the remainder of Phase 6 is not built. It is: the Phase 6 sections above.
++- Phase 7's third-round heading says "current state". It is the current state of Phase 7. The
++  current state of this branch is this section.
++- The Phase 7 section's note says its correction is "at the end of this file". It follows that
++  section directly.
++- `docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/` describes
++  Phase 7's gated commit `98321a1`, not this merge.
+ 
+-### Tests changed in this round, and why
++### Changes beyond the conflict resolution
+ 
+-* **New:** `ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted` -- one cell, one block, one
+-  recorded walk, the release row, a block with its cells and walks, and the whole release in key
+-  order, each in a transaction that is always rolled back, each refused with 50068, and the release
+-  reads identically afterwards. `db-scripts.test.mjs` -- the same refusals by error number; a
+-  principal with data permissions only (`CREATE USER ... WITHOUT LOGIN`, `EXECUTE AS`) can neither
+-  delete a release row nor disable, drop or truncate past the guard; a privileged removal with the
+-  guards off still has to go in key order (50065), and leaves every guard enabled.
+-* **Replaced expectations** (both encoded the P7C-04 gap): `db-scripts.test.mjs` deleted a whole
+-  release in key order and expected success -- it now expects 50068, and the removal succeeds only
+-  on the privileged path; it expected a recorded walk's deletion to be refused with 50065 -- the
+-  delete guard now refuses it first, with 50068 (50065 is still tested, on the privileged path).
+-* **Adjusted, no assertion changed:** `schema-contract.test.mjs` lists the four new triggers and
+-  checks each is `INSTEAD OF DELETE`; the guard count in `db-scripts.test.mjs` is 12. The four report
+-  specs' release cleanup goes through `fx.deleteRelease`.
++None. No code, test, configuration or migration file was edited by hand, and no test was added,
++removed, skipped or changed. Every code difference from either parent is the other parent's change
++(the gate proves it in its section 1). The hand-made changes are the documentation resolutions above
++and the two recomputed manifest values, and all of them are in the merge's remerge diff.
+ 
+-### Tests and results (development run, before the commit)
++### Tests and results (development runs on the merged tree, before the commit)
+ 
+ | Run | Result |
+ | --- | --- |
+-| The re-audited `9ef9b97`, its own exact-commit gate | Node/HTTP/Playwright **198/198**, CFML **444/444**; 0 failed, 0 skipped |
+-| This round's working tree, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **198/198**, CFML **445/445** (444 + `testNoPartOfAReleaseCanBeDeleted`); 0 failed, 0 cancelled, 0 skipped, 0 todo |
+-
+-The authoritative totals are the exact-commit gate's, in `docs/evidence/gate/`.
+-
+-### Red before fix
+-
+-The sixteen deliberate mutations of the second round were run again against this round's tests (the
+-three report source files they patch are byte-identical to the second round's): each still turns
+-tests red, and each file is restored byte-identical. The only differences are the new case passing
+-beside each failure, and failing with the rest under M10, where the whole spec's setup fails. The raw
+-output is in the gate evidence directory.
+-
+-`docs/evidence/phase7-correction-3-red-before-fix.md`. On the re-audited schema the new CFML case
+-failed with six deletions not refused (one cell deleted outright; one block and the release row
+-stopped only by foreign keys; one recorded walk stopped only by the membership guard; a block with
+-its cells and walks, and the whole release, deleted), and the new database test failed at "one cell
+-is never deleted".
+-
+-### Unresolved and not verified (third round)
+-
+-1. **Adobe ColdFusion 2023 and SQL Server 2016 remain unverified.** New: `INSTEAD OF DELETE`
+-   triggers (available in SQL Server 2016), and the fixture cleanup's in-transaction
+-   `DISABLE TRIGGER`/`ENABLE TRIGGER`, which takes a schema lock on the release tables for its
+-   duration (test environments only).
+-2. **Privileged principals.** A login allowed to alter the schema can still remove or change a
+-   release. That is an operational control: the runtime login must not be one.
+-3. **No withdrawal.** A release made in error cannot be withdrawn by the application.
+-4. The residuals of the second round and of the approved rule are unchanged, and **the remainder of
+-   Phase 6** is still not built. **Phase 7 is still not frozen or accepted.**
+-
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
++| The merged tree before the commit: a freshly created `icfwalk_dev`, migrations `001` to `007`, the aligned DRAFT seeded, `ICFWALK_REQUIRE_APP=1 npm test` | Node/HTTP/Playwright **245/245**, CFML **517/517**; 0 failed, 0 skipped, 0 todo, 0 cancelled |
++| What the two sides predict | Node: 193 at the merge base, plus 47 from Phase 6 (240 at `158debc`) and 5 from Phase 7 (198 at `98321a1`), is 245. CFML: 411 at the merge base, plus 72 from Phase 6 (483) and 34 from Phase 7 (445), is 517. No test file was changed by both sides, so no test was lost or counted twice. |
++| `npm run validate:handoff` | ok, 51 checks |
++
++The development run used a provisional recomputation of the manifest. The committed values were
++recomputed again from the conflicted file once the tree was final.
++
++**The authoritative result is the full gate on the exact merge commit**, from a clean tree on a
++brand-new SQL Server container, recorded in the commit after it because recording it in the merge
++would change the commit it describes. It is the union of the two branches' gates: identity, both
++parents and ancestry before and after; `npm ci`; `validate:handoff`; `test:package`; every tracked
++JavaScript file parsed; migrations `001` to `007` in order, each of `002` to `007` re-applied and
++`001` refused a second time; the application started on that database and the aligned DRAFT seeded;
++`ICFWALK_REQUIRE_APP=1 npm test` (Node, HTTP, Playwright and CFML) with 0 failed, 0 skipped, 0 todo
++and 0 cancelled; and the working tree clean and HEAD unmoved afterwards. Two checks are added for the
++merge: every code difference from each parent must be a file the other parent changed, with each file
++both changed equal to one side plus exactly the other side's changed lines; and the suite's totals
++must be exactly the 245 Node and 517 CFML tests the two sides predict.
++
++### Unresolved and not verified (integration)
++
++1. **Adobe ColdFusion 2023, SQL Server 2016, IIS or any connector-level limit, Microsoft Excel and a
++   screen reader** were not used, here or on either branch. The application is not
++   production-certified.
++2. **Phase 7's findings keep their status**: P7-01, P7C-01, P7C-02 and P7C-04 await re-audit, P7-02
++   and P7C-03 await verification. The merge alters no line Phase 7 wrote: where Phase 7's files
++   differ here, the difference is Phase 6's own change.
++3. **The integration itself is unaudited.** It is submitted for a focused independent integration
++   audit.
+diff --git a/docs/ACCEPTANCE_TRACKING.md b/docs/ACCEPTANCE_TRACKING.md
+remerge CONFLICT (content): Merge conflict in docs/ACCEPTANCE_TRACKING.md
+index 7028e5d..b120c9a 100644
+--- a/docs/ACCEPTANCE_TRACKING.md
++++ b/docs/ACCEPTANCE_TRACKING.md
+@@ -10,11 +10,15 @@ Docker. Every CFML-backed PASS below must be re-run on Adobe ColdFusion 2023 bef
+ commands are identical (`npm test`). Items whose behavior depends on Adobe-specific semantics are
+ marked explicitly.
+ 
+-**Current status:** Phase 6 is accepted and frozen at code commit
+-`158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the verified scope. The independent re-audit passed and P6A-R01 is
+-closed (`docs/evidence/phase6-freeze.md`, "Acceptance"). Not production-certified: Adobe ColdFusion
+-2023, SQL Server 2016, connector-level limits, Microsoft Excel and a screen reader have not been
+-used. Phase 7 is not frozen and not accepted.
++**Current status (branch `claude/icfwalk-phase-6-7-integration`):** a Phase 6 and Phase 7 integration
++candidate, awaiting a focused independent integration audit. Phase 6 is accepted and frozen at code
++commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the verified scope: the independent re-audit
++passed and P6A-R01 is closed (`docs/evidence/phase6-freeze.md`, "Acceptance"). That acceptance
++covers `158debc`, not this merge. The Phase 7 corrections merged here
++(`e0342143074f727475ae2d4cb6933fa279902f85`) await independent re-audit: Phase 7 is not frozen and
++not accepted, and its findings keep the status its ledger gives them. Not production-certified:
++Adobe ColdFusion 2023, SQL Server 2016, connector-level limits, Microsoft Excel and a screen reader
++have not been used.
+ Sections below that describe earlier rounds keep the status they had when they were written.
+ 
+ ## Package and configuration
+@@ -126,22 +130,15 @@ Each COND row is proven three ways: `VisibilityEngineTest` (CFML engine), `tests
+ | ADM-04 | PASS. **Phase 6 administration UI:** Publish asks first (inline `alertdialog`, focus on Cancel, Escape cancels) and a cancelled publish changes nothing (`browser-admin.test.mjs` "ADM-04 / ADM-07 (browser)"). The browser sends no body (`api.postEmpty`), matching the route's no-body contract. **Freeze.** `InstrumentPublishServiceTest.testPublishFreezesTheImportedSnapshotByteForByte`: the frozen snapshot is byte-identical to the imported one, its checksum still hashes it, and `status`/`published_at`/`effective_start`/`checksum_sha256`/`compiled_snapshot_json`/`published_by_user_id` are all written by the one `markPublished` statement (`CK_instrument_version_publish_values` and `CK_instrument_version_publisher_required` reject any non-DRAFT row missing one). `testAPublishedVersionBecomesSelectableAsCurrent` proves the published row satisfies the current-version selection predicate. **Publisher attribution** is proved, not assumed: `testPublishRecordsTheAuthenticatedPublisher` (row, result and success audit all name the same user), `testPublishingWithoutAValidPublisherIsRefusedAndChangesNothing` (missing, blank, malformed and unknown publishers each refused with nothing written), `testMarkPublishedRefusesAnEmptyPublisher` (no lower-level bypass). **Live HTTP** (`admin-publish.test.mjs`, 14 cases against the running application and real SQL Server): anonymous 401; non-`instrument.manage` 403; missing and invalid CSRF 403; malformed id 400; unknown id 404 without disclosure or mutation; the no-body contract enforced on the raw request rather than on the parsed struct, so no body, `{}`, `{ }`, whitespace only, a newline only, `null`, `[]` and a body naming a publisher each answer 400 with a stable code and move no row version, and a body naming another actor or publisher cannot override the session (a JSON `null` body is 400 `INVALID_JSON_BODY`, not a 500); successful publication with the publisher taken from the authenticated principal; repeat publication a deterministic 409 with no second success event; a lost-response retry unable to publish twice or move the frozen row; two concurrent publishes producing exactly one transition and one refusal with one success audit; and publish-versus-mutation races resolving in one serial order without a deadlock. Those `Promise.all` races are supplemental stress coverage: they cannot show that two transactions ever overlapped. **Deterministic concurrency evidence** is a two-sided barrier (`tests/cfml/support/ConcurrencyBarrier.cfc`, with the test-only `armBefore` / `armAfter` seams of `tests/cfml/support/InterceptingDefinitionRepository.cfc`). The overlap is established by two independently observed signals, not inferred: transaction A emits `A_LOCKED` from inside its transaction once it holds the production lock and has done nothing else, and request B emits `B_AT_COMPETING_BOUNDARY` immediately before the database call that contends for that lock. The spec blocks on a `LinkedBlockingQueue` poll (no CFML sleep), releases A only after hearing B, asserts that both signals were observed and `signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY")`, and then asserts the one permitted serial outcome and the final state. That B had not completed while A held the lock is also asserted, but only as supplemental evidence after its arrival was independently observed; non-completion alone proves nothing about arrival. Seven deterministic contention pairings: publish versus publish (`PublishConcurrencyBarrierTest.testPublishVersusPublishReachesOneSerialOutcome`), publish versus import (`testPublishVersusImportReachesOneSerialOutcome`), import versus publish (`testImportVersusPublishQueuesRatherThanDeadlocking`), publish versus new dimension identity (`testPublishVersusNewDimensionIdentityReachesOneSerialOutcome`), publish versus new dimension-value identity (`testPublishVersusNewDimensionValueIdentityReachesOneSerialOutcome`), metadata versus metadata (`SharedMetadataConcurrencyBarrierTest.testADeactivationIsNotLostByAConcurrentRename`, `testARenameIsNotLostByAConcurrentDeactivation` and `testEachAuditDescribesTheRowItActuallyReplaced`, all through the same barrier), and import's shared-state check versus an authorized metadata update (`SharedMetadataConcurrencyBarrierTest.testImportQueuesForTheSharedRowAndThenDecidesOnIt`). The interception components are test-only: nothing in `src/` references them, the container never holds them, and no route, environment flag or remotely activatable hook reaches them. History and red evidence: CORR6-04. |
+ | ADM-05 | PASS. **Phase 6:** the administration UI offers no edit for a PUBLISHED or RETIRED version, and the edit route refuses one (409) with the version's checksum and row version unchanged (`admin-instrument.test.mjs`, `InstrumentAdministrationTest.testAPublishedVersionCannotBeEdited`); retirement was added to the lifecycle inventory (`InstrumentImmutabilityTest.testTheLifecycleTransitionsEnforceTheirOwnContract`: `markRetired` changes status and `effective_end` only, and only for a PUBLISHED version). **Version content.** Immutability is structural rather than procedural. Every `DefinitionRepository` method that writes version content locks the owning `instrument_version` row (`UPDLOCK, ROWLOCK`, through `requireDraftVersion` / `requireDraftOwnerOf`) and refuses a non-DRAFT before any write, resolves the owner from the child row when handed only a child id, and carries `status = N'DRAFT'` in its own DML besides; there is no unchecked deletion path. Executed: `InstrumentImmutabilityTest` invokes **every** production mutator — snapshot replacement, `markPublished`, order parking, section insert/update/place/delete, response set and option upsert and delete, rule upsert and delete, item upsert and delete, placement upsert and delete, version-scoped dimension value replacement, and the cascade delete — against a PUBLISHED fixture and a RETIRED one, asserting the typed refusal and then comparing status, snapshot, checksum, publisher, the version `row_version`, the definitions checksum, every child table's high `row_version` and every child count with what they were (`testEveryMutatorIsRefusedForAPublishedVersion`, `…ForARetiredVersion`). `testEveryRepositoryMutatorIsCoveredHere` reads the repository's own metadata and fails if a mutator exists that the spec does not exercise, so the inventory cannot silently go stale. `testTheSameMutatorsStillWriteForADraft` proves the boundary is a boundary and not blanket refusal, and `testAChildOfAnotherVersionCannotBeWrittenThroughThisOne` proves the owner is resolved from the database. Also proved: `testPublishingAPublishedVersionIsRefusedAndAudited`, `testAssertDraftForWriteRefusesAPublishedVersion`, `testAPublishedVersionCannotBeReimported`. **Shared and global rows are in the same inventory**, each under the contract it actually has (`docs/evidence/phase6-third-correction-mutation-inventory.md`), and exercised against it: `testEverySharedOrGlobalMutatorEnforcesItsOwnContract`, `testARefusedGlobalIdentityCreationWritesNothing`, `testGlobalIdentityCreationStillWorksForADraft`, `testTheSharedAndGlobalInventoryNamesOnlyRealMethods`. **Global reporting identity.** `createDimensionIdentity` and `createDimensionValueIdentity` each take the requesting version id and issue one status-qualified `INSERT ... SELECT` whose source is the owning `icf.instrument_version` row under `UPDLOCK, ROWLOCK`, predicated on `status = N'DRAFT'`, with `OUTPUT INSERTED` returning the row actually inserted. The authority decision and the write are one atomic statement, so a caller that owns no transaction has no window between them; nothing eligible means nothing inserted and a typed non-DRAFT (or not-found) refusal rather than a GUID. `GlobalIdentityBoundaryTest` (6 cases): `testMintingIdentityIsQualifiedByItsOwnStatement` asserts that structure over the real production SQL, `testBothCreatorsWriteForADraftOutsideAnyTransaction`, `testAFrozenVersionCannotMintIdentityAndNothingMoves` (SHA-256 fingerprint of both global tables across PUBLISHED and RETIRED refusals), `testAnAbsentVersionCannotMintIdentity`, and `testWhenTheMintWinsExactlyOneIdentityAppearsAndPublishStillSucceeds` / `testWhenTheValueMintWinsExactlyOneIdentityAppearsAndPublishStillSucceeds`; the converse serial outcome, publish winning, is the two identity pairings in ADM-04. **Shared instrument metadata.** Import does not write the shared `icf.instrument` row after the instrument's birth. It re-reads the row under `lockInstrumentById` **after** its version lock and decides `SHARED_METADATA_CONFLICT` on that locked row. `updateInstrument` is gone; `updateInstrumentMetadata` performs only the UPDATE, on a row the caller already holds under `lockInstrumentByCode` / `lockInstrumentById` (`UPDLOCK, HOLDLOCK, ROWLOCK`), and its `userExists` call is an integrity check for the audit foreign key, not authorization. It is reached only by `InstrumentMetadataService.updateMetadata`, which requires the **current principal** (anything that is not a principal is `INSTRUMENT_METADATA_PRINCIPAL_REQUIRED`), asks the central `AuthorizationService` for global `instrument.manage` before any mutation, and derives the audit actor only from `principal.userId`: there is no actor argument. Its locked read, merge, update and audit are one transaction. A change of `name` or `description` is detected case-sensitively and `active` is compared as a boolean, so a capitalization-only edit is written, versioned and audited, while a patch with no material difference is an audit-free no-op. `InstrumentMetadataServiceTest` (17 cases): a known, active user holding a real `DISTRICT_WALK_REPORT` assignment is denied 403 and changes nothing (`testAKnownUserWithoutInstrumentManageIsDeniedAndChangesNothing`), and so is a user with no assignment (`testAKnownUserWithNoRoleAtAllIsDeniedAndChangesNothing`); a user with a real effective `MASTER_INSTRUMENT_ADMIN` assignment succeeds (`testAUserWithAnEffectiveInstrumentManageAssignmentSucceeds`); the stored and audited actor is the principal and a supplied `actorUserId` argument is not honoured (`testTheAuditActorIsTheAuthorizedPrincipalAndCannotBeOverridden`); a bare user id and an empty struct are refused (`testTheOperationRequiresAPrincipalRatherThanAnActorId`); malformed patches are refused before any write; `testACaseOnlyNameChangeIsMaterial` and `testACaseOnlyDescriptionChangeIsMaterial` prove a capitalization-only change is stored exactly, moves `row_version` and records exactly one `INSTRUMENT_METADATA_UPDATED` event with the correct lifecycle facts and no description text; `testAPatchWithNoMaterialDifferenceIsAnAuditFreeNoOp`; and no file under `src/http` or `src/controllers` reaches the operation. `SharedInstrumentBoundaryTest` (7 cases) proves a V2 import declaring `instrument.active = false` cannot remove published V1 from the runtime, that a V2 rename is version-scoped rather than applied to the shared row, that V1's snapshot, checksum, row version and whole render model are unchanged by a V2 import, that a conflicting document is refused atomically with one durable `SHARED_METADATA_CONFLICT` audit and no partial write, that the authorized operation works and audits itself, that it refuses a caller that is not a principal -- an unknown GUID, an empty string, and even the id of the user who holds `instrument.manage` -- without writing (`testTheAuthorizedOperationRefusesACallerThatIsNotAPrincipal`, which replaced `testTheAuthorizedOperationRefusesAnUnknownActor` when the actor-id contract was removed), and that no route or controller reaches it. The lost-update and stale-conflict properties are proved under contention in ADM-04's metadata pairings. **Durable refusals from every refusing branch.** `testRefusedImportRollsBackAndLeavesExactlyOneDurableAudit`, `testRefusedDiscardRollsBackAndLeavesExactlyOneDurableAudit`, `testRefusedImportOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit` and `testRefusedDiscardOfADraftInUseRollsBackAndLeavesExactlyOneDurableAudit` drive the complete application-service transactions and assert the write rolled back, no row version moved, exactly one refusal audit survived with the correct actor, version, prior status, operation and reason code, no success audit was written, and a second attempt records a second attempt rather than duplicating one; `testRefusalAuditCarriesLifecycleFactsAndNoContent` asserts no definitions, snapshot or narrative content enters the record. History and red evidence: CORR6-01, CORR6-02, CORR6-03, CORR7-01. |
+ | Published dimensions and values are immutable (ADM-05, cross-version) | PASS at the service level. Migration `006` makes `icf.dimension_definition` and `icf.dimension_value` reporting identity only and moves every authored property to `icf.instrument_dimension` and the new `icf.instrument_dimension_value`. Executed: `DimensionVersionIsolationTest` publishes V1, imports V2 of the same instrument with the dimension renamed and a value relabelled, reordered, deactivated, dropped and another added, and proves V1's stored snapshot, checksum, row version, definitions checksum and every dimension and value property are unchanged, that V2 really did change all of them, that the shared value codes still resolve to the same `value_id` in both versions (cross-version reporting identity), that the walk path's definition index for V1 still accepts the value V2 deactivated and dropped and still rejects the one only V2 offers, and that V1 still passes every check publication made about it. `testWritingTheGlobalIdentityRowsDoesNotChangeAPublishedVersion` makes the exact writes the old importer made, directly, and proves V1 does not move. **Second correction:** migration `006`'s legacy membership backfill is now a one-time schema transition recorded in `icf.schema_migration_state`, not a condition re-evaluated on each apply. Re-evaluating it meant that once V2 minted a new global value, a re-applied `006` inferred it into published V1 -- changing V1's definitions and accepted walk values while its snapshot, checksum and `row_version` stayed put, invisible to the checksum-keyed `definitionIndex` cache. Executed: `Migration006LifecycleTest` runs the full ordered scenario against the live application database (publish V1, prime both caches, import V2 with a new value under a shared dimension, re-apply `006` through the normal mechanism) and proves V1's version-scoped rows, normalized definitions, snapshot bytes, checksum, row version, allowed walk values and render model are unchanged, from the already-primed cache **and** from a fresh uncached load, while V2 keeps its own value. `migration-006-transition.test.mjs` covers adoption of a database the earlier form already migrated (recorded `ADOPTED_PRE_STATE`, nothing inserted), a further re-application, the ambiguous half-finished transition (error 50054, whole transaction rolled back, nothing recorded), and a dimension with no global values not being read as ambiguous. `db-scripts.test.mjs` additionally proves that after the transition, a value minted globally is never inferred into the published version. `database/README.md` carries the read-only detection queries and the reviewed remediation procedure for environments the earlier form already touched. |
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+ | ADM-02 | PASS | **Phase 6.** `GET /api/admin/instrument/versions/{id}/preview` returns `SnapshotService.renderModelFor` -- the same builder, verified snapshot and cache walks use. `InstrumentAdministrationTest.testPreviewIsTheRenderModelWalksRender`; `admin-instrument.test.mjs`: for the version `/api/instrument/current` serves, the preview model and policies are byte-identical (canonical JSON). `browser-admin.test.mjs`: the preview renders through the walk editor's `renderer.js`, every one of the 144 items and the 17 flagged placeholders appear, choosing PreK shows the PreK/K section and Grade 9 hides it, Music shows the content-area section, and no write request is made (waited past the autosave debounce). |
+ | ADM-06 | PASS | **Phase 6.** Clone (`/clone`), wording edit (`/edits`) and compare (`/compare`). `InstrumentAdministrationTest.testCloneEditAndCompareShowTheExactPromptChange`: a DRAFT cloned from a PUBLISHED version has the source's exact `definitionsChecksum`; one prompt is edited; the source's snapshot, checksum and `row_version` are unchanged; the comparison reports exactly one change, that item's `prompt` from its exact old text to its exact new text. Refusals: a taken label (409, audited), stale edits (409 `DRAFT_CHANGED`, audited, nothing moves), edits to a PUBLISHED version, an edit that makes the instrument invalid (422 by the shared rules), malformed requests (400 with paths), and an edit set that changes nothing (no write, no audit). `DraftEditorTest` (11) and `InstrumentVersionComparerTest` (6) prove the pure parts. `admin-instrument.test.mjs` repeats it over HTTP with the actor audited. `browser-admin.test.mjs`: New draft from the published row opens the wording editor, the prompt is changed to text carrying markup, Compare defaults to the in-service baseline and shows the before and after as text (no element created, no handler run), and a stale save is refused with a Reload action. |
+ | ADM-07 | PASS | **Phase 6.** `POST /versions/{id}/retire`. `InstrumentAdministrationTest.testRetiringAVersionInUseStopsNewWalksButNotHistoricalOnes`: the retired version leaves the current-version predicate, a new walk is pinned to the successor, the historical walk still renders from its own version, and snapshot, checksum, publisher and publication time are exactly as frozen; `testOnlyAPublishedVersionCanBeRetired`; `testRetiringTheOnlyInServiceVersionRequiresConfirmation`; `testReportsStillOpenWhenNoVersionIsInService`. `RetireConcurrencyBarrierTest` (3, two-sided barrier): a retirement inside a walk creation's window refuses the walk (409 `INSTRUMENT_VERSION_CHANGED`) and a retirement after the insert queues behind it -- red before the status-qualified insert (a walk pinned to a RETIRED version; a deadlock victim); and two retirements of the two in-service versions at once leave one in service, the second refused `RETIRE_LEAVES_NO_CURRENT_VERSION` -- red before the per-instrument retirement lock (both retired). `admin-instrument.test.mjs`: a historical walk on the retired version opens, loads its own instrument and saves over HTTP; the list shows the successor as in service; repeat retirement 409 and audited. `browser-admin.test.mjs`: Retire asks first, then asks again when the server says nothing would be left in service. |
+ | ADM-08 | PASS | **Phase 6.** `GET /versions/{id}/placeholders?q=` and the Placeholders panel. `InstrumentAdministrationTest.testThePlaceholderQueueListsExactlySeventeenWithSourceAndStatus`: exactly the 17 items, with source location and review status, searchable, shrinking to 16 when one is resolved by a DRAFT edit. `admin-instrument.test.mjs`: the same 17 keys, prompts and source locations as the supplied document, search narrows while `total` stays 17, a 201-character query is 400. `browser-admin.test.mjs`: the queue shows 17, a search by source location finds the row, its Edit link opens the wording editor on that item, and resolving it leaves 16. |
+ | Excel round-trip for the yearly instrument update (no acceptance ID; requested by the product owner) | PASS (automated) | `InstrumentDocumentExporterTest` (6): the supplied instrument exports and normalizes back to the same definitions checksum and whole-snapshot checksum, passes the authoring validator exactly as the supplied document does, keeps every authoring id and reference, lists rows in reading order, and a PUBLISHED version exported and imported under a new label is a DRAFT with exactly its definitions. `workbook.test.mjs` (12): the reviewed aligned workbook in `config/` (written by other software) reads to exactly the supplied instrument; download then upload with no change is exact and reproducible; a workbook re-saved by LibreOffice Calc 24.2 reads back unchanged and one edited in LibreOffice (a resolved placeholder, typed numbers and TRUE, a number in a text column, a new answer row) comes back with exactly those edits; text survives exactly; every workbook problem is named by sheet, row and column; non-workbooks, DOCTYPEs, zip bombs, encrypted and unsupported files are refused; every server path, including key-sorted normalized paths, locates its cell; the placeholder summary follows the items. `admin-instrument.test.mjs`: the document route's 401/403 posture, an edited workbook imports as a draft differing by exactly the edit, and the LibreOffice-edited workbook imports with the comparison showing exactly its five edits. `browser-admin.test.mjs`: Download gives a workbook and a JSON document equal to the version, an edited workbook uploads as a new draft, a bad reference is reported as `item_definition, row N, column response_set_id`, a workbook problem is caught before anything is sent, replacing a draft that changed since the download asks first and Cancel sends nothing, and the download panel passes axe-core. Not opened in Microsoft Excel in this environment; LibreOffice Calc is the stand-in. |
+ | Administration UI (A11Y-01/03/05 for the admin view) | PASS (automated) | `browser-admin.test.mjs`: every control in the view has an accessible name; the version list, the placeholder queue (reached and searched by keyboard alone), and the wording editor with an import summary each have zero serious or critical axe-core (WCAG 2.1 A/AA) violations; no horizontal page overflow at 768 and 375 px (wide tables scroll inside a focusable region). Screenshots `docs/evidence/screenshots/admin-*.png`. Real screen-reader testing was not performed. |
+-| RPT-01 | PASS | `ReportServiceTest.testRpt01SchoolRoleReportsOnlyItsAssignedSchool`: a `SCHOOL_REPORT_ONLY` user's report is exactly its school's walks; naming another school, another district's school or its own district is 404 through `requirePermission` on both the JSON and CSV paths, and each refusal is audited `ACCESS_DENIED` (6 of 6 counted); the options route offers only the assigned school. Over HTTP: `reports.test.mjs` "RPT-01" (404 `NOT_FOUND` with no unit name in the body). In the browser: `browser-reports.test.mjs` (a school walker's School filter lists only its school). |
+-| RPT-02 | PASS | `ReportServiceTest.testRpt02DistrictRoleAggregatesDescendantSchoolsOnly`: a `DISTRICT_REPORT_ONLY` role with `include_descendants` counts both descendant schools and never the unrelated district's school (its rating of 1 is absent from the distribution); a descendant narrows, the district itself is its whole subtree, other branches are 404; `include_descendants = 0` covers the district unit alone (0 walks) and refuses its schools; an expired assignment is 403. `reports.test.mjs` "RPT-02" over HTTP. |
+-| RPT-03 | PASS | `ReportServiceTest.testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier`: neither the payload nor the CSV contains a walk id, the owner's id or name, and no key named like a walk, owner, observation, row version, text, note, teacher or classroom field exists anywhere in the payload -- including for a population narrowed to one walk; the same role still gets 403 from `open` and `summary`. `reports.test.mjs` "RPT-03 / RPT-06" (and 403 on `/api/walks/{id}`); `browser-reports.test.mjs` "RPT-03 (browser)": a report-only user lands on Reports and the page never requests `/api/walks` or `/api/instrument/current`. There is no drill-through route. |
+-=======
+-| ADM-02, ADM-06, ADM-07, ADM-08 | PENDING (Phase 6): preview, new DRAFT from a published version with compare, retire, and the placeholder review queue. All administration UI is also PENDING. |
+ | RPT-01 | PASS | `ReportServiceTest.testRpt01SchoolRoleReportsOnlyItsAssignedSchool`: a school role's report is exactly its school's walks (live, as `SCHOOL_WALK_REPORT`); naming another school, another district's school or its own district is 404 through `requirePermission` on both the JSON and CSV paths for the `SCHOOL_REPORT_ONLY` role, and each refusal is audited `ACCESS_DENIED` (6 of 6 counted); inside its scope the report-only role is refused live figures (`REPORT_RELEASE_REQUIRED`, RPT-03); the options route offers only the assigned school. Over HTTP: `reports.test.mjs` "RPT-01" -- the report-only role reads its school's release (3 walks, that school only), and another school is 404 `NOT_FOUND` with no unit name in the body on the live and the released route. In the browser: `browser-reports.test.mjs` (a school walker's School filter lists only its school). |
+ | RPT-02 | PASS | `ReportServiceTest.testRpt02DistrictRoleAggregatesDescendantSchoolsOnly`: a district role with `include_descendants` counts both descendant schools and never the unrelated district's school (its rating of 1 is absent from the distribution); a descendant narrows, the district itself is its whole subtree, other branches are 404 for the walk-and-report and the report-only role alike; `include_descendants = 0` refuses its schools; an expired assignment is 403. The report-only district role reads releases only (`ReportReleaseTest.testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit`: its district release counts its two released schools and nothing else). `reports.test.mjs` "RPT-02" over HTTP, live and released. |
+ | RPT-03 | PASS (corrected; audit findings P7-01, P7C-02 and P7C-04) | Owner-approved rule (`docs/OPEN_DECISIONS.md`): k = 3, report-only users read frozen releases. **No live figures for anyone who cannot open the walks**: `ReportReleaseTest.testReportOnlyUsersCannotReadLiveFigures`, `ReportServiceTest.testRpt03...` / `testRpt01...` / `testRpt02...`, `reports.test.mjs` "RPT-03: a report-only role is refused every live figure" (400 `REPORT_RELEASE_REQUIRED` for the whole scope, one walk by answer, grade or date, drafts, JSON and CSV). **No narrowing of a release**: `testNoFilterThatChangesWhoIsCountedIsAcceptedOnARelease` (`REPORT_FILTER_NOT_PERMITTED`). **Populations**: `testOneWalkAndBelowMinimumPopulationsAreWithheldAndNeverStored` (1 and 2 walks: nothing stored, nothing categorical returned, identical to 0 walks, JSON and CSV). **Cells**: `testSmallItemCellsAndTheirComplementsAreWithheld` (option, item-state and score cells), `testASectionMeanOnTooFewRatingsIsWithheld`, `testSmallDimensionValueAndStateCellsAreWithheld` (value, state, and the Grade/Period/PreK-K group), `testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit`. **Complementary disclosure**: `testNoBreakdownWithholdsASingleRecoverableCell` and `ReportDisclosureTest` (exhaustive: every breakdown of up to six categories, k = 3 and 4, no withheld cell has fewer than two consistent values for a reader who knows the algorithm; the audit checked against brute-force inversion). **Differencing**: `testTheDistrictIsTheSumOfWhatEachSchoolPublishes`, `testReleasedDatesNeverOverlap` (service, trigger), `testAReleaseDoesNotChangeWhenWalksDo`, `ReportReleaseMembershipTest` (a walk is counted by one release at most, even after its date is corrected into later dates; a walk corrected into released dates is never released; the database refuses a second membership), `db-scripts.test.mjs` (membership, seal and immutability guards, by error number). **Never deleted** (P7C-04): `ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted` (one cell, one block, one recorded walk, the release row, a block with its cells and walks, and the whole release in key order: each refused, the release reads identically) and `db-scripts.test.mjs` (the same refusals by error number 50068, and a principal with data permissions only can neither delete a release row nor disable, drop or truncate past the guard). **Isolation between concurrent requests**: `ReportIsolationTest` (two live reports on disjoint schools, and a live report and a release in both orders, run side by side behind a barrier with exact populations; no table left behind on success or failure; populations refused outside a transaction or on another connection). **Surfaces**: `testTheExportCarriesExactlyWhatTheJsonPublishes`, `testLogsAndAuditCarryNoWithheldFigureOrNarrative`, `browser-reports.test.mjs` "RPT-03 (browser)" (the page is never sent a withheld value; no walk route or live report is requested). Still: no payload, export or key names a walk, owner, observation, text, note, teacher or classroom field, and the report-only role gets 403 from `open` and `summary`. Red: `docs/evidence/phase7-correction-red-before-fix.md` and `docs/evidence/phase7-correction-2-red-before-fix.md`. |
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
+ | RPT-04 | PASS | `ReportServiceTest.testRpt04OnlyAnsweredScoresEnterTheAverage`: answered 1 and 5, one unanswered, one hidden (retaining a stored 5) and one not applicable (submitted with a 4 before the engine cleared it) give ANSWERED 2 / UNANSWERED 1 / HIDDEN 1 / NOT_APPLICABLE 1, a distribution of one 1 and one 5, and mean 3 over denominator 2. `testRetainedAnswersOfAHiddenSectionAreCountedAsHidden` does the same for a conditional section's retained answer. Red with the `ANSWERED` condition removed (`docs/evidence/phase7-red-before-fix.md`, R3). |
+ | RPT-05 | PASS | `ReportServiceTest.testRpt05SectionMeansArePooledFromItemLevelResponses`: component 1 answered (1, 1) in one walk and (5) in another has a pooled mean of 2.3333 over 3 responses -- not 3, the average of walk averages; across the instrument the root pools 11 scored responses (35 / 11 = 3.1818) with Part 1's ratings weighted by count. |
+ | RPT-06 | PASS | `ReportServiceTest.testRpt06NarrativeEmailAndTeacherFieldsNeverLeave`: sentinels in notes, both summary fields, the email draft body, subject and recipient, Observer, Lesson Standard, tags, the "Other" text, and the database-only `teacher_identifier`, `teacher_display_name`, `teacher_email` and `classroom_label` appear in none of the payload, the CSV, the `REPORT_EXPORTED` audit record or the log lines (captured through the real Logger's `buildEntry`), while the walk is still counted -- "Other" by its code. Structurally: `reports.test.mjs` fails if `ReportRepository` names any text, teacher, classroom, owner or user column. `reports.test.mjs` "RPT-03 / RPT-06" over HTTP. |
+@@ -333,32 +330,6 @@ section.
+ | Lifecycle | PASS | `ReportServiceTest.testVoidedWalksNeverCountAndDraftsOnlyOnRequest`. |
+ | Reportable surface derived from the version | PASS | `ReportServiceTest.testTheCatalogIsDerivedFromTheVersionAndItsEngine` (every reportable single-choice item in instrument order; 24 scored ratings; Period visible exactly for the grades the engine shows it for, derived from `show_period_for_grades_6_12`); `reports.test.mjs` fails if the report code names instrument content. |
+ 
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-## Phase 6 administration audit corrections (P6A-01 to P6A-04)
+-
+-An independent audit of the Phase 6 administration candidate (`2a3f2ecb4f070401cba00518c0db8a2de823a29d`)
+-found four defects. Each was corrected on `claude/icfwalk-phase-6-admin-audit-corrections` after a
+-regression that failed on the candidate for the intended reason
+-(`docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`). Verified on Lucee 6.2.8.20 with
+-SQL Server 2022 and Chromium only. The full gate on the code commit
+-`06660a238c8dd6c62cacd8a27ed970e757ef22a1` passed: Node/HTTP/Playwright 240/240, CFML 475/475, 0
+-failed, 0 skipped (`docs/evidence/phase6-admin-audit-corrections-release-gate.txt`). The re-audit of
+-those corrections led to one more correction, P6A-R01 (and P6A-R02, found while verifying it), gated
+-on `158debca5da2c4f3a07f602689cd08af9db9bd6e`: Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped (`docs/evidence/phase6-admin-read-bound-release-gate.txt`). **Phase 6 is
+-frozen at that commit on the project owner's direction** (`docs/evidence/phase6-freeze.md`); Adobe
+-ColdFusion 2023 and SQL Server 2016 have still not been run. **The independent re-audit of that
+-commit passed: P6A-R01 is closed, and Phase 6 is accepted and frozen for the verified scope.**
+-
+-| ID | Finding | Status | Evidence |
+-| --- | --- | --- | --- |
+-| P6A-01 | The router read and deserialized every request body before authentication, CSRF and the import's 5,000,000-byte limit (which the controller checked after the parse); its chunked fallback counted characters, not UTF-8 bytes; the page read a whole file before checking its size. | CONFIRMED, FIXED | `RouterBodyOrderTest` (12): the real router over a recording `FakeRequestSource` and a `SpyJsonBodyParser` -- unauthenticated, CSRF-invalid and unpermitted large or malformed requests are refused with zero body reads and zero parses; an authorized malformed or valid body over the limit is 413 `DOCUMENT_TOO_LARGE` with zero parses (declared: zero reads); 1.7 million euro signs (5.1 MB of UTF-8) are 413; within the limit is parsed once; whitespace is a body that parses to nothing; the body-member permission still authenticates first; the maintenance token is checked before the body; other routes are bounded by the 20,000,000-byte server maximum. `admin-instrument.test.mjs` (5 P6A-01 cases) on the running server, including bodies that never finish: answered 401/403/404/413 without the rest being sent. `browser-admin.test.mjs` "P6A-01 (browser)": 5,000,001-byte JSON and 20,000,004-byte workbook files refused with only an 8-byte header read, nothing sent. |
+-| P6A-02 | A DRAFT re-import was protected only by the page's comparison with its cached version list: the server received `{ document }` and overwrote whatever DRAFT held the label, so a stale page overwrote a newer DRAFT and a label created after the page looked was taken over; the export read metadata and document in two reads. | CONFIRMED, FIXED | `DraftReplacementConcurrencyTest` (6): a replacement naming C1 cannot overwrite C2; a create-only import queued (two-sided barrier, blocking observed in `sys.dm_exec_requests`) behind the creation of its label is refused 409 `DRAFT_REPLACEMENT_REQUIRED`; a confirmed replacement queued behind a later edit is refused 409 `DRAFT_CHANGED` with the edit byte-identical; a correct replacement succeeds once and is audited with `replacedVersionId` and `previousChecksum`; every other token is refused atomically; an export with an edit forced between its read and its use returns one state. `admin-instrument.test.mjs` "P6A-02" and the updated ADM-01 case. `browser-admin.test.mjs` "P6A-02 (browser)" (2): two sessions at C1, B saves C2, A's upload from the stale page is refused and C2 stands; a label another session created after the page loaded is asked about, and replaced only when confirmed. |
+-| P6A-03 | `discardDraftById` read the named row unlocked and delegated to the label-addressed discard, which deleted whatever row held the label: a request naming V1 could delete a V2 created under V1's label in between. | CONFIRMED, FIXED | `DiscardIdentityBarrierTest` (2): the delete/recreate interleaving forced through the two-sided barrier -- the request naming V1 deletes and reports V1, B is observed blocked behind it, V2 survives with no discard audited against it; the id-addressed refusals keep their codes. Existing `InstrumentScopeTest` (cross-instrument same label) and `InstrumentImmutabilityTest` still pass. |
+-| P6A-04 | `decodeEntities` passed any finite numeric character reference to `String.fromCodePoint` (`&#999999999;` threw `RangeError`); malformed cell references threw `TypeError`; `readWorkbook` converted only `WorkbookError`; the import handler parsed outside its guarded flow. | CONFIRMED, FIXED | `workbook.test.mjs` (4 P6A-04 cases): out-of-range, surrogate and XML-forbidden references are `XML_MALFORMED`, every legal scalar still decodes; malformed cell and row references are `CELL_REFERENCE_INVALID` naming the sheet; an unexpected shape is a structured problem. `browser-admin.test.mjs` "P6A-04 (browser)" (2): a workbook with `&#999999999;` and a file the browser cannot read each show a problem, send nothing, and the next import works. |
+-| P6A-R01 | Found by the re-audit of the corrections: `HttpRequestSource.readBody` asked the container's stream for a fixed 65,536 bytes per read and compared the total afterwards, so it could consume up to 65,536 bytes past the limit (5,046,272 for the import limit, 20,054,016 for the server maximum), while the records said "at most one byte past"; `RouterBodyOrderTest` used only `FakeRequestSource` and could not see it. | CONFIRMED, FIXED, CLOSED (re-audit passed) | Each read asks for `min(65536, maxBytes - total + 1)` bytes. `RequestBodyReadBoundTest` (8) runs the production `readBody` loop (`StreamedRequestSource` replaces only the stream's origin) over a real `ByteArrayInputStream`: for limits 0, 1, 2, 65,535-65,537, 131,071-131,073, 5,000,000 and 20,000,000, bodies 1 to 200,000 bytes past, and streams delivering 1 to 65,535 bytes per read, exactly `limit + 1` bytes are consumed and counted and no read asks for more than the bound; a body within the limit is read whole and byte for byte; multibyte text is bounded in bytes; through `Router.handle` an oversized chunked import is 413 after exactly 5,000,001 bytes and nothing is taken from the stream before authentication, CSRF or a declared-length refusal. Red on the unmodified loop in `docs/evidence/phase6-admin-read-bound-red-before-fix.md`. |
+-| P6A-R02 | Found by this pass while verifying P6A-R01, not by the re-audit: "ADM-01: the import body contract and the size cap" (`admin-instrument.test.mjs`) sent its oversized body with `fetch`. Since P6A-01 the server answers 413 from the declared length before reading and closes while the client may still be uploading, and `fetch` sometimes reported its own refused write instead of that answer: one failure in a development run (the server log shows the 413 was sent), reproduced 1 in 100 with the case's exact sequence (`fetch failed`, cause `EPIPE`). A defect of the test's client, not of the application. | CONFIRMED, FIXED | The request is sent with the file's raw-socket `rawRequest` helper -- the same bytes, headers and assertions (413 `DOCUMENT_TOO_LARGE`); 0 failures in 300 attempts of the same sequence. `docs/evidence/phase6-admin-read-bound-red-before-fix.md`, "P6A-R02". |
+-
+-=======
+ ### Phase 7 correction: audit findings P7-01 and P7-02
+ 
+ | ID | Finding | Status | Evidence |
+@@ -387,4 +358,27 @@ frozen; these await re-audit.
+ | --- | --- | --- | --- |
+ | P7C-03 (MEDIUM, evidence) | The promised handoff bundle was not received: the auditor had GitHub's download of the branch and a narrative listing hashes of files it did not contain. | ADDRESSED, awaiting verification | The bundle existed but was not what reached the auditor. The gate evidence now also travels **inside the branch**: after the gated commit is pushed and its gate passes, a separate commit adds `docs/evidence/gate/` with the raw transcript, environment record, push record, mutation transcript and `SHA256SUMS`, and changes nothing else, so any download of the branch carries it and the downloaded tree less that directory must equal the gated commit's tree. The handoff bundle, with a git bundle of the branch, is delivered as well. |
+ | P7C-04 (MEDIUM) | The release schema refused updates but not selective deletion: one cell, or a block with its cells and walks, could be deleted and change a release under the same identity. | CORRECTED, awaiting re-audit | Reproduced on the audited schema (`ReportReleaseTest`: one cell, a block with its cells and walks, and the whole release were all deleted; `db-scripts.test.mjs`: "one cell is never deleted" failed). Now each of the four release tables refuses DELETE before it happens (`INSTEAD OF DELETE`, 50068), the audit's enforcement option. A principal with data permissions only cannot delete a release row, or disable, drop or truncate past the guard (tested); the runtime login must be such a principal (`database/README.md`). The test-only fixture cleanup, on a development login with ALTER, switches the delete guards off inside its own transaction. |
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
++
++## Phase 6 administration audit corrections (P6A-01 to P6A-04)
++
++An independent audit of the Phase 6 administration candidate (`2a3f2ecb4f070401cba00518c0db8a2de823a29d`)
++found four defects. Each was corrected on `claude/icfwalk-phase-6-admin-audit-corrections` after a
++regression that failed on the candidate for the intended reason
++(`docs/evidence/phase6-admin-audit-corrections-red-before-fix.md`). Verified on Lucee 6.2.8.20 with
++SQL Server 2022 and Chromium only. The full gate on the code commit
++`06660a238c8dd6c62cacd8a27ed970e757ef22a1` passed: Node/HTTP/Playwright 240/240, CFML 475/475, 0
++failed, 0 skipped (`docs/evidence/phase6-admin-audit-corrections-release-gate.txt`). The re-audit of
++those corrections led to one more correction, P6A-R01 (and P6A-R02, found while verifying it), gated
++on `158debca5da2c4f3a07f602689cd08af9db9bd6e`: Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped (`docs/evidence/phase6-admin-read-bound-release-gate.txt`). **Phase 6 is
++frozen at that commit on the project owner's direction** (`docs/evidence/phase6-freeze.md`); Adobe
++ColdFusion 2023 and SQL Server 2016 have still not been run. **The independent re-audit of that
++commit passed: P6A-R01 is closed, and Phase 6 is accepted and frozen for the verified scope.**
++
++| ID | Finding | Status | Evidence |
++| --- | --- | --- | --- |
++| P6A-01 | The router read and deserialized every request body before authentication, CSRF and the import's 5,000,000-byte limit (which the controller checked after the parse); its chunked fallback counted characters, not UTF-8 bytes; the page read a whole file before checking its size. | CONFIRMED, FIXED | `RouterBodyOrderTest` (12): the real router over a recording `FakeRequestSource` and a `SpyJsonBodyParser` -- unauthenticated, CSRF-invalid and unpermitted large or malformed requests are refused with zero body reads and zero parses; an authorized malformed or valid body over the limit is 413 `DOCUMENT_TOO_LARGE` with zero parses (declared: zero reads); 1.7 million euro signs (5.1 MB of UTF-8) are 413; within the limit is parsed once; whitespace is a body that parses to nothing; the body-member permission still authenticates first; the maintenance token is checked before the body; other routes are bounded by the 20,000,000-byte server maximum. `admin-instrument.test.mjs` (5 P6A-01 cases) on the running server, including bodies that never finish: answered 401/403/404/413 without the rest being sent. `browser-admin.test.mjs` "P6A-01 (browser)": 5,000,001-byte JSON and 20,000,004-byte workbook files refused with only an 8-byte header read, nothing sent. |
++| P6A-02 | A DRAFT re-import was protected only by the page's comparison with its cached version list: the server received `{ document }` and overwrote whatever DRAFT held the label, so a stale page overwrote a newer DRAFT and a label created after the page looked was taken over; the export read metadata and document in two reads. | CONFIRMED, FIXED | `DraftReplacementConcurrencyTest` (6): a replacement naming C1 cannot overwrite C2; a create-only import queued (two-sided barrier, blocking observed in `sys.dm_exec_requests`) behind the creation of its label is refused 409 `DRAFT_REPLACEMENT_REQUIRED`; a confirmed replacement queued behind a later edit is refused 409 `DRAFT_CHANGED` with the edit byte-identical; a correct replacement succeeds once and is audited with `replacedVersionId` and `previousChecksum`; every other token is refused atomically; an export with an edit forced between its read and its use returns one state. `admin-instrument.test.mjs` "P6A-02" and the updated ADM-01 case. `browser-admin.test.mjs` "P6A-02 (browser)" (2): two sessions at C1, B saves C2, A's upload from the stale page is refused and C2 stands; a label another session created after the page loaded is asked about, and replaced only when confirmed. |
++| P6A-03 | `discardDraftById` read the named row unlocked and delegated to the label-addressed discard, which deleted whatever row held the label: a request naming V1 could delete a V2 created under V1's label in between. | CONFIRMED, FIXED | `DiscardIdentityBarrierTest` (2): the delete/recreate interleaving forced through the two-sided barrier -- the request naming V1 deletes and reports V1, B is observed blocked behind it, V2 survives with no discard audited against it; the id-addressed refusals keep their codes. Existing `InstrumentScopeTest` (cross-instrument same label) and `InstrumentImmutabilityTest` still pass. |
++| P6A-04 | `decodeEntities` passed any finite numeric character reference to `String.fromCodePoint` (`&#999999999;` threw `RangeError`); malformed cell references threw `TypeError`; `readWorkbook` converted only `WorkbookError`; the import handler parsed outside its guarded flow. | CONFIRMED, FIXED | `workbook.test.mjs` (4 P6A-04 cases): out-of-range, surrogate and XML-forbidden references are `XML_MALFORMED`, every legal scalar still decodes; malformed cell and row references are `CELL_REFERENCE_INVALID` naming the sheet; an unexpected shape is a structured problem. `browser-admin.test.mjs` "P6A-04 (browser)" (2): a workbook with `&#999999999;` and a file the browser cannot read each show a problem, send nothing, and the next import works. |
++| P6A-R01 | Found by the re-audit of the corrections: `HttpRequestSource.readBody` asked the container's stream for a fixed 65,536 bytes per read and compared the total afterwards, so it could consume up to 65,536 bytes past the limit (5,046,272 for the import limit, 20,054,016 for the server maximum), while the records said "at most one byte past"; `RouterBodyOrderTest` used only `FakeRequestSource` and could not see it. | CONFIRMED, FIXED, CLOSED (re-audit passed) | Each read asks for `min(65536, maxBytes - total + 1)` bytes. `RequestBodyReadBoundTest` (8) runs the production `readBody` loop (`StreamedRequestSource` replaces only the stream's origin) over a real `ByteArrayInputStream`: for limits 0, 1, 2, 65,535-65,537, 131,071-131,073, 5,000,000 and 20,000,000, bodies 1 to 200,000 bytes past, and streams delivering 1 to 65,535 bytes per read, exactly `limit + 1` bytes are consumed and counted and no read asks for more than the bound; a body within the limit is read whole and byte for byte; multibyte text is bounded in bytes; through `Router.handle` an oversized chunked import is 413 after exactly 5,000,001 bytes and nothing is taken from the stream before authentication, CSRF or a declared-length refusal. Red on the unmodified loop in `docs/evidence/phase6-admin-read-bound-red-before-fix.md`. |
++| P6A-R02 | Found by this pass while verifying P6A-R01, not by the re-audit: "ADM-01: the import body contract and the size cap" (`admin-instrument.test.mjs`) sent its oversized body with `fetch`. Since P6A-01 the server answers 413 from the declared length before reading and closes while the client may still be uploading, and `fetch` sometimes reported its own refused write instead of that answer: one failure in a development run (the server log shows the 413 was sent), reproduced 1 in 100 with the case's exact sequence (`fetch failed`, cause `EPIPE`). A defect of the test's client, not of the application. | CONFIRMED, FIXED | The request is sent with the file's raw-socket `rawRequest` helper -- the same bytes, headers and assertions (413 `DOCUMENT_TOO_LARGE`); 0 failures in 300 attempts of the same sequence. `docs/evidence/phase6-admin-read-bound-red-before-fix.md`, "P6A-R02". |
+diff --git a/docs/ENDPOINTS.md b/docs/ENDPOINTS.md
+remerge CONFLICT (content): Merge conflict in docs/ENDPOINTS.md
+index b589401..10b53e2 100644
+--- a/docs/ENDPOINTS.md
++++ b/docs/ENDPOINTS.md
+@@ -97,16 +97,10 @@ Identity headers by adapter (`ICFWALK_SSO_MODE`):
+ | POST | `/api/walks/{id}/complete` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(edit)` | `{ rowVersion, clientMutationId }`, both required. Server validates every required, visible item/dimension: 400 `WALK_INCOMPLETE` with `details.errors[] = { kind, key, sectionKey, questionNumber, message }` (the draft stays saved); 409 `STALE_ROW_VERSION`, `WALK_ALREADY_COMPLETED`, `WALK_VOIDED`, `MUTATION_REPLAY_SUPERSEDED`, `MUTATION_LEGACY_UNVERIFIABLE`. Success appends revision `COMPLETE`, sets `COMPLETED`/`completed_at`, audits `WALK_COMPLETED`. |
+ | POST | `/api/walks/{id}/void` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(void)` | `{ rowVersion, clientMutationId, reason? }`. `rowVersion` and `clientMutationId` are required (400 `ROW_VERSION_REQUIRED/INVALID`, `CLIENT_MUTATION_ID_REQUIRED/INVALID`); `reason` must be a JSON string (400 `INVALID_VOID_REASON`). Drafts void with the default reason (the My Walks delete action); a COMPLETED walk needs `reason` (400 `VOID_REASON_REQUIRED`). 409 `STALE_ROW_VERSION` (the walk is not voided and its row version does not move), `WALK_ALREADY_VOIDED`, `MUTATION_ID_REUSED`, `MUTATION_REPLAY_SUPERSEDED`, `MUTATION_LEGACY_UNVERIFIABLE`. Audits `WALK_VOIDED`; rows are retained. |
+ | DELETE | `/api/walks/{id}` + CSRF | anyPermission walk.edit_owned; then `authorizeWalk(void)` | Always 409 `WALK_DELETE_REFUSED` (WALK-08): walks are never physically deleted. Audited. |
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-| GET | `/api/reports/options` | permission `report.view` (any unit) | **Phase 7.** What the caller may filter a report by: `{ format, version, versions[], orgUnits[], dimensions[], sections[], items[], statuses, suppression: { threshold }, correlationId }`. `versions` are the configured instrument's PUBLISHED and RETIRED versions plus the current one (outside production, possibly the DRAFT preview), each `{ versionId, versionLabel, status, isCurrent }`; `version` is the selected one (`?versionId=`, default the current version; when no version is in service because the last one was retired with confirmation (Phase 6), the newest frozen version). `orgUnits` are exactly the active units the caller's report assignments cover (effective dates and `include_descendants` resolved), `{ orgUnitId, code, name, type, parentOrgUnitId }`. `dimensions` are the version's reportable, non-sensitive controlled-list dimensions except School, with their value codes and labels; `items` are its reportable single-choice items `{ itemKey, sectionKey, prompt, questionNumber, layout, isPlaceholder, scoreEnabled, options[] }`; `sections` are the sections that contain one. Instrument content and scope only -- no walk data. The only accepted parameter is `versionId`: anything else is 400 `REPORT_FILTER_UNKNOWN`; 400 `INVALID_VERSION_ID`, 404 `REPORT_VERSION_NOT_FOUND` / `REPORT_VERSION_NOT_AVAILABLE`, 401, 403 (no `report.view`: instrument administrators and role-less users). |
+-| GET | `/api/reports/aggregate` | permission `report.view` (any unit); the population is drawn from the caller's covered units only | **Phase 7 (RPT-01..07).** One aggregate report over the walks of **one** instrument version. Query parameters, all optional, every one re-validated on the server: `versionId` (default current); `orgUnitId` (a unit the caller covers -- the report draws on it and its covered descendants; any other id is 404 and audited `ACCESS_DENIED`, so existence is not disclosed); `from` and `to` (`YYYY-MM-DD`, inclusive, on the walk's observation date); `dim_<code>=<valueCode>` for each reportable dimension (`dim_grade`, `dim_content`, `dim_period`, `dim_classType`, `dim_visitTiming` in the current instrument; the parameter name matches case-insensitively, the value code exactly); `section` and `item` (restrict which items are reported, not who is counted); `optionItem` + `option` together (only walks whose response to that item is ANSWERED with that option); `includeDrafts=true` (default: COMPLETED walks only; VOIDED walks are never counted). Empty values are absent filters. 200 `{ format: "icfwalk-aggregate-report/1", generatedAt, version, filters, filterCount, scope: { orgUnitCount }, suppression: { threshold, applied }, population: { walks, byStatus, suppressed }, orgUnits[]: { orgUnitId, code, name, type, walks, suppressed }, dimensions[]: { code, label, states: { ANSWERED, UNANSWERED, HIDDEN }, values[]: { code, label, walks, suppressed } }, sections[]: { sectionKey, title, parentSectionKey, depth, itemKeys, scored: { responses, sum, mean } \| null }, items[]: { itemKey, sectionKey, prompt, questionNumber, layout, isPlaceholder, scoreEnabled, options[]: { code, label, numericScore, isNa, count }, states: { ANSWERED, UNANSWERED, HIDDEN, NOT_APPLICABLE, UNRECORDED }, scored: { responses, sum, mean } \| null }, attempts, correlationId }`. Option counts are ANSWERED responses only; `scored.mean` is `sum / responses` over answered, scored, non-N/A responses (four places), `null` when nothing was scored; a section's `scored` pools every reported scored response beneath it, so it is weighted by responses, never an average of walk averages. A dimension value hidden by the instrument's rules (Period outside grades 6-12, retained under `RETAIN_HIDDEN`) counts as HIDDEN, never as its value, and never matches a filter. **Never** returned: a walk id, owner, observer, note, email draft, free text, "Other" text, teacher field or classroom label. When `ICFWALK_REPORT_SUPPRESSION_THRESHOLD` is N > 0, a population of 1..N-1 walks returns `population.suppressed = true` with `walks: null` and empty `orgUnits`, `dimensions`, `sections` and `items`, and each org-unit or dimension-value group of 1..N-1 walks returns `walks: null, suppressed: true`. Errors: 400 `REPORT_FILTER_UNKNOWN`, `REPORT_FILTER_VALUE_INVALID`, `REPORT_FILTER_INCOMPLETE`, `REPORT_DATE_RANGE_INVALID`, `INVALID_ORG_UNIT`, `INVALID_VERSION_ID` (each with `details.issues[] = { parameter, code }`); 401; 403 without `report.view`; 404 for an out-of-scope or unknown unit and `REPORT_VERSION_NOT_FOUND`; 409 `REPORT_POPULATION_CHANGED` with `details.attempts` when walks in the population kept changing during three consecutive attempts (see `docs/DATA_CONTRACT.md`, "Aggregate report coherence"). Read-only: no CSRF, nothing written; logged `report.generated` with counts only. |
+-| GET | `/api/reports/aggregate.csv` | same as `/api/reports/aggregate` | **Phase 7.** The same report as an RFC 4180 CSV download: UTF-8 with a byte order mark, CRLF line ends, header `record_type,group,key,label,count,answered,unanswered,hidden,not_applicable,unrecorded,scored_responses,score_sum,mean,suppressed`, and one long-format record per `META` fact (format, version, statuses, threshold, each filter), `POPULATION`, `ORG_UNIT`, `DIMENSION`, `DIMENSION_VALUE`, `SECTION`, `ITEM` and `OPTION`. A withheld count is an empty cell with `suppressed` = 1. Every text cell a spreadsheet would evaluate (leading `=`, `+`, `-`, `@`, tab or CR) is prefixed with an apostrophe, and cells containing a comma, quote or line break are quoted with doubled quotes. Headers: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="ICFWalk_report_<version label>_<yyyymmdd>.csv"` built from `[A-Za-z0-9_-]` only, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. Audited `REPORT_EXPORTED` with `{ versionId, walks, suppressed, rows, bytes, filters, attempts, orgUnitId? }` only. Same errors as the JSON route, answered as JSON. |
+-=======
+-| GET | `/api/reports/options` | permission `report.view` (any unit) | **Phase 7; RPT-03 correction.** What the caller may filter a report by: `{ format: "icfwalk-aggregate-report/2", version, versions[], orgUnits[], dimensions[], sections[], items[], statuses, disclosure: { minimumWalks, liveAvailable }, releases[], canRelease, correlationId }`. `versions` are the configured instrument's PUBLISHED and RETIRED versions plus the current one (outside production, possibly the DRAFT preview), each `{ versionId, versionLabel, status, isCurrent }`; `version` is the selected one (`?versionId=`, default the current version). `orgUnits` are exactly the active units the caller's report assignments cover (effective dates and `include_descendants` resolved), `{ orgUnitId, code, name, type, parentOrgUnitId }`. `dimensions` are the version's reportable, non-sensitive controlled-list dimensions except School, with their value codes and labels; `items` are its reportable single-choice items `{ itemKey, sectionKey, prompt, questionNumber, layout, isPlaceholder, scoreEnabled, options[] }`; `sections` are the sections that contain one. `disclosure.minimumWalks` is the approved minimum (3 unless configured higher); `liveAvailable` is whether the caller may have live figures over their whole scope (they hold `walk.read` on every covered unit). `releases` are every release, latest dates first, `{ releaseId, observedFrom, observedTo, minimumWalks, releasedAt, versionIds }`, where `versionIds` are the versions the release holds blocks of in the caller's units. `canRelease` is whether the caller may create a release. Instrument content, scope and release metadata only -- no walk data. The only accepted parameter is `versionId`: anything else is 400 `REPORT_FILTER_UNKNOWN`; 400 `INVALID_VERSION_ID`, 404 `REPORT_VERSION_NOT_FOUND` / `REPORT_VERSION_NOT_AVAILABLE`, 401, 403 (no `report.view`: instrument administrators and role-less users). |
++| GET | `/api/reports/options` | permission `report.view` (any unit) | **Phase 7; RPT-03 correction.** What the caller may filter a report by: `{ format: "icfwalk-aggregate-report/2", version, versions[], orgUnits[], dimensions[], sections[], items[], statuses, disclosure: { minimumWalks, liveAvailable }, releases[], canRelease, correlationId }`. `versions` are the configured instrument's PUBLISHED and RETIRED versions plus the current one (outside production, possibly the DRAFT preview), each `{ versionId, versionLabel, status, isCurrent }`; `version` is the selected one (`?versionId=`, default the current version; when no version is in service because the last one was retired with confirmation (Phase 6), the newest frozen version). `orgUnits` are exactly the active units the caller's report assignments cover (effective dates and `include_descendants` resolved), `{ orgUnitId, code, name, type, parentOrgUnitId }`. `dimensions` are the version's reportable, non-sensitive controlled-list dimensions except School, with their value codes and labels; `items` are its reportable single-choice items `{ itemKey, sectionKey, prompt, questionNumber, layout, isPlaceholder, scoreEnabled, options[] }`; `sections` are the sections that contain one. `disclosure.minimumWalks` is the approved minimum (3 unless configured higher); `liveAvailable` is whether the caller may have live figures over their whole scope (they hold `walk.read` on every covered unit). `releases` are every release, latest dates first, `{ releaseId, observedFrom, observedTo, minimumWalks, releasedAt, versionIds }`, where `versionIds` are the versions the release holds blocks of in the caller's units. `canRelease` is whether the caller may create a release. Instrument content, scope and release metadata only -- no walk data. The only accepted parameter is `versionId`: anything else is 400 `REPORT_FILTER_UNKNOWN`; 400 `INVALID_VERSION_ID`, 404 `REPORT_VERSION_NOT_FOUND` / `REPORT_VERSION_NOT_AVAILABLE`, 401, 403 (no `report.view`: instrument administrators and role-less users). |
+ | GET | `/api/reports/aggregate` | permission `report.view` (any unit); the population is drawn from the caller's covered units only | **Phase 7 (RPT-01..07); RPT-03 correction.** One aggregate report over the walks of **one** instrument version, either **live** or from a **release** (`docs/DATA_CONTRACT.md`, "Aggregate privacy rule (RPT-03)"). Query parameters, all optional, every one re-validated on the server: `versionId` (default current); `orgUnitId` (a unit the caller covers -- the report draws on it and its covered descendants; any other id is 404 and audited `ACCESS_DENIED`, so existence is not disclosed; checked before anything below); `releaseId` (read that release); `from` and `to` (`YYYY-MM-DD`, inclusive, on the walk's observation date); `dim_<code>=<valueCode>` for each reportable dimension (`dim_grade`, `dim_content`, `dim_period`, `dim_classType`, `dim_visitTiming` in the current instrument; the parameter name matches case-insensitively, the value code exactly); `section` and `item` (restrict which items are reported, not who is counted); `optionItem` + `option` together (only walks whose response to that item is ANSWERED with that option); `includeDrafts=true` (default: COMPLETED walks only; VOIDED walks are never counted). Empty values are absent filters. **Live** (no `releaseId`) is served only when the caller holds `walk.read` on every unit the report would count; otherwise 400 `REPORT_RELEASE_REQUIRED`, whatever the other parameters. **Released** (`releaseId`) takes `versionId`, `orgUnitId`, `section` and `item` only: `from`, `to`, any `dim_*`, `optionItem`/`option` and `includeDrafts` are 400 `REPORT_FILTER_NOT_PERMITTED` (one issue per parameter); it counts COMPLETED walks of blocks with at least the release's minimum walks, protected cell by cell. 200 `{ format: "icfwalk-aggregate-report/2", generatedAt, mode: "LIVE" \| "RELEASE", release: null \| { releaseId, observedFrom, observedTo, minimumWalks, releasedAt }, disclosure: { minimumWalks, protected }, version, filters (including releaseId), filterCount, scope: { orgUnitCount }, population: { walks, byStatus, withheld }, orgUnits[]: { orgUnitId, code, name, type, walks }, dimensions[]: { code, label, states: { ANSWERED, UNANSWERED, HIDDEN }, withheldStates[], withheldResponses, values[]: { code, label, walks, withheld } }, sections[]: { sectionKey, title, parentSectionKey, depth, itemKeys, scored: { responses, sum, mean, withheld } \| null }, items[]: { itemKey, sectionKey, prompt, questionNumber, layout, isPlaceholder, scoreEnabled, options[]: { code, label, numericScore, isNa, count, withheld }, states: { ANSWERED, UNANSWERED, HIDDEN, NOT_APPLICABLE, UNRECORDED }, withheldStates[], withheldResponses, scored: { responses, sum, mean, withheld } \| null }, attempts, correlationId }`. Option counts are ANSWERED responses only; `scored.mean` is `sum / responses` over answered, scored, non-N/A responses (four places), `null` when nothing was scored; a section's `scored` pools every reported scored response beneath it, so it is weighted by responses, never an average of walk averages. A dimension value hidden by the instrument's rules (Period outside grades 6-12, retained under `RETAIN_HIDDEN`) counts as HIDDEN, never as its value, and never matches a filter. In a released report a withheld figure is `null` (never 0, never a number beside a flag), a partly published figure is its published part with `withheld: true` (and its state named in `withheldStates`), and a mean on fewer than the minimum published ratings has `responses`, `sum` and `mean` all `null`; a selection with no released block is `population: { walks: null, byStatus: {}, withheld: true }` with nothing categorical, identically for 0, 1 or 2 walks. In a live report nothing is withheld (`withheld: false`, empty `withheldStates`, `withheldResponses: 0`). **Never** returned: a walk id, owner, observer, note, email draft, free text, "Other" text, teacher field or classroom label. Errors: 400 `REPORT_FILTER_UNKNOWN`, `REPORT_FILTER_VALUE_INVALID`, `REPORT_FILTER_INCOMPLETE`, `REPORT_DATE_RANGE_INVALID`, `REPORT_FILTER_NOT_PERMITTED`, `REPORT_RELEASE_REQUIRED`, `INVALID_ORG_UNIT`, `INVALID_VERSION_ID`, `INVALID_RELEASE_ID` (each with `details.issues[] = { parameter, code }`); 401; 403 without `report.view`; 404 for an out-of-scope or unknown unit, `REPORT_VERSION_NOT_FOUND` and `REPORT_RELEASE_NOT_FOUND`; 409 `REPORT_POPULATION_CHANGED` with `details.attempts` when walks in a live population kept changing during three consecutive attempts (see `docs/DATA_CONTRACT.md`, "Aggregate report coherence"). Read-only: no CSRF, nothing written; logged `report.generated` with `{ versionId, mode, walks, items, attempts, filters, ms }` (`walks` is `-1` when withheld). |
+ | GET | `/api/reports/aggregate.csv` | same as `/api/reports/aggregate` | **Phase 7; RPT-03 correction.** The same report as an RFC 4180 CSV download, built from the same report the JSON route returns, so it never carries a figure that route withholds: UTF-8 with a byte order mark, CRLF line ends, header `record_type,group,key,label,count,withheld,scored_responses,score_sum,mean`, and one record per figure: `META` facts (format, mode, version, statuses, `minimum_walks`, the release's id and dates when there is one, each filter), `POPULATION`, `ORG_UNIT`, `DIMENSION_STATE` (ANSWERED, UNANSWERED, HIDDEN, and WITHHELD_RESPONSES when non-zero), `DIMENSION_VALUE`, `SECTION` and `ITEM` (scored figures, with `withheld` flagging the mean), `ITEM_STATE` (ANSWERED, UNANSWERED, HIDDEN, NOT_APPLICABLE, UNRECORDED, WITHHELD_RESPONSES) and `OPTION`. An empty count with `withheld` = 1 is withheld; a count with `withheld` = 1 is only the published part. Every text cell a spreadsheet would evaluate (leading `=`, `+`, `-`, `@`, tab or CR) is prefixed with an apostrophe, and cells containing a comma, quote or line break are quoted with doubled quotes. Headers: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="ICFWalk_report_<version label>_<yyyymmdd>.csv"` built from `[A-Za-z0-9_-]` only, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. Audited `REPORT_EXPORTED` with `{ versionId, mode, walks, withheld, rows, bytes, filters, attempts, orgUnitId?, releaseId? }` only (`walks` is `-1` when withheld). Same errors as the JSON route, answered as JSON. |
+ | POST | `/api/reports/releases` | permission `report.view`, CSRF; the service further requires `walk.read` and `report.view` on **every** active org unit | **RPT-03 correction.** Freezes one range of dates for report-only users. Body exactly `{ observedFrom, observedTo }` (`YYYY-MM-DD`, inclusive); anything else in it is 400 `REPORT_RELEASE_BODY_INVALID`, and who releases is the signed-in principal, never the body. The dates must be valid (400 `REPORT_RELEASE_DATES_INVALID`), in order, and have passed -- the last before today, UTC (400 `REPORT_RELEASE_DATES_OPEN`) -- and must not overlap any existing release (409 `REPORT_RELEASE_OVERLAP`; the database trigger refuses it too; 409 `REPORT_RELEASE_BUSY` if another release held the lock for 30 seconds). A caller who cannot open every walk in every school is refused (403 `REPORT_RELEASE_NOT_PERMITTED`, audited `ACCESS_DENIED`). Under an exclusive lock, every reportable version's COMPLETED walks observed on those dates that no earlier release counted are read as one coherent population (409 `REPORT_POPULATION_CHANGED` after three moving attempts) and every (version, org unit) block with at least the configured minimum walks is stored with its breakdown counts and the walks it counts, so no later release counts them again even after a date correction (audit finding P7C-02); smaller blocks are not stored. A walk already counted by a release is left out silently: its dates may have been corrected since, and it stays in the release that counted it. 201 `{ release: { releaseId, observedFrom, observedTo, minimumWalks, releasedAt, versions[]: { versionId, blocks }, blocks }, correlationId }`. Audited `REPORT_RELEASED` and logged `report.released` with `{ releaseId, observedFrom, observedTo, minimumWalks, versions, blocks, attempts }`. A release is never updated or deleted. Other methods: 405. |
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
+ | POST | `/api/maintenance/instrument/import` | maintenance | Imports the instrument configuration as a DRAFT (`config/instrument-config.json` or `{ "configFile": "name.json" }`). Optional `instrumentCode` and `versionLabel` import the same document under a different identity; both are plain overrides (1-60 and 1-100 characters, 400 `INSTRUMENTCODE_INVALID` / `VERSIONLABEL_INVALID`) that reach no other document field, and the full validation runs on the result either way. They exist so the publish path can be verified end to end without publishing -- and thereby freezing -- the seeded DRAFT every other check reads. 201 created / 200 updated; 422 `INSTRUMENT_CONFIG_INVALID`; 409 `INSTRUMENT_VERSION_IMMUTABLE` / `INSTRUMENT_VERSION_IN_USE`. |
+ | GET | `/api/maintenance/instrument/versions` | maintenance | Same listing as the admin route, for operators without a session. |
+ | POST | `/api/maintenance/instrument/discard-draft` | maintenance | `{ "versionLabel", "instrumentCode"? }` deletes a DRAFT no walk references. The lookup is scoped by instrument identity as well as by label (labels are unique only within an instrument); `instrumentCode` defaults to `ICFWALK_INSTRUMENT_CODE`. 404 `VERSION_NOT_FOUND` when that instrument has no such label, `INSTRUMENT_NOT_FOUND` for an unknown code. |
+diff --git a/manifest.json b/manifest.json
+remerge CONFLICT (content): Merge conflict in manifest.json
+index 97f1242..7293d6f 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -40,13 +40,8 @@
+     },
+     {
+       "path": "docs/DATA_CONTRACT.md",
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-      "bytes": 77944,
+-      "sha256": "753efb0743f7cd31ed1b0977b8774928783423e1a3e4ede43cb7e8c5014d0318"
+-=======
+-      "bytes": 80062,
+-      "sha256": "d5b5096f8f1c69956fc6867a3e2526949dce46c6612575e2f5a2b36f06f1f4f9"
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
++      "bytes": 90934,
++      "sha256": "5758d11e7be0bf35b9a0f55f9b806a5972f633f2976508f9f1c8fb4474da1eec"
+     },
+     {
+       "path": "docs/IMPLEMENTATION_PLAN.md",
+@@ -55,13 +50,8 @@
+     },
+     {
+       "path": "docs/OPEN_DECISIONS.md",
+-<<<<<<< 64507de (Phase 6 accepted: the independent re-audit passed, P6A-R01 closed)
+-      "bytes": 8708,
+-      "sha256": "7f1ab6856fb09ba72aed5296fe92ff146e827a9d6845a3fb05176bd335ae5997"
+-=======
+-      "bytes": 10908,
+-      "sha256": "29f8c864baf05f7b5474e6957bfb24d0d3ee2c7e7684a34c4f550e7ac377317a"
+->>>>>>> e034214 (Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e)
++      "bytes": 14752,
++      "sha256": "5d5c9895316948921f0fbcb61b66198a4bfe6dbdf319d6105b24c299e51e8d0a"
+     },
+     {
+       "path": "docs/PRODUCT_SPEC.md",
