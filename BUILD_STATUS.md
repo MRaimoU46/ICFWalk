@@ -11,21 +11,25 @@ RPT-01..07)** from `docs/IMPLEMENTATION_PLAN.md`.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state: Phase 6 is frozen, on the project owner's direction, at code commit
-`158debca5da2c4f3a07f602689cd08af9db9bd6e`** (branch `claude/icfwalk-phase-6-admin-audit-corrections`; the commits after it
-are records only), after the re-audit correction P6A-R01 and a complete exact-commit gate on that
-commit (Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped). The Phase 0-6 publish foundation `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` had been
+**Current state: Phase 6 is accepted and frozen at code commit
+`158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the verified scope.** The independent re-audit of that commit passed and
+P6A-R01 is closed. Branch `claude/icfwalk-phase-6-admin-audit-corrections`; the commits after the
+code commit are records only. The freeze followed the re-audit correction P6A-R01 and a complete
+exact-commit gate on that commit (Node/HTTP/Playwright 240/240, CFML 483/483, `test:package` 19/19, `validate:handoff` ok; 0 failed, 0 skipped). The Phase 0-6 publish foundation `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` had been
 frozen earlier. **Phase 7 is not frozen and not accepted**: the Phase 7 commit in this history
 (`0c6fa10`, beneath Phase 6 administration) is the original one, and a separate branch that carries
-Phase 7 corrections (`claude/icfwalk-phase-7-correction-n62s25`) is not merged here. Adobe ColdFusion
-2023 and SQL Server 2016 have still not been run. See "Phase 6 frozen" at the end and
+Phase 7 corrections (`claude/icfwalk-phase-7-correction-n62s25`) is not merged here. Phase 6 and
+Phase 7 are integrated on a separate branch, `claude/icfwalk-phase-6-7-integration`. Adobe ColdFusion 2023,
+SQL Server 2016, connector-level limits, Microsoft Excel and a screen reader have still not been
+used, so the application is **not production-certified**. See "Phase 6 accepted" at the end and
 `docs/evidence/phase6-freeze.md`.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
 the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
 Phase 6 administration, the Excel round-trip, the audit corrections, the re-audit correction
-P6A-R01, and finally **Phase 6 frozen**, which is the current state of the build.
+P6A-R01, **Phase 6 frozen**, and finally **Phase 6 accepted**, which is the current state of the
+build.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
 them; where they disagree, the later section is the record.
 
@@ -3850,3 +3854,26 @@ verified, and the known limitations carried into it are in `docs/evidence/phase6
 - **No tag** was created; the project's earlier freezes were recorded by commit. If one is wanted, it
   belongs on `158debca5da2c4f3a07f602689cd08af9db9bd6e`.
 
+
+## Phase 6 accepted
+
+On 2026-09-25 the project owner reported that **the independent re-audit passed** for code commit
+`158debca5da2c4f3a07f602689cd08af9db9bd6e` with records tip `330ffb4ca50ebc68909a192b2ca7d35f4d9e5e24`.
+**P6A-R01 is closed. Phase 6 is accepted and frozen at `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the
+verified scope**: Lucee 6.2.8.20 under jetty-runner 9.4.58, SQL Server 2022 (16.0.4295.3) and
+Chromium 141, with workbooks checked against LibreOffice Calc output and accessibility checked with
+axe-core and the keyboard. The commit that adds this section adds only records: `git diff 158debc`
+to it over `src app tests scripts tools database config package.json package-lock.json manifest.json`
+is empty.
+
+- **No further Phase 6 changes.** On the owner's direction, no Phase 6 source, test, configuration,
+  dependency or migration change is made after this. This branch is kept as the audit record.
+- **Phase 7 is not included.** Phase 6 and Phase 7 are integrated on a separate branch,
+  `claude/icfwalk-phase-6-7-integration`, created from the commit that adds this section. That
+  integration is a new candidate with its own gate and audit. It does not change this freeze.
+- **Not production-certified.** Adobe ColdFusion 2023, SQL Server 2016, IIS or any connector-level
+  limit, Microsoft Excel and a screen reader have still not been used. Until those checks are done,
+  the application is not to be described as production-certified.
+
+The acceptance is recorded in `docs/evidence/phase6-freeze.md` ("Acceptance") and in
+`docs/ACCEPTANCE_TRACKING.md`.

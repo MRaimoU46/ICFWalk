@@ -3,6 +3,29 @@
 **Phase 6 is frozen, on the project owner's direction, at code commit
 `158debca5da2c4f3a07f602689cd08af9db9bd6e`.**
 
+## Acceptance
+
+**Accepted.** On 2026-09-25 the project owner reported that the independent re-audit passed for code
+commit `158debca5da2c4f3a07f602689cd08af9db9bd6e` with records tip
+`330ffb4ca50ebc68909a192b2ca7d35f4d9e5e24`. **P6A-R01 is closed. Phase 6 is accepted and frozen at
+that code commit, for the verified scope**: Lucee 6.2.8.20 under jetty-runner 9.4.58, SQL Server
+2022 (16.0.4295.3) and Chromium 141, with workbooks checked against LibreOffice Calc output and
+accessibility checked with axe-core and the keyboard. The re-audit was independent of this session,
+which did not audit its own work.
+
+The owner's directions that come with the acceptance:
+
+- No further Phase 6 source, test, configuration, dependency or migration change. The commits after
+  `158debc` on this branch are records only, and this branch is kept as the audit record.
+- Phase 7 stays separate and is not part of this acceptance. Phase 6 and Phase 7 are integrated on a
+  separate branch, `claude/icfwalk-phase-6-7-integration`, created from this branch's records tip. That
+  integration is a new candidate with its own gate and audit. It does not change this freeze.
+- The application is not to be described as production-certified until the Adobe ColdFusion 2023,
+  SQL Server 2016, connector, Microsoft Excel and screen-reader checks are completed.
+
+The sections below are the freeze record as written before the re-audit's result. Only the list
+of records-only commits has been brought up to date.
+
 ## The decision, and who made it
 
 After the independent re-audit of the Phase 6 administration audit corrections, the project owner
@@ -24,9 +47,10 @@ The condition was met:
 ## What is frozen
 
 The code, tests, configuration and migrations of `158debca5da2c4f3a07f602689cd08af9db9bd6e`, the exact
-commit the gate ran on. The commit after it on `claude/icfwalk-phase-6-admin-audit-corrections` adds
-only records (this file, the gate transcript, the environment record, and status text); `git diff
-158debc <records commit> -- src app tests scripts tools database config package.json
+commit the gate ran on. The commits after it on `claude/icfwalk-phase-6-admin-audit-corrections` add
+only records: `330ffb4` (this file, the gate transcript, the environment record, and status text)
+and the acceptance commit (the "Acceptance" section above and status text). `git diff
+158debc <records tip> -- src app tests scripts tools database config package.json
 package-lock.json manifest.json` is empty.
 
 "Phase 6" in this freeze is everything the Phase 6 plan and the owner's additions put on this branch:
@@ -38,7 +62,7 @@ package-lock.json manifest.json` is empty.
 | The Excel round-trip for the yearly update (requested by the owner; no acceptance ID) | `0a784d58f66d6796d7ce6d55b1965f6e7d408340` |
 | Audit corrections P6A-01 to P6A-04 | `06660a238c8dd6c62cacd8a27ed970e757ef22a1` |
 | Re-audit correction P6A-R01, and P6A-R02 (a test-client race found while verifying it) | `158debca5da2c4f3a07f602689cd08af9db9bd6e` |
-| Records only (gate transcripts, environment records, handoffs, status text) | `2b68cc0`, `786e572`, `6c2575a`, `bb6f750`, `2a3f2ec`, `3e11686`, and the commit that adds this file |
+| Records only (gate transcripts, environment records, handoffs, status text) | `2b68cc0`, `786e572`, `6c2575a`, `bb6f750`, `2a3f2ec`, `3e11686`, `330ffb4` (which added this file), and the acceptance commit |
 
 ## What is not frozen
 
