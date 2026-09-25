@@ -32,8 +32,10 @@ environment defaults to `production`, which disables maintenance endpoints, the 
 development identity stub. A production configuration that tries to enable the development identity
 stub is refused at startup (`ICFWalk.Configuration`), which is the AUTH-02 seam. All open decisions
 from `docs/OPEN_DECISIONS.md` are surfaced as configuration seams with their documented safe defaults
-(`ICFWALK_PLACEHOLDER_WARNINGS_BLOCK_PUBLISH`, `ICFWALK_HIDDEN_PERIOD_POLICY`,
-`ICFWALK_REPORT_SUPPRESSION_THRESHOLD`; outbound email is not configurable and always off).
+(`ICFWALK_PLACEHOLDER_WARNINGS_BLOCK_PUBLISH`, `ICFWALK_HIDDEN_PERIOD_POLICY`; outbound email is
+not configurable and always off). `ICFWALK_REPORT_SUPPRESSION_THRESHOLD` is no longer an open seam:
+the owner approved a minimum of 3 walks, which is its default and its floor (a deployment may raise
+it; below 3, including 0, refuses startup).
 
 ## Error model
 
@@ -750,8 +752,9 @@ commit between two of them. Holding every population walk's mutation lock (the P
 answer for one walk) would stall every autosave in scope for the length of a district report, so
 the report validates optimistically with the row version every mutation already moves:
 
-1. `selectCandidates` reads walk rows only and stores each walk's `row_version` in a session temp
-   table (`#icf_report_population`);
+1. `selectCandidates` reads walk rows only and stores each walk's `row_version` in the
+   computation's own connection-local temp table (`#icf_rp_` and 32 hex digits of a
+   server-generated GUID; see "Isolation" below);
 2. the population filters and every aggregate join that table and read child rows;
 3. `verifyPopulation` re-reads the row versions. Any walk that moved (or vanished) means some
    aggregate may have seen it in two states, and the whole report is discarded and recomputed, at
@@ -761,11 +764,24 @@ Create, save, complete and void all update the walk row in the same transaction 
 writes, and a no-op save writes nothing, so a moved row version is exactly the signal needed. A walk
 left out because of what S2 read (a filter it failed) was left out on the strength of one committed
 state; every walk that is counted was unchanged from its selection to the check. The transaction is
-READ COMMITTED and exists only to keep the temp tables on one connection -- it holds no lock a writer
+READ COMMITTED and exists to keep the temp tables on one connection -- it holds no lock a writer
 waits on. `ReportCoherenceTest` forces a real committed save between the dimension and item
 aggregates through `tests/cfml/support/InterceptingReportRepository` and proves the recomputation;
 with the check removed the same test reports Grade 7 beside rating 5, a state the walk never held
 (`docs/evidence/phase7-red-before-fix.md`).
+
+**Isolation between concurrent requests** (audit finding P7C-01). `beginPopulation` returns a handle
+naming this computation's own two tables and every population method takes it: one `#` (built from
+`chr(35)`; SQL Server makes a `##` table global), a GUID-derived name checked against its exact
+pattern on every use, created only inside a transaction (`REPORT_POPULATION_NO_TRANSACTION`), and
+refused on any connection but the one that created it (`REPORT_POPULATION_CONNECTION_CHANGED`,
+checked by `verifyPopulation` and `endPopulation`). Tables are dropped on success and rolled back
+with the transaction on failure. `ReportIsolationTest` holds one computation paused inside its
+transaction while another -- a live report on a disjoint school, or a release -- runs to completion
+beside it, in both orders, and checks both exact populations; made global, the same tables fail
+that test (the second request waits on a schema lock). The audited build's fixed name
+`"##icf_report_population"` was already connection-local (CFML's `##` is one `#`); the fixed name
+and the missing transaction and connection checks are what changed.
 
 **Exclusions are structural.** `ReportRepository` selects walk ids, org units, statuses, row
 versions, selected value ids and selected option ids -- nothing else. It names no text, teacher,
@@ -773,16 +789,36 @@ classroom, owner or user column, which `tests/node/reports.test.mjs` asserts aga
 and no report DTO carries a walk identifier. The browser module builds its DOM with `textContent`
 only.
 
-**Privacy suppression.** `ICFWALK_REPORT_SUPPRESSION_THRESHOLD` stays the undecided seam it was
-(default none). When set to N, a population below N is withheld whole and each org-unit and
-dimension-value group below N is withheld individually. See `docs/DATA_CONTRACT.md` for what it
-deliberately does not attempt.
+**Privacy (RPT-03 correction).** The owner-approved rule (`docs/OPEN_DECISIONS.md`): k = 3,
+report-only users read frozen releases. `ReportService.parseFilters` decides per request whether
+live figures may be served -- only to a caller with `walk.read` on every unit counted -- and
+otherwise requires a `releaseId` and refuses every parameter that narrows who is counted.
+`createRelease` freezes a closed, non-overlapping range of dates under an exclusive application
+lock from one coherent read, storing per-(version, org unit) block counts in migration 007's tables
+beside the walks each block counts (`report_release_walk`, keyed by the walk); a new release leaves
+out every walk an earlier one counted, so a date correction can never put a walk in two releases
+(audit finding P7C-02). Blocks below k are never stored, and the database refuses overlap, small
+blocks, a second release of a walk, a block that disagrees with its recorded walks, any addition
+after the release's own transaction, any update, and any deletion, in whole or in part (audit finding
+P7C-04). Only a principal allowed to alter the schema can switch those guards off, so the runtime
+login holds data permissions only; the test-only fixture cleanup, on a development login, switches
+the delete guards off inside its own transaction to remove a test's releases.
+`releaseReport` protects every breakdown of every block with `DisclosureControl` (primary and
+complementary suppression plus an exact ambiguity audit) or, for breakdowns linked by instrument
+rules (`linkGroupsOf`), as a group, and only then adds blocks up, so every figure is a sum of
+figures each block's own report publishes. See `docs/DATA_CONTRACT.md`, "Aggregate privacy rule
+(RPT-03)".
 
 **Browser.** `reports.js` owns the Reports view in the existing shell: filters built from
 `/api/reports/options`, a query string for `/api/reports/aggregate`, and a link to the CSV route
-(no `download` attribute, so the route's `Content-Disposition` names the file). A report-only role
-lands there and never requests `/api/walks` or `/api/instrument/current`; walk roles get a Reports
-button beside My walks, reached through the same unsaved-work guard as leaving the editor.
+(no `download` attribute, so the route's `Content-Disposition` names the file). A "Data" control
+offers current data only when the options say the caller may have it, and otherwise released dates
+only; a release shows only the filters a release takes. Withheld figures arrive as `null` and are
+shown as "Withheld" ("At least N" for a partly released figure), so the page never holds a value it
+hides. Someone who may release sees a "Release dates" form (`POST /api/reports/releases`). A
+report-only role lands on Reports and never requests `/api/walks` or `/api/instrument/current`;
+walk roles get a Reports button beside My walks, reached through the same unsaved-work guard as
+leaving the editor.
 
 ## What Phase 6 builds on
 

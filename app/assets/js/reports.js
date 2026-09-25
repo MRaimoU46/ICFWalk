@@ -6,9 +6,20 @@
  *   GET /api/reports/aggregate      the report (JSON)
  *   GET /api/reports/aggregate.csv  the same report as a download
  *
+ *   POST /api/reports/releases      release dates for report-only users (only when the options
+ *                                   say the caller may)
+ *
  * Every filter is re-validated and every scope decision is made on the server; this module only
  * builds a query string. It never receives, and so can never show, an individual walk: the report
  * payload carries counts and scores keyed by codes, and there is nothing to drill into.
+ *
+ * LIVE OR RELEASED (RPT-03 correction). The "Data" control offers current data only when the
+ * server says the caller may have it (options.disclosure.liveAvailable: they can open every walk
+ * in their scope), and otherwise only released dates. A released report takes the version, school,
+ * section and question -- nothing that narrows who is counted -- so those are the only filters
+ * shown for it. The server withholds small figures before it answers: a withheld figure arrives as
+ * null and is shown as "Withheld"; a figure of which only part could be released arrives with
+ * `withheld: true` and is shown as "At least N". There is no withheld value in the page to reveal.
  *
  * Every value from the server reaches the page through textContent or an attribute set by the DOM
  * API -- never innerHTML -- so instrument wording and org unit names are always text.
@@ -16,6 +27,7 @@
 
 const STATE_LABELS = { ANSWERED: "Answered", UNANSWERED: "Not answered", NOT_APPLICABLE: "Not applicable", HIDDEN: "Hidden" };
 const ALL = "";
+const LIVE = "live";
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -38,6 +50,20 @@ function formatNumber(n) {
 }
 
 function plural(n, one, many) { return `${formatNumber(n)} ${n === 1 ? one : many}`; }
+
+/** A released figure: null is withheld; withheld with a number is the part that could be released. */
+function figure(count, withheld) {
+  if (count === null || count === undefined) return withheld ? "Withheld" : "—";
+  return withheld ? `At least ${formatNumber(count)}` : formatNumber(count);
+}
+
+/** Where the report comes from: current data when the server allows it, then every release. */
+function sources(opts) {
+  const out = [];
+  if (opts.disclosure && opts.disclosure.liveAvailable) out.push({ value: LIVE, label: "Current data" });
+  for (const r of opts.releases || []) out.push({ value: r.releaseId, label: `Released: walks observed ${r.observedFrom} to ${r.observedTo}` });
+  return out;
+}
 
 export function mountReports({ api, apiBase }) {
   const $ = (id) => document.getElementById(id);
@@ -93,15 +119,52 @@ export function mountReports({ api, apiBase }) {
     return out;
   }
 
+  /** The release the "Data" control names, or null for current data. */
+  function selectedRelease() {
+    const c = $("rf-source");
+    if (!c || !view.options || c.value === LIVE) return null;
+    return (view.options.releases || []).find((r) => r.releaseId === c.value) || null;
+  }
+
   function buildFilters(opts, keep = {}) {
     filters.replaceChildren();
-    const versions = opts.versions.map((v) => ({ value: v.versionId, label: `${v.versionLabel} (${v.status.toLowerCase()}${v.isCurrent ? ", current" : ""})` }));
+    const choices = sources(opts);
+    if (!choices.length) {
+      $("report-scope-note").textContent = "No reporting dates have been released yet. Individual walks are never shown.";
+      updateDownload();
+      return;
+    }
+    const chosen = choices.some((c) => c.value === keep["rf-source"]) ? keep["rf-source"] : choices[0].value;
+    const source = select(choices, chosen);
+    source.addEventListener("change", () => {
+      buildFilters(view.options, currentValues());
+      // Results on screen came from the other source; never leave them looking current.
+      results.replaceChildren();
+      setStatus("Data changed. Run the report to see its results.");
+    });
+    filters.append(field("rf-source", "Data", source));
+    const release = chosen === LIVE ? null : (opts.releases || []).find((r) => r.releaseId === chosen);
+
+    // A release holds some versions for this scope: offer those, plus the version these options were
+    // loaded for, so the section and question lists below always belong to the selected version
+    // (choosing another reloads the options for it).
+    const offered = release ? opts.versions.filter((v) => v.versionId === opts.version.versionId || release.versionIds.includes(v.versionId)) : opts.versions;
+    const versions = offered.map((v) => ({ value: v.versionId, label: `${v.versionLabel} (${v.status.toLowerCase()}${v.isCurrent ? ", current" : ""})` }));
     const version = select(versions, opts.version.versionId);
     version.addEventListener("change", () => changeVersion(version.value));
     filters.append(field("rf-version", "Instrument version", version));
 
     const units = [{ value: ALL, label: "All schools I can report on" }, ...opts.orgUnits.map((u) => ({ value: u.orgUnitId, label: u.type === "SCHOOL" ? u.name : `${u.name} (${u.type.toLowerCase()})` }))];
     filters.append(field("rf-org", "School", select(units, keep["rf-org"] ?? ALL)));
+
+    const note = $("report-scope-note");
+    if (release) {
+      note.textContent = `Released results. Groups of fewer than ${release.minimumWalks} walks are never released, and small counts are withheld. Individual walks are never shown.`;
+      appendContentFilters(opts, keep);
+      updateDownload();
+      return;
+    }
+    note.textContent = "Individual walks are never shown.";
 
     const from = el("input", { type: "date" });
     from.value = keep["rf-from"] ?? "";
@@ -116,13 +179,7 @@ export function mountReports({ api, apiBase }) {
       filters.append(field(id, d.label, select(choices, keepValue)));
     }
 
-    const sectionChoices = [{ value: ALL, label: "All sections" }, ...opts.sections.filter((s) => s.depth > 0).map((s) => ({ value: s.sectionKey, label: `${"— ".repeat(Math.max(0, s.depth - 1))}${s.title}` }))];
-    const sectionSelect = select(sectionChoices, opts.sections.some((s) => s.sectionKey === keep["rf-section"]) ? keep["rf-section"] : ALL);
-    filters.append(field("rf-section", "Section", sectionSelect));
-
-    const itemChoices = [{ value: ALL, label: "All questions" }, ...opts.items.map((i) => ({ value: i.itemKey, label: shorten(itemLabel(i, opts.sections)), title: itemLabel(i, opts.sections) }))];
-    const itemSelect = select(itemChoices, opts.items.some((i) => i.itemKey === keep["rf-item"]) ? keep["rf-item"] : ALL);
-    filters.append(field("rf-item", "Question", itemSelect));
+    const itemChoices = appendContentFilters(opts, keep);
 
     // Only walks that gave one answer to one question.
     const answerItem = select([{ value: ALL, label: "No answer filter" }, ...itemChoices.slice(1)], opts.items.some((i) => i.itemKey === keep["rf-answer-item"]) ? keep["rf-answer-item"] : ALL);
@@ -150,19 +207,27 @@ export function mountReports({ api, apiBase }) {
     drafts.checked = Boolean(keep["rf-drafts"]);
     drafts.id = "rf-drafts";
     filters.append(el("div", { className: "report-field report-check" }, drafts, el("label", { for: "rf-drafts", text: "Include walks still in draft" })));
-
-    const note = $("report-scope-note");
-    const threshold = opts.suppression && opts.suppression.threshold;
-    note.textContent = threshold
-      ? `Groups of fewer than ${threshold} walks are withheld. Individual walks are never shown.`
-      : "Individual walks are never shown.";
     updateDownload();
+  }
+
+  /** Section and question: what a report shows, not who it counts, so both kinds of report take them. */
+  function appendContentFilters(opts, keep) {
+    const sectionChoices = [{ value: ALL, label: "All sections" }, ...opts.sections.filter((s) => s.depth > 0).map((s) => ({ value: s.sectionKey, label: `${"— ".repeat(Math.max(0, s.depth - 1))}${s.title}` }))];
+    const sectionSelect = select(sectionChoices, opts.sections.some((s) => s.sectionKey === keep["rf-section"]) ? keep["rf-section"] : ALL);
+    filters.append(field("rf-section", "Section", sectionSelect));
+
+    const itemChoices = [{ value: ALL, label: "All questions" }, ...opts.items.map((i) => ({ value: i.itemKey, label: shorten(itemLabel(i, opts.sections)), title: itemLabel(i, opts.sections) }))];
+    const itemSelect = select(itemChoices, opts.items.some((i) => i.itemKey === keep["rf-item"]) ? keep["rf-item"] : ALL);
+    filters.append(field("rf-item", "Question", itemSelect));
+    return itemChoices;
   }
 
   /** The query string the server receives. Empty filters are simply absent. */
   function query() {
     const params = new URLSearchParams();
     const value = (id) => { const c = $(id); return c && !c.disabled ? c.value : ""; };
+    const release = selectedRelease();
+    if (release) params.set("releaseId", release.releaseId);
     if (value("rf-version")) params.set("versionId", value("rf-version"));
     if (value("rf-org")) params.set("orgUnitId", value("rf-org"));
     if (value("rf-from")) params.set("from", value("rf-from"));
@@ -241,29 +306,36 @@ export function mountReports({ api, apiBase }) {
   function populationCard(r) {
     const p = r.population;
     const lines = [];
-    if (p.suppressed) {
-      lines.push(el("p", { className: "report-suppressed", text: `Fewer than ${r.suppression.threshold} walks match these filters, so the results are withheld.` }));
+    if (p.withheld) {
+      lines.push(el("p", { className: "report-suppressed", text: `Nothing is released for this selection: groups of fewer than ${r.disclosure.minimumWalks} walks are never released.` }));
     } else {
       const parts = Object.entries(p.byStatus).map(([s, n]) => `${s === "COMPLETED" ? "completed" : s.toLowerCase()}: ${formatNumber(n)}`);
       lines.push(el("p", { className: "report-total" }, el("strong", { text: plural(p.walks, "walk", "walks") }), parts.length ? ` (${parts.join(", ")})` : ""));
     }
-    lines.push(el("p", { className: "muted report-meta", text: `Instrument version ${r.version.versionLabel}. ${r.filters.includeDrafts ? "Completed and draft walks." : "Completed walks only."}` }));
+    const origin = r.release ? `Released walks observed ${r.release.observedFrom} to ${r.release.observedTo}. ` : "";
+    lines.push(el("p", { className: "muted report-meta", text: `${origin}Instrument version ${r.version.versionLabel}. ${r.filters.includeDrafts ? "Completed and draft walks." : "Completed walks only."}` }));
+    if (r.release && !p.withheld) {
+      lines.push(el("p", { className: "muted report-meta", text: `Counts below ${r.disclosure.minimumWalks}, and counts that would reveal them, are withheld. "At least" marks a figure of which only part could be released.` }));
+    }
     return card("Walks in this report", "rr-population", ...lines);
   }
 
   function schoolsCard(r) {
     if (!r.orgUnits.length) return null;
-    const rows = r.orgUnits.map((u) => [u.name, u.suppressed ? "Withheld" : formatNumber(u.walks)]);
+    const rows = r.orgUnits.map((u) => [u.name, formatNumber(u.walks)]);
     return card("Schools", "rr-schools", table("Walks by school", ["School", "Walks"], rows));
   }
 
   function dimensionsCard(r) {
     if (!r.dimensions.length) return null;
     const blocks = r.dimensions.map((d) => {
-      const rows = d.values.filter((v) => v.suppressed || v.walks > 0).map((v) => [v.label, v.suppressed ? "Withheld" : formatNumber(v.walks)]);
+      const rows = d.values.filter((v) => v.withheld || v.walks > 0).map((v) => [v.label, figure(v.walks, v.withheld)]);
       const notes = [];
-      if (d.states.UNANSWERED) notes.push(`${STATE_LABELS.UNANSWERED}: ${formatNumber(d.states.UNANSWERED)}`);
-      if (d.states.HIDDEN) notes.push(`${STATE_LABELS.HIDDEN}: ${formatNumber(d.states.HIDDEN)}`);
+      for (const k of ["UNANSWERED", "HIDDEN"]) {
+        const withheld = d.withheldStates.includes(k);
+        if (withheld || d.states[k]) notes.push(`${STATE_LABELS[k]}: ${figure(d.states[k], withheld)}`);
+      }
+      if (d.withheldResponses) notes.push(`Withheld: ${formatNumber(d.withheldResponses)}`);
       return el("div", { className: "report-dimension", "data-dimension": d.code },
         rows.length ? table(d.label, [d.label, "Walks"], rows) : el("p", { className: "muted", text: `${d.label}: no answers.` }),
         notes.length ? el("p", { className: "muted report-states", text: notes.join(" · ") }) : null);
@@ -271,23 +343,38 @@ export function mountReports({ api, apiBase }) {
     return card("Visit information", "rr-dimensions", el("div", { className: "report-dimensions" }, ...blocks));
   }
 
+  /** An average line, or null: withheld on too few released ratings, marked when some ratings are withheld. */
+  function averageText(scored, lead) {
+    if (!scored) return null;
+    if (scored.responses === null) return `${lead} withheld: too few ratings could be released.`;
+    if (!scored.responses) return "No rated responses";
+    const text = `${lead} ${formatNumber(scored.mean)} from ${plural(scored.responses, "rated response", "rated responses")}`;
+    return scored.withheld ? `${text} (released ratings only; some are withheld)` : text;
+  }
+
   function itemBlock(item, level = "h4") {
     const s = item.states;
     const heading = `${item.questionNumber ? `${item.questionNumber}. ` : ""}${item.prompt}`;
     const summary = [];
-    if (item.scored) {
-      summary.push(item.scored.responses
-        ? `Average ${formatNumber(item.scored.mean)} from ${plural(item.scored.responses, "rated response", "rated responses")}`
-        : "No rated responses");
-    }
-    const counts = ["ANSWERED", "UNANSWERED", "NOT_APPLICABLE", "HIDDEN"].map((k) => `${STATE_LABELS[k]}: ${formatNumber(s[k])}`);
-    if (s.UNRECORDED) counts.push(`No record: ${formatNumber(s.UNRECORDED)}`);
-    const rows = item.options.map((o) => [o.label, formatNumber(o.count)]);
+    const average = averageText(item.scored, "Average");
+    if (average) summary.push(average);
+    const counts = ["ANSWERED", "UNANSWERED", "NOT_APPLICABLE", "HIDDEN"].map((k) => `${STATE_LABELS[k]}: ${figure(s[k], item.withheldStates.includes(k))}`);
+    if (s.UNRECORDED || item.withheldStates.includes("UNRECORDED")) counts.push(`No record: ${figure(s.UNRECORDED, item.withheldStates.includes("UNRECORDED"))}`);
+    if (item.withheldResponses) counts.push(`Withheld: ${formatNumber(item.withheldResponses)}`);
+    const rows = item.options.map((o) => [o.label, figure(o.count, o.withheld)]);
     return el("article", { className: "report-item", "data-item-key": item.itemKey },
       el(level, { className: "report-q", text: heading }),
       summary.length ? el("p", { className: "report-avg", text: summary.join(" ") }) : null,
       el("p", { className: "muted report-states", text: counts.join(" · ") }),
       table(`Answers to: ${heading}`, ["Answer", "Responses"], rows, { className: "report-table report-dist" }));
+  }
+
+  function sectionAverage(scored) {
+    if (!scored) return null;
+    if (scored.responses === null) return el("p", { className: "report-avg", text: "Average of all rated responses withheld: too few ratings could be released." });
+    if (!scored.responses) return null;
+    const text = `Average of all rated responses: ${formatNumber(scored.mean)} (${plural(scored.responses, "response", "responses")})`;
+    return el("p", { className: "report-avg", text: scored.withheld ? `${text}, released ratings only` : text });
   }
 
   function questionsCard(r) {
@@ -300,9 +387,7 @@ export function mountReports({ api, apiBase }) {
       const headingLevel = s.depth === 1 ? "h3" : "h4";
       const header = el("div", { className: "report-section-head" },
         el(headingLevel, { className: "report-section-title", text: s.title }),
-        s.scored && s.scored.responses
-          ? el("p", { className: "report-avg", text: `Average of all rated responses: ${formatNumber(s.scored.mean)} (${plural(s.scored.responses, "response", "responses")})` })
-          : null);
+        sectionAverage(s.scored));
       const itemLevel = s.depth === 1 ? "h4" : "h5";
       blocks.push(el("div", { className: `report-section depth-${Math.min(s.depth, 3)}`, "data-section-key": s.sectionKey }, header, ...own.map((i) => itemBlock(i, itemLevel))));
     }
@@ -312,11 +397,15 @@ export function mountReports({ api, apiBase }) {
   }
 
   function render(r) {
-    results.replaceChildren(...[populationCard(r), ...(r.population.suppressed ? [] : [schoolsCard(r), dimensionsCard(r), questionsCard(r)])].filter(Boolean));
+    results.replaceChildren(...[populationCard(r), ...(r.population.withheld ? [] : [schoolsCard(r), dimensionsCard(r), questionsCard(r)])].filter(Boolean));
   }
 
   async function run() {
     if (view.running) return;
+    if (!$("rf-source")) {
+      setStatus("No reporting dates have been released yet.");
+      return;
+    }
     view.running = true;
     // The Run button stays enabled (disabling the focused control would drop keyboard focus); a
     // second press while a report is running is simply ignored, and the results say they are busy.
@@ -329,7 +418,7 @@ export function mountReports({ api, apiBase }) {
       const r = await api.get(`/reports/aggregate${qs ? `?${qs}` : ""}`);
       view.last = r;
       render(r);
-      setStatus(r.population.suppressed ? "Report updated. Results are withheld for this selection." : `Report updated: ${plural(r.population.walks, "walk", "walks")}.`);
+      setStatus(r.population.withheld ? "Report updated. Results are withheld for this selection." : `Report updated: ${plural(r.population.walks, "walk", "walks")}.`);
     } catch (e) {
       results.replaceChildren();
       showError(describe(e, "The report could not be produced"));
@@ -347,9 +436,31 @@ export function mountReports({ api, apiBase }) {
     form.addEventListener("change", updateDownload);
     $("report-reset").addEventListener("click", async () => {
       if (!view.options) return;
-      buildFilters(view.options, {});
+      // Clearing filters keeps the chosen data: it is not a filter.
+      const source = $("rf-source");
+      buildFilters(view.options, source ? { "rf-source": source.value } : {});
       await run();
     });
+    $("release-form").addEventListener("submit", (ev) => { ev.preventDefault(); createRelease(); });
+  }
+
+  /** Releases the chosen dates, then offers the new release and shows it. */
+  async function createRelease() {
+    if (view.running) return;
+    const observedFrom = $("release-from").value;
+    const observedTo = $("release-to").value;
+    showError("");
+    setStatus("Releasing…");
+    try {
+      const out = await api.post("/reports/releases", { observedFrom, observedTo });
+      const opts = await loadOptions($("rf-version") ? $("rf-version").value : "");
+      buildFilters(opts, { ...currentValues(), "rf-source": out.release.releaseId });
+      $("release-form").hidden = !opts.canRelease;
+      setStatus(`Released walks observed ${out.release.observedFrom} to ${out.release.observedTo}.`);
+    } catch (e) {
+      showError(describe(e, "Those dates could not be released"));
+      setStatus("");
+    }
   }
 
   async function show() {
@@ -358,7 +469,9 @@ export function mountReports({ api, apiBase }) {
     wire();
     try {
       setStatus("Loading report options…");
-      buildFilters(await loadOptions());
+      const opts = await loadOptions();
+      $("release-form").hidden = !opts.canRelease;
+      buildFilters(opts);
       await run();
     } catch (e) {
       view.loaded = false;

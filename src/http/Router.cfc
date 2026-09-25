@@ -112,6 +112,9 @@ component output="false" {
 		add("GET", "^/api/reports/options$", "reportController", "options", { "permission": "report.view" });
 		add("GET", "^/api/reports/aggregate\.csv$", "reportController", "exportCsv", { "permission": "report.view" });
 		add("GET", "^/api/reports/aggregate$", "reportController", "aggregate", { "permission": "report.view" });
+		// Releases (RPT-03 correction): the one report write, so it carries CSRF like every POST.
+		// ReportService admits only someone who can open every walk in every school.
+		add("POST", "^/api/reports/releases$", "reportController", "createRelease", { "permission": "report.view" });
 
 		add("POST", "^/api/maintenance/instrument/import$", "maintenanceController", "importInstrument", "maintenance");
 		add("GET", "^/api/maintenance/instrument/versions$", "maintenanceController", "listVersions", "maintenance");

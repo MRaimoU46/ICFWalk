@@ -11,11 +11,34 @@
  * structurally, not by review: tests/node/reports.test.mjs scans this file and fails if any of
  * those names appears in it. What leaves this component is counts keyed by identifiers.
  *
- * THE POPULATION. A report is computed over a population of walks materialized once, in a
- * session-local temporary table, and every aggregate joins that one table. The caller runs the
- * whole sequence inside one Db.transact so every statement uses the same connection (the temporary
- * tables are per-connection); the transaction is READ COMMITTED and takes no lock a writer waits
- * on, so a report never blocks autosave.
+ * RELEASES. It also writes and reads the frozen report releases of migration 007 (see "Releases"
+ * below): counts per (release, version, org unit) block, keyed by instrument codes, and the
+ * membership that says which release counted each walk. Only the membership holds walk ids; it is
+ * written when a release is created, read only to leave already-released walks out of a new one,
+ * and never returned by any report. Nothing here updates or deletes a release.
+ *
+ * THE POPULATION. A report is computed over a population of walks materialized once, in
+ * temporary tables, and every aggregate joins them. beginPopulation returns a handle naming this
+ * computation's own two tables, and every population method takes that handle. Isolation between
+ * concurrent requests rests on three things, each enforced here rather than assumed:
+ *
+ *   * The tables are connection-local: the name starts with exactly one "#", built from chr(35) so
+ *     no reader has to decode CFML's "##" escape. (SQL Server makes a "##" table global, visible to
+ *     every session; a one-"#" table exists only on the connection that created it.)
+ *   * The names are request-unique: "#icf_rp_" / "#icf_ru_" and 32 hex digits of a server-generated
+ *     GUID, checked against that exact pattern before use. Nothing from input reaches them. Two
+ *     computations never share a name, so even a statement that reached another connection could
+ *     not find, drop or read another request's tables: it would fail.
+ *   * The computation runs on one connection inside one transaction. beginPopulation refuses to
+ *     start outside a transaction (REPORT_POPULATION_NO_TRANSACTION) and records the connection's
+ *     session id; verifyPopulation and endPopulation refuse to continue on any other session
+ *     (REPORT_POPULATION_CONNECTION_CHANGED), so a result is never returned from a mixture.
+ *
+ * Tables created inside the transaction are dropped by endPopulation on success, and by the
+ * rollback on any failure (SQL Server rolls back the creation of a temporary table with the
+ * transaction that created it). ReportIsolationTest proves both, and runs two reports, and a report
+ * and a release, concurrently on disjoint scopes behind a barrier. The transaction is READ
+ * COMMITTED and takes no lock a writer waits on, so a report never blocks autosave.
  *
  * COHERENCE. Each walk's row version is captured when the population is selected -- from the walk
  * row alone, before any child row is read -- and verified again after every aggregate has been
@@ -30,9 +53,10 @@
  */
 component output="false" {
 
-	variables.POP = "##icf_report_population";
-	variables.UNITS = "##icf_report_units";
+	// One "#": a connection-local temporary table (see "THE POPULATION"). Never two.
+	variables.LOCAL_TEMP = chr(35);
 	variables.UNIT_BATCH = 500;
+	variables.CELL_BATCH = 250;
 
 	public ReportRepository function init(required any db) {
 		variables.db = arguments.db;
@@ -66,30 +90,81 @@ component output="false" {
 
 	// ---- the population --------------------------------------------------------------------------
 
-	/** Creates (or recreates) the session's population and scope tables. */
-	public void function beginPopulation() {
+	/**
+	 * Creates this computation's own scope and population tables and returns the handle every other
+	 * population method takes: { pop, units, spid }. Refused outside a transaction.
+	 */
+	public struct function beginPopulation() {
+		var token = reReplace(variables.db.newGuid(), "[^0-9A-F]", "", "all");
+		var population = {
+			"pop": variables.LOCAL_TEMP & "icf_rp_" & token,
+			"units": variables.LOCAL_TEMP & "icf_ru_" & token,
+			"spid": 0
+		};
+		checkName(population.pop);
+		checkName(population.units);
+		// The JDBC driver opens the caller's (implicit) transaction on its first statement that reads
+		// a table, so read one before asking whether a transaction is open (see lockReleases).
+		var q = variables.db.run(
+			"DECLARE @seen int;
+			 SELECT @seen = COUNT(*) FROM [icf].[walk] WHERE 1 = 0;
+			 SELECT @@SPID AS spid, @@TRANCOUNT AS open_transactions;"
+		);
+		if (q.open_transactions[1] < 1) {
+			throw(type = "ICFWalk.Configuration", message = "A report population must be built inside a transaction.", errorcode = "REPORT_POPULATION_NO_TRANSACTION");
+		}
+		population.spid = q.spid[1];
 		variables.db.run(
-			"IF OBJECT_ID(N'tempdb.." & variables.POP & "') IS NOT NULL DROP TABLE " & variables.POP & ";
-			 IF OBJECT_ID(N'tempdb.." & variables.UNITS & "') IS NOT NULL DROP TABLE " & variables.UNITS & ";
-			 CREATE TABLE " & variables.UNITS & " (org_unit_id uniqueidentifier NOT NULL PRIMARY KEY);
-			 CREATE TABLE " & variables.POP & " (
+			"CREATE TABLE " & population.units & " (org_unit_id uniqueidentifier NOT NULL PRIMARY KEY);
+			 CREATE TABLE " & population.pop & " (
 			     walk_id uniqueidentifier NOT NULL PRIMARY KEY,
 			     org_unit_id uniqueidentifier NOT NULL,
 			     status nvarchar(20) NOT NULL,
 			     rv binary(8) NOT NULL
 			 );"
 		);
+		return population;
 	}
 
-	public void function endPopulation() {
+	public void function endPopulation(required struct population) {
+		sameConnection(arguments.population);
 		variables.db.run(
-			"IF OBJECT_ID(N'tempdb.." & variables.POP & "') IS NOT NULL DROP TABLE " & variables.POP & ";
-			 IF OBJECT_ID(N'tempdb.." & variables.UNITS & "') IS NOT NULL DROP TABLE " & variables.UNITS & ";"
+			"IF OBJECT_ID(N'tempdb.." & popTable(arguments.population) & "') IS NOT NULL DROP TABLE " & popTable(arguments.population) & ";
+			 IF OBJECT_ID(N'tempdb.." & unitsTable(arguments.population) & "') IS NOT NULL DROP TABLE " & unitsTable(arguments.population) & ";"
 		);
 	}
 
+	/** This population's walk table, its name checked on every use. */
+	private string function popTable(required struct population) {
+		checkName(arguments.population.pop);
+		return arguments.population.pop;
+	}
+
+	/** This population's scope table, its name checked on every use. */
+	private string function unitsTable(required struct population) {
+		checkName(arguments.population.units);
+		return arguments.population.units;
+	}
+
+	/** A population table name is exactly one "#", "icf_rp_" or "icf_ru_", and 32 hex digits. */
+	private void function checkName(required string name) {
+		if (!reFind("^" & variables.LOCAL_TEMP & "icf_r[pu]_[0-9A-F]{32}$", arguments.name)) {
+			throw(type = "ICFWalk.Configuration", message = "A report population table name is malformed.", errorcode = "REPORT_POPULATION_NAME_INVALID");
+		}
+	}
+
+	/** Refuses to go on unless this statement runs on the session that created the population. */
+	private void function sameConnection(required struct population) {
+		checkName(arguments.population.pop);
+		checkName(arguments.population.units);
+		var spid = variables.db.scalar("SELECT @@SPID AS spid");
+		if (spid != arguments.population.spid) {
+			throw(type = "ICFWalk.Conflict", message = "The report moved to another database connection and was discarded.", errorcode = "REPORT_POPULATION_CONNECTION_CHANGED");
+		}
+	}
+
 	/** Loads the authorized org units the report may draw walks from. */
-	public void function loadScope(required array orgUnitIds) {
+	public void function loadScope(required struct population, required array orgUnitIds) {
 		var ids = arguments.orgUnitIds;
 		var n = arrayLen(ids);
 		var start = 1;
@@ -101,7 +176,7 @@ component output="false" {
 				arrayAppend(rows, "(:u" & i & ")");
 				params["u" & i] = variables.db.guid(ids[i]);
 			}
-			variables.db.run("INSERT INTO " & variables.UNITS & " (org_unit_id) VALUES " & arrayToList(rows, ", "), params);
+			variables.db.run("INSERT INTO " & unitsTable(arguments.population) & " (org_unit_id) VALUES " & arrayToList(rows, ", "), params);
 			start = stop + 1;
 		}
 	}
@@ -110,8 +185,10 @@ component output="false" {
 	 * S1. Selects the candidate walks from walk rows alone -- version, scope, status, observation
 	 * window -- and captures each one's row version. Reads no child row. Returns the count.
 	 * observedFrom and observedBefore are dates or "" (no bound); observedBefore is exclusive.
+	 * unreleasedOnly (a release being created) leaves out every walk a release already counted,
+	 * wherever its date has moved since.
 	 */
-	public numeric function selectCandidates(required string versionId, required array statuses, any observedFrom = "", any observedBefore = "") {
+	public numeric function selectCandidates(required struct population, required string versionId, required array statuses, any observedFrom = "", any observedBefore = "", boolean unreleasedOnly = false) {
 		var params = { "version": variables.db.guid(arguments.versionId) };
 		var names = [];
 		for (var i = 1; i <= arrayLen(arguments.statuses); i++) {
@@ -127,30 +204,31 @@ component output="false" {
 			where &= " AND w.observed_at < :observedBefore";
 			params["observedBefore"] = variables.db.timestamp(arguments.observedBefore);
 		}
+		if (arguments.unreleasedOnly) where &= " AND NOT EXISTS (SELECT 1 FROM [icf].[report_release_walk] rw WHERE rw.walk_id = w.walk_id)";
 		variables.db.run(
-			"INSERT INTO " & variables.POP & " (walk_id, org_unit_id, status, rv)
+			"INSERT INTO " & popTable(arguments.population) & " (walk_id, org_unit_id, status, rv)
 			 SELECT w.walk_id, w.org_unit_id, w.status, CAST(w.row_version AS binary(8))
 			   FROM [icf].[walk] w
-			   JOIN " & variables.UNITS & " u ON u.org_unit_id = w.org_unit_id
+			   JOIN " & unitsTable(arguments.population) & " u ON u.org_unit_id = w.org_unit_id
 			  WHERE " & where,
 			params
 		);
-		return populationSize();
+		return populationSize(arguments.population);
 	}
 
-	public numeric function populationSize() {
-		return variables.db.scalar("SELECT COUNT(*) AS n FROM " & variables.POP);
+	public numeric function populationSize(required struct population) {
+		return variables.db.scalar("SELECT COUNT(*) AS n FROM " & popTable(arguments.population));
 	}
 
 	/**
 	 * Keeps only walks whose dimension carries the given value AND whose dimension is visible under
 	 * the given visibility condition (see visibilitySql). A hidden retained value never matches.
 	 */
-	public void function restrictToDimensionValue(required string dimensionId, required string valueId, required struct visibility) {
+	public void function restrictToDimensionValue(required struct population, required string dimensionId, required string valueId, required struct visibility) {
 		var params = { "dimension": variables.db.guid(arguments.dimensionId), "value": variables.db.guid(arguments.valueId) };
 		var vis = visibilitySql(arguments.visibility, "p", params);
 		variables.db.run(
-			"DELETE p FROM " & variables.POP & " p
+			"DELETE p FROM " & popTable(arguments.population) & " p
 			  WHERE NOT EXISTS (SELECT 1 FROM [icf].[walk_dimension_value] x
 			                     WHERE x.walk_id = p.walk_id AND x.dimension_id = :dimension AND x.selected_value_id = :value)
 			     OR NOT (" & vis & ")",
@@ -159,9 +237,9 @@ component output="false" {
 	}
 
 	/** Keeps only walks whose response to the item is ANSWERED with the given option. */
-	public void function restrictToOption(required string itemId, required string optionId) {
+	public void function restrictToOption(required struct population, required string itemId, required string optionId) {
 		variables.db.run(
-			"DELETE p FROM " & variables.POP & " p
+			"DELETE p FROM " & popTable(arguments.population) & " p
 			  WHERE NOT EXISTS (SELECT 1 FROM [icf].[walk_response] r
 			                     WHERE r.walk_id = p.walk_id AND r.item_id = :item
 			                       AND r.response_state = N'ANSWERED' AND r.selected_option_id = :option)",
@@ -172,8 +250,8 @@ component output="false" {
 	// ---- aggregates -------------------------------------------------------------------------------
 
 	/** [{ orgUnitId, status, walks }] over the population. */
-	public array function unitStatusCounts() {
-		var q = variables.db.run("SELECT p.org_unit_id, p.status, COUNT(*) AS n FROM " & variables.POP & " p GROUP BY p.org_unit_id, p.status");
+	public array function unitStatusCounts(required struct population) {
+		var q = variables.db.run("SELECT p.org_unit_id, p.status, COUNT(*) AS n FROM " & popTable(arguments.population) & " p GROUP BY p.org_unit_id, p.status");
 		var out = [];
 		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "orgUnitId": uCase(q.org_unit_id[r]), "status": q.status[r], "walks": q.n[r] });
 		return out;
@@ -184,13 +262,13 @@ component output="false" {
 	 * with whether the dimension is visible for it and which value (if any) it selected. The value
 	 * identity is read; its text never is.
 	 */
-	public array function dimensionCounts(required string dimensionId, required struct visibility) {
+	public array function dimensionCounts(required struct population, required string dimensionId, required struct visibility) {
 		var params = { "dimension": variables.db.guid(arguments.dimensionId) };
 		var vis = visibilitySql(arguments.visibility, "p", params);
 		var q = variables.db.run(
 			"SELECT t.visible, t.selected_value_id, COUNT(*) AS n
 			   FROM (SELECT CASE WHEN " & vis & " THEN 1 ELSE 0 END AS visible, x.selected_value_id
-			           FROM " & variables.POP & " p
+			           FROM " & popTable(arguments.population) & " p
 			           LEFT JOIN [icf].[walk_dimension_value] x ON x.walk_id = p.walk_id AND x.dimension_id = :dimension) t
 			  GROUP BY t.visible, t.selected_value_id",
 			params
@@ -207,7 +285,7 @@ component output="false" {
 	 * persisted response state is the server engine's own evaluation, written in the same
 	 * transaction as the value it describes (Phase 4), so it is read rather than re-derived.
 	 */
-	public array function itemCounts(required array itemIds) {
+	public array function itemCounts(required struct population, required array itemIds) {
 		if (!arrayLen(arguments.itemIds)) return [];
 		var names = [];
 		var params = {};
@@ -217,7 +295,7 @@ component output="false" {
 		}
 		var q = variables.db.run(
 			"SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n
-			   FROM " & variables.POP & " p
+			   FROM " & popTable(arguments.population) & " p
 			   JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id
 			  WHERE r.item_id IN (" & arrayToList(names, ", ") & ")
 			  GROUP BY r.item_id, r.response_state, r.selected_option_id",
@@ -236,16 +314,276 @@ component output="false" {
 	}
 
 	/**
+	 * dimensionCounts, per org unit: [{ orgUnitId, visible, valueId, walks }]. Used when a release
+	 * is created, because a release stores each block's breakdowns separately (see "Releases").
+	 */
+	public array function unitDimensionCounts(required struct population, required string dimensionId, required struct visibility) {
+		var params = { "dimension": variables.db.guid(arguments.dimensionId) };
+		var vis = visibilitySql(arguments.visibility, "p", params);
+		var q = variables.db.run(
+			"SELECT t.org_unit_id, t.visible, t.selected_value_id, COUNT(*) AS n
+			   FROM (SELECT p.org_unit_id, CASE WHEN " & vis & " THEN 1 ELSE 0 END AS visible, x.selected_value_id
+			           FROM " & popTable(arguments.population) & " p
+			           LEFT JOIN [icf].[walk_dimension_value] x ON x.walk_id = p.walk_id AND x.dimension_id = :dimension) t
+			  GROUP BY t.org_unit_id, t.visible, t.selected_value_id",
+			params
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) {
+			arrayAppend(out, { "orgUnitId": uCase(q.org_unit_id[r]), "visible": q.visible[r] == 1, "valueId": len(q.selected_value_id[r]) ? uCase(q.selected_value_id[r]) : "", "walks": q.n[r] });
+		}
+		return out;
+	}
+
+	/** itemCounts, per org unit: [{ orgUnitId, itemId, state, optionId, responses }]. */
+	public array function unitItemCounts(required struct population, required array itemIds) {
+		if (!arrayLen(arguments.itemIds)) return [];
+		var names = [];
+		var params = {};
+		for (var i = 1; i <= arrayLen(arguments.itemIds); i++) {
+			arrayAppend(names, ":i" & i);
+			params["i" & i] = variables.db.guid(arguments.itemIds[i]);
+		}
+		var q = variables.db.run(
+			"SELECT p.org_unit_id, r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n
+			   FROM " & popTable(arguments.population) & " p
+			   JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id
+			  WHERE r.item_id IN (" & arrayToList(names, ", ") & ")
+			  GROUP BY p.org_unit_id, r.item_id, r.response_state, r.selected_option_id",
+			params
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) {
+			arrayAppend(out, {
+				"orgUnitId": uCase(q.org_unit_id[r]),
+				"itemId": uCase(q.item_id[r]),
+				"state": q.response_state[r],
+				"optionId": len(q.selected_option_id[r]) ? uCase(q.selected_option_id[r]) : "",
+				"responses": q.n[r]
+			});
+		}
+		return out;
+	}
+
+	/**
+	 * The population's walks, [{ walkId, orgUnitId }]: what a release records as the walks it counts.
+	 * Read from the population table only, after verifyPopulation has confirmed it.
+	 */
+	public array function populationWalks(required struct population) {
+		var q = variables.db.run("SELECT p.walk_id, p.org_unit_id FROM " & popTable(arguments.population) & " p ORDER BY p.walk_id");
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "walkId": uCase(q.walk_id[r]), "orgUnitId": uCase(q.org_unit_id[r]) });
+		return out;
+	}
+
+	/**
 	 * S3. The number of population walks whose row changed (or disappeared) since selectCandidates
 	 * captured it. Zero means every aggregate read above saw one committed state of every walk.
 	 */
-	public numeric function verifyPopulation() {
+	public numeric function verifyPopulation(required struct population) {
+		sameConnection(arguments.population);
 		return variables.db.scalar(
 			"SELECT COUNT(*) AS n
-			   FROM " & variables.POP & " p
+			   FROM " & popTable(arguments.population) & " p
 			   LEFT JOIN [icf].[walk] w ON w.walk_id = p.walk_id
 			  WHERE w.walk_id IS NULL OR CAST(w.row_version AS binary(8)) <> p.rv"
 		);
+	}
+
+	// ---- releases ----------------------------------------------------------------------------------
+	//
+	// A release freezes one closed observation period for report-only users (migration 007). What it
+	// publishes is counts keyed by instrument codes -- per (version, org unit) block, per breakdown,
+	// per category. Beside each stored block it records the walks the block counts
+	// (report_release_walk, keyed by the walk), so no later release counts them again; the database
+	// refuses a second membership, and a block whose count differs from its recorded walks. Period
+	// dates travel as YYYY-MM-DD text and are cast by SQL Server, so no time zone can move a
+	// boundary. Nothing here updates or deletes a release.
+
+	/**
+	 * The versions that have COMPLETED walks observed in [observedFrom, observedBefore). Reads walk
+	 * headers only; the release then selects each version's population the way a report does.
+	 */
+	public array function versionsWithCompletedWalks(required date observedFrom, required date observedBefore) {
+		var q = variables.db.run(
+			"SELECT DISTINCT w.version_id FROM [icf].[walk] w
+			  WHERE w.status = N'COMPLETED' AND w.observed_at >= :observedFrom AND w.observed_at < :observedBefore
+			    AND NOT EXISTS (SELECT 1 FROM [icf].[report_release_walk] rw WHERE rw.walk_id = w.walk_id)",
+			{ "observedFrom": variables.db.timestamp(arguments.observedFrom), "observedBefore": variables.db.timestamp(arguments.observedBefore) }
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, uCase(q.version_id[r]));
+		return out;
+	}
+
+	/**
+	 * Serializes release creation: an exclusive application lock held until the caller's
+	 * transaction ends, so two overlapping releases cannot both pass the overlap check.
+	 * TR_report_release_no_overlap enforces the same rule in the database regardless.
+	 */
+	public void function lockReleases() {
+		// The JDBC driver opens the caller's (implicit) transaction on its first statement that reads a
+		// table, and a transaction-owned lock needs that transaction to exist, so read one first.
+		var q = variables.db.run(
+			"DECLARE @seen int, @result int;
+			 SELECT @seen = COUNT(*) FROM [icf].[report_release] WHERE 1 = 0;
+			 EXEC @result = sp_getapplock @Resource = N'icfwalk.report_release', @LockMode = N'Exclusive', @LockOwner = N'Transaction', @LockTimeout = 30000;
+			 SELECT @result AS result, @@TRANCOUNT AS open_transactions;"
+		);
+		if (q.open_transactions[1] < 1) throw(type = "ICFWalk.Configuration", message = "Releases must be created inside a transaction.", errorcode = "REPORT_RELEASE_NO_TRANSACTION");
+		if (q.result[1] < 0) throw(type = "ICFWalk.Conflict", message = "Another release is being created. Try again.", errorcode = "REPORT_RELEASE_BUSY");
+	}
+
+	public boolean function overlapsRelease(required string fromDay, required string toDay) {
+		return variables.db.scalar(
+			"SELECT COUNT(*) AS n FROM [icf].[report_release]
+			  WHERE observed_from <= CAST(:toDay AS date) AND CAST(:fromDay AS date) <= observed_to",
+			{ "fromDay": variables.db.nvarchar(arguments.fromDay, 10), "toDay": variables.db.nvarchar(arguments.toDay, 10) }
+		) > 0;
+	}
+
+	public void function insertRelease(required string releaseId, required string fromDay, required string toDay, required numeric minimumWalks, required string releasedBy) {
+		variables.db.run(
+			"INSERT INTO [icf].[report_release] (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+			 VALUES (:id, CAST(:fromDay AS date), CAST(:toDay AS date), :minimum, :releasedBy)",
+			{
+				"id": variables.db.guid(arguments.releaseId), "fromDay": variables.db.nvarchar(arguments.fromDay, 10),
+				"toDay": variables.db.nvarchar(arguments.toDay, 10), "minimum": variables.db.integer(arguments.minimumWalks),
+				"releasedBy": variables.db.guid(arguments.releasedBy)
+			}
+		);
+	}
+
+	/**
+	 * Records the walks one block counts. Called before insertBlock, in the transaction that created
+	 * the release: the database checks the block's count against these rows when the block is stored.
+	 */
+	public void function insertMembers(required string releaseId, required string versionId, required string orgUnitId, required array walkIds) {
+		var n = arrayLen(arguments.walkIds);
+		var start = 1;
+		while (start <= n) {
+			var stop = min(n, start + variables.UNIT_BATCH - 1);
+			var rows = [];
+			var params = { "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId), "unit": variables.db.guid(arguments.orgUnitId) };
+			for (var i = start; i <= stop; i++) {
+				arrayAppend(rows, "(:w" & i & ", :release, :version, :unit)");
+				params["w" & i] = variables.db.guid(arguments.walkIds[i]);
+			}
+			variables.db.run("INSERT INTO [icf].[report_release_walk] (walk_id, release_id, version_id, org_unit_id) VALUES " & arrayToList(rows, ", "), params);
+			start = stop + 1;
+		}
+	}
+
+	public void function insertBlock(required string releaseId, required string versionId, required string orgUnitId, required numeric walks) {
+		variables.db.run(
+			"INSERT INTO [icf].[report_release_block] (release_id, version_id, org_unit_id, walks) VALUES (:release, :version, :unit, :walks)",
+			{ "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId), "unit": variables.db.guid(arguments.orgUnitId), "walks": variables.db.integer(arguments.walks) }
+		);
+	}
+
+	/** cells: [{ subjectType, subjectKey, categoryType, categoryCode, responses }], all for one block. */
+	public void function insertCells(required string releaseId, required string versionId, required string orgUnitId, required array cells) {
+		var n = arrayLen(arguments.cells);
+		var start = 1;
+		while (start <= n) {
+			var stop = min(n, start + variables.CELL_BATCH - 1);
+			var rows = [];
+			var params = { "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId), "unit": variables.db.guid(arguments.orgUnitId) };
+			for (var i = start; i <= stop; i++) {
+				var c = arguments.cells[i];
+				arrayAppend(rows, "(:release, :version, :unit, :st" & i & ", :sk" & i & ", :ct" & i & ", :cc" & i & ", :n" & i & ")");
+				params["st" & i] = variables.db.nvarchar(c.subjectType, 12);
+				params["sk" & i] = variables.db.nvarchar(c.subjectKey, 100);
+				params["ct" & i] = variables.db.nvarchar(c.categoryType, 12);
+				params["cc" & i] = variables.db.nvarchar(c.categoryCode, 100);
+				params["n" & i] = variables.db.integer(c.responses);
+			}
+			variables.db.run(
+				"INSERT INTO [icf].[report_release_cell] (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+				 VALUES " & arrayToList(rows, ", "),
+				params
+			);
+			start = stop + 1;
+		}
+	}
+
+	/** Every release, latest dates first: [{ releaseId, observedFrom, observedTo, minimumWalks, releasedAt }]. */
+	public array function listReleases() {
+		var q = variables.db.run(
+			"SELECT release_id, CONVERT(char(10), observed_from, 23) AS observed_from, CONVERT(char(10), observed_to, 23) AS observed_to, minimum_walks, released_at
+			   FROM [icf].[report_release] ORDER BY observed_from DESC"
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, releaseRow(q, r));
+		return out;
+	}
+
+	/** One release, or {} when there is none by that id. */
+	public struct function findRelease(required string releaseId) {
+		var q = variables.db.run(
+			"SELECT release_id, CONVERT(char(10), observed_from, 23) AS observed_from, CONVERT(char(10), observed_to, 23) AS observed_to, minimum_walks, released_at
+			   FROM [icf].[report_release] WHERE release_id = :id",
+			{ "id": variables.db.guid(arguments.releaseId) }
+		);
+		return q.recordCount ? releaseRow(q, 1) : {};
+	}
+
+	/** Every stored block's identity: [{ releaseId, versionId, orgUnitId }]. No counts. */
+	public array function releaseBlockIndex() {
+		var q = variables.db.run("SELECT release_id, version_id, org_unit_id FROM [icf].[report_release_block]");
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "releaseId": uCase(q.release_id[r]), "versionId": uCase(q.version_id[r]), "orgUnitId": uCase(q.org_unit_id[r]) });
+		return out;
+	}
+
+	/** The blocks one release stored for one version: [{ orgUnitId, walks }]. */
+	public array function releaseBlocks(required string releaseId, required string versionId) {
+		var q = variables.db.run(
+			"SELECT org_unit_id, walks FROM [icf].[report_release_block] WHERE release_id = :release AND version_id = :version",
+			{ "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId) }
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) arrayAppend(out, { "orgUnitId": uCase(q.org_unit_id[r]), "walks": q.walks[r] });
+		return out;
+	}
+
+	/** The cells of the named blocks: [{ orgUnitId, subjectType, subjectKey, categoryType, categoryCode, responses }]. */
+	public array function releaseCells(required string releaseId, required string versionId, required array orgUnitIds) {
+		var out = [];
+		var ids = arguments.orgUnitIds;
+		var n = arrayLen(ids);
+		var start = 1;
+		while (start <= n) {
+			var stop = min(n, start + variables.UNIT_BATCH - 1);
+			var names = [];
+			var params = { "release": variables.db.guid(arguments.releaseId), "version": variables.db.guid(arguments.versionId) };
+			for (var i = start; i <= stop; i++) {
+				arrayAppend(names, ":u" & i);
+				params["u" & i] = variables.db.guid(ids[i]);
+			}
+			var q = variables.db.run(
+				"SELECT org_unit_id, subject_type, subject_key, category_type, category_code, responses
+				   FROM [icf].[report_release_cell]
+				  WHERE release_id = :release AND version_id = :version AND org_unit_id IN (" & arrayToList(names, ", ") & ")",
+				params
+			);
+			for (var r = 1; r <= q.recordCount; r++) {
+				arrayAppend(out, {
+					"orgUnitId": uCase(q.org_unit_id[r]), "subjectType": q.subject_type[r], "subjectKey": q.subject_key[r],
+					"categoryType": q.category_type[r], "categoryCode": q.category_code[r], "responses": q.responses[r]
+				});
+			}
+			start = stop + 1;
+		}
+		return out;
+	}
+
+	private struct function releaseRow(required query q, required numeric r) {
+		return {
+			"releaseId": uCase(arguments.q.release_id[arguments.r]), "observedFrom": trim(arguments.q.observed_from[arguments.r]),
+			"observedTo": trim(arguments.q.observed_to[arguments.r]), "minimumWalks": arguments.q.minimum_walks[arguments.r],
+			"releasedAt": arguments.q.released_at[arguments.r]
+		};
 	}
 
 	// ---- visibility --------------------------------------------------------------------------------

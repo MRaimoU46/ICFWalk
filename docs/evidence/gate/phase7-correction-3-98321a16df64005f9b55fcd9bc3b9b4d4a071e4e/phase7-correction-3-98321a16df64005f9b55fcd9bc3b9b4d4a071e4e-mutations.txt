@@ -1,0 +1,406 @@
+## M1: complementary suppression removed: primary cells withheld alone
+file: src/reports/DisclosureControl.cfc  (sha256 before mutation cb640ffbd651ee45a33def958f5d89e40f65412d2cd97413440ee071cae99cb5)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/DisclosureControl.cfc
++++ b/src/reports/DisclosureControl.cfc
+@@ -85,2 +85,3 @@
+ 		if (size == 0) return { "mode": "COMPLETE", "withheld": withheld };
++		return { "mode": "PARTIAL", "withheld": withheld };
+ 		while (true) {
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportDisclosureTest
+ReportDisclosureTest passed=3 failed=5 skipped=0
+   failed testAPartialBreakdownNeverWithholdsExactlyOneCell :: [6,3,0,1] withholds 1 cell(s)  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testAPartialPatternThatWouldPinItsCellsIsWithheldWhole :: Expected exactly [WITHHELD] (8 chars) but got [PARTIAL] (7 chars); the first difference is at character 1 ([W] expected, [P] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testEveryWithheldCellHasAtLeastTwoConsistentValuesFork3 :: k=3 pattern [W,3] (T=4) pins withheld cell 1 to 1, from [[1,3]]  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testEveryWithheldCellHasAtLeastTwoConsistentValuesFork4 :: k=4 pattern [W,4] (T=5) pins withheld cell 1 to 1, from [[1,4]]  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testKnownBreakdowns :: one walk: the whole breakdown, zeros too [1,0,0,0] Expected exactly [WITHHELD] (8 chars) but got [PARTIAL] (7 chars); the first difference is at character 1 ([W] expected, [P] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":5,"passed":3,"skipped":0}
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=12 failed=4 skipped=0
+   failed testASectionMeanOnTooFewRatingsIsWithheld :: comp_s2_q1 is withheld whole; comp_s2_q2's six 3s are published Expected [6] but got [9].  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testNoBreakdownWithholdsASingleRecoverableCell :: c comp_s1_q1 withholds a single category, which the total would give back  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testSmallDimensionValueAndStateCellsAreWithheld :: three middle-of-lesson visits, the complement must be withheld (null), found 3  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testSmallItemCellsAndTheirComplementsAreWithheld :: its complement, the four ratings of 5 must be withheld (null), found 4  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":4,"passed":12,"skipped":0}
+restored: sha256 cb640ffbd651ee45a33def958f5d89e40f65412d2cd97413440ee071cae99cb5 (identical to before)
+
+## M2: audit step removed: a partial pattern is published even when a reader who knows the rule can pin a cell
+file: src/reports/DisclosureControl.cfc  (sha256 before mutation cb640ffbd651ee45a33def958f5d89e40f65412d2cd97413440ee071cae99cb5)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/DisclosureControl.cfc
++++ b/src/reports/DisclosureControl.cfc
+@@ -90,3 +90,3 @@
+ 				for (var key in structKeyArray(possible)) {
+-					if (structCount(possible[key]) < 2) return { "mode": "WITHHELD", "withheld": allTrue(n) };
++					if (false) return { "mode": "WITHHELD", "withheld": allTrue(n) };
+ 				}
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportDisclosureTest
+ReportDisclosureTest passed=5 failed=3 skipped=0
+   failed testAPartialPatternThatWouldPinItsCellsIsWithheldWhole :: Expected exactly [WITHHELD] (8 chars) but got [PARTIAL] (7 chars); the first difference is at character 1 ([W] expected, [P] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testEveryWithheldCellHasAtLeastTwoConsistentValuesFork3 :: k=3 pattern [3,W,W] (T=7) pins withheld cell 2 to 2, from [[3,2,2]]  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testEveryWithheldCellHasAtLeastTwoConsistentValuesFork4 :: k=4 pattern [4,W,W] (T=10) pins withheld cell 2 to 3, from [[4,3,3]]  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":3,"passed":5,"skipped":0}
+restored: sha256 cb640ffbd651ee45a33def958f5d89e40f65412d2cd97413440ee071cae99cb5 (identical to before)
+
+## M3: live figures for everyone: report-only roles no longer sent to releases (the pre-correction behaviour)
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -633,4 +633,2 @@
+ 	private boolean function isProtected(required struct principal, required array unitIds) {
+-		var readable = unitSet(variables.authz.visibleOrgUnitIds(arguments.principal, "walk.read"));
+-		for (var id in arguments.unitIds) if (!structKeyExists(readable, uCase(id))) return true;
+ 		return false;
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=15 failed=1 skipped=0
+   failed testReportOnlyUsersCannotReadLiveFigures :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":15,"skipped":0}
+$ CFML ReportServiceTest
+ReportServiceTest passed=11 failed=4 skipped=0
+   failed testLiveFiguresOnlyForSomeoneWhoCanOpenEveryWalkCounted :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testRpt01SchoolRoleReportsOnlyItsAssignedSchool :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testRpt02DistrictRoleAggregatesDescendantSchoolsOnly :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":4,"passed":11,"skipped":0}
+$ ICFWALK_REQUIRE_APP=1 node --test tests/node/reports.test.mjs
+ok 1 - RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+ok 2 - P7C-01 / P7C-02 (structural): report tables are connection-local, and release membership is never read out
+ok 3 - reports are driven by the instrument, not by names written into the report code
+ok 4 - SEC-02 (structural): the reports view builds its DOM without HTML strings
+ok 5 - AUTH-01: every report route requires an identity and discloses nothing without one
+ok 6 - AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+not ok 7 - RPT-03: a report-only role is refused every live figure, however the request is narrowed
+  error: |-
+ok 8 - RPT-01: a school report role reads its school's release; another school is 404 over HTTP
+ok 9 - RPT-02: district roles aggregate their descendant schools and nothing else, live or released
+ok 10 - RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+ok 11 - releases: only someone who can open every walk may release, with CSRF, a closed period, and no overlap
+ok 12 - report routes are read-only: other methods are refused before anything runs
+ok 13 - the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+ok 14 - SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+not ok 15 - options describe the version, the scope, the releases and the reportable surface only
+  error: |-
+# pass 13
+# fail 2
+# skipped 0
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M4: a release accepts filters that narrow who is counted
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -572,3 +572,3 @@
+ 			for (var raw in dimensionNames) arrayAppend(refused, { "parameter": left(variables.DIMENSION_PREFIX & raw, 60), "code": "REPORT_FILTER_NOT_PERMITTED" });
+-			if (arrayLen(refused)) {
++			if (false) {
+ 				variables.errors.validation("A released report is narrowed by version, school, section and question only.", "REPORT_FILTER_NOT_PERMITTED", { "issues": refused });
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=14 failed=2 skipped=0
+   failed testNoFilterThatChangesWhoIsCountedIsAcceptedOnARelease :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit :: Expected an exception of type [ICFWalk.Validation] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":2,"passed":14,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M5: instrument-rule links ignored: linked breakdowns suppressed independently
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -1112,3 +1112,3 @@
+ 		catalog.sections = kept;
+-		catalog["linkGroups"] = linkGroupsOf(model, catalog);
++		catalog["linkGroups"] = {};
+ 		variables.catalogCache[cacheKey] = catalog;
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=15 failed=1 skipped=0
+   failed testSmallDimensionValueAndStateCellsAreWithheld :: a PreK-K item's HIDDEN count (= every walk not PreK or K) must be withheld (null), found 10  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":15,"skipped":0}
+$ CFML ReportDisclosureTest
+ReportDisclosureTest passed=7 failed=1 skipped=0
+   failed testInstrumentRulesLinkBreakdownsIntoGroups :: Period follows Grade  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":7,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M6: aggregate, then suppress: blocks summed before protection, so district minus schools gives cells back
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -877,2 +877,3 @@
+ 		var byUnit = {};
++		var pooledCells = {};
+ 		for (var b in blocks) {
+@@ -881,4 +882,5 @@
+ 			var cells = structKeyExists(stored, b.orgUnitId) ? stored[b.orgUnitId] : {};
+-			publishBlock(subjects, cells, catalog.linkGroups, k, totals);
+-		}
++			for (var sk in cells) { if (!structKeyExists(pooledCells, sk)) pooledCells[sk] = {}; for (var ck in cells[sk]) pooledCells[sk][ck] = (structKeyExists(pooledCells[sk], ck) ? pooledCells[sk][ck] : 0) + cells[sk][ck]; }
++		}
++		publishBlock(subjects, pooledCells, catalog.linkGroups, k, totals);
+ 		report.population = { "walks": total, "byStatus": { "COMPLETED": total }, "withheld": false };
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=15 failed=1 skipped=0
+   failed testTheDistrictIsTheSumOfWhatEachSchoolPublishes :: prek_k_q1 HIDDEN Expected [3] but got [0].  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":15,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M7: the protected value is sent alongside the suppression flag
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -948,3 +948,3 @@
+ 				if (decision.withheld[i]) into[key].withheld = true;
+-				else into[key].sum += p.counts[i];
++				into[key].sum += p.counts[i];
+ 			}
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=10 failed=6 skipped=0
+   failed testASectionMeanOnTooFewRatingsIsWithheld :: comp_s2_q1 is withheld whole; comp_s2_q2's six 3s are published Expected [6] but got [11].  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testNoBreakdownWithholdsASingleRecoverableCell :: c prek_k_q1 hides only 0 walks between its withheld categories  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testSmallDimensionValueAndStateCellsAreWithheld :: three middle-of-lesson visits, the complement must be withheld (null), found 3  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testSmallItemCellsAndTheirComplementsAreWithheld :: the single rating of 2 must be withheld (null), found 1  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testTheDistrictIsTheSumOfWhatEachSchoolPublishes :: the district's rating of 2 must be withheld (null), found 1  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testTheExportCarriesExactlyWhatTheJsonPublishes :: the withheld rating of 2 is an empty count flagged withheld Expected to find [
+OPTION,comp_s1_q1,2,2,,1,,,
+] in [
+﻿record_type,group,key,label,count,withheld,scored_responses,score_sum,mean
+META,,format,icfwalk-aggregate-report/2,,,,,
+META,,mode,RELEASE,,,,,
+META,,version_label,2026-09-17 aligned prototype,,,,,
+META,,version_status,DRAFT,,,,,
+META,,generated_at,2026-09-23T16:40:40.474Z,,,,,
+META,,statuse].  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":6,"passed":10,"skipped":0}
+$ ICFWALK_REQUIRE_APP=1 node --test tests/node/browser-reports.test.mjs
+not ok 1 - RPT-03 (browser): a report-only user reads released figures only and is never sent a withheld value
+  error: |-
+ok 2 - RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+ok 3 - a refused filter is announced and leaves no stale results behind
+ok 4 - a walk user moves between My walks and Reports and sees only their own scope
+ok 5 - SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+ok 6 - releases (browser): someone who can open every walk releases dates from the page
+ok 7 - A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+# pass 6
+# fail 1
+# skipped 0
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M8: the CSV writes a number where the JSON withholds one
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -1449,3 +1449,3 @@
+ 	private string function cell(required struct holder, required string key) {
+-		if (!structKeyExists(arguments.holder, arguments.key) || isNull(arguments.holder[arguments.key])) return "";
++		if (!structKeyExists(arguments.holder, arguments.key) || isNull(arguments.holder[arguments.key])) return "0";
+ 		return num(arguments.holder[arguments.key]);
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=14 failed=2 skipped=0
+   failed testOneWalkAndBelowMinimumPopulationsAreWithheldAndNeverStored :: a: the export withholds the count and says so Expected to find [
+POPULATION,,walks,,,1,,,
+] in [
+﻿record_type,group,key,label,count,withheld,scored_responses,score_sum,mean
+META,,format,icfwalk-aggregate-report/2,,,,,
+META,,mode,RELEASE,,,,,
+META,,version_label,2026-09-17 aligned prototype,,,,,
+META,,version_status,DRAFT,,,,,
+META,,generated_at,2026-09-23T16:41:24.943Z,,,,,
+META,,statuse].  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testTheExportCarriesExactlyWhatTheJsonPublishes :: prek_k_q1 option yes Expected exactly [] (0 chars) but got [0] (1 chars); one is a prefix of the other (0 and 1 chars).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":2,"passed":14,"skipped":0}
+$ ICFWALK_REQUIRE_APP=1 node --test tests/node/reports.test.mjs
+ok 1 - RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+ok 2 - P7C-01 / P7C-02 (structural): report tables are connection-local, and release membership is never read out
+ok 3 - reports are driven by the instrument, not by names written into the report code
+ok 4 - SEC-02 (structural): the reports view builds its DOM without HTML strings
+ok 5 - AUTH-01: every report route requires an identity and discloses nothing without one
+ok 6 - AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+ok 7 - RPT-03: a report-only role is refused every live figure, however the request is narrowed
+ok 8 - RPT-01: a school report role reads its school's release; another school is 404 over HTTP
+ok 9 - RPT-02: district roles aggregate their descendant schools and nothing else, live or released
+ok 10 - RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+ok 11 - releases: only someone who can open every walk may release, with CSRF, a closed period, and no overlap
+ok 12 - report routes are read-only: other methods are refused before anything runs
+not ok 13 - the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+  error: 'the single rating of 2: an empty count, flagged withheld'
+ok 14 - SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+ok 15 - options describe the version, the scope, the releases and the reportable surface only
+# pass 14
+# fail 1
+# skipped 0
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M9: the report log line carries figures
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -171,3 +171,3 @@
+ 			"versionId": f.version.versionId, "mode": f.mode, "walks": report.population.withheld ? -1 : report.population.walks,
+-			"items": arrayLen(report.items), "attempts": report.attempts, "filters": filterCount(f), "ms": getTickCount() - started
++			"items": arrayLen(report.items), "attempts": report.attempts, "filters": filterCount(f), "ms": getTickCount() - started, "figures": report.items
+ 		});
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=15 failed=1 skipped=0
+   failed testLogsAndAuditCarryNoWithheldFigureOrNarrative :: the report log line Expected JSON [["attempts","filters","items","mode","ms","versionId","walks"]] (62 chars) but got [["attempts","figures","filters","items","mode","ms","versionId","walks"]] (72 chars); the first difference is at character 16 ([l] expected, [g] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":15,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M10: the block floor removed where a release is frozen (the database guard is what refuses it)
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -462,3 +462,2 @@
+ 		for (var unitId in unitIds) {
+-			if (walksByUnit[unitId] < arguments.k) continue;
+ 			var cells = [];
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=0 failed=16 skipped=0
+   failed testAReleaseDoesNotChangeWhenWalksDo :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testAReleaseRequestIsExactlyAClosedPeriod :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testASectionMeanOnTooFewRatingsIsWithheld :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testLogsAndAuditCarryNoWithheldFigureOrNarrative :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testNoBreakdownWithholdsASingleRecoverableCell :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testNoFilterThatChangesWhoIsCountedIsAcceptedOnARelease :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testNoPartOfAReleaseCanBeDeleted :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testOneWalkAndBelowMinimumPopulationsAreWithheldAndNeverStored :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testOnlySomeoneWhoCanOpenEveryWalkMayRelease :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testReleasedDatesNeverOverlap :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testReportOnlyUsersCannotReadLiveFigures :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testSmallDimensionValueAndStateCellsAreWithheld :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testSmallItemCellsAndTheirComplementsAreWithheld :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testTheDistrictIsTheSumOfWhatEachSchoolPublishes :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+   failed testTheExportCarriesExactlyWhatTheJsonPublishes :: beforeAll failed: The INSERT statement conflicted with the CHECK constraint "CK_report_release_block_walks". The conflict occurred in database "icfwalk_dev", table "icf.report_release_block", column 'walks'.  @ /home/user/ICFWalk/src/core/Db.cfc:19  
+TOTAL {"failed":16,"passed":0,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M11: the overlap check removed from the service (the database trigger is what refuses it)
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -285,3 +285,3 @@
+ 			reports.lockReleases();
+-			if (reports.overlapsRelease(span.fromText, span.toText)) {
++			if (false) {
+ 				variables.errors.conflict("Those dates overlap dates that have already been released. Released dates never overlap.", "REPORT_RELEASE_OVERLAP");
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseTest
+ReportReleaseTest passed=15 failed=1 skipped=0
+   failed testReleasedDatesNeverOverlap :: Expected exception type starting with [ICFWalk.Conflict] but got [database]: A report release must not cover a date another release covers.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":15,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M12: P7C-01 as the audit describes it: one fixed pair of global (##) population tables shared by every request
+file: src/reports/ReportRepository.cfc  (sha256 before mutation ba16f7eda9f12331bd2f895c02f0c99ab4d84eb0091afff66682aa5e52a25a3a)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportRepository.cfc
++++ b/src/reports/ReportRepository.cfc
+@@ -99,4 +99,4 @@
+ 		var population = {
+-			"pop": variables.LOCAL_TEMP & "icf_rp_" & token,
+-			"units": variables.LOCAL_TEMP & "icf_ru_" & token,
++			"pop": variables.LOCAL_TEMP & variables.LOCAL_TEMP & "icf_report_population",
++			"units": variables.LOCAL_TEMP & variables.LOCAL_TEMP & "icf_report_units",
+ 			"spid": 0
+@@ -150,3 +150,3 @@
+ 	private void function checkName(required string name) {
+-		if (!reFind("^" & variables.LOCAL_TEMP & "icf_r[pu]_[0-9A-F]{32}$", arguments.name)) {
++		if (false) {
+ 			throw(type = "ICFWalk.Configuration", message = "A report population table name is malformed.", errorcode = "REPORT_POPULATION_NAME_INVALID");
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportIsolationTest
+ReportIsolationTest passed=2 failed=5 skipped=0
+   failed testALiveReportAndAReleaseAreIsolatedAtTheScopeBoundary :: the release finished while the live report held its scope and population (; session 57 waits on 54 (LCK_M_X KEY: 2:562949955649536 (7c4b09f6b1ab), CREATE TABLE)) Expected exactly [COMPLETED] (9 chars) but got [RUNNING] (7 chars); the first difference is at character 1 ([C] expected, [R] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testAReleaseAndALiveReportAreIsolatedAtTheScopeBoundary :: the live report finished while the release held its scope, population and release lock (; session 54 waits on 57 (LCK_M_X KEY: 2:562949955649536 (7c4b09f6b1ab), CREATE TABLE)) Expected exactly [COMPLETED] (9 chars) but got [RUNNING] (7 chars); the first difference is at character 1 ([C] expected, [R] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testAReportLeavesNoPopulationTableBehindOnSuccessOrFailure :: its two tables existed when it failed Expected [2] but got [0].  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+   failed testPopulationTablesAreConnectionLocalAndUniquePerComputation :: There is already an object named '##icf_report_units' in the database.  /home/user/ICFWalk/src/core/Db.cfc:19
+   failed testTwoReportsOnDisjointScopesAreIsolatedAtTheScopeBoundary :: report B finished while report A held its scope and population: B did not wait on A (; session 57 waits on 54 (LCK_M_X KEY: 2:562949955649536 (7c4b09f6b1ab), CREATE TABLE)) Expected exactly [COMPLETED] (9 chars) but got [RUNNING] (7 chars); the first difference is at character 1 ([C] expected, [R] found).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":5,"passed":2,"skipped":0}
+restored: sha256 ba16f7eda9f12331bd2f895c02f0c99ab4d84eb0091afff66682aa5e52a25a3a (identical to before)
+
+## M13: P7C-01 guard removed: a population may be built outside a transaction
+file: src/reports/ReportRepository.cfc  (sha256 before mutation ba16f7eda9f12331bd2f895c02f0c99ab4d84eb0091afff66682aa5e52a25a3a)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportRepository.cfc
++++ b/src/reports/ReportRepository.cfc
+@@ -112,3 +112,3 @@
+ 		);
+-		if (q.open_transactions[1] < 1) {
++		if (false) {
+ 			throw(type = "ICFWalk.Configuration", message = "A report population must be built inside a transaction.", errorcode = "REPORT_POPULATION_NO_TRANSACTION");
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportIsolationTest
+ReportIsolationTest passed=6 failed=1 skipped=0
+   failed testAPopulationIsRefusedOutsideATransaction :: Expected an exception of type [ICFWalk.Configuration] but nothing was thrown.  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":6,"skipped":0}
+restored: sha256 ba16f7eda9f12331bd2f895c02f0c99ab4d84eb0091afff66682aa5e52a25a3a (identical to before)
+
+## M14: P7C-01 guard removed: a population goes on after its statements reach another connection
+file: src/reports/ReportRepository.cfc  (sha256 before mutation ba16f7eda9f12331bd2f895c02f0c99ab4d84eb0091afff66682aa5e52a25a3a)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportRepository.cfc
++++ b/src/reports/ReportRepository.cfc
+@@ -160,3 +160,3 @@
+ 		var spid = variables.db.scalar("SELECT @@SPID AS spid");
+-		if (spid != arguments.population.spid) {
++		if (false) {
+ 			throw(type = "ICFWalk.Conflict", message = "The report moved to another database connection and was discarded.", errorcode = "REPORT_POPULATION_CONNECTION_CHANGED");
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportIsolationTest
+ReportIsolationTest passed=6 failed=1 skipped=0
+   failed testAPopulationRefusesToContinueOnAnotherConnection :: verification refuses a session other than the one that built the population Expected exactly [REPORT_POPULATION_CONNECTION_CHANGED] (36 chars) but got [] (0 chars); one is a prefix of the other (36 and 0 chars).  /home/user/ICFWalk/tests/cfml/BaseSpec.cfc:38
+TOTAL {"failed":1,"passed":6,"skipped":0}
+restored: sha256 ba16f7eda9f12331bd2f895c02f0c99ab4d84eb0091afff66682aa5e52a25a3a (identical to before)
+
+## M15: P7C-02: a new release no longer leaves out walks an earlier release counted (the database key is what refuses it)
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -382,3 +382,3 @@
+ 			// a candidate again, wherever a correction has moved its date since (P7C-02).
+-			reports.selectCandidates(population, arguments.versionId, ["COMPLETED"], arguments.observedFrom, arguments.observedBefore, true);
++			reports.selectCandidates(population, arguments.versionId, ["COMPLETED"], arguments.observedFrom, arguments.observedBefore, false);
+ 			// S2: every aggregate reads child rows.
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseMembershipTest
+ReportReleaseMembershipTest passed=1 failed=1 skipped=0
+   failed testAWalkWhoseDateIsCorrectedIntoLaterDatesIsNeverCountedByASecondRelease :: Violation of PRIMARY KEY constraint 'PK_report_release_walk'. Cannot insert duplicate key in object 'icf.report_release_walk'. The duplicate key value is (d3b16388-e83d-45a9-9204-ee568f998133).  /home/user/ICFWalk/src/core/Db.cfc:19
+TOTAL {"failed":1,"passed":1,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+## M16: P7C-02: a release stores its blocks without recording the walks they count (the database trigger is what refuses it)
+file: src/reports/ReportService.cfc  (sha256 before mutation 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b)
+mutation (unified diff of the file before and after the mutation):
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -298,3 +298,2 @@
+ 				for (var b in frozen.blocks) {
+-					reports.insertMembers(releaseId, versionId, b.orgUnitId, b.walkIds);
+ 					reports.insertBlock(releaseId, versionId, b.orgUnitId, b.walks);
+restart: Health: {"application":"ICFWalk","checks":{"database":"ok","
+$ CFML ReportReleaseMembershipTest
+ReportReleaseMembershipTest passed=0 failed=2 skipped=0
+   failed testAWalkWhoseDateIsCorrectedIntoLaterDatesIsNeverCountedByASecondRelease :: A report release block must count exactly the walks recorded for it.  /home/user/ICFWalk/src/core/Db.cfc:19
+   failed testTheDatabaseRefusesToPutAReleasedWalkIntoAnotherRelease :: A report release block must count exactly the walks recorded for it.  /home/user/ICFWalk/src/core/Db.cfc:19
+TOTAL {"failed":2,"passed":0,"skipped":0}
+restored: sha256 9008db41e4ee51300a1159a74bfacde7a93fd00b6bcffd88d0fe66f6d575287b (identical to before)
+
+exit 0

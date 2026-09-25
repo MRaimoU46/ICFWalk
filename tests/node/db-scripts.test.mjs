@@ -242,6 +242,170 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     const resolved = await applyScript(pool, readScript("006_version_scoped_dimensions.sql"));
     assert.equal(resolved.ok, true, resolved.error?.message);
     assert.equal(resolved.recordset[0].publisher_required_constraint_present, 1);
+
+    // ---- Correction migration 007: frozen report releases (RPT-03) ---------------------------
+    // Additive and idempotent, and the database itself enforces what a release may hold.
+    const releases = await applyScript(pool, readScript("007_report_release.sql"));
+    assert.equal(releases.ok, true, releases.error?.message);
+    assert.equal(releases.recordset[0].report_release_available, 1);
+    assert.equal(releases.recordset[0].release_guards_present, 12);
+    const releasesAgain = await applyScript(pool, readScript("007_report_release.sql"));
+    assert.equal(releasesAgain.ok, true, releasesAgain.error?.message);
+    assert.equal(releasesAgain.recordset[0].release_guards_present, 12, "re-applying creates no second trigger");
+    const releaseTables = await pool.request().query("SELECT COUNT(*) AS n FROM sys.tables WHERE schema_id = SCHEMA_ID('icf')");
+    assert.equal(releaseTables.recordset[0].n, 28, "007 adds exactly four tables");
+    const V = "44444444-4444-4444-4444-444444444444";
+    const U = "11111111-1111-1111-1111-111111111111";
+    const USER = "22222222-2222-2222-2222-222222222222";
+    const W = [1, 2, 3, 4, 5, 6, 7].map((n) => `66666666-0000-0000-0000-00000000000${n}`);
+    await pool.request().batch(W.map((w) => `INSERT INTO icf.walk (walk_id, version_id, org_unit_id, owner_user_id) VALUES ('${w}', '${V}', '${U}', '${USER}');`).join("\n"));
+    const member = (w, r) => `INSERT INTO icf.report_release_walk (walk_id, release_id, version_id, org_unit_id) VALUES ('${w}', '${r}', '${V}', '${U}');`;
+    const inOneTransaction = (body) => `SET XACT_ABORT ON; BEGIN TRANSACTION; ${body} COMMIT TRANSACTION;`;
+    // A release is written the only way the database accepts: the release, the walks each block
+    // counts, the blocks and their cells, all in the one transaction that creates it.
+    const R1 = "77777777-0000-0000-0000-000000000001";
+    const firstRelease = await applyScript(pool, inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('${R1}', '1930-03-01', '1930-03-31', 3, '${USER}');
+      ${member(W[0], R1)} ${member(W[1], R1)} ${member(W[2], R1)}
+      INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('${R1}', '${V}', '${U}', 3);
+      INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R1}', '${V}', '${U}', 'ITEM', 'q', 'OPTION', '1', 3);`));
+    assert.equal(firstRelease.ok, true, firstRelease.error?.message);
+    for (const [from, to, why] of [["1930-03-31", "1930-04-30", "sharing the last day"], ["1930-02-01", "1930-03-01", "sharing the first day"], ["1930-03-10", "1930-03-12", "inside it"], ["1930-01-01", "1930-12-31", "around it"]]) {
+      const overlap = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+        VALUES (NEWID(), '${from}', '${to}', 3, '${USER}');`);
+      assert.equal(overlap.ok, false, `a release ${why} is refused`);
+      assert.equal(overlap.error?.number, 50062);
+    }
+    const R2 = "77777777-0000-0000-0000-000000000002";
+    const adjacent = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+      VALUES ('${R2}', '1930-04-01', '1930-04-30', 5, '${USER}');`);
+    assert.equal(adjacent.ok, true, "the next day on is a different set of dates");
+    const belowFloor = await applyScript(pool, `INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id)
+      VALUES (NEWID(), '1931-01-01', '1931-01-02', 2, '${USER}');`);
+    assert.equal(belowFloor.ok, false, "no release below the approved minimum of 3");
+    const smallBlock = await applyScript(pool, `INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks)
+      VALUES ('${R1}', '${V}', '${U}', 2);`);
+    assert.equal(smallBlock.ok, false, "no block of fewer than 3 walks");
+    // Each case below breaks one rule and satisfies every other, so the refusal is that rule's own.
+    const underOwnMinimum = await applyScript(pool, inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('77777777-0000-0000-0000-000000000003', '1930-05-01', '1930-05-31', 5, '${USER}');
+      ${member(W[3], "77777777-0000-0000-0000-000000000003")} ${member(W[4], "77777777-0000-0000-0000-000000000003")} ${member(W[5], "77777777-0000-0000-0000-000000000003")} ${member(W[6], "77777777-0000-0000-0000-000000000003")}
+      INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('77777777-0000-0000-0000-000000000003', '${V}', '${U}', 4);`));
+    assert.equal(underOwnMinimum.ok, false, "no block below its own release's minimum");
+    assert.equal(underOwnMinimum.error?.number, 50063);
+    const zeroCell = await applyScript(pool, `INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R1}', '${V}', '${U}', 'ITEM', 'q', 'OPTION', '2', 0);`);
+    assert.equal(zeroCell.ok, false, "zero cells are not stored");
+    assert.equal(zeroCell.error?.number, 547, "refused by CK_report_release_cell_responses");
+
+    // Membership (P7C-02): a walk is counted by one release at most, and a block counts exactly
+    // the walks recorded for it.
+    const secondRelease = await applyScript(pool, inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('77777777-0000-0000-0000-000000000004', '1930-06-01', '1930-06-30', 3, '${USER}');
+      ${member(W[0], "77777777-0000-0000-0000-000000000004")}`));
+    assert.equal(secondRelease.ok, false, "a walk one release counted can never join another");
+    assert.equal(secondRelease.error?.number, 2627, "refused by PK_report_release_walk");
+    assert.match(secondRelease.error?.message ?? "", /PK_report_release_walk/);
+    const unbacked = await applyScript(pool, inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('77777777-0000-0000-0000-000000000005', '1930-07-01', '1930-07-31', 3, '${USER}');
+      ${member(W[3], "77777777-0000-0000-0000-000000000005")} ${member(W[4], "77777777-0000-0000-0000-000000000005")} ${member(W[5], "77777777-0000-0000-0000-000000000005")}
+      INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('77777777-0000-0000-0000-000000000005', '${V}', '${U}', 4);`));
+    assert.equal(unbacked.ok, false, "a block cannot claim more walks than are recorded for it");
+    assert.equal(unbacked.error?.number, 50065);
+    const grown = await applyScript(pool, inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('77777777-0000-0000-0000-000000000006', '1930-08-01', '1930-08-31', 3, '${USER}');
+      ${member(W[3], "77777777-0000-0000-0000-000000000006")} ${member(W[4], "77777777-0000-0000-0000-000000000006")} ${member(W[5], "77777777-0000-0000-0000-000000000006")}
+      INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('77777777-0000-0000-0000-000000000006', '${V}', '${U}', 3);
+      ${member(W[6], "77777777-0000-0000-0000-000000000006")}`));
+    assert.equal(grown.ok, false, "a stored block's recorded walks never grow, even in its own transaction");
+    assert.equal(grown.error?.number, 50065);
+
+    // Sealed: nothing is added to a release after the transaction that created it.
+    for (const [sqlText, what] of [
+      [member(W[3], R2), "a membership row"],
+      [`INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('${R2}', '${V}', '${U}', 5);`, "a block"],
+      [`INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+        VALUES ('${R1}', '${V}', '${U}', 'ITEM', 'q', 'OPTION', '2', 1);`, "a cell"]]) {
+      const late = await applyScript(pool, inOneTransaction(sqlText));
+      assert.equal(late.ok, false, `${what} cannot be added to a release later`);
+      assert.equal(late.error?.number, 50066);
+    }
+    for (const [sqlText, what] of [[`UPDATE icf.report_release SET observed_to = '1930-03-30' WHERE release_id = '${R1}'`, "a release"],
+      [`UPDATE icf.report_release_block SET walks = 4 WHERE release_id = '${R1}'`, "a block"],
+      [`UPDATE icf.report_release_cell SET responses = 4 WHERE release_id = '${R1}'`, "a cell"],
+      [`UPDATE icf.report_release_walk SET org_unit_id = org_unit_id WHERE release_id = '${R1}'`, "a membership row"]]) {
+      const changed = await applyScript(pool, sqlText);
+      assert.equal(changed.ok, false, `${what} is never updated`);
+      assert.equal(changed.error?.number, 50064);
+    }
+    const counted = await pool.request().query(`SELECT COUNT(*) AS n FROM icf.report_release_walk`);
+    assert.equal(counted.recordset[0].n, 3, "only the first release's three walks were ever recorded");
+
+    // Deletion (P7C-04): no release row is ever deleted, one at a time or all together in the order
+    // the keys allow. (Until the P7C-04 correction this section deleted the whole release in that
+    // order and expected success, and a recorded walk's deletion was refused only while its block
+    // existed: that is the partial-deletion path the audit found.)
+    const wholeRelease = (r) => `DELETE FROM icf.report_release_cell WHERE release_id = '${r}';
+      DELETE FROM icf.report_release_block WHERE release_id = '${r}';
+      DELETE FROM icf.report_release_walk WHERE release_id = '${r}';
+      DELETE FROM icf.report_release WHERE release_id = '${r}';`;
+    for (const [sqlText, what] of [
+      [`DELETE FROM icf.report_release_cell WHERE release_id = '${R1}' AND category_code = '1';`, "one cell"],
+      [`DELETE FROM icf.report_release_block WHERE release_id = '${R1}';`, "a block"],
+      [`DELETE FROM icf.report_release_walk WHERE walk_id = '${W[0]}';`, "a recorded walk"],
+      [`DELETE FROM icf.report_release WHERE release_id = '${R1}';`, "the release row"],
+      [inOneTransaction(wholeRelease(R1)), "the whole release, in the order the keys allow"]]) {
+      const deleted = await applyScript(pool, sqlText);
+      assert.equal(deleted.ok, false, `${what} is never deleted`);
+      assert.equal(deleted.error?.number, 50068, `${what}: refused by the release's own delete guard`);
+    }
+    const intact = await pool.request().query(`SELECT (SELECT COUNT(*) FROM icf.report_release_cell WHERE release_id = '${R1}') AS cells,
+      (SELECT COUNT(*) FROM icf.report_release_block WHERE release_id = '${R1}') AS blocks,
+      (SELECT COUNT(*) FROM icf.report_release_walk WHERE release_id = '${R1}') AS walks`);
+    assert.deepEqual(intact.recordset[0], { cells: 1, blocks: 1, walks: 3 }, "the release is intact");
+
+    // The permission boundary. A principal with data permissions only -- what the runtime login
+    // must be (database/README.md) -- can neither delete a release row nor switch the guard off.
+    await pool.request().batch(`CREATE USER release_runtime WITHOUT LOGIN;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::icf TO release_runtime;`);
+    const asRuntime = (body) => `EXECUTE AS USER = 'release_runtime';
+      BEGIN TRY ${body} END TRY BEGIN CATCH REVERT; THROW; END CATCH;
+      REVERT;`;
+    const runtimeDelete = await applyScript(pool, asRuntime(`DELETE FROM icf.report_release_cell WHERE release_id = '${R1}';`));
+    assert.equal(runtimeDelete.ok, false, "the runtime principal cannot delete a release row");
+    assert.equal(runtimeDelete.error?.number, 50068);
+    for (const [body, what] of [
+      [`DISABLE TRIGGER icf.TR_report_release_cell_no_delete ON icf.report_release_cell;`, "disable the guard"],
+      [`TRUNCATE TABLE icf.report_release_cell;`, "truncate a release table (which fires no trigger)"],
+      [`DROP TRIGGER icf.TR_report_release_cell_no_delete;`, "drop the guard"]]) {
+      const denied = await applyScript(pool, asRuntime(body));
+      assert.equal(denied.ok, false, `the runtime principal cannot ${what}`);
+      assert.match(denied.error?.message ?? "", /permission|does not exist/i, `${what}: refused for want of permission`);
+    }
+    const stillRuntime = await pool.request().query("SELECT USER_NAME() AS who");
+    assert.equal(stillRuntime.recordset[0].who, "dbo", "every impersonation was reverted");
+    const guards = await pool.request().query(`SELECT COUNT(*) AS n FROM sys.triggers WHERE name LIKE 'TR_report_release%' AND is_disabled = 0`);
+    assert.equal(guards.recordset[0].n, 12, "all twelve guards are still enabled");
+
+    // The one way a release is removed: a principal with ALTER (the test-only fixture cleanup's
+    // login, never the production runtime login) switches the delete guards off inside its own
+    // transaction, deletes in order, and switches them on again before committing. The membership
+    // guard still insists on the order: a recorded walk cannot go while its block exists.
+    const guardsOff = `DISABLE TRIGGER icf.TR_report_release_no_delete ON icf.report_release;
+      DISABLE TRIGGER icf.TR_report_release_block_no_delete ON icf.report_release_block;
+      DISABLE TRIGGER icf.TR_report_release_cell_no_delete ON icf.report_release_cell;
+      DISABLE TRIGGER icf.TR_report_release_walk_no_delete ON icf.report_release_walk;`;
+    const guardsOn = guardsOff.replaceAll("DISABLE", "ENABLE");
+    const outOfOrder = await applyScript(pool, inOneTransaction(`${guardsOff}
+      DELETE FROM icf.report_release_walk WHERE release_id = '${R1}'; ${guardsOn}`));
+    assert.equal(outOfOrder.ok, false, "even with the delete guards off, a stored block's walks cannot be removed first");
+    assert.equal(outOfOrder.error?.number, 50065);
+    const removed = await applyScript(pool, inOneTransaction(`${guardsOff} ${wholeRelease(R1)} ${guardsOn}`));
+    assert.equal(removed.ok, true, removed.error?.message);
+    const afterRemoval = await pool.request().query(`SELECT (SELECT COUNT(*) FROM icf.report_release WHERE release_id = '${R1}') AS releases,
+      (SELECT COUNT(*) FROM sys.triggers WHERE name LIKE 'TR_report_release%' AND is_disabled = 0) AS enabled`);
+    assert.deepEqual(afterRemoval.recordset[0], { releases: 0, enabled: 12 }, "the release is gone and every guard is on again");
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

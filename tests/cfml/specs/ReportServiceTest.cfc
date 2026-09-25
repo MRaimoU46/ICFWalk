@@ -5,7 +5,14 @@
  * Two fixture trees keep the populations independent of each other and of anything else in the
  * database. The scope tree (D -> S1, S2; D2 -> S3) is used only by the scope tests, with walks
  * created once in beforeAll. Every other test makes its own school under DT and reads it as
- * `analyst` (DISTRICT_REPORT_ONLY over DT and its descendants) with orgUnitId set to that school.
+ * `analyst` (DISTRICT_WALK_REPORT over DT and its descendants) with orgUnitId set to that school.
+ *
+ * LIVE FIGURES ARE FOR PEOPLE WHO CAN OPEN THE WALKS (RPT-03 correction). Under the owner-approved
+ * rule, a live report is served only to a caller holding walk.read on every unit it counts; a
+ * report-only role reads frozen releases instead (ReportReleaseTest). So the aggregate arithmetic
+ * here -- denominators, weighting, visibility, filters, exclusions, CSV -- is exercised as a
+ * walk-and-report role. Before the correction these cases read live figures as DISTRICT_REPORT_ONLY;
+ * that is exactly what RPT-03 now forbids, and the report-only roles below assert the refusal.
  *
  * Fixtures are synthetic and removed in afterAll.
  */
@@ -49,7 +56,9 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.districtUnitOnly = fx.user("district-unit-only");
 		fx.assign(districtUnitOnly.userId, "DISTRICT_REPORT_ONLY", D, false);
 		variables.analyst = fx.user("analyst");
-		fx.assign(analyst.userId, "DISTRICT_REPORT_ONLY", DT, true);
+		fx.assign(analyst.userId, "DISTRICT_WALK_REPORT", DT, true);
+		variables.districtWalker = fx.user("district-walker");
+		fx.assign(districtWalker.userId, "DISTRICT_WALK_REPORT", D, true);
 		variables.admin = fx.user("admin");
 		fx.assign(admin.userId, "MASTER_INSTRUMENT_ADMIN", D, false);
 		variables.nobody = fx.user("nobody");
@@ -184,14 +193,21 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	// ---- RPT-01 / RPT-02: organizational scope ---------------------------------------------------
 
-	/** RPT-01: a school report role sees its school; another school is refused, not merely empty. */
+	/**
+	 * RPT-01: a school role sees its school; another school is refused, not merely empty. The live
+	 * figures are the school walk-and-report role's; the school report-only role is held to the same
+	 * scope, and inside it is refused live figures altogether (RPT-03).
+	 */
 	public void function testRpt01SchoolRoleReportsOnlyItsAssignedSchool() {
-		var r = report(schoolReport);
+		var r = report(w1);
 		assertEquals(2, r.population.walks, "the two walks at the assigned school");
 		assertExactJsonEquals([S1], unitIds(r), "and only that school contributes");
 		assertEquals(1, r.scope.orgUnitCount);
-		var named = report(schoolReport, { "orgUnitId": S1 });
+		var named = report(w1, { "orgUnitId": S1 });
 		assertEquals(2, named.population.walks, "naming the assigned school is the same population");
+		assertThrows(function() { report(w1, { "orgUnitId": S2 }); }, "ICFWalk.NotFound");
+		assertThrows(function() { report(schoolReport); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
+		assertThrows(function() { report(schoolReport, { "orgUnitId": S1 }); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
 
 		var before = db.scalar("SELECT COUNT(*) AS n FROM [icf].[audit_event] WHERE actor_user_id = :u AND event_type = N'ACCESS_DENIED'", { "u": db.guid(schoolReport.userId) });
 		for (var other in [S2, S3, D]) {
@@ -206,9 +222,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertExactTextEquals(S1, opts.orgUnits[1].orgUnitId);
 	}
 
-	/** RPT-02: a district role draws on its descendant schools and nothing outside them. */
+	/**
+	 * RPT-02: a district role draws on its descendant schools and nothing outside them. Live figures
+	 * as the district walk-and-report role; the district report-only role keeps the same scope
+	 * boundary and is refused live figures inside it (RPT-03).
+	 */
 	public void function testRpt02DistrictRoleAggregatesDescendantSchoolsOnly() {
-		var r = report(districtReport);
+		var r = report(districtWalker);
 		assertEquals(3, r.population.walks, "S1 (2) and S2 (1); the unrelated district's S3 never contributes");
 		var expected = [S1, S2];
 		arraySort(expected, "text");
@@ -221,13 +241,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(3, rating.scored.responses);
 		assertEquals(11, rating.scored.sum);
 
-		assertEquals(1, report(districtReport, { "orgUnitId": S2 }).population.walks, "a descendant school narrows the population");
-		assertEquals(3, report(districtReport, { "orgUnitId": D }).population.walks, "naming the district itself is its whole subtree");
-		assertThrows(function() { report(districtReport, { "orgUnitId": D2 }); }, "ICFWalk.NotFound");
-		assertThrows(function() { report(districtReport, { "orgUnitId": S3 }); }, "ICFWalk.NotFound");
+		assertEquals(1, report(districtWalker, { "orgUnitId": S2 }).population.walks, "a descendant school narrows the population");
+		assertEquals(3, report(districtWalker, { "orgUnitId": D }).population.walks, "naming the district itself is its whole subtree");
+		for (var who in [districtWalker, districtReport]) {
+			assertThrows(function() { report(who, { "orgUnitId": D2 }); }, "ICFWalk.NotFound");
+			assertThrows(function() { report(who, { "orgUnitId": S3 }); }, "ICFWalk.NotFound");
+		}
+		assertThrows(function() { report(districtReport); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
+		assertThrows(function() { report(districtReport, { "orgUnitId": S2 }); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
 
-		// include_descendants = 0 covers the district unit alone, where no walk is conducted.
-		assertEquals(0, report(districtUnitOnly).population.walks);
+		// include_descendants = 0 covers the district unit alone: still report-only, so still no live
+		// figures, and its schools are outside its scope.
+		assertThrows(function() { report(districtUnitOnly); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
 		assertThrows(function() { report(districtUnitOnly, { "orgUnitId": S1 }); }, "ICFWalk.NotFound");
 		// An assignment that has ended grants nothing at all.
 		assertThrows(function() { report(expired); }, "ICFWalk.Forbidden", "FORBIDDEN");
@@ -246,10 +271,23 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 	// ---- RPT-03: report-only users get nothing individual -----------------------------------------
 
+	/**
+	 * RPT-03. A report-only role cannot reach live figures at all -- not the whole scope, not a
+	 * population narrowed to one walk by any filter, not the export -- so it has no report to narrow
+	 * to one walk (released reports: ReportReleaseTest). Before the correction this test asserted
+	 * that such a role narrowed to one walk "still yields only aggregates": that one-walk aggregate
+	 * is the individual row RPT-03 forbids, and it is now refused. What any report does carry --
+	 * checked on a live report, whose structure a released one shares -- holds no walk, owner,
+	 * observation or narrative field.
+	 */
 	public void function testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier() {
-		var r = report(schoolReport);
+		for (var q in [{}, { "optionItem": "comp_s1_q1", "option": "2" }, { "dim_grade": "3" }, { "from": "2000-01-01", "to": "2100-01-01" }]) {
+			assertThrows(function() { report(schoolReport, q); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
+			assertThrows(function() { svc.exportCsv(p(schoolReport), q); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
+		}
+		var r = report(w1);
 		var text = json.serialize(r);
-		var csv = svc.exportCsv(p(schoolReport), {}).text;
+		var csv = svc.exportCsv(p(w1), {}).text;
 		for (var id in [scopeWalks.s1a, scopeWalks.s1b, w1.userId]) {
 			assertDoesNotContain(id, text, "report payload");
 			assertDoesNotContain(id, csv, "report export");
@@ -261,11 +299,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		for (var k in ["walkId", "walkIds", "walks.id", "ownerUserId", "ownerDisplayName", "observedAt", "rowVersion", "textValue", "notes", "teacherIdentifier", "classroomLabel"]) {
 			assertFalse(structKeyExists(keys, k), "no [" & k & "] key anywhere in the report");
 		}
-		// ...and a population narrowed to one walk still yields only aggregates.
-		var one = report(schoolReport, { "optionItem": "comp_s1_q1", "option": "2" });
-		assertEquals(1, one.population.walks);
-		assertDoesNotContain(scopeWalks.s1a, json.serialize(one));
-		// The report-only role still cannot open the walk the aggregate counted.
+		// The report-only role still cannot open a walk the aggregate counted.
 		assertThrows(function() { walkSvc.open(p(schoolReport), scopeWalks.s1a); }, "ICFWalk.Forbidden");
 		assertThrows(function() { walkSvc.summary(p(schoolReport), scopeWalks.s1a); }, "ICFWalk.Forbidden");
 	}
@@ -550,49 +584,38 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(0, report(analyst, { "orgUnitId": s.id, "from": "", "dim_grade": "", "section": "" }).population.walks);
 	}
 
-	// ---- suppression --------------------------------------------------------------------------------
+	// ---- who gets live figures --------------------------------------------------------------------
 
 	/**
-	 * The undecided threshold (docs/OPEN_DECISIONS.md) defaults to none. When a deployment sets it,
-	 * a population below it is withheld whole, and each smaller group within a reported population
-	 * is withheld on its own. Zero is never "a small group".
+	 * The approved rule (docs/OPEN_DECISIONS.md): live figures -- which are not suppressed -- only
+	 * for a caller holding walk.read on every unit the report counts, since that caller can open each
+	 * of those walks anyway. The decision is per request: a caller who can open one school's walks
+	 * but only report on the rest gets live figures for that school and a release for the rest.
+	 * This replaces the pre-correction "threshold 0 means no suppression" case, which served
+	 * unsuppressed live figures to report-only roles.
 	 */
-	public void function testSuppressionThresholdWithholdsSmallGroupsOnlyWhenConfigured() {
-		var s = school("rptsup");
+	public void function testLiveFiguresOnlyForSomeoneWhoCanOpenEveryWalkCounted() {
+		var s = school("rptlive");
 		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "7" } });
 		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "7" } });
 		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "8" } });
-		var q = { "orgUnitId": s.id };
-
-		var none = report(analyst, q);
-		assertEquals(0, none.suppression.threshold, "no threshold is invented");
-		assertFalse(none.suppression.applied);
-		assertEquals(1, valueWalks(dimensionOf(none, "grade"), "8"));
-
+		var live = report(analyst, { "orgUnitId": s.id });
+		assertExactTextEquals("LIVE", live.mode);
+		assertFalse(live.disclosure.protected);
+		assertEquals(1, valueWalks(dimensionOf(live, "grade"), "8"), "a reader who can open the walk sees its group");
+		assertEquals(3, svc.minimumWalks(), "the approved minimum when nothing is configured");
 		var cfg5 = duplicate(variables.c.config);
 		cfg5.reportSuppressionThreshold = 5;
-		var five = serviceWith(cfg5).aggregate(p(analyst), q);
-		assertTrue(five.population.suppressed, "3 walks under a threshold of 5 are withheld whole");
-		assertTrue(five.suppression.applied);
-		assertTrue(isNull(five.population.walks), "not even the count");
-		assertEquals(0, arrayLen(five.items) + arrayLen(five.dimensions) + arrayLen(five.orgUnits) + arrayLen(five.sections));
-		var csv5 = serviceWith(cfg5).exportCsv(p(analyst), q).text;
-		assertContains("POPULATION,,walks,,,,,,,,,,,1", csv5, "the export withholds the count and says so");
-		assertDoesNotContain("ITEM,", csv5);
-		assertDoesNotContain("DIMENSION_VALUE,", csv5);
+		assertEquals(5, serviceWith(cfg5).minimumWalks(), "a deployment may raise it");
 
-		var cfg2 = duplicate(variables.c.config);
-		cfg2.reportSuppressionThreshold = 2;
-		var two = serviceWith(cfg2).aggregate(p(analyst), q);
-		assertFalse(two.population.suppressed);
-		assertEquals(3, two.population.walks);
-		var grade = dimensionOf(two, "grade");
-		assertExactTextEquals("withheld", valueWalks(grade, "8"), "a single-walk group is withheld");
-		assertEquals(2, valueWalks(grade, "7"));
-		assertEquals(0, valueWalks(grade, "9"), "an empty group is not withheld");
-		var csv2 = serviceWith(cfg2).exportCsv(p(analyst), q).text;
-		assertContains("DIMENSION_VALUE,grade,8,8,,,,,,,,,,1", csv2);
-		assertContains("DIMENSION_VALUE,grade,7,7,2,,,,,,,,,0", csv2);
+		var mixed = fx.user("rptlive-mixed");
+		fx.assign(mixed.userId, "DISTRICT_REPORT_ONLY", variables.DT, true);
+		fx.assign(mixed.userId, "SCHOOL_WALK_REPORT", s.id, false);
+		assertEquals(3, report(mixed, { "orgUnitId": s.id }).population.walks, "live where every counted walk is readable");
+		assertThrows(function() { report(mixed); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
+		assertThrows(function() { report(mixed, { "orgUnitId": variables.DT }); }, "ICFWalk.Validation", "REPORT_RELEASE_REQUIRED");
+		assertFalse(svc.options(p(mixed), {}).disclosure.liveAvailable, "not over the whole scope");
+		assertTrue(svc.options(p(analyst), {}).disclosure.liveAvailable);
 	}
 
 	// ---- CSV ----------------------------------------------------------------------------------------
@@ -614,7 +637,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertExactTextEquals(chr(65279), left(text, 1), "UTF-8 byte order mark first");
 		assertExactTextEquals(chr(13) & chr(10), right(text, 2), "CRLF line ends, the last one included");
 		var lines = listToArray(mid(text, 2, len(text)), chr(13) & chr(10), false, true);
-		assertExactTextEquals("record_type,group,key,label,count,answered,unanswered,hidden,not_applicable,unrecorded,scored_responses,score_sum,mean,suppressed", lines[1]);
+		assertExactTextEquals("record_type,group,key,label,count,withheld,scored_responses,score_sum,mean", lines[1]);
 		for (var line in lines) assertFalse(find(chr(10), line) > 0, "no bare line feed inside a record");
 		assertContains("ORG_UNIT,SCHOOL," & fx.tag() & "-rptcsv-f,""'=HYPERLINK(""""http://example.invalid"""")"",1,", text, "a formula is neutralized and quoted");
 		assertTrue(reFind("^[A-Za-z0-9_-]+\.csv$", out.fileName) > 0, "file name is [A-Za-z0-9_-] only: " & out.fileName);
@@ -629,7 +652,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var details = deserializeJSON(audit.details_json[1]);
 		var keys = structKeyArray(details);
 		arraySort(keys, "text");
-		assertExactJsonEquals(["attempts", "bytes", "filters", "orgUnitId", "rows", "suppressed", "versionId", "walks"], keys, "identifiers and counts only");
+		assertExactJsonEquals(["attempts", "bytes", "filters", "mode", "orgUnitId", "rows", "versionId", "walks", "withheld"], keys, "identifiers and counts only");
 		assertEquals(1, details.walks);
 	}
 
