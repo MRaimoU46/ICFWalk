@@ -1,9 +1,9 @@
 component extends="icfwalktests.BaseSpec" output="false" {
 
-	private any function loader(required struct values) {
+	private any function loader(required struct settings) {
 		// Production requires an SSO proxy allowlist (covered separately in IdentityTest); supply one
 		// here so the remaining rules can be exercised in isolation.
-		var values = duplicate(arguments.values);
+		var values = duplicate(arguments.settings);
 		if (!structKeyExists(values, "ICFWALK_SSO_TRUSTED_PROXIES")) values["ICFWALK_SSO_TRUSTED_PROXIES"] = "10.0.0.1";
 		return createObject("component", "icfwalktests.support.StubConfigLoader").initWithValues(variables.c.repoRoot, values);
 	}

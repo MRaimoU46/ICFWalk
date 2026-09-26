@@ -175,8 +175,8 @@ component output="false" {
 	 * refactoring removed. The key sets are still collected, silently, because a rule's source is
 	 * written as a key even in the authoring document and checkReferences has to resolve it.
 	 */
-	private struct function collectAuthoringIds(required struct r, required struct cfg) {
-		var cfg = arguments.cfg;
+	private struct function collectAuthoringIds(required struct r, required struct config) {
+		var cfg = arguments.config;
 		var ids = {};
 		ids["sectionIds"] = uniqueSet(arguments.r, cfg.sections, ["sectionId"], "sections", "sectionId");
 		ids["itemIds"] = uniqueSet(arguments.r, cfg.items, ["itemId"], "items", "itemId");
@@ -192,8 +192,8 @@ component output="false" {
 		return ids;
 	}
 
-	private void function checkReferences(required struct r, required struct cfg, required struct ids) {
-		var cfg = arguments.cfg;
+	private void function checkReferences(required struct r, required struct config, required struct ids) {
+		var cfg = arguments.config;
 		var i = 0;
 		for (var s in cfg.sections) {
 			if (has(s, "parentSectionId") && !structKeyExists(arguments.ids.sectionIds, s.parentSectionId)) {

@@ -267,8 +267,8 @@ component output="false" {
 	 * Nothing is suppressed at this point: suppression is applied, deterministically, each time the
 	 * release is read.
 	 */
-	public struct function createRelease(required struct principal, required struct body) {
-		var principal = arguments.principal;
+	public struct function createRelease(required struct requestingPrincipal, required struct body) {
+		var principal = arguments.requestingPrincipal;
 		variables.authz.requirePermission(principal, "report.view");
 		if (!canRelease(principal)) {
 			variables.logger.warn("authorization.denied", { "permission": "report.release", "kind": "forbidden" });
@@ -644,8 +644,8 @@ component output="false" {
 
 	// ---- live computation -------------------------------------------------------------------------
 
-	private struct function compute(required struct f) {
-		var f = arguments.f;
+	private struct function compute(required struct filters) {
+		var f = arguments.filters;
 		var reports = variables.reports;
 		var catalog = f.catalog;
 		var itemIds = [];
@@ -705,8 +705,8 @@ component output="false" {
 	 * A live report: every figure as counted. Reached only by a caller who can open every walk the
 	 * report counts (parseFilters), so nothing is withheld.
 	 */
-	private struct function liveReport(required struct f) {
-		var f = arguments.f;
+	private struct function liveReport(required struct filters) {
+		var f = arguments.filters;
 		var raw = compute(f);
 		var catalog = f.catalog;
 		var report = shell(f, raw.attempts);
@@ -847,8 +847,8 @@ component output="false" {
 	 * carries withheld: true, and its count is the published part (a lower bound) or null when no
 	 * block published any of it. Scores and derived totals are computed from published cells only.
 	 */
-	private struct function releaseReport(required struct f) {
-		var f = arguments.f;
+	private struct function releaseReport(required struct filters) {
+		var f = arguments.filters;
 		var k = f.release.minimumWalks;
 		var catalog = f.catalog;
 		var report = shell(f, 1);
@@ -990,7 +990,8 @@ component output="false" {
 		}
 		var answered = publishedSum(arguments.totals, "VALUE:");
 		var states = { "ANSWERED": isNull(answered.count) ? javaCast("null", "") : answered.count };
-		var withheldStates = answered.withheld ? ["ANSWERED"] : [];
+		var withheldStates = [];
+		if (answered.withheld) withheldStates = ["ANSWERED"];
 		for (var s in variables.DIMENSION_STATE_CATEGORIES) {
 			var count = publishedCount(arguments.totals, "STATE:" & s);
 			states[s] = isNull(count) ? javaCast("null", "") : count;
@@ -1029,7 +1030,8 @@ component output="false" {
 		var answeredCount = (isNull(answered.count) ? 0 : answered.count) + (isNull(unlisted.count) ? 0 : unlisted.count);
 		var answeredWithheld = answered.withheld || unlisted.withheld;
 		var states = { "ANSWERED": (answeredWithheld && answeredCount == 0) ? javaCast("null", "") : answeredCount };
-		var withheldStates = answeredWithheld ? ["ANSWERED"] : [];
+		var withheldStates = [];
+		if (answeredWithheld) withheldStates = ["ANSWERED"];
 		for (var s in variables.ITEM_STATE_CATEGORIES) {
 			var count = publishedCount(arguments.totals, "STATE:" & s);
 			states[s] = isNull(count) ? javaCast("null", "") : count;

@@ -66,7 +66,7 @@ component output="false" {
 			var n = arrayLen(arguments.value);
 			for (var i = 1; i <= n; i++) {
 				if (i > 50) { arrayAppend(arr, "[truncated-array]"); break; }
-				if (isNull(arguments.value[i])) arrayAppend(arr, javaCast("null", ""));
+				if (!arrayIsDefined(arguments.value, i)) arrayAppend(arr, javaCast("null", ""));
 				else arrayAppend(arr, redact(arguments.value[i], arguments.depth + 1));
 			}
 			return arr;

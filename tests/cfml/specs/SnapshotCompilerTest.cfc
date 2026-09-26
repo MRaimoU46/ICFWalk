@@ -23,7 +23,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var compiled = variables.c.snapshotCompiler.compile(normalized);
 		assertExactTextEquals("icfwalk-instrument-snapshot/1", compiled.snapshot.snapshotFormat);
 		assertTrue(structKeyExists(compiled.snapshot, "behavior") && isStruct(compiled.snapshot.behavior), "Behavior block present.");
-		assertExactTextEquals("Part 3 · Conditions for Learning", sectionTitle(compiled.snapshot.definitions.sections, "part3"));
+		assertExactTextEquals("Part 3 " & chr(183) & " Conditions for Learning", sectionTitle(compiled.snapshot.definitions.sections, "part3"));
 		assertEquals(17, arrayLen(variables.c.snapshotCompiler.placeholders(normalized.definitions)));
 		assertFalse(reFind("[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}", compiled.canonicalJson) > 0, "Snapshot must not embed SQL GUIDs.");
 	}

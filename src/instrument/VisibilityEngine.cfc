@@ -141,13 +141,13 @@ component output="false" {
 		var anyTrue = false;
 		var allTrue = true;
 		for (var c in list) {
-			var r = evaluateCondition(c, arguments.st, arguments.idx);
+			var r = conditionHolds(c, arguments.st, arguments.idx);
 			if (r) anyTrue = true; else allTrue = false;
 		}
 		return logic == "OR" ? anyTrue : allTrue;
 	}
 
-	private boolean function evaluateCondition(required struct c, required struct st, required struct idx) {
+	private boolean function conditionHolds(required struct c, required struct st, required struct idx) {
 		var candidates = [];
 		if (arguments.c.sourceType == "DIMENSION") {
 			candidates = dimensionCandidates(arguments.idx.model, arguments.c.sourceKey, arguments.st);

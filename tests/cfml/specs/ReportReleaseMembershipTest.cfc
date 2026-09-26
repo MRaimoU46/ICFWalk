@@ -89,7 +89,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		return db.run("SELECT CONVERT(char(10), observed_at, 23) AS d FROM [icf].[walk] WHERE walk_id = :id", { "id": db.guid(arguments.walkId) }).d[1];
 	}
 
-	private struct function release(required numeric fromDay, required numeric toDay) {
+	private struct function releaseDays(required numeric fromDay, required numeric toDay) {
 		var out = svc.createRelease(p(releaser), { "observedFrom": dayText(arguments.fromDay), "observedTo": dayText(arguments.toDay) }).release;
 		arrayAppend(variables.releases, out.releaseId);
 		return out;
@@ -114,7 +114,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	public void function testAWalkWhoseDateIsCorrectedIntoLaterDatesIsNeverCountedByASecondRelease() {
 		var a = [makeWalk(dayText(2), "1"), makeWalk(dayText(2), "1"), makeWalk(dayText(2), "1")];
 		var b = [makeWalk(dayText(5), "5"), makeWalk(dayText(5), "5"), makeWalk(dayText(5), "5"), makeWalk(dayText(5), "5")];
-		var relA = release(1, 3);
+		var relA = releaseDays(1, 3);
 		assertEquals(3, counted(relA), "release A counts a1, a2 and a3");
 
 		correctDate(a[1], dayText(5), "1");
@@ -122,7 +122,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertExactTextEquals(dayText(5), observedDay(a[1]), "the walk's own date was corrected: walks stay correctable after release");
 		assertExactTextEquals(dayText(2), observedDay(b[4]), "and so was b4's");
 
-		var relB = release(4, 6);
+		var relB = releaseDays(4, 6);
 		assertEquals(3, counted(relB), "release B counts b1, b2 and b3 only: a1 was already counted by release A, so no two releases share it");
 		assertEquals(3, counted(relA), "release A still counts what it froze");
 		assertEquals(6, counted(relA) + counted(relB), "six walks were released, each exactly once");
@@ -146,7 +146,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	 */
 	public void function testTheDatabaseRefusesToPutAReleasedWalkIntoAnotherRelease() {
 		var w = [makeWalk(dayText(12), "3"), makeWalk(dayText(12), "3"), makeWalk(dayText(12), "3")];
-		var relC = release(11, 13);
+		var relC = releaseDays(11, 13);
 		var versionId = db.run("SELECT version_id FROM [icf].[walk] WHERE walk_id = :id", { "id": db.guid(w[1]) }).version_id[1];
 		var thrown = "";
 		try {

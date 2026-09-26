@@ -121,7 +121,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		// Numbering: scored questions are numbered; pacing (unscored, with definitions) is not.
 		assertEquals(1, variables.itemIndex["part1_adopted_ac1"].questionNumber);
 		assertEquals(2, variables.itemIndex["part1_adopted_ac2"].questionNumber);
-		assertTrue(isNull(variables.itemIndex["part1_adopted_pacing"].questionNumber), "Pacing is not numbered.");
+		var pacing = variables.itemIndex["part1_adopted_pacing"];
+		assertTrue(isNull(pacing.questionNumber), "Pacing is not numbered.");
 		assertExactTextEquals("question", variables.itemIndex["part1_adopted_pacing"].layout);
 		// Sections without scored questions number every question (Part 1 taxonomy 1..3).
 		assertEquals(1, variables.itemIndex["p1q1"].questionNumber);
@@ -143,7 +144,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		}
 		for (var key in ["s1", "s2", "s5", "s6", "s7"]) {
 			assertFalse(variables.index[key].canBeSkipped, key);
-			assertTrue(isNull(variables.index[key].applicabilityItemKey), key & " has no applicability item.");
+			var unskippable = variables.index[key];
+			assertTrue(isNull(unskippable.applicabilityItemKey), key & " has no applicability item.");
 			assertEquals(0, arrayLen(variables.index[key].ratedItemKeys));
 		}
 	}
@@ -168,8 +170,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			for (var i = 1; i <= arrayLen(source); i++) {
 				assertExactTextEquals(source[i].label, it.responseSet.options[i].label, key & " option label.");
 				assertExactTextEquals(source[i].storedCode, it.responseSet.options[i].storedCode, key & " option code.");
-				var srcDef = structKeyExists(source[i], "definition") && !isNull(source[i].definition) ? source[i].definition : "";
-				var modelDef = isNull(it.responseSet.options[i].definition) ? "" : it.responseSet.options[i].definition;
+				var sourceOption = source[i];
+				var srcDef = structKeyExists(sourceOption, "definition") && !isNull(sourceOption.definition) ? sourceOption.definition : "";
+				var option = it.responseSet.options[i];
+				var modelDef = isNull(option.definition) ? "" : option.definition;
 				assertExactTextEquals(srcDef, modelDef, key & " option definition.");
 				checked++;
 			}
@@ -194,7 +198,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertFalse(variables.itemIndex["esl_q1"].isPlaceholder);
 		// Link and help text ride on the item.
 		assertExactTextEquals("https://drive.google.com/file/d/1tV3OclLfOszteUyshWNRWLP32bv2h0LL/view?usp=sharing", variables.itemIndex["dual_language_q2"].linkUrl);
-		assertExactTextEquals("High Impact Reference — Oracy", variables.itemIndex["dual_language_q2"].helpText);
+		assertExactTextEquals("High Impact Reference " & chr(8212) & " Oracy", variables.itemIndex["dual_language_q2"].helpText);
 		assertContains("left blank", variables.itemIndex["comp_s3_applicable"].helpText);
 		assertExactTextEquals("Notes for this component...", variables.itemIndex["comp_s1_notes"].placeholder);
 		assertExactTextEquals("Evidence / look-fors noted", variables.itemIndex["part1_adopted_notes"].prompt);

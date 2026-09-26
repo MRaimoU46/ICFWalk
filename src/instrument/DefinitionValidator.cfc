@@ -430,8 +430,8 @@ component output="false" {
 	 * content review left unresolved, and PLACEHOLDER_REVIEW_STATUS here is the one definition of
 	 * what that means.
 	 */
-	private void function checkCounts(required struct r, required struct s, required string root) {
-		var s = arguments.s;
+	private void function checkCounts(required struct r, required struct snapshot, required string root) {
+		var s = arguments.snapshot;
 		if (!has(s, "counts")) {
 			err(arguments.r, "SNAPSHOT_COUNTS_MISSING", "The stored snapshot has no counts object; the snapshot envelope requires one with all " & arrayLen(variables.SNAPSHOT_COUNT_KEYS) & " members.", arguments.root & ".counts");
 			return;
@@ -762,8 +762,8 @@ component output="false" {
 	 * document this arrives as a JSON string and the import validator proves it parses; by the time
 	 * it is normalized (and stored), it is a parsed structure, so this checks the structure itself.
 	 */
-	private void function checkConditions(required struct r, required struct rule, required string p, required struct keys) {
-		var rule = arguments.rule;
+	private void function checkConditions(required struct r, required struct ruleDefinition, required string p, required struct keys) {
+		var rule = arguments.ruleDefinition;
 		if (!has(rule, "conditions")) {
 			err(arguments.r, "CONDITIONS_SHAPE", "Rule '" & keyOf(rule, "ruleKey") & "' has no conditions document.", arguments.p & ".conditions");
 			return;

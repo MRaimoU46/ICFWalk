@@ -1494,6 +1494,7 @@ async function init() {
   try {
     app.me = await api.get("/me");
     api.setCsrfToken(app.me.csrfToken);
+    api.setUser(app.me.user.userId);
     $("user-name").textContent = app.me.user.displayName || "";
     const held = (p) => Array.isArray(app.me.permissions[p]) && app.me.permissions[p].length > 0;
     app.canWalk = WALK_CAPABILITIES.some(held);

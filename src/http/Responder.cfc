@@ -83,9 +83,9 @@ component output="false" {
 		cfheader(name = "Content-Security-Policy", value = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'");
 		cfcontent(type = "text/html; charset=utf-8", reset = true);
 		var title = arguments.status == 401 ? "Sign-in required" : (arguments.status == 403 ? "Access denied" : (arguments.status == 404 ? "Not found" : "Something went wrong"));
-		writeOutput('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ICFWalk · ' & variables.html.encode(title) & '</title>'
+		writeOutput('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ICFWalk ' & chr(183) & ' ' & variables.html.encode(title) & '</title>'
 			& '<style>body{font-family:"Work Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:##EDF3F9;color:##142433;margin:0;padding:40px 20px}main{max-width:560px;margin:0 auto;background:##fff;border:1px solid ##D7E1EA;border-radius:10px;padding:24px}h1{color:##003466;font-size:20px;margin:0 0 8px}p{font-size:14px;line-height:1.5;margin:0 0 8px}code{font-size:12px;color:##4E5D6C}</style></head>'
-			& '<body><main role="main"><h1>' & variables.html.encode(title) & '</h1><p>' & variables.html.encode(arguments.message) & '</p><p><code>' & variables.html.encode(arguments.code) & ' · ' & variables.html.encode(variables.requestContext.correlationId()) & '</code></p></main></body></html>');
+			& '<body><main role="main"><h1>' & variables.html.encode(title) & '</h1><p>' & variables.html.encode(arguments.message) & '</p><p><code>' & variables.html.encode(arguments.code) & ' ' & chr(183) & ' ' & variables.html.encode(variables.requestContext.correlationId()) & '</code></p></main></body></html>');
 	}
 
 	private boolean function wantsHtml() {

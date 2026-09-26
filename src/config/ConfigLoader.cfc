@@ -208,10 +208,10 @@ component output="false" {
 			line = trim(line);
 			if (!len(line) || left(line, 1) == "##") continue;
 			if (left(line, 7) == "export ") line = trim(mid(line, 8, len(line)));
-			var eq = find("=", line);
-			if (eq <= 1) continue;
-			var key = trim(left(line, eq - 1));
-			var raw = trim(mid(line, eq + 1, len(line)));
+			var eqAt = find("=", line);
+			if (eqAt <= 1) continue;
+			var key = trim(left(line, eqAt - 1));
+			var raw = trim(mid(line, eqAt + 1, len(line)));
 			if (len(raw) >= 2 && ((left(raw, 1) == '"' && right(raw, 1) == '"') || (left(raw, 1) == "'" && right(raw, 1) == "'"))) {
 				raw = mid(raw, 2, len(raw) - 2);
 			}

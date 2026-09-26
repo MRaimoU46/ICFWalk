@@ -10,6 +10,11 @@ component output="false" {
 
 	this.name = "ICFWalk";
 	this.applicationTimeout = createTimeSpan(1, 0, 0, 0);
+	// Arrays are passed to functions by reference, as Lucee always does. Adobe ColdFusion passes a
+	// copy unless this is set, and the code sorts and fills arrays in place through arguments
+	// (ConfigNormalizer.sortBy, every issue collector): on ColdFusion without it the snapshot came
+	// out in the wrong order and its checksum differed (P8-02). Lucee ignores the setting.
+	this.passArrayByReference = true;
 
 	variables.appRoot = getDirectoryFromPath(getCurrentTemplatePath());
 	variables.repoRoot = createObject("java", "java.io.File").init(variables.appRoot & "..").getCanonicalPath() & "/";
@@ -63,10 +68,10 @@ component output="false" {
 				line = trim(line);
 				if (!len(line) || left(line, 1) == "##") continue;
 				if (left(line, 7) == "export ") line = trim(mid(line, 8, len(line)));
-				var eq = find("=", line);
-				if (eq <= 1) continue;
-				if (trim(left(line, eq - 1)) != arguments.name) continue;
-				var raw = trim(mid(line, eq + 1, len(line)));
+				var eqAt = find("=", line);
+				if (eqAt <= 1) continue;
+				if (trim(left(line, eqAt - 1)) != arguments.name) continue;
+				var raw = trim(mid(line, eqAt + 1, len(line)));
 				if (len(raw) >= 2 && ((left(raw, 1) == '"' && right(raw, 1) == '"') || (left(raw, 1) == "'" && right(raw, 1) == "'"))) {
 					raw = mid(raw, 2, len(raw) - 2);
 				}
@@ -96,14 +101,17 @@ component output="false" {
 				"validate": false
 			};
 		}
-		// Adobe ColdFusion 2023 application-defined datasource (MS SQL Server driver).
+		// Adobe ColdFusion 2023 application-defined datasource (MS SQL Server driver). Long text
+		// retrieval is on: without it ColdFusion returns only the first 32,000 characters of an
+		// nvarchar(max) value, and an instrument snapshot is about 218,000 (P8-04).
 		var ds = {
 			"driver": "MSSQLServer",
 			"host": host,
 			"port": port,
 			"database": database,
 			"username": username,
-			"password": password
+			"password": password,
+			"disable_clob": false
 		};
 		if (encrypt) {
 			ds["url"] = "jdbc:macromedia:sqlserver://" & host & ":" & port & ";databaseName=" & database
@@ -145,10 +153,28 @@ component output="false" {
 		}
 		// The application failed to start (for example an invalid configuration). Emit a safe
 		// error without any configuration values and log the message only.
-		var message = isStruct(arguments.exception) && structKeyExists(arguments.exception, "message") ? arguments.exception.message : "Startup failure";
+		var message = startupMessage(arguments.exception);
 		writeLog(file = "icfwalk", type = "error", text = '{"event":"application.start.failed","message":' & serializeJSON(message) & '}');
 		cfheader(statusCode = 500, statusText = "Internal Server Error");
 		cfcontent(type = "application/json; charset=utf-8", reset = true);
 		writeOutput('{"error":{"code":"STARTUP_FAILED","message":"The application could not start. Check the server log."}}');
+	}
+
+	/**
+	 * The message of a failed start, on either engine (P8-03). Adobe ColdFusion hands onError an
+	 * exception that isStruct() does not recognise, and wraps the cause of a failed
+	 * onApplicationStart in rootCause (its own message names only the event), so the cause is read
+	 * first. Nothing here may throw: this runs when the application could not start.
+	 */
+	private string function startupMessage(required any exception) {
+		var candidates = [];
+		try { if (!isNull(arguments.exception.rootCause)) arrayAppend(candidates, arguments.exception.rootCause); } catch (any ignored) {}
+		arrayAppend(candidates, arguments.exception);
+		for (var candidate in candidates) {
+			try {
+				if (!isNull(candidate.message) && isSimpleValue(candidate.message) && len(candidate.message)) return candidate.message;
+			} catch (any ignored) {}
+		}
+		return "Startup failure";
 	}
 }

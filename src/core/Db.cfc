@@ -16,7 +16,11 @@ component output="false" {
 	}
 
 	public query function run(required string sql, struct params = {}) {
-		return queryExecute(arguments.sql, arguments.params, { "datasource": variables.datasource });
+		var q = queryExecute(arguments.sql, arguments.params, { "datasource": variables.datasource });
+		// A statement with no result set (an INSERT, UPDATE or DELETE without OUTPUT) returns nothing
+		// on Adobe ColdFusion and an empty query on Lucee; callers get the empty query on both (P8-02).
+		if (isNull(q)) return queryNew("");
+		return q;
 	}
 
 	public numeric function scalar(required string sql, struct params = {}, numeric defaultValue = 0) {

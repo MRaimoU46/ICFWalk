@@ -211,13 +211,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	private struct function twoPublishedVersions(required string tag) {
 		var code = "RCB" & uCase(left(replace(createUUID(), "-", "", "all"), 9));
 		arrayAppend(variables.codes, code);
-		var import = variables.c.instrumentImportService;
+		var importer = variables.c.instrumentImportService;
 		var publish = variables.c.instrumentPublishService;
-		var v0 = import.importConfig(configFor(code, variables.run & "-" & arguments.tag & "-v0"), variables.adminId);
+		var v0 = importer.importConfig(configFor(code, variables.run & "-" & arguments.tag & "-v0"), variables.adminId);
 		publish.publish(v0.versionId, variables.adminId);
 		// A later effective start, so V1 is unambiguously the current version.
 		sleep(20);
-		var v1 = import.importConfig(configFor(code, variables.run & "-" & arguments.tag & "-v1"), variables.adminId);
+		var v1 = importer.importConfig(configFor(code, variables.run & "-" & arguments.tag & "-v1"), variables.adminId);
 		publish.publish(v1.versionId, variables.adminId);
 		var current = variables.repo.currentVersionIds();
 		assertTrue(structKeyExists(current, v1.versionId), "precondition: V1 is the current version");

@@ -1,5 +1,5 @@
 /**
- * icf.org_unit access: the active organizational tree (district → schools), descendant resolution,
+ * icf.org_unit access: the active organizational tree (district -> schools), descendant resolution,
  * and idempotent upsert by org_unit_code for bootstrap/maintenance.
  */
 component output="false" {

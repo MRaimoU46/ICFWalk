@@ -72,7 +72,7 @@ component output="false" {
 			var n = arrayLen(v);
 			for (var i = 1; i <= n; i++) {
 				if (i > 1) arguments.sb.append(",");
-				if (isNull(v[i])) arguments.sb.append("null");
+				if (!arrayIsDefined(v, i)) arguments.sb.append("null");
 				else write(arguments.sb, v[i]);
 			}
 			arguments.sb.append("]");

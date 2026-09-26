@@ -275,7 +275,7 @@ component output="false" {
 		// refusal writes nothing, and its audit event is not rolled back with the mutation.
 		validated.state = enforceSchoolScope(access.orgUnitId, model, validated.state, arguments.principal, id);
 		var me = arguments.principal.userId;
-		var principal = arguments.principal;
+		var actingPrincipal = arguments.principal;
 		var walks = variables.walks;
 		var errors = variables.errors;
 		var audit = variables.audit;
@@ -316,7 +316,7 @@ component output="false" {
 					walks.insertMutation(mutationId, id, me, "SAVE", unchanged, fingerprint);
 					// "Nothing changed" is a claim about one specific serialized state, so the DTO that
 					// carries it is built here, under the lock, exactly like a material save's.
-					return { "result": unchanged, "changes": normalized.changes, "dto": mutationDto(id, principal, row, unchanged) };
+					return { "result": unchanged, "changes": normalized.changes, "dto": mutationDto(id, actingPrincipal, row, unchanged) };
 				}
 				revisionNumber = walks.insertRevision(id, me, "POST_COMPLETION_EDIT", snapshotJson(row, priorDims, priorResponses));
 			}
@@ -326,7 +326,7 @@ component output="false" {
 			var result = { "walkId": id, "rowVersion": after.rowVersion, "savedAt": json.formatDate(after.updatedAt), "status": after.status, "changes": normalized.changes, "written": plan.written, "retained": arrayLen(merged.retained) };
 			walks.insertMutation(mutationId, id, me, "SAVE", result, fingerprint);
 			if (revisionNumber > 0) audit.record("WALK", id, "WALK_POST_COMPLETION_EDIT", me, { "revisionNumber": revisionNumber, "clientMutationId": mutationId, "written": plan.written });
-			return { "result": result, "changes": normalized.changes, "dto": mutationDto(id, principal, after, result) };
+			return { "result": result, "changes": normalized.changes, "dto": mutationDto(id, actingPrincipal, after, result) };
 		});
 		if (structKeyExists(outcome, "replay")) return replay(outcome.replay, arguments.principal, "SAVE", id, fingerprint);
 		if (structKeyExists(outcome, "conflict")) {
@@ -356,7 +356,7 @@ component output="false" {
 		var fingerprint = fingerprintFor("COMPLETE", id, {});
 		var model = variables.snapshots.renderModelFor(access.versionId);
 		var me = arguments.principal.userId;
-		var principal = arguments.principal;
+		var actingPrincipal = arguments.principal;
 		var walks = variables.walks;
 		var errors = variables.errors;
 		var engine = variables.engine;
@@ -382,7 +382,7 @@ component output="false" {
 			var result = { "walkId": id, "rowVersion": after.rowVersion, "savedAt": json.formatDate(after.updatedAt), "status": after.status, "completedAt": json.formatDate(after.completedAt), "revisionNumber": revisionNumber };
 			walks.insertMutation(mutationId, id, me, "COMPLETE", result, fingerprint);
 			variables.audit.record("WALK", id, "WALK_COMPLETED", me, { "revisionNumber": revisionNumber, "clientMutationId": mutationId, "answered": countState(evaluation, "ANSWERED"), "hidden": countState(evaluation, "HIDDEN"), "notApplicable": countState(evaluation, "NOT_APPLICABLE") });
-			return { "result": result, "dto": mutationDto(id, principal, after, result) };
+			return { "result": result, "dto": mutationDto(id, actingPrincipal, after, result) };
 		});
 		if (structKeyExists(outcome, "replay")) return replay(outcome.replay, arguments.principal, "COMPLETE", id, fingerprint);
 		if (structKeyExists(outcome, "conflict")) {
@@ -784,7 +784,7 @@ component output="false" {
 		}
 		var recordedRowVersion = recordedRowVersionOf(arguments.recorded);
 		var target = arguments.recorded.walkId;
-		var principal = arguments.principal;
+		var actingPrincipal = arguments.principal;
 		var walks = variables.walks;
 		// Coherence and materialization are one atomic step. Comparing the recorded row version
 		// against an unlocked read and then building the DTO from later unlocked reads left a
@@ -801,7 +801,7 @@ component output="false" {
 			if (!len(recordedRowVersion) || compare(recordedRowVersion, locked.rowVersion) != 0) {
 				return { "superseded": { "row": locked } };
 			}
-			var materialized = loadDto(target, principal, locked);
+			var materialized = loadDto(target, actingPrincipal, locked);
 			// The aggregate is read under the lock, so this re-read cannot have moved; asserting it
 			// anyway makes the invariant the code's, not the lock's: the DTO that leaves here always
 			// carries the row version the recorded mutation committed, or nothing leaves at all.

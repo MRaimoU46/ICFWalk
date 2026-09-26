@@ -155,7 +155,7 @@ component output="false" {
 	 *   successEvent         the audit event for a successful write (default CREATED / REIMPORTED)
 	 *   auditDetails         extra lifecycle facts for that event (identifiers and counts only)
 	 */
-	public struct function writeNormalizedDraft(required struct normalized, string actorUserId = "", struct options = {}) {
+	public struct function writeNormalizedDraft(required struct normalizedDraft, string actorUserId = "", struct options = {}) {
 		var started = getTickCount();
 		var opts = {
 			"operation": "IMPORT", "warnings": [], "definitionsValidated": false, "mustCreate": false,
@@ -165,7 +165,7 @@ component output="false" {
 		};
 		structAppend(opts, arguments.options, true);
 		var replaceId = uCase(trim(opts.replaceVersionId));
-		var normalized = arguments.normalized;
+		var normalized = arguments.normalizedDraft;
 		var validation = { "warnings": opts.warnings };
 
 		if (!opts.definitionsValidated) {
