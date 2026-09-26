@@ -141,7 +141,7 @@ component output="false" {
 					variables.errors.validation("The publishing user does not exist.", "PUBLISHER_UNKNOWN");
 				}
 
-				var snapshotJson = isNull(version.snapshotJson) ? "" : version.snapshotJson;
+				var snapshotJson = !structKeyExists(version, "snapshotJson") ? "" : version.snapshotJson;
 				if (!len(trim(snapshotJson))) {
 					self.markRefusal(refusal, version, "NO_SNAPSHOT", {});
 					variables.errors.publishValidation(
@@ -158,7 +158,7 @@ component output="false" {
 				}
 
 				// 1. The stored checksum must be the checksum of the stored snapshot.
-				var storedChecksum = isNull(version.checksum) ? "" : trim(version.checksum);
+				var storedChecksum = !structKeyExists(version, "checksum") ? "" : trim(version.checksum);
 				var actualChecksum = variables.json.sha256(snapshotJson);
 				if (!len(storedChecksum) || storedChecksum != actualChecksum) {
 					self.markRefusal(refusal, version, "CHECKSUM_MISMATCH", { "storedChecksum": storedChecksum, "actualChecksum": actualChecksum });
@@ -198,7 +198,7 @@ component output="false" {
 						[{ "code": "SNAPSHOT_NOT_JSON", "message": "compiled_snapshot_json could not be parsed.", "path": "$" }]
 					);
 				}
-				if (isNull(snapshot) || !isStruct(snapshot)) {
+				if (!structKeyExists(local, "snapshot") || !isStruct(snapshot)) {
 					self.markRefusal(refusal, version, "SNAPSHOT_SHAPE", {});
 					variables.errors.publishValidation(
 						"Instrument version '" & version.versionLabel & "' has a compiled snapshot that is not a JSON object.",

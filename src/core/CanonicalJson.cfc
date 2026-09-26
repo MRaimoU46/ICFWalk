@@ -27,7 +27,7 @@ component output="false" {
 
 	public string function serialize(any value) {
 		var sb = createObject("java", "java.lang.StringBuilder").init();
-		if (isNull(arguments.value)) {
+		if (!structKeyExists(arguments, "value")) {
 			sb.append("null");
 		} else {
 			write(sb, arguments.value);
@@ -58,7 +58,7 @@ component output="false" {
 	}
 
 	private void function write(required any sb, required any value) {
-		if (isNull(arguments.value)) {
+		if (!structKeyExists(arguments, "value")) {
 			arguments.sb.append("null");
 			return;
 		}
@@ -119,7 +119,7 @@ component output="false" {
 			if (i > 1) arguments.sb.append(",");
 			writeString(arguments.sb, keys[i]);
 			arguments.sb.append(":");
-			if (isNull(arguments.value[keys[i]])) arguments.sb.append("null");
+			if (!structKeyExists(arguments.value, keys[i])) arguments.sb.append("null");
 			else write(arguments.sb, arguments.value[keys[i]]);
 		}
 		arguments.sb.append("}");

@@ -34,7 +34,7 @@ component output="false" {
 
 	public void function sendError(required numeric status, required string code, required string message, any details) {
 		var payload = { "error": { "code": arguments.code, "message": arguments.message, "correlationId": variables.requestContext.correlationId() } };
-		if (!isNull(arguments.details) && (isStruct(arguments.details) || isArray(arguments.details))) {
+		if (structKeyExists(arguments, "details") && (isStruct(arguments.details) || isArray(arguments.details))) {
 			payload.error["details"] = arguments.details;
 		}
 		writeJson(arguments.status, payload);
@@ -96,7 +96,7 @@ component output="false" {
 			var headers = getHttpRequestData(false).headers;
 			for (var name in structKeyArray(headers)) if (lCase(name) == "accept") accept = headers[name];
 		} catch (any e) { accept = ""; }
-		if (isNull(accept) || !isSimpleValue(accept)) accept = "";
+		if (!structKeyExists(local, "accept") || !isSimpleValue(accept)) accept = "";
 		return findNoCase("text/html", accept) > 0;
 	}
 

@@ -88,7 +88,12 @@ test("maintenance endpoints are hidden without a valid token", { skip }, async (
  * setting, so it is stated here rather than inherited -- it bounds a hang, and gives no test any
  * more room to pass.
  */
-const SUITE_PARTS = 6;
+// Six parts keep each request comfortably inside Lucee's allowance on the verification machine.
+// Adobe ColdFusion 2023 runs the same specs two to three times slower (its instrument import and
+// publication especially), and one part of six took 872 seconds there -- inside the client ceiling
+// below by less than half a minute (P8-07). ICFWALK_CFML_SUITE_PARTS deals the same specs into more,
+// smaller parts; every spec still runs exactly once and every assertion below is unchanged.
+const SUITE_PARTS = Math.max(1, Number.parseInt(env.ICFWALK_CFML_SUITE_PARTS || "6", 10) || 6);
 // Response headers are not sent until a part finishes, and a part legitimately runs for minutes:
 // several specs hold a production row lock while a second transaction queues on it. This is the
 // client-side ceiling for that, set explicitly rather than inherited from undici's 300-second

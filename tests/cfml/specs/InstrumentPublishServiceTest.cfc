@@ -1041,7 +1041,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		try {
 			storeRawSnapshot(arguments.versionId, arguments.text);
 		} catch (any e) {
-			refusedByTheSchema = findNoCase("CK_instrument_version_snapshot_json", e.message) > 0;
+			refusedByTheSchema = findNoCase("CK_instrument_version_snapshot_json", errorText(e)) > 0;
 			if (!refusedByTheSchema) rethrow;
 		}
 		if (!refusedByTheSchema) return;   // ISJSON accepted these bytes (objects and arrays).

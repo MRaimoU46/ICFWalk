@@ -23,7 +23,7 @@ component output="false" {
 	}
 
 	public boolean function isRowVersion(any value) {
-		return !isNull(arguments.value) && isSimpleValue(arguments.value) && reFind(variables.ROW_VERSION_PATTERN, trim(arguments.value)) > 0;
+		return structKeyExists(arguments, "value") && isSimpleValue(arguments.value) && reFind(variables.ROW_VERSION_PATTERN, trim(arguments.value)) > 0;
 	}
 
 	// ---- walk rows ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ component output="false" {
 			"id": variables.db.guid(id), "version": variables.db.guid(arguments.versionId), "org": variables.db.guid(arguments.orgUnitId),
 			"owner": variables.db.guid(arguments.ownerUserId)
 		};
-		var observed = !isNull(arguments.observedAt) && isDate(arguments.observedAt);
+		var observed = structKeyExists(arguments, "observedAt") && isDate(arguments.observedAt);
 		if (observed) params["observed"] = variables.db.timestamp(arguments.observedAt);
 		var inserted = variables.db.run(
 			"INSERT INTO [icf].[walk] (walk_id, version_id, org_unit_id, owner_user_id, status" & (observed ? ", observed_at" : "") & ")
@@ -95,7 +95,7 @@ component output="false" {
 	 * immutable creation instant (the Visit Date dimension is absent or was cleared).
 	 */
 	public void function touchWalk(required string walkId, any observedAt) {
-		if (!isNull(arguments.observedAt) && isDate(arguments.observedAt)) {
+		if (structKeyExists(arguments, "observedAt") && isDate(arguments.observedAt)) {
 			variables.db.run("UPDATE [icf].[walk] SET updated_at = SYSUTCDATETIME(), observed_at = :observed WHERE walk_id = :id",
 				{ "id": variables.db.guid(arguments.walkId), "observed": variables.db.timestamp(arguments.observedAt) });
 		} else {
@@ -234,7 +234,7 @@ component output="false" {
 		var params = {
 			"walk": variables.db.guid(arguments.walkId), "version": variables.db.guid(arguments.versionId), "item": variables.db.guid(arguments.itemId),
 			"state": variables.db.nvarchar(arguments.state, 30), "option": variables.db.guid(arguments.optionId),
-			"text": variables.db.ntext(isNull(arguments.textValue) || (isSimpleValue(arguments.textValue) && !len(arguments.textValue)) ? javaCast("null", "") : arguments.textValue)
+			"text": variables.db.ntext(!structKeyExists(arguments, "textValue") || (isSimpleValue(arguments.textValue) && !len(arguments.textValue)) ? javaCast("null", "") : arguments.textValue)
 		};
 		if (arguments.exists) {
 			variables.db.run("UPDATE [icf].[walk_response] SET response_state = :state, selected_option_id = :option, text_value = :text, number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = :walk AND item_id = :item", params);
@@ -311,7 +311,7 @@ component output="false" {
 		var id = uCase(arguments.versionId);
 		var row = variables.definitions.findVersionById(id);
 		if (structIsEmpty(row)) throw(type = "ICFWalk.NotFound", message = "Instrument version not found.", errorcode = "INSTRUMENT_VERSION_NOT_FOUND");
-		var checksum = isNull(row.checksum) ? "" : row.checksum;
+		var checksum = !structKeyExists(row, "checksum") ? "" : row.checksum;
 		if (structKeyExists(variables.indexCache, id) && variables.indexCache[id].checksum == checksum) return variables.indexCache[id];
 		var p = { "id": variables.db.guid(id) };
 		var idx = { "versionId": id, "checksum": checksum, "items": {}, "options": {}, "dimensions": {}, "values": {} };

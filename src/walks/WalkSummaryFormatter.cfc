@@ -108,7 +108,7 @@ component output="false" {
 	/** Render-model fields are emitted as nulls rather than absent keys; read them defensively. */
 	private any function nv(required struct holder, required string key, any fallback = "") {
 		if (!structKeyExists(arguments.holder, arguments.key)) return arguments.fallback;
-		if (isNull(arguments.holder[arguments.key])) return arguments.fallback;
+		if (!structKeyExists(arguments.holder, arguments.key)) return arguments.fallback;
 		return arguments.holder[arguments.key];
 	}
 

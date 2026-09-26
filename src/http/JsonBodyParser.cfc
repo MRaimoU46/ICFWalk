@@ -22,7 +22,7 @@ component output="false" {
 		// A body of literal `null` parses to CFML null, and reading that variable back is an error
 		// rather than a value -- so it is asked with isNull(), and refused like any non-object.
 		var parsed = deserializeJSON(arguments.text);
-		if (isNull(parsed) || !isStruct(parsed)) {
+		if (!structKeyExists(local, "parsed") || !isStruct(parsed)) {
 			variables.errors.validation("Request body must be a JSON object.", "INVALID_JSON_BODY");
 		}
 		return parsed;

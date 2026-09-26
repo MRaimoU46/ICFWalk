@@ -9,7 +9,7 @@ component output="false" {
 	public HtmlEncoder function init() { return this; }
 
 	public string function encode(any value) {
-		if (isNull(arguments.value)) return "";
+		if (!structKeyExists(arguments, "value")) return "";
 		var s = toString(arguments.value);
 		s = replace(s, "&", "&amp;", "all");
 		s = replace(s, "<", "&lt;", "all");
@@ -22,7 +22,7 @@ component output="false" {
 
 	/** Attribute-safe encoding for values placed inside double-quoted attributes (keeps '/'). */
 	public string function encodeAttribute(any value) {
-		if (isNull(arguments.value)) return "";
+		if (!structKeyExists(arguments, "value")) return "";
 		var s = toString(arguments.value);
 		s = replace(s, "&", "&amp;", "all");
 		s = replace(s, "<", "&lt;", "all");

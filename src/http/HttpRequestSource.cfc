@@ -103,7 +103,7 @@ component output="false" {
 			} else if (instanceOf(r, "javax.servlet.ServletRequestWrapper") || instanceOf(r, "jakarta.servlet.ServletRequestWrapper")) {
 				inner = r.getRequest();
 			}
-			if (isNull(inner)) break;
+			if (!structKeyExists(local, "inner")) break;
 			r = inner;
 		}
 		return r;
@@ -130,7 +130,7 @@ component output="false" {
 	private struct function engineBody(required numeric limit) {
 		var content = getHttpRequestData(true).content;
 		var bytes = "";
-		if (isNull(content)) return { "exceeded": false, "byteCount": 0, "bytes": charsetDecode("", "utf-8") };
+		if (!structKeyExists(local, "content")) return { "exceeded": false, "byteCount": 0, "bytes": charsetDecode("", "utf-8") };
 		if (isBinary(content)) bytes = content;
 		else bytes = javaCast("string", content).getBytes("UTF-8");
 		var count = variables.Array.getLength(bytes);

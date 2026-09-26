@@ -412,8 +412,8 @@ component output="false" {
 		var b = arguments.body;
 		var rowVersion = rowVersionOf(b, true);
 		var mutationId = mutationIdOf(b, true);
-		if (structKeyExists(b, "reason") && !isNull(b.reason) && !isJsonString(b.reason)) variables.errors.validation("reason must be a string.", "INVALID_VOID_REASON");
-		var reason = structKeyExists(b, "reason") && !isNull(b.reason) && isSimpleValue(b.reason) ? trim(b.reason) : "";
+		if (structKeyExists(b, "reason") && !isJsonString(b.reason)) variables.errors.validation("reason must be a string.", "INVALID_VOID_REASON");
+		var reason = structKeyExists(b, "reason") && isSimpleValue(b.reason) ? trim(b.reason) : "";
 		if (len(reason) > 1000) variables.errors.validation("Reason exceeds 1000 characters.", "VALUE_TOO_LONG");
 		var fingerprint = fingerprintFor("VOID", id, { "reason": reason });
 		var me = arguments.principal.userId;
@@ -473,7 +473,7 @@ component output="false" {
 			var it = idx.items[key];
 			if (!it.required) continue;
 			if (structKeyExists(arguments.evaluation.responseStates, key) && arguments.evaluation.responseStates[key] == "UNANSWERED") {
-				var number = isNull(it.questionNumber) ? "" : toString(it.questionNumber);
+				var number = !structKeyExists(it, "questionNumber") ? "" : toString(it.questionNumber);
 				arrayAppend(issues, { "kind": "ITEM", "key": key, "sectionKey": idx.sectionOfItem[key], "questionNumber": number, "message": "A response is required" & (len(number) ? " for question " & number : "") & "." });
 			}
 		}
@@ -839,7 +839,7 @@ component output="false" {
 	private string function recordedRowVersionOf(required struct recorded) {
 		if (!isStruct(arguments.recorded.result) || !structKeyExists(arguments.recorded.result, "rowVersion")) return "";
 		var stored = arguments.recorded.result.rowVersion;
-		if (isNull(stored) || !isSimpleValue(stored) || !variables.walks.isRowVersion(stored)) return "";
+		if (!structKeyExists(local, "stored") || !isSimpleValue(stored) || !variables.walks.isRowVersion(stored)) return "";
 		return "0x" & uCase(mid(trim(stored), 3, 16));
 	}
 
@@ -985,7 +985,7 @@ component output="false" {
 	}
 
 	private string function mutationIdOf(required struct body, required boolean required) {
-		var present = structKeyExists(arguments.body, "clientMutationId") && !isNull(arguments.body.clientMutationId);
+		var present = structKeyExists(arguments.body, "clientMutationId");
 		if (!present || (isJsonString(arguments.body.clientMutationId) && !len(trim(arguments.body.clientMutationId)))) {
 			if (arguments.required) variables.errors.validation("clientMutationId is required.", "CLIENT_MUTATION_ID_REQUIRED");
 			return "";
@@ -995,7 +995,7 @@ component output="false" {
 	}
 
 	private string function rowVersionOf(required struct body, required boolean required) {
-		var present = structKeyExists(arguments.body, "rowVersion") && !isNull(arguments.body.rowVersion);
+		var present = structKeyExists(arguments.body, "rowVersion");
 		if (!present || (isJsonString(arguments.body.rowVersion) && !len(trim(arguments.body.rowVersion)))) {
 			if (arguments.required) variables.errors.validation("rowVersion is required.", "ROW_VERSION_REQUIRED");
 			return "";
@@ -1043,8 +1043,8 @@ component output="false" {
 	/** The whole-state portion of a request body, exactly as submitted (absent keys stay absent). */
 	private struct function semanticStateOf(required struct body) {
 		var out = {};
-		if (structKeyExists(arguments.body, "dimensions") && !isNull(arguments.body.dimensions)) out["dimensions"] = arguments.body.dimensions;
-		if (structKeyExists(arguments.body, "responses") && !isNull(arguments.body.responses)) out["responses"] = arguments.body.responses;
+		if (structKeyExists(arguments.body, "dimensions")) out["dimensions"] = arguments.body.dimensions;
+		if (structKeyExists(arguments.body, "responses")) out["responses"] = arguments.body.responses;
 		return out;
 	}
 
@@ -1054,8 +1054,8 @@ component output="false" {
 	 * both (the server starts from the engine's blank state) but never just one.
 	 */
 	private void function requireStateContainers(required struct body, required boolean allowAbsent) {
-		var hasDimensions = structKeyExists(arguments.body, "dimensions") && !isNull(arguments.body.dimensions);
-		var hasResponses = structKeyExists(arguments.body, "responses") && !isNull(arguments.body.responses);
+		var hasDimensions = structKeyExists(arguments.body, "dimensions");
+		var hasResponses = structKeyExists(arguments.body, "responses");
 		if (arguments.allowAbsent && !hasDimensions && !hasResponses) return;
 		if (!hasDimensions) variables.errors.validation("dimensions is required and must be a JSON object.", "STATE_CONTAINER_REQUIRED", { "path": "dimensions" });
 		if (!hasResponses) variables.errors.validation("responses is required and must be a JSON object.", "STATE_CONTAINER_REQUIRED", { "path": "responses" });

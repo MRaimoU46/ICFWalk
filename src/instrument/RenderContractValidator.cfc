@@ -42,7 +42,7 @@ component output="false" {
 	public struct function validate(required any snapshot, struct options = {}) {
 		var root = structKeyExists(arguments.options, "path") ? arguments.options.path : "$";
 		var r = { "valid": true, "errors": [] };
-		if (!isStruct(arguments.snapshot) || !structKeyExists(arguments.snapshot, "definitions") || isNull(arguments.snapshot.definitions) || !isStruct(arguments.snapshot.definitions)) {
+		if (!isStruct(arguments.snapshot) || !structKeyExists(arguments.snapshot, "definitions") || !isStruct(arguments.snapshot.definitions)) {
 			// The envelope check reports this properly; there is nothing here to render.
 			err(r, "RENDER_MODEL_FAILED", "The snapshot has no definitions object to build a render model from.", root & ".definitions");
 			r.valid = false;
@@ -104,7 +104,7 @@ component output="false" {
 	}
 
 	private boolean function truthy(required any row, required string key) {
-		if (!isStruct(arguments.row) || !structKeyExists(arguments.row, arguments.key) || isNull(arguments.row[arguments.key])) return false;
+		if (!isStruct(arguments.row) || !structKeyExists(arguments.row, arguments.key)) return false;
 		var v = arguments.row[arguments.key];
 		if (isBoolean(v)) return v ? true : false;
 		if (isSimpleValue(v)) {

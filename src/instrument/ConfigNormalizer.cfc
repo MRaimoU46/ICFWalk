@@ -226,7 +226,7 @@ component output="false" {
 	// ---- helpers ------------------------------------------------------------------------
 
 	public boolean function has(required any src, required string key) {
-		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key) && !isNull(arguments.src[arguments.key]);
+		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key);
 	}
 
 	private struct function indexBy(required array rows, required string idKey, required string valueKey) {
@@ -273,8 +273,8 @@ component output="false" {
 		var keyList = arguments.keys;
 		arraySort(arguments.rows, function(a, b) {
 			for (var k in keyList) {
-				var left = (structKeyExists(a, k) && !isNull(a[k])) ? javaCast("string", toString(a[k])) : javaCast("string", "");
-				var right = (structKeyExists(b, k) && !isNull(b[k])) ? javaCast("string", toString(b[k])) : javaCast("string", "");
+				var left = structKeyExists(a, k) ? javaCast("string", toString(a[k])) : javaCast("string", "");
+				var right = structKeyExists(b, k) ? javaCast("string", toString(b[k])) : javaCast("string", "");
 				var cmp = left.compareTo(right);
 				if (cmp != 0) return sgn(cmp);
 			}

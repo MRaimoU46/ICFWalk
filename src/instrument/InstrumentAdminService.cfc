@@ -107,11 +107,11 @@ component output="false" {
 	 * how an administrator chooses; this is what makes the choice hold.
 	 */
 	public struct function importDocument(any document, required string actorUserId, any replace) {
-		if (isNull(arguments.document) || !isStruct(arguments.document)) {
+		if (!structKeyExists(arguments, "document") || !isStruct(arguments.document)) {
 			variables.errors.validation("document must be the instrument configuration JSON object.", "DOCUMENT_REQUIRED");
 		}
 		var options = { "createOnly": true };
-		if (!isNull(arguments.replace)) {
+		if (structKeyExists(arguments, "replace")) {
 			var token = replacementToken(arguments.replace);
 			options = { "replaceVersionId": token.versionId, "expectedChecksum": token.expectedChecksum };
 		}
@@ -127,8 +127,8 @@ component output="false" {
 		}
 		var id = structKeyExists(arguments.replace, "versionId") ? arguments.replace.versionId : javaCast("null", "");
 		var checksum = structKeyExists(arguments.replace, "expectedChecksum") ? arguments.replace.expectedChecksum : javaCast("null", "");
-		if (isNull(id) || !variables.types.isJsonString(id) || !variables.db.isGuid(id)) variables.errors.validation(shape, "REPLACE_INVALID");
-		if (isNull(checksum) || !variables.types.isJsonString(checksum) || !reFind("^[0-9a-fA-F]{64}$", checksum)) variables.errors.validation(shape, "REPLACE_INVALID");
+		if (!structKeyExists(local, "id") || !variables.types.isJsonString(id) || !variables.db.isGuid(id)) variables.errors.validation(shape, "REPLACE_INVALID");
+		if (!structKeyExists(local, "checksum") || !variables.types.isJsonString(checksum) || !reFind("^[0-9a-fA-F]{64}$", checksum)) variables.errors.validation(shape, "REPLACE_INVALID");
 		return { "versionId": uCase(trim(id)), "expectedChecksum": lCase(checksum) };
 	}
 
@@ -148,7 +148,7 @@ component output="false" {
 		var source = requireVersion(arguments.sourceVersionId);
 		var normalized = variables.editor.normalizedFromSnapshot(variables.snapshots.snapshotFor(source.versionId));
 		normalized.version["versionLabel"] = label;
-		if (!isNull(notes)) normalized.version["revisionNotes"] = notes;
+		if (structKeyExists(local, "notes")) normalized.version["revisionNotes"] = notes;
 		var result = variables.importer.writeNormalizedDraft(normalized, arguments.actorUserId, {
 			"operation": "CLONE",
 			"mustCreate": true,
@@ -254,18 +254,18 @@ component output="false" {
 		var numbers = questionNumbers(model);
 		var all = [];
 		for (var it in snapshot.definitions.items) {
-			if (isNull(it.reviewStatus) || compare(it.reviewStatus, status) != 0) continue;
-			var section = !isNull(it.sectionKey) && structKeyExists(sections, it.sectionKey) ? sections[it.sectionKey] : {};
+			if (!structKeyExists(it, "reviewStatus") || compare(it.reviewStatus, status) != 0) continue;
+			var section = structKeyExists(it, "sectionKey") && structKeyExists(sections, it.sectionKey) ? sections[it.sectionKey] : {};
 			arrayAppend(all, {
 				"itemKey": it.itemKey,
 				"prompt": it.prompt,
-				"sectionKey": isNull(it.sectionKey) ? javaCast("null", "") : it.sectionKey,
+				"sectionKey": !structKeyExists(it, "sectionKey") ? javaCast("null", "") : it.sectionKey,
 				"sectionTitle": structKeyExists(section, "title") ? section.title : javaCast("null", ""),
 				"questionNumber": structKeyExists(numbers, it.itemKey) ? numbers[it.itemKey] : javaCast("null", ""),
-				"sourceLocation": isNull(it.sourceLocation) ? javaCast("null", "") : it.sourceLocation,
+				"sourceLocation": !structKeyExists(it, "sourceLocation") ? javaCast("null", "") : it.sourceLocation,
 				"reviewStatus": it.reviewStatus,
-				"revisionNotes": isNull(it.revisionNotes) ? javaCast("null", "") : it.revisionNotes,
-				"active": isNull(it.active) ? true : it.active,
+				"revisionNotes": !structKeyExists(it, "revisionNotes") ? javaCast("null", "") : it.revisionNotes,
+				"active": !structKeyExists(it, "active") ? true : it.active,
 				"order": structKeyExists(numbers, "__order_" & it.itemKey) ? numbers["__order_" & it.itemKey] : 999999
 			});
 		}
@@ -295,7 +295,7 @@ component output="false" {
 		if (!variables.db.isGuid(arguments.versionId)) variables.errors.validation("versionId must be a GUID.", "INVALID_VERSION_ID");
 		var row = variables.repo.findVersionById(arguments.versionId);
 		if (structIsEmpty(row)) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
-		if (isNull(row.snapshotJson) || !len(row.snapshotJson)) variables.errors.notFound("Instrument version has no compiled snapshot.", "INSTRUMENT_SNAPSHOT_MISSING");
+		if (!structKeyExists(row, "snapshotJson") || !len(row.snapshotJson)) variables.errors.notFound("Instrument version has no compiled snapshot.", "INSTRUMENT_SNAPSHOT_MISSING");
 		return row;
 	}
 
@@ -305,7 +305,7 @@ component output="false" {
 			"versionLabel": arguments.row.versionLabel,
 			"instrumentCode": arguments.row.instrumentCode,
 			"status": arguments.row.status,
-			"checksum": isNull(arguments.row.checksum) ? javaCast("null", "") : lCase(trim(arguments.row.checksum))
+			"checksum": !structKeyExists(arguments.row, "checksum") ? javaCast("null", "") : lCase(trim(arguments.row.checksum))
 		};
 	}
 
@@ -318,7 +318,7 @@ component output="false" {
 				for (var item in node.items) {
 					position++;
 					out["__order_" & item.itemKey] = position;
-					if (structKeyExists(item, "questionNumber") && !isNull(item.questionNumber)) out[item.itemKey] = item.questionNumber;
+					if (structKeyExists(item, "questionNumber")) out[item.itemKey] = item.questionNumber;
 				}
 			}
 			if (structKeyExists(node, "children") && isArray(node.children)) for (var child in node.children) walk(child);
@@ -345,7 +345,7 @@ component output="false" {
 	}
 
 	private any function optionalText(required struct body, required string key, required numeric max, required string code) {
-		if (!structKeyExists(arguments.body, arguments.key) || isNull(arguments.body[arguments.key])) return javaCast("null", "");
+		if (!structKeyExists(arguments.body, arguments.key)) return javaCast("null", "");
 		if (!variables.types.isJsonString(arguments.body[arguments.key])) variables.errors.validation(arguments.key & " must be a string.", arguments.code);
 		var text = trim(arguments.body[arguments.key]);
 		if (len(text) > arguments.max) variables.errors.validation(arguments.key & " may be at most " & arguments.max & " characters.", arguments.code);
@@ -353,7 +353,7 @@ component output="false" {
 	}
 
 	private string function boundedQuery(any query) {
-		if (isNull(arguments.query) || !isSimpleValue(arguments.query)) return "";
+		if (!structKeyExists(arguments, "query") || !isSimpleValue(arguments.query)) return "";
 		var q = trim(arguments.query);
 		if (len(q) > variables.MAX_QUERY) variables.errors.validation("The search text may be at most " & variables.MAX_QUERY & " characters.", "QUERY_TOO_LONG");
 		return q;
@@ -370,7 +370,7 @@ component output="false" {
 
 	private boolean function matchesAny(required string q, required array haystack) {
 		for (var text in arguments.haystack) {
-			if (!isNull(text) && isSimpleValue(text) && findNoCase(arguments.q, text)) return true;
+			if (structKeyExists(local, "text") && isSimpleValue(text) && findNoCase(arguments.q, text)) return true;
 		}
 		return false;
 	}

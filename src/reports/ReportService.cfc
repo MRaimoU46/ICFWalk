@@ -192,14 +192,14 @@ component output="false" {
 			["generated_at", report.generatedAt], ["statuses", arrayToList(report.filters.statuses, " ")],
 			["minimum_walks", toString(report.disclosure.minimumWalks)]
 		];
-		if (!isNull(report.release)) {
+		if (structKeyExists(report, "release")) {
 			arrayAppend(meta, ["release_id", report.release.releaseId]);
 			arrayAppend(meta, ["release_observed_from", report.release.observedFrom]);
 			arrayAppend(meta, ["release_observed_to", report.release.observedTo]);
 			arrayAppend(meta, ["release_released_at", report.release.releasedAt]);
 		}
 		for (var key in ["orgUnitId", "from", "to", "section", "item", "optionItem", "option"]) {
-			if (!isNull(report.filters[key])) arrayAppend(meta, ["filter_" & key, report.filters[key]]);
+			if (structKeyExists(report.filters, key)) arrayAppend(meta, ["filter_" & key, report.filters[key]]);
 		}
 		var dimensionCodes = structKeyArray(report.filters.dimensions);
 		arraySort(dimensionCodes, "textnocase");
@@ -238,8 +238,8 @@ component output="false" {
 			"versionId": report.version.versionId, "mode": report.mode, "walks": pop.withheld ? -1 : pop.walks, "withheld": pop.withheld ? true : false,
 			"rows": arrayLen(lines) - 1, "bytes": bytes, "filters": report.filterCount, "attempts": report.attempts
 		};
-		if (!isNull(report.filters.orgUnitId)) details["orgUnitId"] = report.filters.orgUnitId;
-		if (!isNull(report.release)) details["releaseId"] = report.release.releaseId;
+		if (structKeyExists(report.filters, "orgUnitId")) details["orgUnitId"] = report.filters.orgUnitId;
+		if (structKeyExists(report, "release")) details["releaseId"] = report.release.releaseId;
 		variables.audit.record("REPORT", "", "REPORT_EXPORTED", arguments.principal.userId, details);
 		variables.logger.info("report.exported", details);
 		return { "text": text, "fileName": fileName, "bytes": bytes, "rows": arrayLen(lines) - 1 };
@@ -341,7 +341,7 @@ component output="false" {
 		}
 		var dates = {};
 		for (var name in variables.RELEASE_FIELDS) {
-			if (!structKeyExists(arguments.body, name) || isNull(arguments.body[name])) releaseRefused("REPORT_RELEASE_BODY_INVALID", name, "observedFrom and observedTo are both required.");
+			if (!structKeyExists(arguments.body, name)) releaseRefused("REPORT_RELEASE_BODY_INVALID", name, "observedFrom and observedTo are both required.");
 			var text = arguments.body[name];
 			if (!isSimpleValue(text) || !reFind("^\d{4}-\d{2}-\d{2}$", text)) releaseRefused("REPORT_RELEASE_DATES_INVALID", name, "Dates are YYYY-MM-DD.");
 			var y = val(left(text, 4));
@@ -506,7 +506,7 @@ component output="false" {
 			"releaseId": arguments.release.releaseId, "observedFrom": arguments.release.observedFrom, "observedTo": arguments.release.observedTo,
 			"minimumWalks": arguments.release.minimumWalks, "releasedAt": variables.json.formatDate(arguments.release.releasedAt)
 		};
-		if (!isNull(arguments.versionIds)) out["versionIds"] = arguments.versionIds;
+		if (structKeyExists(arguments, "versionIds")) out["versionIds"] = arguments.versionIds;
 		return out;
 	}
 
@@ -985,17 +985,17 @@ component output="false" {
 		for (var v in arguments.d.values) {
 			var key = "VALUE:" & v.code;
 			var count = publishedCount(arguments.totals, key);
-			arrayAppend(values, { "code": v.code, "label": v.label, "walks": isNull(count) ? javaCast("null", "") : count, "withheld": isWithheld(arguments.totals, key) });
-			if (!isNull(count)) shown += count;
+			arrayAppend(values, { "code": v.code, "label": v.label, "walks": !structKeyExists(local, "count") ? javaCast("null", "") : count, "withheld": isWithheld(arguments.totals, key) });
+			if (structKeyExists(local, "count")) shown += count;
 		}
 		var answered = publishedSum(arguments.totals, "VALUE:");
-		var states = { "ANSWERED": isNull(answered.count) ? javaCast("null", "") : answered.count };
+		var states = { "ANSWERED": !structKeyExists(answered, "count") ? javaCast("null", "") : answered.count };
 		var withheldStates = [];
 		if (answered.withheld) withheldStates = ["ANSWERED"];
 		for (var s in variables.DIMENSION_STATE_CATEGORIES) {
 			var count = publishedCount(arguments.totals, "STATE:" & s);
-			states[s] = isNull(count) ? javaCast("null", "") : count;
-			if (!isNull(count)) shown += count;
+			states[s] = !structKeyExists(local, "count") ? javaCast("null", "") : count;
+			if (structKeyExists(local, "count")) shown += count;
 			if (isWithheld(arguments.totals, "STATE:" & s)) arrayAppend(withheldStates, s);
 		}
 		return {
@@ -1014,11 +1014,11 @@ component output="false" {
 			var key = "OPTION:" & o.code;
 			var count = publishedCount(arguments.totals, key);
 			var withheld = isWithheld(arguments.totals, key);
-			arrayAppend(options, { "code": o.code, "label": o.label, "numericScore": o.scored ? o.numericScore : javaCast("null", ""), "isNa": o.isNa, "count": isNull(count) ? javaCast("null", "") : count, "withheld": withheld });
-			if (!isNull(count)) shown += count;
+			arrayAppend(options, { "code": o.code, "label": o.label, "numericScore": o.scored ? o.numericScore : javaCast("null", ""), "isNa": o.isNa, "count": !structKeyExists(local, "count") ? javaCast("null", "") : count, "withheld": withheld });
+			if (structKeyExists(local, "count")) shown += count;
 			if (arguments.it.scored && o.scored) {
 				if (withheld) scoredWithheld = true;
-				if (!isNull(count) && count > 0) {
+				if (structKeyExists(local, "count") && count > 0) {
 					responses += count;
 					sum = sum.add(variables.BigDecimal.init(toString(o.numericScore)).multiply(variables.BigDecimal.valueOf(javaCast("long", count))));
 				}
@@ -1027,15 +1027,15 @@ component output="false" {
 		// ANSWERED is every answered response: the options, plus any answer the version no longer lists.
 		var answered = publishedSum(arguments.totals, "OPTION:");
 		var unlisted = publishedSum(arguments.totals, "STATE:ANSWERED_UNLISTED");
-		var answeredCount = (isNull(answered.count) ? 0 : answered.count) + (isNull(unlisted.count) ? 0 : unlisted.count);
+		var answeredCount = (!structKeyExists(answered, "count") ? 0 : answered.count) + (!structKeyExists(unlisted, "count") ? 0 : unlisted.count);
 		var answeredWithheld = answered.withheld || unlisted.withheld;
 		var states = { "ANSWERED": (answeredWithheld && answeredCount == 0) ? javaCast("null", "") : answeredCount };
 		var withheldStates = [];
 		if (answeredWithheld) withheldStates = ["ANSWERED"];
 		for (var s in variables.ITEM_STATE_CATEGORIES) {
 			var count = publishedCount(arguments.totals, "STATE:" & s);
-			states[s] = isNull(count) ? javaCast("null", "") : count;
-			if (!isNull(count)) shown += count;
+			states[s] = !structKeyExists(local, "count") ? javaCast("null", "") : count;
+			if (structKeyExists(local, "count")) shown += count;
 			if (isWithheld(arguments.totals, "STATE:" & s)) arrayAppend(withheldStates, s);
 		}
 		arguments.pooled[arguments.it.itemKey] = { "scored": arguments.it.scored, "responses": responses, "sum": sum, "withheld": scoredWithheld };
@@ -1053,7 +1053,7 @@ component output="false" {
 		for (var o in arguments.it.options) arrayAppend(options, { "code": o.code, "label": o.label, "numericScore": o.scored ? o.numericScore : javaCast("null", ""), "isNa": o.isNa });
 		return {
 			"itemKey": arguments.it.itemKey, "sectionKey": arguments.it.sectionKey, "prompt": arguments.it.prompt,
-			"questionNumber": isNull(arguments.it.questionNumber) ? javaCast("null", "") : arguments.it.questionNumber,
+			"questionNumber": !structKeyExists(arguments.it, "questionNumber") ? javaCast("null", "") : arguments.it.questionNumber,
 			"layout": arguments.it.layout, "isPlaceholder": arguments.it.isPlaceholder, "scoreEnabled": arguments.it.scored, "options": options
 		};
 	}
@@ -1073,7 +1073,7 @@ component output="false" {
 		if (arguments.responses > 0) {
 			mean = val(arguments.sum.divide(variables.BigDecimal.valueOf(javaCast("long", arguments.responses)), javaCast("int", 4), variables.HALF_UP).toPlainString());
 		}
-		return { "responses": arguments.responses, "sum": val(arguments.sum.toPlainString()), "mean": isNull(mean) ? javaCast("null", "") : mean, "withheld": arguments.withheld };
+		return { "responses": arguments.responses, "sum": val(arguments.sum.toPlainString()), "mean": !structKeyExists(local, "mean") ? javaCast("null", "") : mean, "withheld": arguments.withheld };
 	}
 
 	private array function reportedItems(required struct f) {
@@ -1144,7 +1144,7 @@ component output="false" {
 	private struct function itemEntry(required struct it, required string sectionKey, required struct index) {
 		var i = arguments.it;
 		if (compare(i.itemType, "SINGLE_CHOICE") != 0 || !i.reportable) return {};
-		if (!structKeyExists(i, "responseSet") || isNull(i.responseSet) || !isStruct(i.responseSet)) return {};
+		if (!structKeyExists(i, "responseSet") || !isStruct(i.responseSet)) return {};
 		if (!structKeyExists(arguments.index.items, i.itemKey)) return {};
 		var def = arguments.index.items[i.itemKey];
 		var byCode = structKeyExists(arguments.index.options, def.responseSetId) ? arguments.index.options[def.responseSetId] : {};
@@ -1152,13 +1152,13 @@ component output="false" {
 		var anyScore = false;
 		for (var o in i.responseSet.options) {
 			if (!structKeyExists(byCode, o.storedCode)) continue;
-			var scored = !isNull(o.numericScore) && isNumeric(o.numericScore) && !o.isNa;
+			var scored = structKeyExists(o, "numericScore") && isNumeric(o.numericScore) && !o.isNa;
 			if (scored) anyScore = true;
 			arrayAppend(options, { "code": o.storedCode, "label": o.label, "optionId": byCode[o.storedCode], "numericScore": scored ? o.numericScore : javaCast("null", ""), "isNa": o.isNa ? true : false, "scored": scored });
 		}
 		return {
 			"itemKey": i.itemKey, "itemId": def.itemId, "sectionKey": arguments.sectionKey, "prompt": i.prompt,
-			"questionNumber": isNull(i.questionNumber) ? javaCast("null", "") : i.questionNumber, "layout": i.layout,
+			"questionNumber": !structKeyExists(i, "questionNumber") ? javaCast("null", "") : i.questionNumber, "layout": i.layout,
 			"isPlaceholder": i.isPlaceholder ? true : false,
 			"scored": (i.responseSet.scoreEnabled ? true : false) && anyScore, "options": options
 		};
@@ -1361,7 +1361,7 @@ component output="false" {
 		for (var key in structKeyArray(arguments.query)) {
 			var value = arguments.query[key];
 			var shown = left(key, 60);
-			if (isNull(value) || !isSimpleValue(value)) filterRefused("REPORT_FILTER_VALUE_INVALID", shown, "Filter values are plain text.");
+			if (!structKeyExists(local, "value") || !isSimpleValue(value)) filterRefused("REPORT_FILTER_VALUE_INVALID", shown, "Filter values are plain text.");
 			value = trim(toString(value));
 			if (len(value) > variables.PARAM_MAX_LENGTH) filterRefused("REPORT_FILTER_VALUE_INVALID", shown, "Filter value is too long.");
 			var canonical = "";
@@ -1445,7 +1445,7 @@ component output="false" {
 	}
 
 	private string function num(any value) {
-		if (isNull(arguments.value)) return "";
+		if (!structKeyExists(arguments, "value")) return "";
 		return variables.json.serialize(arguments.value);
 	}
 
@@ -1453,13 +1453,13 @@ component output="false" {
 
 	/** A figure as a CSV cell: empty when it is null (withheld, or not applicable). */
 	private string function cell(required struct holder, required string key) {
-		if (!structKeyExists(arguments.holder, arguments.key) || isNull(arguments.holder[arguments.key])) return "";
+		if (!structKeyExists(arguments.holder, arguments.key)) return "";
 		return num(arguments.holder[arguments.key]);
 	}
 
 	/** [responses, sum, mean, withheld] cells of a section or item row; empty and "0" when it is not scored. */
 	private array function scoredCells(required struct row) {
-		if (isNull(arguments.row.scored)) return ["", "", "", "0"];
+		if (!structKeyExists(arguments.row, "scored")) return ["", "", "", "0"];
 		return [cell(arguments.row.scored, "responses"), cell(arguments.row.scored, "sum"), cell(arguments.row.scored, "mean"), flag(arguments.row.scored.withheld)];
 	}
 
@@ -1467,7 +1467,7 @@ component output="false" {
 	private string function csvRow(required array cells) {
 		var out = [];
 		for (var cell in arguments.cells) {
-			var s = isNull(cell) ? "" : toString(cell);
+			var s = !structKeyExists(local, "cell") ? "" : toString(cell);
 			if (len(s) && reFind("^[=+\-@\t\r]", s) && !reFind("^-?\d+(\.\d+)?$", s)) s = "'" & s;
 			if (reFind('[",\r\n]', s)) s = '"' & replace(s, '"', '""', "all") & '"';
 			arrayAppend(out, s);

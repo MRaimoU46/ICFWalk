@@ -111,7 +111,7 @@ component output="false" {
 	// ---- internals -------------------------------------------------------------------------------
 
 	private struct function definitionsOf(required struct snapshot) {
-		if (structKeyExists(arguments.snapshot, "definitions") && !isNull(arguments.snapshot.definitions) && isStruct(arguments.snapshot.definitions)) {
+		if (structKeyExists(arguments.snapshot, "definitions") && isStruct(arguments.snapshot.definitions)) {
 			return arguments.snapshot.definitions;
 		}
 		return {};
@@ -125,11 +125,11 @@ component output="false" {
 	 */
 	private struct function keyed(required struct defs, required struct spec) {
 		var out = { "rows": {}, "keys": {} };
-		if (!structKeyExists(arguments.defs, arguments.spec.name) || isNull(arguments.defs[arguments.spec.name]) || !isArray(arguments.defs[arguments.spec.name])) return out;
+		if (!structKeyExists(arguments.defs, arguments.spec.name) || !isArray(arguments.defs[arguments.spec.name])) return out;
 		for (var row in arguments.defs[arguments.spec.name]) {
 			if (!isStruct(row)) continue;
 			var parts = [];
-			for (var f in arguments.spec.key) arrayAppend(parts, structKeyExists(row, f) && !isNull(row[f]) ? toString(row[f]) : "");
+			for (var f in arguments.spec.key) arrayAppend(parts, structKeyExists(row, f) ? toString(row[f]) : "");
 			var exact = arrayToList(parts, "/");
 			out.rows[lCase(exact)] = row;
 			out.keys[lCase(exact)] = exact;
@@ -150,10 +150,10 @@ component output="false" {
 		var out = [];
 		var names = unionSorted(structKeyArray(arguments.a), structKeyArray(arguments.b));
 		for (var name in names) {
-			var x = structKeyExists(arguments.a, name) && !isNull(arguments.a[name]) ? arguments.a[name] : javaCast("null", "");
-			var y = structKeyExists(arguments.b, name) && !isNull(arguments.b[name]) ? arguments.b[name] : javaCast("null", "");
-			if (!same(isNull(x) ? javaCast("null", "") : x, isNull(y) ? javaCast("null", "") : y)) {
-				arrayAppend(out, { "field": exactName(arguments.a, arguments.b, name), "from": isNull(x) ? javaCast("null", "") : x, "to": isNull(y) ? javaCast("null", "") : y });
+			var x = structKeyExists(arguments.a, name) ? arguments.a[name] : javaCast("null", "");
+			var y = structKeyExists(arguments.b, name) ? arguments.b[name] : javaCast("null", "");
+			if (!same(!structKeyExists(local, "x") ? javaCast("null", "") : x, !structKeyExists(local, "y") ? javaCast("null", "") : y)) {
+				arrayAppend(out, { "field": exactName(arguments.a, arguments.b, name), "from": !structKeyExists(local, "x") ? javaCast("null", "") : x, "to": !structKeyExists(local, "y") ? javaCast("null", "") : y });
 			}
 		}
 		return out;
@@ -168,15 +168,15 @@ component output="false" {
 
 	/** Canonical equality: type, value and structure, never CFML's coercive `==`. */
 	private boolean function same(any a, any b) {
-		if (isNull(arguments.a) && isNull(arguments.b)) return true;
-		if (isNull(arguments.a) || isNull(arguments.b)) return false;
+		if (!structKeyExists(arguments, "a") && !structKeyExists(arguments, "b")) return true;
+		if (!structKeyExists(arguments, "a") || !structKeyExists(arguments, "b")) return false;
 		return compare(variables.json.serialize({ "v": arguments.a }), variables.json.serialize({ "v": arguments.b })) == 0;
 	}
 
 	private any function valueAt(required struct doc, required array path) {
 		var node = arguments.doc;
 		for (var part in arguments.path) {
-			if (isNull(node) || !isStruct(node) || !structKeyExists(node, part) || isNull(node[part])) return javaCast("null", "");
+			if (!structKeyExists(local, "node") || !isStruct(node) || !structKeyExists(node, part)) return javaCast("null", "");
 			node = node[part];
 		}
 		return node;
@@ -184,9 +184,9 @@ component output="false" {
 
 	private string function labelOf(required struct row, required struct spec) {
 		var f = arguments.spec.label;
-		if (structKeyExists(arguments.row, f) && !isNull(arguments.row[f]) && isSimpleValue(arguments.row[f]) && len(toString(arguments.row[f]))) return toString(arguments.row[f]);
+		if (structKeyExists(arguments.row, f) && isSimpleValue(arguments.row[f]) && len(toString(arguments.row[f]))) return toString(arguments.row[f]);
 		var parts = [];
-		for (var k in arguments.spec.key) arrayAppend(parts, structKeyExists(arguments.row, k) && !isNull(arguments.row[k]) ? toString(arguments.row[k]) : "");
+		for (var k in arguments.spec.key) arrayAppend(parts, structKeyExists(arguments.row, k) ? toString(arguments.row[k]) : "");
 		return arrayToList(parts, "/");
 	}
 }

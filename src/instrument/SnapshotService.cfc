@@ -105,8 +105,8 @@ component output="false" {
 		var id = uCase(arguments.versionId);
 		var row = variables.definitions.findVersionById(id);
 		if (structIsEmpty(row)) variables.errors.notFound("Instrument version not found.", "INSTRUMENT_VERSION_NOT_FOUND");
-		if (isNull(row.snapshotJson) || !len(row.snapshotJson)) variables.errors.notFound("Instrument version has no compiled snapshot.", "INSTRUMENT_SNAPSHOT_MISSING");
-		var checksum = isNull(row.checksum) ? "" : lCase(trim(row.checksum));
+		if (!structKeyExists(row, "snapshotJson") || !len(row.snapshotJson)) variables.errors.notFound("Instrument version has no compiled snapshot.", "INSTRUMENT_SNAPSHOT_MISSING");
+		var checksum = !structKeyExists(row, "checksum") ? "" : lCase(trim(row.checksum));
 		// A cached entry is used only when it was built for exactly the checksum this row carries, so
 		// the snapshot is this row's either way.
 		if (structKeyExists(variables.cache, id) && variables.cache[id].checksum == checksum) return withRowIf(variables.cache[id], row, arguments.withRow);

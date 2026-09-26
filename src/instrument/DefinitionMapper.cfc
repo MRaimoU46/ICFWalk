@@ -90,7 +90,7 @@ component output="false" {
 		var doc = {};
 		var conditions = structVal(r, "conditions");
 		for (var k in structKeyArray(conditions)) {
-			if (isNull(conditions[k])) doc[k] = javaCast("null", ""); else doc[k] = conditions[k];
+			if (!structKeyExists(conditions, k)) doc[k] = javaCast("null", ""); else doc[k] = conditions[k];
 		}
 		var authoring = {};
 		authoring["authoringId"] = pick(r, "authoringId");
@@ -257,7 +257,7 @@ component output="false" {
 		var conditions = {};
 		for (var k in structKeyArray(doc)) {
 			if (k == "authoring") continue;
-			if (isNull(doc[k])) conditions[k] = javaCast("null", ""); else conditions[k] = doc[k];
+			if (!structKeyExists(doc, k)) conditions[k] = javaCast("null", ""); else conditions[k] = doc[k];
 		}
 		var o = {};
 		setVal(o, "authoringId", authoring, "authoringId");
@@ -356,22 +356,22 @@ component output="false" {
 	// ---- helpers ------------------------------------------------------------------------
 
 	public struct function settingsOf(required any text) {
-		if (isNull(arguments.text) || !isSimpleValue(arguments.text) || !len(trim(arguments.text)) || !isJSON(arguments.text)) return {};
+		if (!structKeyExists(arguments, "text") || !isSimpleValue(arguments.text) || !len(trim(arguments.text)) || !isJSON(arguments.text)) return {};
 		var parsed = deserializeJSON(arguments.text);
 		return isStruct(parsed) ? parsed : {};
 	}
 
 	private any function pick(required struct s, required string key) {
-		if (structKeyExists(arguments.s, arguments.key) && !isNull(arguments.s[arguments.key])) return arguments.s[arguments.key];
+		if (structKeyExists(arguments.s, arguments.key)) return arguments.s[arguments.key];
 		return javaCast("null", "");
 	}
 
 	private boolean function bool(required struct s, required string key) {
-		return structKeyExists(arguments.s, arguments.key) && !isNull(arguments.s[arguments.key]) && isBoolean(arguments.s[arguments.key]) && arguments.s[arguments.key];
+		return structKeyExists(arguments.s, arguments.key) && isBoolean(arguments.s[arguments.key]) && arguments.s[arguments.key];
 	}
 
 	private any function structVal(required struct s, required string key, any defaultValue) {
-		if (structKeyExists(arguments.s, arguments.key) && !isNull(arguments.s[arguments.key])) {
+		if (structKeyExists(arguments.s, arguments.key)) {
 			if (isStruct(arguments.s[arguments.key]) || structKeyExists(arguments, "defaultValue")) return arguments.s[arguments.key];
 		}
 		if (structKeyExists(arguments, "defaultValue")) return arguments.defaultValue;
@@ -391,22 +391,22 @@ component output="false" {
 	}
 
 	private void function setVal(required struct out, required string key, required struct src, required string srcKey) {
-		if (structKeyExists(arguments.src, arguments.srcKey) && !isNull(arguments.src[arguments.srcKey])) arguments.out[arguments.key] = arguments.src[arguments.srcKey];
+		if (structKeyExists(arguments.src, arguments.srcKey)) arguments.out[arguments.key] = arguments.src[arguments.srcKey];
 		else arguments.out[arguments.key] = javaCast("null", "");
 	}
 
 	private void function text(required struct out, required string key, required any value) {
-		if (isNull(arguments.value) || !isSimpleValue(arguments.value) || !len(toString(arguments.value))) arguments.out[arguments.key] = javaCast("null", "");
+		if (!structKeyExists(arguments, "value") || !isSimpleValue(arguments.value) || !len(toString(arguments.value))) arguments.out[arguments.key] = javaCast("null", "");
 		else arguments.out[arguments.key] = toString(arguments.value);
 	}
 
 	private void function number(required struct out, required string key, required any value) {
-		if (isNull(arguments.value) || (isSimpleValue(arguments.value) && !len(toString(arguments.value))) || !isNumeric(arguments.value)) arguments.out[arguments.key] = javaCast("null", "");
+		if (!structKeyExists(arguments, "value") || (isSimpleValue(arguments.value) && !len(toString(arguments.value))) || !isNumeric(arguments.value)) arguments.out[arguments.key] = javaCast("null", "");
 		else arguments.out[arguments.key] = createObject("java", "java.math.BigDecimal").init(javaCast("string", toString(arguments.value)));
 	}
 
 	private void function instant(required struct out, required string key, required any value) {
-		if (isNull(arguments.value) || (isSimpleValue(arguments.value) && !isDate(arguments.value))) arguments.out[arguments.key] = javaCast("null", "");
+		if (!structKeyExists(arguments, "value") || (isSimpleValue(arguments.value) && !isDate(arguments.value))) arguments.out[arguments.key] = javaCast("null", "");
 		else arguments.out[arguments.key] = variables.json.formatDate(arguments.value);
 	}
 

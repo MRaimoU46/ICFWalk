@@ -514,7 +514,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				throw(type = "ICFWalk.TestRollback", message = "DELETED");
 			});
 		} catch (any e) {
-			outcome = e.message;
+			outcome = errorText(e);
 		}
 		return outcome;
 	}

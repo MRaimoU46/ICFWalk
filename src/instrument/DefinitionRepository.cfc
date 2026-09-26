@@ -218,7 +218,7 @@ component output="false" {
 		var id = variables.db.newGuid();
 		variables.db.run(
 			"INSERT INTO [icf].[instrument] (instrument_id, code, name, description, active) VALUES (:id, :code, :name, :description, :active)",
-			{ "id": variables.db.guid(id), "code": variables.db.nvarchar(arguments.code, 60), "name": variables.db.nvarchar(arguments.name, 200), "description": variables.db.nvarchar(isNull(arguments.description) ? javaCast("null", "") : arguments.description, 1000), "active": variables.db.bit(arguments.active) }
+			{ "id": variables.db.guid(id), "code": variables.db.nvarchar(arguments.code, 60), "name": variables.db.nvarchar(arguments.name, 200), "description": variables.db.nvarchar(!structKeyExists(arguments, "description") ? javaCast("null", "") : arguments.description, 1000), "active": variables.db.bit(arguments.active) }
 		);
 		return id;
 	}
@@ -269,7 +269,7 @@ component output="false" {
 		}
 		variables.db.run(
 			"UPDATE [icf].[instrument] SET name = :name, description = :description, active = :active, updated_at = SYSUTCDATETIME() WHERE instrument_id = :id",
-			{ "id": variables.db.guid(arguments.instrumentId), "name": variables.db.nvarchar(arguments.name, 200), "description": variables.db.nvarchar(isNull(arguments.description) ? javaCast("null", "") : arguments.description, 1000), "active": variables.db.bit(arguments.active) }
+			{ "id": variables.db.guid(arguments.instrumentId), "name": variables.db.nvarchar(arguments.name, 200), "description": variables.db.nvarchar(!structKeyExists(arguments, "description") ? javaCast("null", "") : arguments.description, 1000), "active": variables.db.bit(arguments.active) }
 		);
 		return variables.db.scalar(
 			"SELECT COUNT(*) AS n FROM [icf].[instrument] WHERE instrument_id = :id AND name = :name AND active = :active",
@@ -1173,12 +1173,12 @@ component output="false" {
 	}
 
 	private any function nullable(required struct row, required string key) {
-		if (structKeyExists(arguments.row, arguments.key) && !isNull(arguments.row[arguments.key])) return arguments.row[arguments.key];
+		if (structKeyExists(arguments.row, arguments.key)) return arguments.row[arguments.key];
 		return javaCast("null", "");
 	}
 
 	private any function instantOrNull(any value) {
-		if (isNull(arguments.value) || !isSimpleValue(arguments.value) || !len(trim(arguments.value))) return javaCast("null", "");
+		if (!structKeyExists(arguments, "value") || !isSimpleValue(arguments.value) || !len(trim(arguments.value))) return javaCast("null", "");
 		return variables.json.parseInstant(arguments.value);
 	}
 }

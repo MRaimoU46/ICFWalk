@@ -250,7 +250,7 @@ component output="false" {
 					self.markRefusal(refusal, existing.versionId, normalized.version.versionLabel, existing.status, operation, "VERSION_MISMATCH", actor);
 					variables.errors.conflict("The edited document names a different version than the one being edited.", "VERSION_MISMATCH");
 				}
-				var lockedChecksum = isNull(existing.checksum) ? "" : lCase(trim(existing.checksum));
+				var lockedChecksum = !structKeyExists(existing, "checksum") ? "" : lCase(trim(existing.checksum));
 				if (len(replaceId) && compare(existing.versionId, replaceId) != 0) {
 					// The label now holds a different version than the one the administrator agreed
 					// to replace (that one was discarded and the label re-made). Refused: replacing
@@ -499,7 +499,7 @@ component output="false" {
 					variables.logger.error("instrument.discard.unexpected_delete_count", { "versionId": row.versionId, "deleted": deleted });
 					throw(type = "ICFWalk.Conflict", message = "The DRAFT could not be discarded; nothing was changed.", errorcode = "DISCARD_NOT_APPLIED");
 				}
-				var checksum = isNull(row.checksum) ? "" : lCase(trim(row.checksum));
+				var checksum = !structKeyExists(row, "checksum") ? "" : lCase(trim(row.checksum));
 				variables.audit.record("INSTRUMENT_VERSION", row.versionId, "INSTRUMENT_VERSION_DISCARDED", actor, {
 					"versionLabel": row.versionLabel, "instrumentCode": row.instrumentCode, "checksum": checksum
 				});
@@ -620,7 +620,7 @@ component output="false" {
 	}
 
 	private boolean function flag(any value) {
-		if (isNull(arguments.value)) return false;
+		if (!structKeyExists(arguments, "value")) return false;
 		if (isBoolean(arguments.value)) return arguments.value ? true : false;
 		if (isSimpleValue(arguments.value)) {
 			var t = lCase(trim(toString(arguments.value)));
@@ -734,7 +734,7 @@ component output="false" {
 		var keptItems = {};
 		for (var it in arguments.d.items) {
 			var existingItemId = structKeyExists(existing.items, it.itemKey) ? existing.items[it.itemKey].id : "";
-			var setId = (!isNull(it.responseSetKey) && structKeyExists(setIds, it.responseSetKey)) ? setIds[it.responseSetKey] : "";
+			var setId = (structKeyExists(it, "responseSetKey") && structKeyExists(setIds, it.responseSetKey)) ? setIds[it.responseSetKey] : "";
 			variables.repo.upsertItem(arguments.versionId, existingItemId, variables.mapper.itemRow(it), sectionIds[it.sectionKey], setId);
 			keptItems[it.itemKey] = true;
 		}
@@ -749,7 +749,7 @@ component output="false" {
 		var columnOrders = placementColumnOrders(arguments.d);
 		var keptPlacements = {};
 		for (var p in arguments.d.instrumentDimensions) {
-			var sectionId = (!isNull(p.sectionKey) && structKeyExists(sectionIds, p.sectionKey)) ? sectionIds[p.sectionKey] : "";
+			var sectionId = (structKeyExists(p, "sectionKey") && structKeyExists(sectionIds, p.sectionKey)) ? sectionIds[p.sectionKey] : "";
 			var row = variables.mapper.placementRow(p);
 			row["displayOrder"] = columnOrders[p.dimensionCode];
 			// The version's own view of the dimension travels with its placement row, so a later
@@ -784,7 +784,7 @@ component output="false" {
 
 		// 7. Sections, pass two: parents and final orders; then stale sections and sets.
 		for (var s in arguments.d.sections) {
-			var parentId = (!isNull(s.parentSectionKey) && structKeyExists(sectionIds, s.parentSectionKey)) ? sectionIds[s.parentSectionKey] : "";
+			var parentId = (structKeyExists(s, "parentSectionKey") && structKeyExists(sectionIds, s.parentSectionKey)) ? sectionIds[s.parentSectionKey] : "";
 			variables.repo.placeSection(arguments.versionId, sectionIds[s.sectionKey], parentId, s.displayOrder);
 		}
 		var staleSections = [];
@@ -806,7 +806,7 @@ component output="false" {
 	private struct function placementColumnOrders(required struct d) {
 		var byParent = {};
 		for (var s in arguments.d.sections) {
-			var parent = isNull(s.parentSectionKey) ? "" : s.parentSectionKey;
+			var parent = !structKeyExists(s, "parentSectionKey") ? "" : s.parentSectionKey;
 			if (!structKeyExists(byParent, parent)) byParent[parent] = [];
 			arrayAppend(byParent[parent], s);
 		}
@@ -834,8 +834,8 @@ component output="false" {
 		}
 		var placements = duplicate(arguments.d.instrumentDimensions);
 		arraySort(placements, function(a, b) {
-			var ra = (!isNull(a.sectionKey) && structKeyExists(rank, a.sectionKey)) ? rank[a.sectionKey] : 0;
-			var rb = (!isNull(b.sectionKey) && structKeyExists(rank, b.sectionKey)) ? rank[b.sectionKey] : 0;
+			var ra = (structKeyExists(a, "sectionKey") && structKeyExists(rank, a.sectionKey)) ? rank[a.sectionKey] : 0;
+			var rb = (structKeyExists(b, "sectionKey") && structKeyExists(rank, b.sectionKey)) ? rank[b.sectionKey] : 0;
 			if (ra != rb) return ra < rb ? -1 : 1;
 			if (a.displayOrder != b.displayOrder) return a.displayOrder < b.displayOrder ? -1 : 1;
 			return sgn(javaCast("string", a.dimensionCode).compareTo(javaCast("string", b.dimensionCode)));

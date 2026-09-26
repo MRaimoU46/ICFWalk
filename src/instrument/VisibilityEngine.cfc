@@ -42,7 +42,7 @@ component output="false" {
 		var idx = index(arguments.model);
 		for (var key in structKeyArray(idx.items)) {
 			var it = idx.items[key];
-			if (!isNull(it.defaultStoredCode) && len(it.defaultStoredCode)) state.responses[it.itemKey] = { "storedCode": it.defaultStoredCode };
+			if (structKeyExists(it, "defaultStoredCode") && len(it.defaultStoredCode)) state.responses[it.itemKey] = { "storedCode": it.defaultStoredCode };
 		}
 		return state;
 	}
@@ -58,7 +58,7 @@ component output="false" {
 		// Sections (parents before children: idx.sectionOrder is a pre-order walk).
 		for (var key in idx.sectionOrder) {
 			var s = idx.sections[key];
-			var parentVisible = isNull(s.parentSectionKey) ? true : out.sections[s.parentSectionKey];
+			var parentVisible = !structKeyExists(s, "parentSectionKey") ? true : out.sections[s.parentSectionKey];
 			out.sections[key] = parentVisible && targetVisible(rulesByTarget, "SECTION", key, ruleResults, true);
 		}
 		// Option filters.
@@ -224,12 +224,12 @@ component output="false" {
 		var group = "";
 		var found = false;
 		for (var sv in arguments.model.dimensions[srcCode].values) {
-			if (compare(sv.valueCode, sel) == 0) { found = true; group = isNull(sv[arguments.filter.matchField]) ? "" : toString(sv[arguments.filter.matchField]); }
+			if (compare(sv.valueCode, sel) == 0) { found = true; group = !structKeyExists(sv, arguments.filter.matchField) ? "" : toString(sv[arguments.filter.matchField]); }
 		}
 		if (!found || !len(group)) return all;
 		var out = [];
 		for (var v in dim.values) {
-			if (!isNull(v[arguments.filter.matchField]) && compare(toString(v[arguments.filter.matchField]), group) == 0) arrayAppend(out, v.valueCode);
+			if (structKeyExists(v, arguments.filter.matchField) && compare(toString(v[arguments.filter.matchField]), group) == 0) arrayAppend(out, v.valueCode);
 		}
 		return out;
 	}
@@ -239,7 +239,7 @@ component output="false" {
 	private boolean function itemAnswered(required struct it, required struct st) {
 		if (!structKeyExists(arguments.st.responses, arguments.it.itemKey)) return false;
 		var r = arguments.st.responses[arguments.it.itemKey];
-		if (structKeyExists(arguments.it, "responseSet") && !isNull(arguments.it.responseSet) && isStruct(arguments.it.responseSet)) {
+		if (structKeyExists(arguments.it, "responseSet") && isStruct(arguments.it.responseSet)) {
 			var code = valueOf(r, "storedCode");
 			if (!len(code)) return false;
 			for (var o in arguments.it.responseSet.options) if (compare(o.storedCode, code) == 0) return true;
@@ -266,7 +266,7 @@ component output="false" {
 	}
 
 	private string function valueOf(required any v, required string key) {
-		if (!isStruct(arguments.v) || !structKeyExists(arguments.v, arguments.key) || isNull(arguments.v[arguments.key]) || !isSimpleValue(arguments.v[arguments.key])) return "";
+		if (!isStruct(arguments.v) || !structKeyExists(arguments.v, arguments.key) || !isSimpleValue(arguments.v[arguments.key])) return "";
 		return toString(arguments.v[arguments.key]);
 	}
 

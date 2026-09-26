@@ -22,6 +22,12 @@ component output="false" {
 	// Sessions hold only the signed-in user id, subject, and CSRF token (see SessionService).
 	// Cookie flags: HttpOnly always; Secure unless explicitly disabled outside production
 	// (ConfigLoader refuses ICFWALK_COOKIE_SECURE=false in production); SameSite=Lax.
+	//
+	// The session identifier cookies last as long as the browser session and no longer (P8-05). Both
+	// engines otherwise give them a thirty-year Expires, so the identifier outlived the browser -- on a
+	// shared computer the next person's browser presented it -- although the server session behind it
+	// ends after ICFWALK_SESSION_TIMEOUT_MINUTES idle. Lucee takes the lifetime as a timespan, where -1
+	// second means "no Expires"; Adobe ColdFusion takes a number of days, where -1 does.
 	variables.sessionMinutes = envValue("ICFWALK_SESSION_TIMEOUT_MINUTES", "60");
 	if (!isNumeric(variables.sessionMinutes) || variables.sessionMinutes < 5 || variables.sessionMinutes > 720) variables.sessionMinutes = 60;
 	this.sessionManagement = true;
@@ -31,7 +37,8 @@ component output="false" {
 	this.sessionCookie = {
 		"httpOnly": true,
 		"secure": lCase(envValue("ICFWALK_COOKIE_SECURE", "true")) != "false",
-		"sameSite": "Lax"
+		"sameSite": "Lax",
+		"timeout": structKeyExists(server, "lucee") ? createTimeSpan(0, 0, 0, -1) : -1
 	};
 
 	this.mappings["/icfwalk"] = variables.repoRoot & "src";
@@ -55,11 +62,11 @@ component output="false" {
 	private string function envValue(required string name, string defaultValue = "") {
 		var system = createObject("java", "java.lang.System");
 		var value = system.getenv(arguments.name);
-		if (!isNull(value) && len(value)) {
+		if (structKeyExists(local, "value") && len(value)) {
 			return value;
 		}
 		var envFile = system.getenv("ICFWALK_ENV_FILE");
-		if (isNull(envFile) || !len(envFile)) {
+		if (!structKeyExists(local, "envFile") || !len(envFile)) {
 			envFile = variables.repoRoot & ".env";
 		}
 		if (fileExists(envFile)) {

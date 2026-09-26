@@ -104,14 +104,14 @@ component output="false" {
 				var active = structKeyExists(u, "active") && isBoolean(u.active) ? u.active : true;
 				ids[u.code] = repo.upsert(u.code, uCase(u.type), u.name, "", active);
 				if (structIsEmpty(before)) created++; else updated++;
-				if (structKeyExists(u, "schoolValueCode") && !isNull(u.schoolValueCode) && isSimpleValue(u.schoolValueCode) && len(trim(u.schoolValueCode))) {
+				if (structKeyExists(u, "schoolValueCode") && isSimpleValue(u.schoolValueCode) && len(trim(u.schoolValueCode))) {
 					if (uCase(u.type) != "SCHOOL") errors.validation("Only a SCHOOL org unit can declare schoolValueCode ('" & u.code & "').", "ORG_UNIT_SCHOOL_VALUE_NOT_SCHOOL");
 					mapSchoolValue(ids[u.code], trim(u.schoolValueCode), "EXPLICIT");
 					mapped++;
 				}
 			}
 			for (var u in units) {
-				var parentCode = structKeyExists(u, "parentCode") && !isNull(u.parentCode) && len(trim(u.parentCode)) ? u.parentCode : "";
+				var parentCode = structKeyExists(u, "parentCode") && len(trim(u.parentCode)) ? u.parentCode : "";
 				if (!len(parentCode)) continue;
 				if (!structKeyExists(ids, parentCode)) {
 					var parent = repo.findByCode(parentCode);

@@ -37,23 +37,29 @@ component output="false" {
 
 	/** True only for a JSON string (java.lang.String), never for a number or boolean. */
 	public boolean function isJsonString(any value) {
-		if (isNull(arguments.value)) return false;
+		if (!structKeyExists(arguments, "value")) return false;
 		if (!isSimpleValue(arguments.value)) return false;
 		return classOf(arguments.value) == "java.lang.String";
 	}
 
 	/** True only for a JSON number, never for a numeric-looking string and never for a boolean. */
 	public boolean function isJsonNumber(any value) {
-		if (isNull(arguments.value)) return false;
+		if (!structKeyExists(arguments, "value")) return false;
 		if (!isSimpleValue(arguments.value)) return false;
 		return arrayContains(variables.NUMBER_CLASSES, classOf(arguments.value));
 	}
 
-	/** True only for a JSON boolean, never for "true", "yes", 1 or 0. */
+	/**
+	 * True only for a boolean, never for "true", "yes", 1 or 0. A JSON boolean is java.lang.Boolean on
+	 * both engines; a CFML literal `true` or `false` is too on Lucee and is Adobe ColdFusion's own
+	 * coldfusion.runtime.CFBoolean there (P8-09) -- a boolean all the same, and never made from a
+	 * string or a number.
+	 */
 	public boolean function isJsonBoolean(any value) {
-		if (isNull(arguments.value)) return false;
+		if (!structKeyExists(arguments, "value")) return false;
 		if (!isSimpleValue(arguments.value)) return false;
-		return classOf(arguments.value) == "java.lang.Boolean";
+		var type = classOf(arguments.value);
+		return type == "java.lang.Boolean" || type == "coldfusion.runtime.CFBoolean";
 	}
 
 	/**
@@ -72,7 +78,7 @@ component output="false" {
 
 	/** The value's Java class name, or "" when the engine will not give one. */
 	public string function classOf(any value) {
-		if (isNull(arguments.value)) return "";
+		if (!structKeyExists(arguments, "value")) return "";
 		try {
 			return arguments.value.getClass().getName();
 		} catch (any e) {
@@ -82,7 +88,7 @@ component output="false" {
 
 	/** A short, safe description of a value's type, for an error message. */
 	public string function describe(any value) {
-		if (isNull(arguments.value)) return "null";
+		if (!structKeyExists(arguments, "value")) return "null";
 		if (isArray(arguments.value)) return "an array";
 		if (isStruct(arguments.value)) return "an object";
 		if (isJsonBoolean(arguments.value)) return "a boolean";

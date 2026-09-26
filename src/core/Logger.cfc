@@ -47,13 +47,13 @@ component output="false" {
 
 	public any function redact(required any value, numeric depth = 0) {
 		if (arguments.depth > 6) return "[truncated-depth]";
-		if (isNull(arguments.value)) return javaCast("null", "");
+		if (!structKeyExists(arguments, "value")) return javaCast("null", "");
 		if (isStruct(arguments.value)) {
 			var out = {};
 			for (var key in structKeyArray(arguments.value)) {
 				if (reFind(variables.REDACT_PATTERN, key)) {
 					out[key] = "[redacted]";
-				} else if (isNull(arguments.value[key])) {
+				} else if (!structKeyExists(arguments.value, key)) {
 					out[key] = javaCast("null", "");
 				} else {
 					out[key] = redact(arguments.value[key], arguments.depth + 1);

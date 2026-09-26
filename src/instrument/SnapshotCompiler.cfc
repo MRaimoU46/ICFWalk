@@ -36,7 +36,7 @@ component output="false" {
 		var d = arguments.definitions;
 		var placeholders = 0;
 		for (var item in d.items) {
-			if (structKeyExists(item, "reviewStatus") && !isNull(item.reviewStatus) && item.reviewStatus == variables.PLACEHOLDER_REVIEW_STATUS) placeholders++;
+			if (structKeyExists(item, "reviewStatus") && item.reviewStatus == variables.PLACEHOLDER_REVIEW_STATUS) placeholders++;
 		}
 		var counts = {};
 		counts["sections"] = arrayLen(d.sections);
@@ -87,11 +87,11 @@ component output="false" {
 	public array function placeholders(required struct definitions) {
 		var out = [];
 		for (var item in arguments.definitions.items) {
-			if (structKeyExists(item, "reviewStatus") && !isNull(item.reviewStatus) && item.reviewStatus == variables.PLACEHOLDER_REVIEW_STATUS) {
+			if (structKeyExists(item, "reviewStatus") && item.reviewStatus == variables.PLACEHOLDER_REVIEW_STATUS) {
 				arrayAppend(out, {
 					"itemKey": item.itemKey,
-					"sectionKey": isNull(item.sectionKey) ? javaCast("null", "") : item.sectionKey,
-					"sourceLocation": isNull(item.sourceLocation) ? javaCast("null", "") : item.sourceLocation,
+					"sectionKey": !structKeyExists(item, "sectionKey") ? javaCast("null", "") : item.sectionKey,
+					"sourceLocation": !structKeyExists(item, "sourceLocation") ? javaCast("null", "") : item.sourceLocation,
 					"reviewStatus": item.reviewStatus
 				});
 			}
@@ -100,7 +100,7 @@ component output="false" {
 	}
 
 	private void function putNullable(required struct out, required string key, required struct src) {
-		if (structKeyExists(arguments.src, arguments.key) && !isNull(arguments.src[arguments.key])) arguments.out[arguments.key] = arguments.src[arguments.key];
+		if (structKeyExists(arguments.src, arguments.key)) arguments.out[arguments.key] = arguments.src[arguments.key];
 		else arguments.out[arguments.key] = javaCast("null", "");
 	}
 }

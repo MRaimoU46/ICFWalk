@@ -174,7 +174,7 @@ component output="false" {
 
 	public string function value(required string name, string defaultValue = "") {
 		var v = variables.system.getenv(arguments.name);
-		if (!isNull(v) && len(v)) return v;
+		if (structKeyExists(local, "v") && len(v)) return v;
 		loadEnvFile();
 		if (structKeyExists(variables.envFileValues, arguments.name) && len(variables.envFileValues[arguments.name])) {
 			return variables.envFileValues[arguments.name];
@@ -192,7 +192,7 @@ component output="false" {
 		if (variables.envFileLoaded) return;
 		variables.envFileLoaded = true;
 		var path = variables.system.getenv("ICFWALK_ENV_FILE");
-		if (isNull(path) || !len(path)) path = variables.repoRoot & ".env";
+		if (!structKeyExists(local, "path") || !len(path)) path = variables.repoRoot & ".env";
 		if (!fileExists(path)) return;
 		variables.envFileValues = parseEnvText(fileRead(path, "utf-8"));
 	}

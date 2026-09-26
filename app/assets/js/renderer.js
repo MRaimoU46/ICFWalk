@@ -411,6 +411,22 @@ function definitionsToggle(item) {
   return [toggle, box];
 }
 
+/**
+ * An instrument's reference link is followed only when it is an absolute http or https address
+ * (P8-06). The server refuses any other at import and at publication; this keeps a version stored
+ * before that rule, or any other source of a model, from putting a javascript: or data: URL behind a
+ * link a walker trusts. A refused link leaves its help text as plain text.
+ */
+function safeLinkUrl(value) {
+  if (typeof value !== "string" || !/^https?:\/\/[^\s\x00-\x1f\x7f"<>\\`]+$/i.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function renderQuestion(item, section, ctx) {
   const labelId = nextId("q");
   const prefix = item.questionNumber ? `${item.questionNumber}. ` : "";
@@ -418,7 +434,8 @@ function renderQuestion(item, section, ctx) {
   row.appendChild(el("p", { class: "q-text", id: labelId, text: `${prefix}${item.prompt}` }));
   const { row: pills, pills: buttons } = pillRow(item, labelId, ctx, section);
   row.appendChild(pills);
-  if (item.linkUrl) row.appendChild(el("p", { class: "item-help" }, [el("a", { href: item.linkUrl, target: "_blank", rel: "noopener", text: item.helpText || "Reference" })]));
+  const href = safeLinkUrl(item.linkUrl);
+  if (href) row.appendChild(el("p", { class: "item-help" }, [el("a", { href, target: "_blank", rel: "noopener", text: item.helpText || "Reference" })]));
   else if (item.helpText) row.appendChild(el("p", { class: "item-help", text: item.helpText }));
   if (item.responseSet.hasDefinitions) for (const n of definitionsToggle(item)) row.appendChild(n);
   ctx.itemNodes.set(item.itemKey, { node: row, item, section, pills: buttons });
@@ -429,9 +446,10 @@ function renderChoiceRow(item, section, ctx) {
   const labelId = nextId("yn");
   const row = el("div", { class: "yn-row", "data-item-key": item.itemKey, "data-placeholder": item.isPlaceholder ? "true" : null });
   const text = el("span", { class: "yn-text", id: labelId, text: item.prompt });
-  if (item.linkUrl) {
+  const href = safeLinkUrl(item.linkUrl);
+  if (href) {
     text.appendChild(el("br"));
-    text.appendChild(el("a", { href: item.linkUrl, target: "_blank", rel: "noopener", text: item.helpText || "Reference" }));
+    text.appendChild(el("a", { href, target: "_blank", rel: "noopener", text: item.helpText || "Reference" }));
   } else if (item.helpText) {
     text.appendChild(el("span", { class: "item-help", text: ` ${item.helpText}` }));
   }

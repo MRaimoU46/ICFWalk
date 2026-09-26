@@ -314,6 +314,6 @@ component output="false" {
 	}
 
 	private boolean function has(required any src, required string key) {
-		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key) && !isNull(arguments.src[arguments.key]);
+		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key);
 	}
 }

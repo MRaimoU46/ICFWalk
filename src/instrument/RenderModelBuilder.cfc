@@ -91,7 +91,7 @@ component output="false" {
 		var rootKey = "";
 		for (var s in d.sections) {
 			if (!s.active) continue;
-			if (isNull(s.parentSectionKey)) { rootKey = s.sectionKey; continue; }
+			if (!structKeyExists(s, "parentSectionKey")) { rootKey = s.sectionKey; continue; }
 			if (!structKeyExists(sectionsByParent, s.parentSectionKey)) sectionsByParent[s.parentSectionKey] = [];
 			arrayAppend(sectionsByParent[s.parentSectionKey], s);
 		}
@@ -103,8 +103,8 @@ component output="false" {
 
 		var placeholders = [];
 		for (var it in d.items) {
-			if (it.active && !isNull(it.reviewStatus) && it.reviewStatus == variables.PLACEHOLDER_STATUS) {
-				arrayAppend(placeholders, { "itemKey": it.itemKey, "sectionKey": it.sectionKey, "prompt": it.prompt, "sourceLocation": isNull(it.sourceLocation) ? javaCast("null", "") : it.sourceLocation, "reviewStatus": it.reviewStatus });
+			if (it.active && structKeyExists(it, "reviewStatus") && it.reviewStatus == variables.PLACEHOLDER_STATUS) {
+				arrayAppend(placeholders, { "itemKey": it.itemKey, "sectionKey": it.sectionKey, "prompt": it.prompt, "sourceLocation": !structKeyExists(it, "sourceLocation") ? javaCast("null", "") : it.sourceLocation, "reviewStatus": it.reviewStatus });
 			}
 		}
 		var ruleDocs = [];
@@ -209,8 +209,8 @@ component output="false" {
 		// Presentation.
 		if (arguments.depth == 0) node["presentation"] = "root";
 		else if (arguments.depth == 1) node["presentation"] = (arrayLen(placements) || node.conditional) ? "card" : "accordion";
-		else node["presentation"] = isNull(node.partNumber) ? "block" : "component";
-		node["headingVisible"] = node.presentation != "block" || node.hasLookFors || !isNull(node.colorHex);
+		else node["presentation"] = !structKeyExists(node, "partNumber") ? "block" : "component";
+		node["headingVisible"] = node.presentation != "block" || node.hasLookFors || structKeyExists(node, "colorHex");
 		return node;
 	}
 
@@ -222,11 +222,11 @@ component output="false" {
 		var dimRules = rulesFor(arguments.ctx.rulesByTarget, "DIMENSION", arguments.p.dimensionCode);
 		var ruleKeys = [];
 		for (var r in dimRules) arrayAppend(ruleKeys, r.ruleKey);
-		if (!isNull(arguments.p.ruleKey) && len(arguments.p.ruleKey) && !arrayContains(ruleKeys, arguments.p.ruleKey)) arrayAppend(ruleKeys, arguments.p.ruleKey);
+		if (structKeyExists(arguments.p, "ruleKey") && len(arguments.p.ruleKey) && !arrayContains(ruleKeys, arguments.p.ruleKey)) arrayAppend(ruleKeys, arguments.p.ruleKey);
 		var settings = isStruct(arguments.p.settings) ? arguments.p.settings : {};
 		return {
 			"dimensionCode": arguments.p.dimensionCode,
-			"label": (!isNull(arguments.p.labelOverride) && len(arguments.p.labelOverride)) ? arguments.p.labelOverride : dim.label,
+			"label": (structKeyExists(arguments.p, "labelOverride") && len(arguments.p.labelOverride)) ? arguments.p.labelOverride : dim.label,
 			"placeholder": nullable(arguments.p, "placeholder"),
 			"required": arguments.p.required ? true : false,
 			"visibleByDefault": arguments.p.visibleByDefault ? true : false,
@@ -246,7 +246,7 @@ component output="false" {
 		var settings = isStruct(item.settings) ? item.settings : {};
 		var set = {};
 		var hasSet = false;
-		if (!isNull(item.responseSetKey) && len(item.responseSetKey)) {
+		if (structKeyExists(item, "responseSetKey") && len(item.responseSetKey)) {
 			if (!structKeyExists(arguments.ctx.sets, item.responseSetKey)) {
 				throw(type = "ICFWalk.Configuration", message = "Item '" & item.itemKey & "' references unknown response set '" & item.responseSetKey & "'.", errorcode = "SNAPSHOT_UNKNOWN_RESPONSE_SET");
 			}
@@ -281,7 +281,7 @@ component output="false" {
 			"reportable": item.reportable ? true : false,
 			"displayOrder": item.displayOrder,
 			"reviewStatus": nullable(item, "reviewStatus"),
-			"isPlaceholder": !isNull(item.reviewStatus) && item.reviewStatus == variables.PLACEHOLDER_STATUS,
+			"isPlaceholder": structKeyExists(item, "reviewStatus") && item.reviewStatus == variables.PLACEHOLDER_STATUS,
 			"contentFamily": nullable(item, "contentFamily"),
 			"settings": settings,
 			"responseSet": hasSet ? set : javaCast("null", ""),
@@ -308,7 +308,7 @@ component output="false" {
 	}
 
 	private boolean function hasResponseSet(required struct it) {
-		return structKeyExists(arguments.it, "responseSet") && !isNull(arguments.it.responseSet) && isStruct(arguments.it.responseSet);
+		return structKeyExists(arguments.it, "responseSet") && isStruct(arguments.it.responseSet);
 	}
 
 	private void function sortRatedByOrder(required struct node, required array items) {
@@ -335,7 +335,7 @@ component output="false" {
 			var options = structKeyExists(optionsBySet, rs.setKey) ? optionsBySet[rs.setKey] : [];
 			sortByOrder(options, "optionKey");
 			var hasDefinitions = false;
-			for (var o in options) if (!isNull(o.definition) && len(o.definition)) hasDefinitions = true;
+			for (var o in options) if (structKeyExists(o, "definition") && len(o.definition)) hasDefinitions = true;
 			out[rs.setKey] = {
 				"setKey": rs.setKey, "name": rs.name, "selectionMode": rs.selectionMode,
 				"scoreEnabled": rs.scoreEnabled ? true : false, "allowNa": rs.allowNa ? true : false,
@@ -393,7 +393,7 @@ component output="false" {
 	}
 
 	private any function nullable(required struct row, required string key) {
-		if (!structKeyExists(arguments.row, arguments.key) || isNull(arguments.row[arguments.key])) return javaCast("null", "");
+		if (!structKeyExists(arguments.row, arguments.key)) return javaCast("null", "");
 		return arguments.row[arguments.key];
 	}
 }

@@ -29,6 +29,13 @@
 //      is ASCII; it compiles, and is wrong. Lucee reads UTF-8.
 //   6. isNull() is given a variable path. ColdFusion evaluates a bracket expression followed by a
 //      member (`isNull(x["k"].m)`) and throws when the member holds null; Lucee answers true.
+//   7. The application does not ask isNull() about a value (defect P8-08). ColdFusion 2023's isNull()
+//      is also true for a STRING whose value is "null" in any letter case -- parsed from a request,
+//      read from a struct, passed as an argument -- so every such guard took a person named Null, a
+//      note saying "null" or an org unit called NULL for a missing value; Lucee answers false. A
+//      real null is asked with structKeyExists (false on both engines for a null-valued key, a null
+//      or omitted argument, and a null local) or arrayIsDefined. The one exception is a query cell
+//      (`q.col[r]`): SQL NULL reads back as "" on both engines and the quirk does not reach it.
 //
 // Two more differences are settings, not constructs, and are not linted: Application.cfc sets
 // `this.passArrayByReference` (ColdFusion otherwise copies an array passed to a function, and the
@@ -177,6 +184,20 @@ test("rule 6: isNull() tests a variable path, never a bracket expression followe
   const found = [];
   for (const f of files) {
     for (const m of f.masked.matchAll(/\bisNull\(([^()]*\[[^\]]*\]\s*\.\s*[A-Za-z_]\w*)\s*\)/g)) found.push(`${f.rel}:${lineOf(f.text, m.index)} isNull(${m[1]})`);
+  }
+  assert.deepEqual(found, []);
+});
+
+test("rule 7: the application never asks isNull() about a value, only about a query cell", () => {
+  const found = [];
+  for (const f of files) {
+    // Application.cfc's own two isNull() calls read an exception object's members (never a string),
+    // where structKeyExists does not apply on ColdFusion; its environment lookups are covered by hand.
+    if (!f.rel.startsWith(`src${path.sep}`)) continue;
+    for (const m of f.masked.matchAll(/(?<![\w.])isNull\(([^()]*(?:\([^()]*\))?[^()]*)\)/g)) {
+      if (/^\s*(arguments\.)?q\.\w+\[[^\]]+\]\s*$/.test(m[1])) continue;
+      found.push(`${f.rel}:${lineOf(f.text, m.index)} isNull(${m[1]})`);
+    }
   }
   assert.deepEqual(found, []);
 });

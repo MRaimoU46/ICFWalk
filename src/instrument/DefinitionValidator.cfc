@@ -308,7 +308,7 @@ component output="false" {
 
 	/** A placement's option filter must be one the renderer implements, or it throws at build time. */
 	private void function checkOptionFilter(required struct r, required any placement, required string pa, required struct activeDimensions) {
-		if (!structKeyExists(arguments.placement, "settings") || isNull(arguments.placement.settings) || !isStruct(arguments.placement.settings)) return;
+		if (!structKeyExists(arguments.placement, "settings") || !isStruct(arguments.placement.settings)) return;
 		var settings = arguments.placement.settings;
 		if (!has(settings, "optionFilter") || !isSimpleValue(settings.optionFilter) || !len(trim(toString(settings.optionFilter)))) return;
 		var name = toString(settings.optionFilter);
@@ -490,7 +490,7 @@ component output="false" {
 		var d = arguments.definitions;
 		var out = {};
 		for (var name in variables.COLLECTIONS) {
-			out[name] = (structKeyExists(d, name) && !isNull(d[name]) && isArray(d[name])) ? arrayLen(d[name]) : 0;
+			out[name] = (structKeyExists(d, name) && isArray(d[name])) ? arrayLen(d[name]) : 0;
 		}
 		out["placeholders"] = placeholderCount(d);
 		return out;
@@ -498,7 +498,7 @@ component output="false" {
 
 	/** Items the content review left unresolved: the one definition of "placeholder". */
 	public numeric function placeholderCount(required struct definitions) {
-		if (!structKeyExists(arguments.definitions, "items") || isNull(arguments.definitions.items) || !isArray(arguments.definitions.items)) return 0;
+		if (!structKeyExists(arguments.definitions, "items") || !isArray(arguments.definitions.items)) return 0;
 		var n = 0;
 		for (var item in arguments.definitions.items) {
 			if (has(item, "reviewStatus") && isSimpleValue(item.reviewStatus) && toString(item.reviewStatus) == variables.PLACEHOLDER_REVIEW_STATUS) n++;
@@ -680,6 +680,7 @@ component output="false" {
 			}
 			checkOrder(arguments.r, it, p);
 			checkSettings(arguments.r, it, p);
+			checkLinkUrl(arguments.r, it, p);
 			var sectionKey = keyOf(it, "sectionKey");
 			if (!len(sectionKey) || !structKeyExists(arguments.keys.sectionKeys, sectionKey)) {
 				err(arguments.r, "MISSING_REFERENCE", "Item '" & keyOf(it, "itemKey") & "' references missing section '" & sectionKey & "'.", p & ".sectionKey");
@@ -710,6 +711,32 @@ component output="false" {
 			orders[orderKey] = true;
 			i++;
 		}
+	}
+
+	/**
+	 * An item's reference link (P8-06). The walk editor renders it as a link on the item for every
+	 * walker, so only an absolute http or https address may be one: javascript:, data: and every
+	 * other scheme, a relative or scheme-relative address, and an address holding a space, a control
+	 * character, a quote, a backquote, a backslash or an angle bracket are refused. An absent or empty
+	 * linkUrl is no link.
+	 */
+	private void function checkLinkUrl(required struct r, required struct it, required string p) {
+		if (!has(arguments.it, "linkUrl")) return;
+		var value = arguments.it.linkUrl;
+		if (isSimpleValue(value) && !len(value)) return;
+		var ok = isSimpleValue(value) && len(value) <= 2000;
+		if (ok) {
+			var rest = "";
+			if (lCase(left(value, 8)) == "https://") rest = mid(value, 9, len(value));
+			else if (lCase(left(value, 7)) == "http://") rest = mid(value, 8, len(value));
+			else ok = false;
+			if (ok && (!len(rest) || left(rest, 1) == "/")) ok = false;
+			for (var i = 1; ok && i <= len(value); i++) {
+				var code = asc(mid(value, i, 1));
+				if (code <= 32 || code == 127 || code == 34 || code == 60 || code == 62 || code == 92 || code == 96) ok = false;
+			}
+		}
+		if (!ok) err(arguments.r, "INVALID_LINK_URL", "Item '" & keyOf(arguments.it, "itemKey") & "' linkUrl must be an absolute http:// or https:// address.", arguments.p & ".linkUrl");
 	}
 
 	// ---- rules -----------------------------------------------------------------------------
@@ -805,7 +832,7 @@ component output="false" {
 			if (has(rule, "sourceType") && has(c1, "sourceType") && isSimpleValue(c1.sourceType) && keyOf(rule, "sourceType") != toString(c1.sourceType)) mismatch = true;
 			if (has(rule, "sourceKey") && has(c1, "sourceKey") && isSimpleValue(c1.sourceKey) && keyOf(rule, "sourceKey") != toString(c1.sourceKey)) mismatch = true;
 			if (has(rule, "operator") && has(c1, "operator") && isSimpleValue(c1.operator) && keyOf(rule, "operator") != toString(c1.operator)) mismatch = true;
-			if (has(rule, "comparisonValue") && structKeyExists(c1, "comparisonValue") && !isNull(c1.comparisonValue)) {
+			if (has(rule, "comparisonValue") && structKeyExists(c1, "comparisonValue")) {
 				var flat = rule.comparisonValue;
 				if (isArray(c1.comparisonValue)) {
 					if (!isArray(flat)) {
@@ -973,7 +1000,7 @@ component output="false" {
 	}
 
 	private void function checkSettings(required struct r, required any row, required string p) {
-		if (structKeyExists(arguments.row, "settings") && !isNull(arguments.row.settings) && !isStruct(arguments.row.settings)) {
+		if (structKeyExists(arguments.row, "settings") && !isStruct(arguments.row.settings)) {
 			err(arguments.r, "SETTINGS_NOT_OBJECT", "settings must be a JSON object.", arguments.p & ".settings");
 		}
 	}
@@ -989,7 +1016,7 @@ component output="false" {
 	}
 
 	private boolean function has(required any src, required string key) {
-		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key) && !isNull(arguments.src[arguments.key]);
+		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key);
 	}
 
 	private string function keyOf(required any row, required string key) {

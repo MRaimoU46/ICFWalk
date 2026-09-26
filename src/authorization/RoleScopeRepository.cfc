@@ -60,7 +60,7 @@ component output="false" {
 
 	public string function assign(required string userId, required string roleId, required string orgUnitId, boolean includeDescendants = false, any effectiveStart, any effectiveEnd, string createdByUserId = "") {
 		var id = variables.db.newGuid();
-		var startParam = (isNull(arguments.effectiveStart) || (isSimpleValue(arguments.effectiveStart) && !len(arguments.effectiveStart)))
+		var startParam = (!structKeyExists(arguments, "effectiveStart") || (isSimpleValue(arguments.effectiveStart) && !len(arguments.effectiveStart)))
 			? { "value": "", "cfsqltype": "cf_sql_timestamp", "null": true }
 			: variables.db.timestamp(arguments.effectiveStart);
 		var startIsNull = structKeyExists(startParam, "null") && startParam.null;
@@ -71,7 +71,7 @@ component output="false" {
 		var params = {
 			"id": variables.db.guid(id), "userId": variables.db.guid(arguments.userId), "roleId": variables.db.guid(arguments.roleId),
 			"orgUnitId": variables.db.guid(arguments.orgUnitId), "desc": variables.db.bit(arguments.includeDescendants),
-			"end": (isNull(arguments.effectiveEnd) || (isSimpleValue(arguments.effectiveEnd) && !len(arguments.effectiveEnd)))
+			"end": (!structKeyExists(arguments, "effectiveEnd") || (isSimpleValue(arguments.effectiveEnd) && !len(arguments.effectiveEnd)))
 				? { "value": "", "cfsqltype": "cf_sql_timestamp", "null": true }
 				: variables.db.timestamp(arguments.effectiveEnd),
 			"createdBy": variables.db.guid(arguments.createdByUserId)

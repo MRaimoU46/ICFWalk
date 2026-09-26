@@ -118,7 +118,7 @@ component output="false" {
 
 			var before = {
 				"name": self.textOf(instrument.name),
-				"description": self.textOf(isNull(instrument.description) ? javaCast("null", "") : instrument.description),
+				"description": self.textOf(!structKeyExists(instrument, "description") ? javaCast("null", "") : instrument.description),
 				"active": instrument.active ? true : false
 			};
 			var after = {
@@ -187,7 +187,7 @@ component output="false" {
 	 * actor this operation ever records.
 	 */
 	private string function requireManagePermission(required any principal) {
-		if (isNull(arguments.principal) || !isStruct(arguments.principal)
+		if (!structKeyExists(arguments, "principal") || !isStruct(arguments.principal)
 			|| !structKeyExists(arguments.principal, "userId") || !structKeyExists(arguments.principal, "permissions")) {
 			variables.errors.validation(
 				"Changing shared instrument metadata requires the current principal, not a caller-supplied actor id.",
@@ -241,8 +241,8 @@ component output="false" {
 		}
 
 		if (structKeyExists(arguments.changes, "description")) {
-			var description = isNull(arguments.changes.description) ? "" : arguments.changes.description;
-			if (!isNull(arguments.changes.description) && !variables.types.isJsonString(arguments.changes.description)) {
+			var description = !structKeyExists(arguments.changes, "description") ? "" : arguments.changes.description;
+			if (structKeyExists(arguments.changes, "description") && !variables.types.isJsonString(arguments.changes.description)) {
 				variables.errors.validation("An instrument description must be a string or null; this patch supplies " & variables.types.describe(arguments.changes.description) & ".", "INSTRUMENT_METADATA_INVALID");
 			}
 			var trimmedDescription = trim(description);
@@ -293,7 +293,7 @@ component output="false" {
 	}
 
 	public string function textOf(any value) {
-		if (isNull(arguments.value) || !isSimpleValue(arguments.value)) return "";
+		if (!structKeyExists(arguments, "value") || !isSimpleValue(arguments.value)) return "";
 		return trim(toString(arguments.value));
 	}
 }

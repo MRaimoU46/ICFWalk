@@ -11,4 +11,14 @@
   <servlet-mapping><servlet-name>CFMLServlet</servlet-name><url-pattern>*.cfc</url-pattern></servlet-mapping>
   <servlet-mapping><servlet-name>CFMLServlet</servlet-name><url-pattern>/index.cfm/*</url-pattern></servlet-mapping>
   <welcome-file-list><welcome-file>index.cfm</welcome-file></welcome-file-list>
+  <!-- The servlet session that Lucee's sessionRotate() opens beside its own (the application's session
+       is keyed by Lucee's cfid cookie and holds everything): its JSESSIONID cookie is HttpOnly and
+       SameSite=Lax like the rest (Jetty reads the SameSite marker in the comment), and, with no
+       max-age, lasts only as long as the browser session (P8-05). -->
+  <session-config>
+    <cookie-config>
+      <comment>__SAME_SITE_LAX__</comment>
+      <http-only>true</http-only>
+    </cookie-config>
+  </session-config>
 </web-app>

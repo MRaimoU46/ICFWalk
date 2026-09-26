@@ -58,8 +58,8 @@ component output="false" {
 			issue(issues, "INVALID_STATE", "state", "The walk state must be a JSON object.");
 			raise(issues);
 		}
-		var dims = (structKeyExists(arguments.payload, "dimensions") && !isNull(arguments.payload.dimensions)) ? arguments.payload.dimensions : {};
-		var responses = (structKeyExists(arguments.payload, "responses") && !isNull(arguments.payload.responses)) ? arguments.payload.responses : {};
+		var dims = structKeyExists(arguments.payload, "dimensions") ? arguments.payload.dimensions : {};
+		var responses = structKeyExists(arguments.payload, "responses") ? arguments.payload.responses : {};
 		if (!isStruct(dims)) { issue(issues, "INVALID_STATE", "dimensions", "dimensions must be an object keyed by dimension code."); dims = {}; }
 		if (!isStruct(responses)) { issue(issues, "INVALID_STATE", "responses", "responses must be an object keyed by item key."); responses = {}; }
 
@@ -71,14 +71,14 @@ component output="false" {
 			var placement = idx.placements[code];
 			var dim = arguments.model.dimensions[code];
 			var raw = dims[code];
-			if (isNull(raw)) continue;
+			if (!structKeyExists(local, "raw")) continue;
 			if (!isStruct(raw)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code, "Dimension value must be an object."); continue; }
 			var clean = {};
 			var res = {};
 			var ok = true;
 			for (var k in structKeyArray(raw)) {
 				var v = raw[k];
-				if (isNull(v) || (jsonString(v) && !len(v))) continue;
+				if (!structKeyExists(local, "v") || (jsonString(v) && !len(v))) continue;
 				if (!isSimpleValue(v) || isInstanceOf(v, "java.util.Date")) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & "." & safeKey(k), "Value must be a string, number, or boolean."); ok = false; continue; }
 				switch (k) {
 					case "selectedValueCode":
@@ -141,13 +141,13 @@ component output="false" {
 			}
 			var item = idx.items[key];
 			var raw = responses[key];
-			if (isNull(raw)) continue;
+			if (!structKeyExists(local, "raw")) continue;
 			if (!isStruct(raw)) { issue(issues, "INVALID_RESPONSE_VALUE", "responses." & key, "Response must be an object."); continue; }
 			if (item.layout == "display-heading" || item.layout == "display-guidance") {
 				if (!structIsEmpty(raw)) issue(issues, "INVALID_RESPONSE_VALUE", "responses." & key, "Display items do not accept responses.");
 				continue;
 			}
-			var hasSet = !isNull(item.responseSet) && isStruct(item.responseSet);
+			var hasSet = structKeyExists(item, "responseSet") && isStruct(item.responseSet);
 			var clean = {};
 			var res = {};
 			var ok = true;
@@ -160,7 +160,7 @@ component output="false" {
 					ok = false;
 					continue;
 				}
-				if (isNull(v) || (jsonString(v) && !len(v))) continue;
+				if (!structKeyExists(local, "v") || (jsonString(v) && !len(v))) continue;
 				if (!jsonString(v)) { issue(issues, "INVALID_RESPONSE_VALUE", "responses." & key & "." & safeKey(k), "Value must be a JSON string."); ok = false; continue; }
 				switch (k) {
 					case "storedCode":

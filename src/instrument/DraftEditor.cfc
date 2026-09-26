@@ -86,7 +86,7 @@ component output="false" {
 	public struct function normalizedFromSnapshot(required struct snapshot) {
 		var n = {};
 		for (var key in ["schemaVersion", "source", "instrument", "version", "definitions", "behavior", "contentReview"]) {
-			if (structKeyExists(arguments.snapshot, key) && !isNull(arguments.snapshot[key])) {
+			if (structKeyExists(arguments.snapshot, key)) {
 				n[key] = duplicate(arguments.snapshot[key]);
 			} else {
 				n[key] = javaCast("null", "");
@@ -112,24 +112,24 @@ component output="false" {
 			var edit = arguments.edits[i];
 			var path = "$.edits[" & (i - 1) & "]";
 			var entity = resolve(index, doc, edit.target, keyOf(edit));
-			if (isNull(entity)) {
+			if (!structKeyExists(local, "entity")) {
 				arrayAppend(issues, issue("EDIT_TARGET_NOT_FOUND", "No " & edit.target & " with key '" & keyOf(edit) & "' exists in this version.", path & ".key"));
 				continue;
 			}
 			var spec = variables.FIELDS[edit.target][edit.field];
 			var value = normalizedValue(edit, spec);
-			var before = structKeyExists(entity, edit.field) && !isNull(entity[edit.field]) ? entity[edit.field] : javaCast("null", "");
-			if (isNull(value)) {
+			var before = structKeyExists(entity, edit.field) ? entity[edit.field] : javaCast("null", "");
+			if (!structKeyExists(local, "value")) {
 				entity[edit.field] = javaCast("null", "");
 			} else {
 				entity[edit.field] = value;
 			}
-			var changed = !sameText(isNull(before) ? javaCast("null", "") : before, isNull(value) ? javaCast("null", "") : value);
+			var changed = !sameText(!structKeyExists(local, "before") ? javaCast("null", "") : before, !structKeyExists(local, "value") ? javaCast("null", "") : value);
 			if (changed) {
 				arrayAppend(applied, {
 					"target": edit.target, "key": keyOf(edit), "field": edit.field,
-					"from": isNull(before) ? javaCast("null", "") : before,
-					"to": isNull(value) ? javaCast("null", "") : value
+					"from": !structKeyExists(local, "before") ? javaCast("null", "") : before,
+					"to": !structKeyExists(local, "value") ? javaCast("null", "") : value
 				});
 				if (edit.target == "item" && arrayContains(variables.REVIEW_SENSITIVE, edit.field)) reviewTouched = true;
 			}
@@ -158,7 +158,7 @@ component output="false" {
 		}
 		for (var it in d.items) {
 			if (matches(q, [it.itemKey, textOf(it, "prompt"), textOf(it, "helpText"), textOf(it, "sourceLocation"), textOf(it, "reviewStatus")])) {
-				var sectionKey = isNull(it.sectionKey) ? "" : it.sectionKey;
+				var sectionKey = !structKeyExists(it, "sectionKey") ? "" : it.sectionKey;
 				var context = structKeyExists(sectionTitles, sectionKey) ? sectionTitles[sectionKey] : "";
 				arrayAppend(out, entry("item", it.itemKey, textOf(it, "prompt"), context, it));
 			}
@@ -175,7 +175,7 @@ component output="false" {
 	public struct function describe(required struct normalized, required string target, string key = "") {
 		if (!structKeyExists(variables.FIELDS, arguments.target)) refuse([issue("EDIT_TARGET_INVALID", "Unknown edit target '" & arguments.target & "'.", "$.target")]);
 		var entity = resolve(indexOf(arguments.normalized), arguments.normalized, arguments.target, arguments.key);
-		if (isNull(entity)) refuse([issue("EDIT_TARGET_NOT_FOUND", "No " & arguments.target & " with key '" & arguments.key & "' exists in this version.", "$.key")]);
+		if (!structKeyExists(local, "entity")) refuse([issue("EDIT_TARGET_NOT_FOUND", "No " & arguments.target & " with key '" & arguments.key & "' exists in this version.", "$.key")]);
 		return entry(arguments.target, arguments.key, "", "", entity);
 	}
 
@@ -183,7 +183,7 @@ component output="false" {
 
 	private array function validateShape(required any edits) {
 		var issues = [];
-		if (isNull(arguments.edits) || !isArray(arguments.edits)) {
+		if (!structKeyExists(arguments, "edits") || !isArray(arguments.edits)) {
 			arrayAppend(issues, issue("DRAFT_EDIT_INVALID", "edits must be an array of edit operations.", "$.edits"));
 			return issues;
 		}
@@ -199,7 +199,7 @@ component output="false" {
 		for (var i = 1; i <= arrayLen(arguments.edits); i++) {
 			var path = "$.edits[" & (i - 1) & "]";
 			var edit = arguments.edits[i];
-			if (isNull(edit) || !isStruct(edit)) {
+			if (!structKeyExists(local, "edit") || !isStruct(edit)) {
 				arrayAppend(issues, issue("DRAFT_EDIT_INVALID", "Each edit must be an object.", path));
 				continue;
 			}
@@ -221,7 +221,7 @@ component output="false" {
 				continue;
 			}
 			var spec = variables.FIELDS[edit.target][edit.field];
-			var present = structKeyExists(edit, "value") && !isNull(edit.value);
+			var present = structKeyExists(edit, "value");
 			if (present && !variables.types.isJsonString(edit.value)) {
 				arrayAppend(issues, issue("EDIT_VALUE_INVALID", "value must be a string" & (spec.required ? "" : " or null") & ".", path & ".value"));
 				continue;
@@ -274,7 +274,7 @@ component output="false" {
 	 */
 	private any function resolve(required struct index, required struct doc, required string target, string key = "") {
 		if (arguments.target == "version") {
-			if (!structKeyExists(arguments.doc, "version") || isNull(arguments.doc.version) || !isStruct(arguments.doc.version)) return javaCast("null", "");
+			if (!structKeyExists(arguments.doc, "version") || !isStruct(arguments.doc.version)) return javaCast("null", "");
 			return arguments.doc.version;
 		}
 		var slots = arguments.index[arguments.target];
@@ -287,7 +287,7 @@ component output="false" {
 	}
 
 	private any function normalizedValue(required struct edit, required struct spec) {
-		if (!structKeyExists(arguments.edit, "value") || isNull(arguments.edit.value)) return javaCast("null", "");
+		if (!structKeyExists(arguments.edit, "value")) return javaCast("null", "");
 		var text = trim(arguments.edit.value);
 		if (!len(text) && !arguments.spec.required) return javaCast("null", "");
 		return text;
@@ -299,13 +299,13 @@ component output="false" {
 	 * when the document carries the summary at all -- it is never invented.
 	 */
 	private void function refreshPlaceholderSummary(required struct doc) {
-		if (isNull(arguments.doc.contentReview) || !isStruct(arguments.doc.contentReview)) return;
+		if (!structKeyExists(arguments.doc, "contentReview") || !isStruct(arguments.doc.contentReview)) return;
 		var review = arguments.doc.contentReview;
-		if (!structKeyExists(review, "unresolvedPlaceholders") || isNull(review.unresolvedPlaceholders) || !isArray(review.unresolvedPlaceholders)) return;
+		if (!structKeyExists(review, "unresolvedPlaceholders") || !isArray(review.unresolvedPlaceholders)) return;
 		var marked = {};
 		var order = [];
 		for (var it in arguments.doc.definitions.items) {
-			if (!isNull(it.reviewStatus) && compare(it.reviewStatus, variables.PLACEHOLDER_REVIEW_STATUS) == 0) {
+			if (structKeyExists(it, "reviewStatus") && compare(it.reviewStatus, variables.PLACEHOLDER_REVIEW_STATUS) == 0) {
 				marked[it.itemKey] = it;
 				arrayAppend(order, it.itemKey);
 			}
@@ -326,24 +326,24 @@ component output="false" {
 		return {
 			"itemKey": arguments.item.itemKey,
 			"prompt": arguments.item.prompt,
-			"sourceLocation": isNull(arguments.item.sourceLocation) ? javaCast("null", "") : arguments.item.sourceLocation
+			"sourceLocation": !structKeyExists(arguments.item, "sourceLocation") ? javaCast("null", "") : arguments.item.sourceLocation
 		};
 	}
 
 	// ---- helpers ---------------------------------------------------------------------------------
 
 	private string function keyOf(required struct edit) {
-		return structKeyExists(arguments.edit, "key") && !isNull(arguments.edit.key) && isSimpleValue(arguments.edit.key) ? trim(arguments.edit.key) : "";
+		return structKeyExists(arguments.edit, "key") && isSimpleValue(arguments.edit.key) ? trim(arguments.edit.key) : "";
 	}
 
 	private boolean function sameText(any a, any b) {
-		if (isNull(arguments.a) && isNull(arguments.b)) return true;
-		if (isNull(arguments.a) || isNull(arguments.b)) return false;
+		if (!structKeyExists(arguments, "a") && !structKeyExists(arguments, "b")) return true;
+		if (!structKeyExists(arguments, "a") || !structKeyExists(arguments, "b")) return false;
 		return compare(toString(arguments.a), toString(arguments.b)) == 0;
 	}
 
 	private string function textOf(required struct src, required string field) {
-		return structKeyExists(arguments.src, arguments.field) && !isNull(arguments.src[arguments.field]) && isSimpleValue(arguments.src[arguments.field])
+		return structKeyExists(arguments.src, arguments.field) && isSimpleValue(arguments.src[arguments.field])
 			? toString(arguments.src[arguments.field]) : "";
 	}
 
@@ -355,7 +355,7 @@ component output="false" {
 	private struct function entry(required string target, required string key, required string label, required string context, required struct src) {
 		var fields = {};
 		for (var f in structKeyArray(variables.FIELDS[arguments.target])) {
-			fields[f] = structKeyExists(arguments.src, f) && !isNull(arguments.src[f]) ? arguments.src[f] : javaCast("null", "");
+			fields[f] = structKeyExists(arguments.src, f) ? arguments.src[f] : javaCast("null", "");
 		}
 		return { "target": arguments.target, "key": arguments.key, "label": arguments.label, "context": arguments.context, "fields": fields };
 	}

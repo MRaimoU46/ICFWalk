@@ -18,7 +18,7 @@ component output="false" {
 		var safe = {};
 		for (var key in structKeyArray(arguments.details)) {
 			if (reFind(variables.UNSAFE_KEY_PATTERN, key)) continue;
-			if (isNull(arguments.details[key])) safe[key] = javaCast("null", "");
+			if (!structKeyExists(arguments.details, key)) safe[key] = javaCast("null", "");
 			else safe[key] = arguments.details[key];
 		}
 		variables.db.run(

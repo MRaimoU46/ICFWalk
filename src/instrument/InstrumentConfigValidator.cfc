@@ -106,7 +106,7 @@ component output="false" {
 
 	private void function checkStructure(required struct r, required struct cfg) {
 		for (var key in variables.COLLECTIONS) {
-			if (!structKeyExists(arguments.cfg, key) || isNull(arguments.cfg[key]) || !isArray(arguments.cfg[key])) {
+			if (!structKeyExists(arguments.cfg, key) || !isArray(arguments.cfg[key])) {
 				err(arguments.r, "STRUCTURE", "Missing or invalid array '" & key & "'.", "$." & key);
 			} else {
 				var i = 0;
@@ -154,7 +154,7 @@ component output="false" {
 
 	private void function checkDeclaredStatus(required struct r, required struct version) {
 		var path = "$.instrument.version.status";
-		if (!structKeyExists(arguments.version, "status") || isNull(arguments.version.status)) {
+		if (!structKeyExists(arguments.version, "status")) {
 			err(arguments.r, "VERSION_STATUS_REQUIRED", "The document must declare instrument.version.status, and it must be 'DRAFT'.", path);
 			return;
 		}
@@ -348,7 +348,7 @@ component output="false" {
 	}
 
 	private boolean function has(required any src, required string key) {
-		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key) && !isNull(arguments.src[arguments.key]);
+		return isStruct(arguments.src) && structKeyExists(arguments.src, arguments.key);
 	}
 
 	private string function keyOf(required any row, required string key) {
