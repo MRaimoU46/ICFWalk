@@ -10,17 +10,17 @@ Docker. Every CFML-backed PASS below must be re-run on Adobe ColdFusion 2023 bef
 commands are identical (`npm test`). Items whose behavior depends on Adobe-specific semantics are
 marked explicitly.
 
-**Current status (branch `claude/icfwalk-phase-6-7-integration`):** a Phase 6 and Phase 7 integration
-candidate, awaiting a focused independent integration audit. Its merge commit
-`68f9026d39ba0ff44d12d6398c5e933971dad2f4` passed its exact-commit gate: Node/HTTP/Playwright 245/245, CFML
-517/517, 0 failed, 0 skipped (`docs/evidence/phase6-7-integration-handoff.md`). Phase 6 is accepted and frozen at code
-commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the verified scope: the independent re-audit
-passed and P6A-R01 is closed (`docs/evidence/phase6-freeze.md`, "Acceptance"). That acceptance
-covers `158debc`, not this merge. The Phase 7 corrections merged here
-(`e0342143074f727475ae2d4cb6933fa279902f85`) await independent re-audit: Phase 7 is not frozen and
-not accepted, and its findings keep the status its ledger gives them. Not production-certified:
-Adobe ColdFusion 2023, SQL Server 2016, connector-level limits, Microsoft Excel and a screen reader
-have not been used.
+**Current status (branch `claude/icfwalk-phase-6-7-integration`):** Phase 7 and the integrated
+Phase 0-7 baseline are **accepted and frozen at code commit `68f9026d39ba0ff44d12d6398c5e933971dad2f4`**, for
+the verified scope. The project owner reports that the independent Phase 7 / focused integration
+audit passed. That was communicated by the owner only: no audit report or identifier is in the
+repository. The exact-commit gate of `68f9026`: Node/HTTP/Playwright 245/245, CFML 517/517,
+`test:package` 20/20, `validate:handoff` 51 checks; 0 failed, 0 skipped. Phase 6 had been accepted and
+frozen at `158debca5da2c4f3a07f602689cd08af9db9bd6e` (`docs/evidence/phase6-freeze.md`). **Not
+production certification**: Adobe ColdFusion 2023, SQL Server 2016, IIS/Apache or connector-level
+limits, Microsoft Excel and a real screen reader were not exercised, and they carry into Phase 8.
+See "Phase 7 and the integrated Phase 0-7 baseline: accepted and frozen" at the end and
+`docs/evidence/phase6-7-freeze.md`.
 Sections below that describe earlier rounds keep the status they had when they were written.
 
 ## Package and configuration
@@ -384,3 +384,23 @@ commit passed: P6A-R01 is closed, and Phase 6 is accepted and frozen for the ver
 | P6A-04 | `decodeEntities` passed any finite numeric character reference to `String.fromCodePoint` (`&#999999999;` threw `RangeError`); malformed cell references threw `TypeError`; `readWorkbook` converted only `WorkbookError`; the import handler parsed outside its guarded flow. | CONFIRMED, FIXED | `workbook.test.mjs` (4 P6A-04 cases): out-of-range, surrogate and XML-forbidden references are `XML_MALFORMED`, every legal scalar still decodes; malformed cell and row references are `CELL_REFERENCE_INVALID` naming the sheet; an unexpected shape is a structured problem. `browser-admin.test.mjs` "P6A-04 (browser)" (2): a workbook with `&#999999999;` and a file the browser cannot read each show a problem, send nothing, and the next import works. |
 | P6A-R01 | Found by the re-audit of the corrections: `HttpRequestSource.readBody` asked the container's stream for a fixed 65,536 bytes per read and compared the total afterwards, so it could consume up to 65,536 bytes past the limit (5,046,272 for the import limit, 20,054,016 for the server maximum), while the records said "at most one byte past"; `RouterBodyOrderTest` used only `FakeRequestSource` and could not see it. | CONFIRMED, FIXED, CLOSED (re-audit passed) | Each read asks for `min(65536, maxBytes - total + 1)` bytes. `RequestBodyReadBoundTest` (8) runs the production `readBody` loop (`StreamedRequestSource` replaces only the stream's origin) over a real `ByteArrayInputStream`: for limits 0, 1, 2, 65,535-65,537, 131,071-131,073, 5,000,000 and 20,000,000, bodies 1 to 200,000 bytes past, and streams delivering 1 to 65,535 bytes per read, exactly `limit + 1` bytes are consumed and counted and no read asks for more than the bound; a body within the limit is read whole and byte for byte; multibyte text is bounded in bytes; through `Router.handle` an oversized chunked import is 413 after exactly 5,000,001 bytes and nothing is taken from the stream before authentication, CSRF or a declared-length refusal. Red on the unmodified loop in `docs/evidence/phase6-admin-read-bound-red-before-fix.md`. |
 | P6A-R02 | Found by this pass while verifying P6A-R01, not by the re-audit: "ADM-01: the import body contract and the size cap" (`admin-instrument.test.mjs`) sent its oversized body with `fetch`. Since P6A-01 the server answers 413 from the declared length before reading and closes while the client may still be uploading, and `fetch` sometimes reported its own refused write instead of that answer: one failure in a development run (the server log shows the 413 was sent), reproduced 1 in 100 with the case's exact sequence (`fetch failed`, cause `EPIPE`). A defect of the test's client, not of the application. | CONFIRMED, FIXED | The request is sent with the file's raw-socket `rawRequest` helper -- the same bytes, headers and assertions (413 `DOCUMENT_TOO_LARGE`); 0 failures in 300 attempts of the same sequence. `docs/evidence/phase6-admin-read-bound-red-before-fix.md`, "P6A-R02". |
+
+## Phase 7 and the integrated Phase 0-7 baseline: accepted and frozen
+
+On 2026-09-26 the project owner reported that the independent Phase 7 / focused integration audit
+passed. **Phase 7 and the integrated Phase 0-7 baseline are accepted and frozen at code commit
+`68f9026d39ba0ff44d12d6398c5e933971dad2f4`, for the verified scope** (Lucee 6.2.8.20, SQL Server 2022 and
+Chromium only). The acceptance was communicated by the owner only. No audit report, identifier or
+path was provided or is in the repository, so this file cites none and restates none of its findings.
+
+- **Evidence for the frozen code:** the exact-commit gate of `68f9026`
+  (`docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/`): Node/HTTP/Playwright
+  245/245, CFML 517/517, `test:package` 20/20, `validate:handoff` 51 checks; 0 failed, 0 skipped.
+- **Supersedes, as the current status**, the candidate statements above for Phase 7 (its section's
+  "a Phase 7 candidate awaiting independent audit", and the correction ledger's "awaiting re-audit"
+  and "awaiting verification" for P7-01, P7-02 and P7C-01 to P7C-04) and for the integration. Those
+  rows keep the status recorded when each round was delivered.
+- **Still to be re-run or exercised**, and carried into Phase 8: every CFML-backed PASS in this file on
+  Adobe ColdFusion 2023 (the runtime note at the top), SQL Server 2016, IIS/Apache or connector-level
+  limits, Microsoft Excel and a real screen reader. This is not production certification.
+- **Freeze record:** `docs/evidence/phase6-7-freeze.md`.

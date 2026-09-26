@@ -12,33 +12,34 @@ RPT-01..07, with the corrections for its audit findings P7-01, P7-02 and P7C-01 
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state (branch `claude/icfwalk-phase-6-7-integration`): a Phase 6 and Phase 7 integration
-candidate, awaiting a focused independent integration audit.** The merge commit
-`68f9026d39ba0ff44d12d6398c5e933971dad2f4` passed its exact-commit gate (Node/HTTP/Playwright 245/245, CFML
-517/517; 0 failed, 0 skipped). It merges two branches:
+**Current state (branch `claude/icfwalk-phase-6-7-integration`): Phase 7 and the integrated Phase
+0-7 baseline are accepted and frozen at code commit `68f9026d39ba0ff44d12d6398c5e933971dad2f4`, for the
+verified scope.** The project owner reports that the independent Phase 7 / focused integration
+audit passed. That was communicated by the owner only: no audit report, identifier or path was
+provided or is in the repository. `68f9026` stays the frozen code hash. The records-only commit that
+records the acceptance is the records tip and the starting point for Phase 8. See "Phase 7 and the
+integrated Phase 0-7 baseline accepted" at the end and `docs/evidence/phase6-7-freeze.md`.
 
-- **Phase 6, accepted and frozen** at code commit `158debca5da2c4f3a07f602689cd08af9db9bd6e`, for the
-  verified scope, after the independent re-audit passed. Its records tip is
-  `64507deb075e267761179d78be966b7a4d3972cc` on `claude/icfwalk-phase-6-admin-audit-corrections`, which
-  stays unchanged as the Phase 6 audit record. See "Phase 6 accepted".
-- **The Phase 7 corrections, third round**, at `e0342143074f727475ae2d4cb6933fa279902f85` on
-  `claude/icfwalk-phase-7-correction-n62s25` (gated code commit
-  `98321a16df64005f9b55fcd9bc3b9b4d4a071e4e`), awaiting independent re-audit. Phase 7 is **not**
-  frozen and **not** accepted. See "Phase 7 correction, third round".
+- `68f9026` merges **Phase 6**, accepted and frozen earlier at
+  `158debca5da2c4f3a07f602689cd08af9db9bd6e` (records tip `64507deb075e267761179d78be966b7a4d3972cc`
+  on `claude/icfwalk-phase-6-admin-audit-corrections`), with **the Phase 7 corrections** at
+  `e0342143074f727475ae2d4cb6933fa279902f85` on `claude/icfwalk-phase-7-correction-n62s25` (gated code
+  `98321a16df64005f9b55fcd9bc3b9b4d4a071e4e`). Both source branches are unchanged.
+- The exact-commit gate of `68f9026`: Node/HTTP/Playwright 245/245, CFML 517/517, `test:package`
+  20/20, `validate:handoff` ok (51 checks); 0 failed, 0 skipped.
 
-Phase 6's acceptance covers `158debc`, not this merge. The merge is a new candidate with its own gate
-and audit. The Phase 0-6 publish foundation `a219d9e0987b85b1a0b587fd62effa4e0ad1ffde` was frozen
-earlier. Adobe ColdFusion 2023, SQL Server 2016, connector-level limits, Microsoft Excel and a screen
-reader have still not been used, so the application is **not production-certified**. See "Phase 6 and
-Phase 7 integration" at the end.
+This is **not production certification**. Adobe ColdFusion 2023, SQL Server 2016, IIS/Apache or
+connector-level limits, Microsoft Excel and a real screen reader were not exercised in the recorded
+environment, and they carry into Phase 8.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
 the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
 the Phase 7 correction and its second and third rounds, Phase 6 administration, the Excel
 round-trip, the audit corrections, the re-audit correction P6A-R01, **Phase 6 frozen**, **Phase 6
-accepted**, and finally **Phase 6 and Phase 7 integration**, which is the current state of this
-branch. The Phase 7 correction sections and the Phase 6 administration sections were written on two
+accepted**, **Phase 6 and Phase 7 integration**, and finally **Phase 7 and the integrated Phase 0-7
+baseline accepted**, which is the current state of this branch. The Phase 7 correction sections and
+the Phase 6 administration sections were written on two
 branches from the same commit, `0c6fa10`, and appear in the order they were delivered (Phase 7's on
 2026-09-23, Phase 6's from 2026-09-24), each block exactly as its branch delivered it.
 Earlier sections are kept as delivered and are **not** rewritten when a later section supersedes
@@ -4348,3 +4349,34 @@ audit is `docs/evidence/phase6-7-integration-handoff.md`.
    differ here, the difference is Phase 6's own change.
 3. **The integration itself is unaudited.** It is submitted for a focused independent integration
    audit.
+
+## Phase 7 and the integrated Phase 0-7 baseline accepted
+
+On 2026-09-26 the project owner reported that **the independent Phase 7 / focused integration audit
+passed**, and directed that it be recorded. **Phase 7 and the integrated Phase 0-7 baseline are
+accepted and frozen at code commit `68f9026d39ba0ff44d12d6398c5e933971dad2f4`, for the verified scope**:
+Lucee 6.2.8.20, SQL Server 2022 (16.0.4295.3) and Chromium 141, with workbooks checked against
+LibreOffice Calc output and accessibility checked with axe-core and the keyboard.
+
+- **The audit.** The acceptance was communicated by the project owner only. No audit report,
+  identifier or path was provided to this session or is in the repository, so none is cited and
+  none of its findings is restated. `68f9026` is the commit the owner named and the one the
+  integration handoff submitted.
+- **Records only.** The commit that adds this section changes records only (`BUILD_STATUS.md`,
+  `docs/ACCEPTANCE_TRACKING.md`, `docs/evidence/phase6-7-integration-handoff.md` and the new
+  `docs/evidence/phase6-7-freeze.md`). `68f9026` stays the frozen code hash. This commit becomes the
+  records tip and the starting point for Phase 8, which has not begun.
+- **What was run.** The full application gate ran on `68f9026` (245/245 Node/HTTP/Playwright, 517/517
+  CFML, `test:package` 20/20, `validate:handoff` 51 checks; 0 failed, 0 skipped). On the records-only
+  commit only `test:package` and `validate:handoff` were run.
+- **Source branches unchanged.** `claude/icfwalk-phase-6-admin-audit-corrections` stays at
+  `64507de` and `claude/icfwalk-phase-7-correction-n62s25` at `e034214`.
+- **No tag** was created. One is created only if separately requested.
+- **Not production certification.** Adobe ColdFusion 2023, SQL Server 2016, IIS/Apache or
+  connector-level limits, Microsoft Excel and a real screen reader were not exercised in the
+  recorded environment. They carry into Phase 8, with the known limitations listed in
+  `docs/evidence/phase6-7-freeze.md`.
+
+This section supersedes, as the current state, every candidate statement above: "Phase 6 and Phase 7
+integration" (an integration candidate awaiting audit) and the Phase 7 sections (Phase 7 not frozen
+or accepted, its findings awaiting re-audit or verification). Those sections are kept as delivered.

@@ -1,5 +1,20 @@
 # Phase 6 and Phase 7 integration: handoff for a focused independent integration audit
 
+## Current status (supersedes the submission status below)
+
+**Accepted and frozen.** On 2026-09-26 the project owner reported that the independent Phase 7 /
+focused integration audit passed. Phase 7 and the integrated Phase 0-7 baseline are accepted and
+frozen at code commit `68f9026d39ba0ff44d12d6398c5e933971dad2f4`, the commit this handoff submitted, for the
+verified scope. The acceptance was communicated by the owner only: no audit report, identifier or
+path was provided or is in the repository, so none is cited. `68f9026` stays the frozen code hash.
+The records-only commit that adds `phase6-7-freeze.md` is the records tip and the starting point for
+Phase 8. Both source branches are unchanged, and no tag was created. This is not production
+certification: Adobe ColdFusion 2023, SQL Server 2016, IIS/Apache or connector-level limits,
+Microsoft Excel and a real screen reader were not exercised, and they carry into Phase 8. See
+`phase6-7-freeze.md`.
+
+Everything below this section is kept exactly as it was submitted for the audit.
+
 **Status: an integration candidate submitted for a focused independent integration audit.** It is
 not accepted, not frozen and not production-certified. Phase 6's acceptance covers its code commit
 `158debca5da2c4f3a07f602689cd08af9db9bd6e` and does not extend to this merge. Phase 7 is not accepted.
