@@ -22,12 +22,12 @@ port 8500) instead of IIS or Apache with the ColdFusion connector.
 
 1. On the target server, install the `sqlserver` package (ColdFusion Administrator, Package Manager,
    or `cfpm install sqlserver`) and restart ColdFusion.
-2. Deploy the release as `docs/OPERATIONS.md`, "Clean installation", describes: the site's document
+2. Deploy the release as `docs/OPERATIONS.md`, section 4 "Clean install", describes: the site's document
    root is `<release>/app`; the front-door rule of "Web server" is in place.
 3. Configure the datasource one of the two documented ways and run the suite against each you intend
    to support:
    - Option A: a datasource named by `ICFWALK_DATASOURCE` in the Administrator, driver "Microsoft SQL
-     Server", encryption on, least-privilege login (`docs/OPERATIONS.md`, "Database logins");
+     Server", encryption on, least-privilege login (`docs/OPERATIONS.md`, section 4.1 "SQL Server");
    - Option B: `ICFWALK_DB_HOST/PORT/NAME/USER/PASSWORD` in the environment, so `Application.cfc`
      defines the datasource with driver `MSSQLServer` itself.
 4. On a **test** deployment with `ICFWALK_ENVIRONMENT=development`, the development identity stub,
@@ -51,7 +51,10 @@ both datasource options; steps 5 and 6 as stated.
 ## 2. Microsoft SQL Server 2016
 
 **Why it was not tested here.** SQL Server 2016 runs on Windows only; no image of it runs in the build
-environment. Every database result in this repository is SQL Server 2022 (16.0.4295.3).
+environment. Every database result in this repository is SQL Server 2022 (16.0.4295.3). What can be
+checked without the engine is: `tests/node/sqlserver-2016.test.mjs` reads every migration and every
+statement the application sends and finds no T-SQL introduced after SQL Server 2016 (a compatibility
+level would not show that, because newer built-in functions stay available at every level).
 
 **Steps.**
 
@@ -60,11 +63,12 @@ environment. Every database result in this repository is SQL Server 2022 (16.0.4
    one by one (`--only 00N`) and confirm `--only 001` is refused (error 50001).
 3. `npm run test:db`.
 4. Run the full suite against an application pointed at that database (checklist 1, step 4).
-5. Run `tests/ops/backup-restore.sh` and `tests/ops/upgrade-001-007.sh` against the instance
-   (`docs/OPERATIONS.md`, "Backup and restore" and "Migrations").
+5. Run `node --test tests/ops/database-operations.test.mjs` and `node --test tests/ops/upgrade-and-rollback.test.mjs` against the instance
+   with `ICFWALK_DB_*` and `ICFWALK_TEST_DB_ADMIN_*` pointing at it (`docs/OPERATIONS.md`, sections 6
+   "Migrations" and 7 "Backup and restore").
 
-**Expected.** Every script commits; the same totals as the Phase 8 gate; the scenario scripts end with
-`SCENARIO PASSED`.
+**Expected.** Every script commits; the same totals as the Phase 8 gate; both scenario files end with
+`# fail 0`.
 
 **Evidence slot.**
 
@@ -78,7 +82,7 @@ environment. Every database result in this repository is SQL Server 2022 (16.0.4
 The application's own limits (5,000,000 bytes for an instrument import, 20,000,000 bytes for anything
 else, enforced before a body is parsed) are tested on Lucee and on ColdFusion's built-in server.
 
-**Steps.** With the limits of `docs/OPERATIONS.md`, "Web server", in place, from a machine that can
+**Steps.** With the limits of `docs/OPERATIONS.md`, section 4.4 "Web server and connector", in place, from a machine that can
 reach the site:
 
 1. Send `POST /index.cfm/api/admin/instrument/import` with a declared `Content-Length: 5000001` and a
@@ -168,8 +172,10 @@ iOS. Synthetic fixture users only. For each: sign in as a school walker.
 
 **Why it was not tested here.** The identity provider, the gateway product and the hosting topology
 are open decisions (`docs/OPEN_DECISIONS.md`). Phase 8 exercised the production configuration on the
-verification runtimes: the header adapter trusting only listed proxy addresses and a shared secret, a
-refused start for every unsafe setting, and the session cookie flags (`docs/evidence/phase8/`).
+verification runtimes with `tests/ops/production-profile.test.mjs`: the header adapter trusting only
+listed proxy addresses and a shared secret, a refused start for every unsafe setting, the session
+cookie flags and rotation, CSRF, error bodies, a database outage, log redaction, and a runtime login
+with data permissions only (`docs/evidence/phase8/`). What it cannot reach is the gateway itself.
 
 **Steps**, on the staging deployment behind the real gateway:
 
@@ -198,7 +204,7 @@ refused start for every unsafe setting, and the session cookie flags (`docs/evid
 
 **Why it is open.** No business service level has been set, and Phase 8 does not invent one. The
 synthetic workload, its sizes, timings and query plans are in `docs/evidence/phase8/` and
-`docs/OPERATIONS.md`, "Capacity and performance". The owner approves explicit criteria (for example, a
+`docs/OPERATIONS.md`, section 12 "Capacity and performance". The owner approves explicit criteria (for example, a
 95th-percentile autosave time at a stated concurrency and data size) and then runs
 `node tests/perf/workload.mjs` on the production-sized environment against them.
 

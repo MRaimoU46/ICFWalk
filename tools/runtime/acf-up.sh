@@ -23,14 +23,20 @@
 # ICFWALK_DB_* (so Application.cfc defines no datasource of its own and uses the administrator's).
 # The Node test harness keeps using <repo>/.env, so both address the same database.
 #
+# ICFWALK_ACF_APP_ENV_FILE names another environment file to use instead of <repo>/.env (its
+# ICFWALK_DB_* lines are dropped the same way), and ICFWALK_ACF_CONTAINER another container name, with
+# its own state directory: tests/ops/production-profile.test.mjs runs the production profile that way.
+#
 # Usage: tools/runtime/acf-up.sh          start (or reuse) the container and wait for /api/health
 #        tools/runtime/acf-down.sh        stop and remove it
 # Then:  ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_REQUIRE_APP=1 npm test
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RUNTIME="$ROOT/.runtime"
-STATE="$RUNTIME/acf"
 CONTAINER="${ICFWALK_ACF_CONTAINER:-icfwalk-acf}"
+STATE="$RUNTIME/acf"
+[ "$CONTAINER" = icfwalk-acf ] || STATE="$RUNTIME/acf-$CONTAINER"
+APP_ENV_SOURCE="${ICFWALK_ACF_APP_ENV_FILE:-$ROOT/.env}"
 IMAGE="${ICFWALK_ACF_IMAGE:-adobecoldfusion/coldfusion2023:latest}"
 TIMEOUT="${ICFWALK_ACF_REQUEST_TIMEOUT:-600}"
 PORT=8500
@@ -63,8 +69,9 @@ ENCRYPT=$(envval ICFWALK_DB_ENCRYPT); ENCRYPT=${ENCRYPT:-true}
 if [ -z "$DB_USER" ] && [ -f "$RUNTIME/mssql.env" ]; then DB_USER=sa; DB_PASSWORD=$(grep -E '^MSSQL_SA_PASSWORD=' "$RUNTIME/mssql.env" | cut -d= -f2-); TRUST=true; fi
 [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ] || { echo "ICFWALK_DB_USER / ICFWALK_DB_PASSWORD are not set" >&2; exit 1; }
 
-# The application's environment file: <repo>/.env without the datasource-defining ICFWALK_DB_* values.
-grep -v -E '^ICFWALK_DB_(HOST|PORT|NAME|USER|PASSWORD|ENCRYPT|TRUST_SERVER_CERT)=' "$ROOT/.env" > "$STATE/app.env"
+# The application's environment file: <repo>/.env (or ICFWALK_ACF_APP_ENV_FILE) without the
+# datasource-defining ICFWALK_DB_* values.
+grep -v -E '^ICFWALK_DB_(HOST|PORT|NAME|USER|PASSWORD|ENCRYPT|TRUST_SERVER_CERT)=' "$APP_ENV_SOURCE" > "$STATE/app.env"
 chmod 600 "$STATE/app.env"
 
 if [ ! -f "$STATE/admin.env" ]; then

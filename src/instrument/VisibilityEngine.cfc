@@ -106,7 +106,7 @@ component output="false" {
 		for (var code in structKeyArray(ev.dimensionOptions)) {
 			if (!structKeyExists(st.dimensions, code)) continue;
 			var sel = valueOf(st.dimensions[code], "selectedValueCode");
-			if (len(sel) && !arrayContains(ev.dimensionOptions[code], sel)) {
+			if (len(sel) && !containsExactly(ev.dimensionOptions[code], sel)) {
 				st.dimensions[code] = {};
 				arrayAppend(changes, { "kind": "DIMENSION_CLEARED", "key": code, "reason": "OPTION_FILTER" });
 			}
@@ -262,6 +262,17 @@ component output="false" {
 
 	private boolean function hasValue(required struct v) {
 		for (var k in ["selectedValueCode", "otherText", "textValue", "dateValue", "storedCode"]) if (len(valueOf(arguments.v, k))) return true;
+		return false;
+	}
+
+	/**
+	 * Whether a list of codes holds exactly this code (P8-10). Adobe ColdFusion's arrayContains() and
+	 * arrayFind() compare numeric-looking strings as numbers, so grade "9.0" was found among the
+	 * options ["9", "10", "11", "12"] and kept, where the shared vectors (and Lucee, and the browser)
+	 * clear it. Codes are compared as the exact text they are.
+	 */
+	private boolean function containsExactly(required array codes, required string code) {
+		for (var candidate in arguments.codes) if (isSimpleValue(candidate) && compare(candidate, arguments.code) == 0) return true;
 		return false;
 	}
 

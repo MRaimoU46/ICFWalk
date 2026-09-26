@@ -276,6 +276,8 @@ impossible, so this procedure is a one-off for environments the earlier form alr
 
 `001_schema.sql` intentionally refuses to run when the `icf` schema already contains tables. For an existing installation, use reviewed migrations and backups rather than rerunning the creation script.
 
+Upgrading an existing database, recovering from a migration that failed part-way, taking and restoring backups, and the permissions the runtime login needs are in `../docs/OPERATIONS.md` (sections 4.1, 6 and 7). `tests/ops/database-operations.test.mjs` and `tests/ops/upgrade-and-rollback.test.mjs` exercise those procedures against a scratch database.
+
 ## Import requirements
 
 The application must implement the import/publish algorithm in `../docs/DATA_CONTRACT.md`.

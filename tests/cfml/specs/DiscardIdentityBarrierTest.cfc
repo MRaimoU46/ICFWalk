@@ -39,6 +39,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.run = "dib-" & lCase(left(replace(createUUID(), "-", "", "all"), 8));
 		variables.db = variables.c.db;
 		variables.repo = variables.c.definitionRepository;
+		// A thread signals the spec's barrier through this struct, never through its attributes: Adobe
+		// ColdFusion hands a cfthread a deep copy of its attributes, so a barrier passed as one is a
+		// copy whose signals never reach the page thread waiting on it (P8-07). Both engines share a
+		// component's variables scope with the threads it starts.
+		variables.threadBarriers = {};
 		variables.cleanup = new icfwalktests.support.FixtureCleanup(variables.c);
 		variables.adminA = variables.cleanup.ensureUser(variables.run & "-admin-a", "Discard barrier administrator A");
 		variables.adminB = variables.cleanup.ensureUser(variables.run & "-admin-b", "Discard barrier administrator B");
@@ -78,12 +83,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var db = variables.db;
 		var who = variables.adminB;
 		var observed = { "ran": false, "reached": false, "blockedBehindA": false, "passedWhileHeld": false, "doneWhileHeld": false };
+		variables.threadBarriers[threadName] = barrier;
 		var holdA = function() {
 			if (observed.ran) return;
 			observed.ran = true;
 			// A has read V1 -- under its row lock, if it takes one -- and has done nothing else.
 			barrier.signal("A_LOCKED");
-			thread name="#threadName#" importer=bImporter creator=creator vid=v1 who=who cfg=v2Config barrier=barrier {
+			thread name="#threadName#" importer=bImporter creator=creator vid=v1 who=who cfg=v2Config key=threadName {
 				try {
 					attributes.importer.discardDraftById(attributes.vid, attributes.who);
 					thread.discardOutcome = "discarded";
@@ -97,7 +103,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 					thread.createOutcome = structKeyExists(e, "errorcode") && len(e.errorcode) && e.errorcode != "0" ? e.errorcode : e.type;
 					thread.detail = left(e.message, 300);
 				}
-				attributes.barrier.signal("B_DONE");
+				variables.threadBarriers[attributes.key].signal("B_DONE");
 			}
 			observed.reached = barrier.await("B_AT_COMPETING_BOUNDARY", 60000);
 			// Wait for an observation: B blocked behind this session, or B finished. The ceiling
@@ -143,6 +149,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(observed.blockedBehindA, "SQL Server reported B blocked behind A's session while A held V1");
 		assertFalse(observed.passedWhileHeld, "B did not get past its read of V1 while A held it");
 		assertFalse(observed.doneWhileHeld, "B did not finish while A held V1");
+		assertTrue(barrier.observed("B_DONE"), "B's own completion signal reached this spec, so the line above is an observation");
 	}
 
 	/**

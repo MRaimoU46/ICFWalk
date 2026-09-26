@@ -68,28 +68,24 @@ npm test                                      # all Node tests + the CFML suite 
    `database/005_org_unit_dimension_map.sql`, `database/006_version_scoped_dimensions.sql` and
    `database/007_report_release.sql` (all idempotent) with SQL Server tooling (`sqlcmd`, SSMS) or
    `node scripts/db/apply-schema.mjs`. An existing Phase 7 installation needs only `007`.
-6. Seed the instrument: enable maintenance temporarily (`ICFWALK_MAINTENANCE_ENABLED=true`, a
-   32+ character `ICFWALK_MAINTENANCE_TOKEN`), call the import endpoint from the server itself
-   (`node scripts/seed-instrument.mjs` or `curl` against `http://127.0.0.1/index.cfm/api/maintenance/instrument/import`),
-   then disable maintenance again. After step 9, an instrument administrator can do the same from
-   the browser instead: **Instrument admin** (the view an admin-only user lands on) imports an
-   uploaded document, previews, compares, edits DRAFT wording, publishes and retires, with no
-   maintenance access at all.
-7. The seeded version is a DRAFT. Publish it from the administration view (Publish on its row,
-   then confirm); publishing freezes the snapshot it was imported with. Until a version is
-   published, a production deployment has no version in service and walks cannot start.
-   **The yearly update.** Download the current version as an Excel workbook (Download on its row),
-   edit it in Excel following its Start Here sheet, and upload it with Import under a new draft
-   label. Problems are listed by sheet, row and column and nothing is saved until the file is clean.
-   Preview and compare the draft, then publish it. The same workbook can go to content owners for
-   review first.
-8. Configure identity. In production `ICFWALK_SSO_MODE=header`: the district SSO gateway or reverse
+6. Enable maintenance for the bootstrap (`ICFWALK_MAINTENANCE_ENABLED=true`, a 32+ character
+   `ICFWALK_MAINTENANCE_TOKEN`) and keep it on until step 11. Seed the instrument from the server
+   itself (`node scripts/seed-instrument.mjs` or `curl` against
+   `http://127.0.0.1/index.cfm/api/maintenance/instrument/import`). Later, an instrument
+   administrator can import from the browser instead: **Instrument admin** (the view an admin-only
+   user lands on) imports an uploaded document, previews, compares, edits DRAFT wording, publishes
+   and retires, with no maintenance access at all.
+   The order of steps 6 to 11 matters in production: a SCHOOL unit's School mapping is validated
+   against the version in service, and production serves no DRAFT, so a mapping made before the
+   first publication is refused with 400 `INSTRUMENT_NOT_AVAILABLE` (P8-12; `docs/OPERATIONS.md` 4.6).
+7. Configure identity. In production `ICFWALK_SSO_MODE=header`: the district SSO gateway or reverse
    proxy authenticates users and asserts the subject/name/email in the headers named by
    `ICFWALK_SSO_SUBJECT_HEADER`, `ICFWALK_SSO_NAME_HEADER`, `ICFWALK_SSO_EMAIL_HEADER`. List the
    gateway addresses in `ICFWALK_SSO_TRUSTED_PROXIES` (required in production; nobody is trusted when
    empty) and optionally require `ICFWALK_SSO_SHARED_SECRET` in `ICFWALK_SSO_SECRET_HEADER`. The web
    server must strip those headers from client requests so only the gateway can set them.
-9. Bootstrap the organization and the first administrator with maintenance enabled temporarily:
+8. Bootstrap the organization and the first administrator. Import the org units **without**
+   `schoolValueCode` for now (every SCHOOL unit is reported unmapped until step 10):
 
    ```bash
    H="X-ICFWalk-Maintenance-Token: $ICFWALK_MAINTENANCE_TOKEN"
@@ -102,31 +98,41 @@ npm test                                      # all Node tests + the CFML suite 
      http://127.0.0.1/index.cfm/api/maintenance/identity/assign-role
    ```
 
-   Then map each SCHOOL org unit to the instrument School dimension value that names it, which the
-   School-scope invariant depends on (`docs/DATA_CONTRACT.md`, "School and organizational scope").
-   Either declare it in the import (`"schoolValueCode": "<instrument School value code>"` on each
-   SCHOOL unit) or, when the org-unit codes already are the instrument's School value codes, ask for
-   the candidates and confirm the ones that are right:
-
-   ```bash
-   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{}' \
-     http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension   # candidates[] only
-   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' \
-     -d '{"confirm":[{"orgUnitCode":"<code>","valueCode":"<instrument School value code>"}]}' \
-     http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension
-   ```
-
-   Code equality is a coincidence, not a decision, so the first call writes nothing however it is
-   phrased: only the pairs in `confirm[]` are stored, and each is re-derived and re-validated first
-   (`refused[]` says why any was not). The response's `unmapped[]` names every SCHOOL unit still
-   without a mapping and why, including `NON_IDENTIFYING_VALUE_CODE` for a unit coded `other`, which
-   is the School dimension's free-text option and never an identity. Walks at an unmapped unit carry
-   no School value and refuse a submitted one, so resolve them before going live.
-
    Walk and report roles (`DISTRICT_WALK_REPORT`, `DISTRICT_REPORT_ONLY`, `SCHOOL_WALK_REPORT`,
    `SCHOOL_REPORT_ONLY`) are assigned the same way with `orgUnitCode` of the district (with
    `"includeDescendants": true`) or of a school. Adjust `config/org-units.example.json` (codes are
    stable identifiers) before the first import; re-importing updates names and parents by code.
+9. The seeded version is a DRAFT. The administrator signs in and publishes it from the
+   administration view (Publish on its row, then confirm); publishing freezes the snapshot it was
+   imported with. Until a version is published, a production deployment has no version in service
+   and walks cannot start.
+   **The yearly update.** Download the current version as an Excel workbook (Download on its row),
+   edit it in Excel following its Start Here sheet, and upload it with Import under a new draft
+   label. Problems are listed by sheet, row and column and nothing is saved until the file is clean.
+   Preview and compare the draft, then publish it. The same workbook can go to content owners for
+   review first.
+10. Map each SCHOOL org unit to the instrument School dimension value that names it, now that a
+    version is in service. The School-scope invariant depends on it (`docs/DATA_CONTRACT.md`,
+    "School and organizational scope").
+    Either declare it in the import (`"schoolValueCode": "<instrument School value code>"` on each
+    SCHOOL unit) or, when the org-unit codes already are the instrument's School value codes, ask for
+    the candidates and confirm the ones that are right:
+
+    ```bash
+    curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{}' \
+      http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension   # candidates[] only
+    curl -sS -X POST -H "$H" -H 'Content-Type: application/json' \
+      -d '{"confirm":[{"orgUnitCode":"<code>","valueCode":"<instrument School value code>"}]}' \
+      http://127.0.0.1/index.cfm/api/maintenance/org-units/align-school-dimension
+    ```
+
+    Code equality is a coincidence, not a decision, so the first call writes nothing however it is
+    phrased: only the pairs in `confirm[]` are stored, and each is re-derived and re-validated first
+    (`refused[]` says why any was not). The response's `unmapped[]` names every SCHOOL unit still
+    without a mapping and why, including `NON_IDENTIFYING_VALUE_CODE` for a unit coded `other`, which
+    is the School dimension's free-text option and never an identity. Walks at an unmapped unit carry
+    no School value and refuse a submitted one, so resolve them before going live.
+11. Disable maintenance again (`ICFWALK_MAINTENANCE_ENABLED=false`, token removed) and restart.
 
 ### Database login permissions
 
@@ -197,9 +203,10 @@ involved, and no individual test is given longer to pass.
 
 **The suite is requested in parts.** `?part=<n>&of=<m>` runs one deterministic slice: spec files are
 discovered in a stable name order and dealt out round-robin, so every spec runs in exactly one part
-and the union of the parts is the whole suite. `tests/node/cfml-suite.test.mjs` asks for three
-parts, sums the reports, and asserts that the set of specs that ran equals the set of spec files on
-disk -- so a partition that dropped a spec fails rather than looking healthy.
+and the union of the parts is the whole suite. `tests/node/cfml-suite.test.mjs` asks for six
+parts (`ICFWALK_CFML_SUITE_PARTS` overrides the number; use 12 on Adobe ColdFusion, below), sums the
+reports, and asserts that the set of specs that ran equals the set of spec files on disk -- so a
+partition that dropped a spec fails rather than looking healthy.
 
 This exists because the *client* has a ceiling too, and it is lower than Lucee's: Node's `fetch`
 abandons a request after five minutes without response headers, and none are sent until the suite
@@ -207,6 +214,36 @@ finishes. A suite that grew past five minutes therefore failed as `fetch failed`
 skipped every spec's `afterAll`, leaving fixtures behind that then failed later, unrelated-looking
 tests. Parts keep each request well inside that limit without changing what runs. Omitting `part`
 and `of` still runs everything in one request, which is fine for a filtered run.
+
+## Verification runtime (Adobe ColdFusion 2023 container)
+
+`tools/runtime/acf-up.sh` runs the same repository, read-only, on Adobe ColdFusion 2023 in Adobe's
+official container image (`ICFWALK_ACF_IMAGE`; pin it by digest for a recorded run, as Phase 8 did
+with Update 25), and waits for `/api/health`. `tools/runtime/acf-down.sh` removes the container. It
+is the target engine, but not the production stack: the site is ColdFusion's built-in web server on
+port 8500 (not IIS or Apache through the connector), the edition is Developer, and the datasource is
+administrator-defined through Microsoft's JDBC driver registered as an "Other" driver, because the
+`sqlserver` (DataDirect) package that `cfpm` downloads from adobe.com is not reachable everywhere.
+The script turns on "Enable long text retrieval (CLOB)" for that datasource (P8-04) and raises the
+Administrator's request timeout (`ICFWALK_ACF_REQUEST_TIMEOUT`, default 600 seconds) for the same
+reason `lucee-up.sh` raises Lucee's.
+
+Run the suites against it with the harness pointed at port 8500:
+
+```bash
+tools/runtime/acf-up.sh
+ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_REQUIRE_APP=1 ICFWALK_CFML_SUITE_PARTS=12 npm test
+```
+
+Twelve parts, because ColdFusion runs the CFML specs two to three times slower than Lucee (instrument
+import and publication especially), and one part of six came within half a minute of the client's
+ceiling. ColdFusion keeps the application's singletons in the application scope: after changing a
+component, request any page with `?reinit=1` (development only) before running a suite, or the
+running container keeps the old instances.
+
+The engine differences Phase 8 found are guarded by `tests/node/cfml-portability.test.mjs`, which
+reads the source and needs neither engine; ColdFusion itself remains the authority (`cfcompile`, and
+the suites above).
 
 The seeded DRAFT can be re-imported (idempotently) only while no walk references it: the fixtures of
 every test remove their walks, but walks created by hand through the browser keep the DRAFT "in

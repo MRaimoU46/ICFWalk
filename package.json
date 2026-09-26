@@ -11,6 +11,9 @@
     "test:package": "node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs",
     "test:db": "node --test tests/node/db-scripts.test.mjs",
     "test:cfml": "node --test tests/node/cfml-suite.test.mjs",
+    "test:ops": "node --test --test-concurrency=1 \"tests/ops/*.test.mjs\"",
+    "test:security": "node --test tests/node/security-surface.test.mjs tests/node/browser-xss-sweep.test.mjs tests/node/null-text.test.mjs",
+    "test:a11y": "node --test tests/node/browser-a11y-sweep.test.mjs",
     "test:auth": "node --test tests/node/auth.test.mjs",
     "test:shell": "node --test tests/node/shell.test.mjs tests/node/visibility.test.mjs",
     "test:browser": "node --test tests/node/browser.test.mjs tests/node/browser-persistence.test.mjs tests/node/browser-email.test.mjs tests/node/browser-reports.test.mjs tests/node/browser-admin.test.mjs",
@@ -22,7 +25,9 @@
     "test:summary": "node --test tests/node/summary.test.mjs tests/node/no-mail.test.mjs",
     "vectors:summary": "node scripts/generate-summary-vectors.mjs",
     "vectors:summary:check": "node scripts/generate-summary-vectors.mjs --check",
-    "oracle:summary": "node scripts/prototype-summary-oracle.mjs"
+    "oracle:summary": "node scripts/prototype-summary-oracle.mjs",
+    "perf:seed": "node tests/perf/seed.mjs",
+    "perf:workload": "node tests/perf/workload.mjs"
   },
   "engines": {
     "node": ">=20"

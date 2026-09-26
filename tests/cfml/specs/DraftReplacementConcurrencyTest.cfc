@@ -40,6 +40,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		variables.repo = variables.c.definitionRepository;
 		variables.admin = variables.c.instrumentAdminService;
 		variables.importer = variables.c.instrumentImportService;
+		// A thread signals the spec's barrier through this struct, never through its attributes: Adobe
+		// ColdFusion hands a cfthread a deep copy of its attributes, so a barrier passed as one is a
+		// copy whose signals never reach the page thread waiting on it (P8-07). Both engines share a
+		// component's variables scope with the threads it starts.
+		variables.threadBarriers = {};
 		variables.cleanup = new icfwalktests.support.FixtureCleanup(variables.c);
 		variables.adminA = variables.cleanup.ensureUser(variables.run & "-admin-a", "Replacement administrator A");
 		variables.adminB = variables.cleanup.ensureUser(variables.run & "-admin-b", "Replacement administrator B");
@@ -110,10 +115,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var threadName = "uploadLate" & lCase(left(replace(createUUID(), "-", "", "all"), 10));
 		var actor = variables.adminA;
 		var observed = {};
+		variables.threadBarriers[threadName] = barrier;
 		holderRepo.armAfter("findVersion", function() {
 			// The creator holds the lock on the (still free) label and has written nothing.
 			barrier.signal("A_LOCKED");
-			thread name="#threadName#" svc=uploader doc=uploaderDoc who=actor barrier=barrier {
+			thread name="#threadName#" svc=uploader doc=uploaderDoc who=actor key=threadName {
 				try {
 					thread.result = attributes.svc.importDocument(attributes.doc, attributes.who);
 					thread.outcome = "imported";
@@ -122,7 +128,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 					thread.details = structKeyExists(e, "extendedInfo") ? e.extendedInfo : "";
 					thread.detail = left(e.message, 300);
 				}
-				attributes.barrier.signal("B_DONE");
+				variables.threadBarriers[attributes.key].signal("B_DONE");
 			}
 			observed = holdUntilQueued(barrier, threadName);
 		});
@@ -172,10 +178,11 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var threadName = "replaceAfterEdit" & lCase(left(replace(createUUID(), "-", "", "all"), 10));
 		var actor = variables.adminA;
 		var observed = {};
+		variables.threadBarriers[threadName] = barrier;
 		holderRepo.armAfter("findVersion", function() {
 			// B's edit holds the version lock and has written nothing yet.
 			barrier.signal("A_LOCKED");
-			thread name="#threadName#" svc=replacer doc=replacement who=actor token=token barrier=barrier {
+			thread name="#threadName#" svc=replacer doc=replacement who=actor token=token key=threadName {
 				try {
 					thread.result = attributes.svc.importDocument(attributes.doc, attributes.who, attributes.token);
 					thread.outcome = "imported";
@@ -184,7 +191,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 					thread.details = structKeyExists(e, "extendedInfo") ? e.extendedInfo : "";
 					thread.detail = left(e.message, 300);
 				}
-				attributes.barrier.signal("B_DONE");
+				variables.threadBarriers[attributes.key].signal("B_DONE");
 			}
 			observed = holdUntilQueued(barrier, threadName);
 		});
@@ -316,12 +323,13 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var edit = { "expectedChecksum": draft.checksum, "edits": [{ "target": "item", "key": target.itemKey, "field": "prompt", "value": "Committed during the export" }] };
 		var actor = variables.adminB;
 		var committed = false;
+		variables.threadBarriers[threadName] = barrier;
 		readRepo.armAfter("findVersionById", function() {
 			// The export has read the version row and nothing else.
 			barrier.signal("A_READ");
-			thread name="#threadName#" svc=editor vid=draft.versionId body=edit who=actor barrier=barrier {
+			thread name="#threadName#" svc=editor vid=draft.versionId body=edit who=actor key=threadName {
 				thread.result = attributes.svc.editDraft(attributes.vid, attributes.body, attributes.who);
-				attributes.barrier.signal("B_COMMITTED");
+				variables.threadBarriers[attributes.key].signal("B_COMMITTED");
 			}
 			committed = barrier.await("B_COMMITTED", 60000);
 		});
@@ -366,6 +374,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertTrue(arguments.barrier.signalledInOrder("A_LOCKED", "B_AT_COMPETING_BOUNDARY"), "in that order");
 		assertTrue(arguments.observed.blocked, "SQL Server reported the competitor blocked behind the holder's session");
 		assertFalse(arguments.observed.doneWhileHeld, "the competitor did not finish while the holder held the lock");
+		assertTrue(arguments.barrier.observed("B_DONE"), "the competitor's own completion signal reached this spec, so the line above is an observation");
 	}
 
 	// ---- helpers ---------------------------------------------------------------------------------

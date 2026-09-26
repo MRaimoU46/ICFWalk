@@ -150,13 +150,19 @@ component output="false" {
 			byId[w.walkId] = w;
 		}
 		if (arrayLen(walks)) {
+			// The dimension values of the walks kept above and of no others (P8-11). Re-running the
+			// list's WHERE clause here read the values of every walk in scope -- for a district walker
+			// the whole district, every year -- to attach them to at most LIST_LIMIT.
+			var listedIds = [];
+			for (var listedWalk in walks) arrayAppend(listedIds, listedWalk.walkId);
+			var listed = guidList(listedIds, "lw");
 			var dq = variables.db.run(
 				"SELECT x.walk_id, d.code, d.data_type, dv.value_code, x.text_value, x.number_value, x.date_value, x.boolean_value
 				 FROM [icf].[walk_dimension_value] x
 				 JOIN [icf].[dimension_definition] d ON d.dimension_id = x.dimension_id
 				 LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = x.selected_value_id
-				 WHERE x.walk_id IN (SELECT w.walk_id FROM [icf].[walk] w WHERE " & where & ")",
-				params
+				 WHERE x.walk_id IN (" & listed.sql & ")",
+				listed.params
 			);
 			for (var r = 1; r <= dq.recordCount; r++) {
 				var wid = uCase(dq.walk_id[r]);
@@ -396,6 +402,17 @@ component output="false" {
 		for (var id in arguments.a) { if (!structKeyExists(seen, uCase(id))) { seen[uCase(id)] = true; arrayAppend(out, uCase(id)); } }
 		for (var id in arguments.b) { if (!structKeyExists(seen, uCase(id))) { seen[uCase(id)] = true; arrayAppend(out, uCase(id)); } }
 		return out;
+	}
+
+	/** Named GUID parameters for an IN list: { sql: ":p1, :p2, ...", params }. At most LIST_LIMIT ids. */
+	private struct function guidList(required array ids, required string prefix) {
+		var names = [];
+		var params = {};
+		for (var i = 1; i <= arrayLen(arguments.ids); i++) {
+			arrayAppend(names, ":" & arguments.prefix & i);
+			params[arguments.prefix & i] = variables.db.guid(arguments.ids[i]);
+		}
+		return { "sql": arrayToList(names, ", "), "params": params };
 	}
 
 	private struct function inClause(required array ids, required string prefix) {

@@ -36,6 +36,10 @@
 //      real null is asked with structKeyExists (false on both engines for a null-valued key, a null
 //      or omitted argument, and a null local) or arrayIsDefined. The one exception is a query cell
 //      (`q.col[r]`): SQL NULL reads back as "" on both engines and the quirk does not reach it.
+//   8. A spec's thread does not receive a ConcurrencyBarrier as an attribute. ColdFusion hands a
+//      cfthread a deep copy of its attributes, so the thread signals a copy and the page thread
+//      waiting on the original never hears it; Lucee passes the same object. A thread reaches the
+//      barrier through the spec's variables scope, which both engines share with it (P8-07).
 //
 // Two more differences are settings, not constructs, and are not linted: Application.cfc sets
 // `this.passArrayByReference` (ColdFusion otherwise copies an array passed to a function, and the
@@ -198,6 +202,17 @@ test("rule 7: the application never asks isNull() about a value, only about a qu
       if (/^\s*(arguments\.)?q\.\w+\[[^\]]+\]\s*$/.test(m[1])) continue;
       found.push(`${f.rel}:${lineOf(f.text, m.index)} isNull(${m[1]})`);
     }
+  }
+  assert.deepEqual(found, []);
+});
+
+test("rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute", () => {
+  const found = [];
+  for (const f of files) {
+    for (const m of f.masked.matchAll(/\bthread\b[^{;\n]*\{/g)) {
+      if (/=\s*[\w.]*barrier\b/i.test(m[0])) found.push(`${f.rel}:${lineOf(f.text, m.index)} ${m[0].trim()}`);
+    }
+    for (const m of f.masked.matchAll(/\battributes\.\w*barrier\b/gi)) found.push(`${f.rel}:${lineOf(f.text, m.index)} ${m[0]}`);
   }
   assert.deepEqual(found, []);
 });

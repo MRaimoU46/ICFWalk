@@ -163,7 +163,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				);
 			});
 		} catch (any e) {
-			thrown = e.message;
+			thrown = errorText(e);
 		}
 		assertTrue(findNoCase("PK_report_release_walk", thrown) > 0, "the database refuses a second release of the same walk: " & thrown);
 		assertEquals(3, counted(relC), "and the first release is untouched");
