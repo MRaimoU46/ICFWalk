@@ -26,7 +26,8 @@ import path from "node:path";
 import sql from "mssql";
 import { api, baseUrl, connectionConfig, loadRuntimeEnv, root } from "../node/helpers.mjs";
 
-const env = loadRuntimeEnv();
+// loadRuntimeEnv passes on only ICFWALK_* from the process; the seeder's own PERF_* settings too.
+const env = { ...loadRuntimeEnv(), ...Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith("PERF_") && v !== "")) };
 const token = env.ICFWALK_MAINTENANCE_TOKEN || "";
 const database = env.ICFWALK_DB_NAME;
 const WALKS = Number(process.argv[2] || env.PERF_WALKS || 30000);

@@ -788,3 +788,65 @@ test("A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375
   assert.deepEqual(pageErrors, [], "no page errors");
   await context.close();
 });
+
+// ---- P8-13: a success message means the page is ready for the next action --------------------------
+
+/**
+ * After a change the page refreshes its version list before it takes another action, and a click
+ * while it is busy is ignored. The success message ("Saved 1 change to ...", "Published ...",
+ * "Discarded draft ...") used to be shown before that refresh, so a person who acted on it -- as
+ * anyone does -- clicked into a busy page and nothing happened. Where the list answers in a few
+ * milliseconds the window is invisible; on Adobe ColdFusion it is not (the admin browser suites
+ * timed out there). The list is slowed here so the window is the same on every engine.
+ */
+test("P8-13 (browser): a success message is shown only once the page will take the next action", { skip }, async () => {
+  const draft = await importVersion("ready-edit");
+  const other = await importVersion("ready-other");
+  const doomed = await importVersion("ready-discard");
+  const item = SOURCE.items.find((i) => i.reviewStatus !== PLACEHOLDER_STATUS && i.itemType === "SINGLE_CHOICE");
+  const { context, page } = await newContext();
+  await openHome(page);
+  // Each check below clicks the next action as soon as the success message is shown, without waiting
+  // for anything else: before the correction the click was ignored and the panel never came.
+  await page.route((url) => url.pathname.endsWith("/api/admin/instrument/versions"), async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+
+  // A wording change, then straight to the placeholder queue.
+  await row(page, draft.versionId).getByRole("button", { name: /^Edit wording/ }).click();
+  await page.waitForSelector('#admin-panel form.admin-entity[data-target="version"]');
+  await idle(page);
+  await page.fill("#admin-panel input[type=search]", item.itemKey);
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  const form = page.locator(`#admin-panel form.admin-entity[data-target="item"][data-key="${item.itemKey}"]`);
+  await form.waitFor();
+  await idle(page);
+  await form.locator('textarea[name="prompt"]').fill("Students explain what they are learning and why.");
+  await form.getByRole("button", { name: "Save changes" }).click();
+  await waitStatus(page, /^Saved 1 change to /);
+  await row(page, draft.versionId).getByRole("button", { name: /^Placeholder review/ }).click();
+  await page.waitForSelector("#admin-panel .admin-ph-table", { timeout: 10000 });
+  await idle(page);
+
+  // A publication, then straight to its comparison.
+  await row(page, other.versionId).getByRole("button", { name: /^Publish / }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Publish" }).click();
+  await waitStatus(page, /^Published /);
+  await row(page, other.versionId).getByRole("button", { name: /^Compare / }).click();
+  await page.waitForSelector("#admin-panel .admin-compare-result .admin-summary-title", { timeout: 10000 });
+  await idle(page);
+
+  // A discard, then straight to another draft's placeholder queue.
+  await row(page, doomed.versionId).getByRole("button", { name: /^Discard / }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Discard draft" }).click();
+  await waitStatus(page, /^Discarded draft /);
+  await row(page, draft.versionId).getByRole("button", { name: /^Placeholder review/ }).click();
+  await page.waitForFunction(() => /placeholder prompts? to review/.test(document.querySelector("#admin-panel .admin-ph-count")?.textContent || ""), null, { timeout: 10000 });
+  await idle(page);
+
+  assert.equal(await statusOf(other.versionId), "PUBLISHED");
+  assert.equal(await statusOf(doomed.versionId), null, "the discarded draft is gone");
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+});

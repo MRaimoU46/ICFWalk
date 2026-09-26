@@ -148,6 +148,9 @@ export function mountAdmin({ api, announce = () => {} }) {
     return { message: `This page could not show the result: ${e && e.message ? e.message : String(e)}. Reload to see the current state.`, issues: null };
   }
 
+  // One action at a time: while an action runs, including the version-list refresh that follows a
+  // change, a click on another action is ignored. So a change announces its success only after that
+  // refresh, when the page will take the next click (P8-13).
   async function guarded(fn, { mutation = false } = {}) {
     if (view.busy) return undefined;
     view.busy = true;
@@ -311,8 +314,8 @@ export function mountAdmin({ api, announce = () => {} }) {
         throw e;
       }
       importResult.append(importSummary(file.name, result, source));
-      setStatus(`${result.created ? "Created" : "Re-imported"} draft ${result.versionLabel}.`);
       await loadVersions();
+      setStatus(`${result.created ? "Created" : "Re-imported"} draft ${result.versionLabel}.`);
     }, { mutation: true });
     if (!conflict) return null;
 
@@ -694,8 +697,8 @@ export function mountAdmin({ api, announce = () => {} }) {
         const applied = (r.applied || []).find((a) => a.target === entry.target && a.field === c.field && (entry.target === "version" || a.key === entry.key));
         if (applied) { c.original = applied.to; c.control.value = applied.to ?? ""; }
       }
-      setStatus(r.changed ? `Saved ${plural((r.applied || []).length, "change", "changes")} to ${r.versionLabel}.` : "Nothing changed.");
       await loadVersions();
+      setStatus(r.changed ? `Saved ${plural((r.applied || []).length, "change", "changes")} to ${r.versionLabel}.` : "Nothing changed.");
     }, { mutation: true });
   }
 
@@ -756,8 +759,8 @@ export function mountAdmin({ api, announce = () => {} }) {
         const body = { versionLabel: labelInput.value.trim() };
         if (notes.value.trim()) body.revisionNotes = notes.value.trim();
         const r = await api.post(`/admin/instrument/versions/${encodeURIComponent(sourceId)}/clone`, body);
-        setStatus(`Created draft ${r.versionLabel} from ${source.versionLabel}.`);
         await loadVersions();
+        setStatus(`Created draft ${r.versionLabel} from ${source.versionLabel}.`);
         view.afterClone = r.versionId;
       }, { mutation: true });
       if (view.afterClone) {
@@ -803,8 +806,8 @@ export function mountAdmin({ api, announce = () => {} }) {
     await guarded(async () => {
       setStatus(`Publishing ${v.versionLabel}...`);
       const r = await api.postEmpty(`/admin/instrument/versions/${encodeURIComponent(v.versionId)}/publish`);
-      setStatus(`Published ${r.versionLabel || v.versionLabel}.`);
       await loadVersions();
+      setStatus(`Published ${r.versionLabel || v.versionLabel}.`);
     }, { mutation: true });
     heading.focus();
   }
@@ -817,8 +820,8 @@ export function mountAdmin({ api, announce = () => {} }) {
     await guarded(async () => {
       setStatus(`Discarding ${v.versionLabel}...`);
       await api.postEmpty(`/admin/instrument/versions/${encodeURIComponent(v.versionId)}/discard`);
-      setStatus(`Discarded draft ${v.versionLabel}.`);
       await loadVersions();
+      setStatus(`Discarded draft ${v.versionLabel}.`);
     }, { mutation: true });
     heading.focus();
   }

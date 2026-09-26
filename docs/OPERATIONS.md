@@ -199,7 +199,10 @@ section 4.2 step 1; `schema: missing` is section 4.1.
   ColdFusion's own HTML error page.
 * Request body limit 20,000,000 bytes: IIS `requestLimits maxAllowedContentLength="20000000"`,
   Apache `LimitRequestBody 20000000`. The application enforces its own limits too (5 MB for an
-  instrument import) and answers 413 before reading the body.
+  instrument import) and answers 413 before reading the body. A body declared over the web server's
+  own limit never reaches the application: the server answers with its own page (IIS 404.13, Apache
+  413, and ColdFusion's own 400 above its "Maximum size of post data"), not the application's JSON
+  (`tests/node/admin-instrument.test.mjs`, the last P6A-01 case).
 * **Strip the identity headers from every client request** (`X-Auth-Subject`, `X-Auth-Name`,
   `X-Auth-Email`, the secret header, and `X-ICFWalk-Dev-*`) so that only the gateway sets them.
 * Pass `PATH_INFO` to ColdFusion (the IIS connector does by default).
@@ -282,6 +285,27 @@ A release replaces the code under `app/` and `src/` and, if it ships one, applie
 Rolling several servers one at a time behind a load balancer works: the request contract is
 backward compatible within a release, and a browser that lands on a restarted server renews its
 session.
+
+### 5.1 Rolling back
+
+Roll back the code, not the database, when a release misbehaves (the smoke test fails, or
+`request.failed` climbs):
+
+1. Redeploy the previous release's tree (the commit noted in step 3 above) to every server and clear
+   the template cache or restart ColdFusion. Open pages renew their session and keep their edits.
+2. Leave the database as it is. Migrations are additive, so the previous release runs on the migrated
+   database, including the rows the newer release wrote. This is verified: the frozen Phase 0-7
+   release served, edited and reported on a database that 007 had migrated and this release had
+   written to, and read the report release this release had created
+   (`tests/ops/upgrade-and-rollback.test.mjs`, evidence in `docs/evidence/phase8/operations/`).
+3. Never reverse a migration by hand. Restore the backup from step 2 (section 7.3) only when the data
+   itself is damaged: everything written since that backup is lost, so decide it with the owner.
+4. Repeat the smoke test and record what was rolled back, when, and why.
+
+On Adobe ColdFusion 2023 there is no earlier release to roll back to: the Phase 0-7 release does not
+start on it (defect P8-02), so the Phase 8 release is the first one that runs there. A fault found
+after the first go-live is corrected forward with a new release, or the service is taken offline
+(section 13) while it is. On later releases the steps above apply.
 
 ## 6. Migrations
 
@@ -529,10 +553,36 @@ no walk uses. `docs/ENDPOINTS.md` has the routes.
 
 ## 12. Capacity and performance
 
-No performance target has been set, so none is claimed. `docs/evidence/phase8/performance/` holds a
-reproducible synthetic workload (its data sizes, concurrency, environment, timings, SQL plans and
-resource observations) and the observations it produced; a target, once the district sets one, is
-checked by re-running it (`tests/perf/`).
+No performance target has been set, so none is claimed (owner decision D8). `docs/evidence/phase8/performance/`
+holds a reproducible synthetic workload -- its data sizes, concurrency, environment, timings, SQL
+plans and resource observations -- and what it found; a target, once the district sets one, is
+checked by re-running it:
+
+```bash
+# an application in development mode on its own, migrated database (never a production one)
+ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=<its site> node tests/perf/seed.mjs 30000
+ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=<its site> PERF_LEVELS=1,10,25 PERF_DURATION=60 \
+  PERF_EDIT=any ICFWALK_EVIDENCE_DIR=<dir> node tests/perf/workload.mjs   # PERF_EDIT=drafts: edit drafts only
+```
+
+What to know from it, on one 4-CPU machine holding SQL Server, the engine and the load generator:
+
+* **The engine matters.** Adobe ColdFusion paid for every Java call the JSON writer made; after P8-14
+  a single walker's My Walks answers in about 50 ms on either engine (it was 400 ms on ColdFusion),
+  and 25 walkers working without pause see medians around half a second.
+* **Live district reports refuse rather than mix states.** A report reads its population, then
+  checks that no walk in it changed; after three changed attempts it answers 409
+  `REPORT_POPULATION_CHANGED` ("run the report again"). Edits to completed walks while a district
+  report runs are what trigger it; edits to drafts do not. It was frequent before P8-14 made reports
+  fast, and is now rare (none on ColdFusion at 25 walkers; a few in twenty on Lucee at its higher
+  write rate). Frozen releases (section 9.4) are unaffected and answer in tens of milliseconds.
+* **My Walks scans the walk table.** Its `TOP 500 ... ORDER BY updated_at` reads every walk in scope,
+  and the report's candidate selection reads every walk of the version; SQL Server suggests indexes
+  on `icf.walk (org_unit_id, owner_user_id)` and `(version_id, org_unit_id, status) INCLUDE
+  (row_version)`. Neither is added: an index is a migration, and whether it is needed is a question
+  for the target (D8), answered by re-running the workload on the production hardware.
+* Nothing leaks: temp tables, open transactions and tempdb use are the same after every level as
+  before it, and a backup and restore of the 2 GB synthetic database takes seconds.
 
 ## 13. Incident response
 

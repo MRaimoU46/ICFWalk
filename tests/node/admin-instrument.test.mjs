@@ -444,6 +444,13 @@ function rawRequest(p, headers, body, { chunked = false, timeoutMs = 60000 } = {
 
 const IMPORT = "/api/admin/instrument/import";
 const LIMIT = 5000000;
+/**
+ * The length a request declares when it is refused before its body: three times the import limit, and
+ * never sent. It stays below the web server's own ceiling (Adobe ColdFusion's "Maximum size of post
+ * data", 20 MB), so the application is what answers on every engine; above that ceiling ColdFusion
+ * answers first, which the last P6A-01 case records (P8-07).
+ */
+const DECLARED = "15000000";
 /** Not JSON, and larger than the import limit. */
 const MALFORMED_OVERSIZED = Buffer.concat([Buffer.from('{"document": {"items": [ this is not json '), Buffer.alloc(LIMIT, 0x78)]);
 
@@ -457,7 +464,7 @@ test("P6A-01: an unauthenticated import is answered 401 without its body being r
   const complete = await rawRequest(IMPORT, anonymous, MALFORMED_OVERSIZED);
   assert.equal(complete.status, 401, complete.text.slice(0, 300));
   assert.equal(complete.json.error.code, "UNAUTHENTICATED");
-  const declared = await partialRequest(IMPORT, { ...anonymous, "Content-Length": "50000000" }, "{ not json");
+  const declared = await partialRequest(IMPORT, { ...anonymous, "Content-Length": DECLARED }, "{ not json");
   assert.equal(declared.status, 401, declared.text.slice(0, 300));
   assert.equal(declared.json.error.code, "UNAUTHENTICATED");
   const chunked = await partialRequest(IMPORT, { ...anonymous, "Transfer-Encoding": "chunked" }, "{ not json");
@@ -473,14 +480,14 @@ test("P6A-01: an import with a missing or wrong CSRF token is answered 403 witho
   assert.equal(complete.json.error.code, "CSRF_TOKEN_INVALID");
   const noToken = signedIn();
   delete noToken["X-ICFWalk-CSRF-Token"];
-  const declared = await partialRequest(IMPORT, { ...noToken, "Content-Length": "50000000" }, "{ not json");
+  const declared = await partialRequest(IMPORT, { ...noToken, "Content-Length": DECLARED }, "{ not json");
   assert.equal(declared.status, 403, declared.text.slice(0, 300));
   assert.equal(declared.json.error.code, "CSRF_TOKEN_INVALID");
   const chunked = await partialRequest(IMPORT, { ...signedIn({ "X-ICFWalk-CSRF-Token": "0".repeat(64) }), "Transfer-Encoding": "chunked" }, "{ not json");
   assert.equal(chunked.status, 403, chunked.text.slice(0, 300));
   assert.equal(chunked.json.error.code, "CSRF_TOKEN_INVALID");
   // A user without instrument.manage is refused before the body too.
-  const walkerHeaders = { Accept: "application/json", "Content-Type": "application/json", "X-ICFWalk-Dev-Subject": walkerSubject, Cookie: walker.cookie(), "X-ICFWalk-CSRF-Token": walker.csrf(), "Content-Length": "50000000" };
+  const walkerHeaders = { Accept: "application/json", "Content-Type": "application/json", "X-ICFWalk-Dev-Subject": walkerSubject, Cookie: walker.cookie(), "X-ICFWalk-CSRF-Token": walker.csrf(), "Content-Length": DECLARED };
   const forbidden = await partialRequest(IMPORT, walkerHeaders, "{ not json");
   assert.equal(forbidden.status, 403, forbidden.text.slice(0, 300));
   assert.equal(forbidden.json.error.code, "FORBIDDEN");
@@ -527,9 +534,27 @@ test("P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text can
 });
 
 test("P6A-01: a maintenance route without its token is hidden without its body being read", { skip }, async () => {
-  const r = await partialRequest("/api/maintenance/instrument/import", { Accept: "application/json", "Content-Type": "application/json", "Content-Length": "50000000" }, "{ not json");
+  const r = await partialRequest("/api/maintenance/instrument/import", { Accept: "application/json", "Content-Type": "application/json", "Content-Length": DECLARED }, "{ not json");
   assert.equal(r.status, 404, r.text.slice(0, 300));
   assert.equal(r.json.error.code, "NOT_FOUND");
+});
+
+test("P6A-01: a body declared over the web server's own ceiling is refused without being read, by the application or before it", { skip }, async () => {
+  // Lucee's verification runtime has no ceiling of its own, so the application answers. Adobe
+  // ColdFusion refuses a declared length over "Maximum size of post data" (20 MB) itself, with its
+  // own 400 page, before any CFML runs; in production IIS or Apache answers first (docs/OPERATIONS.md
+  // 4.4). Either way the answer comes without the body and nothing is written.
+  const engine = (await (await fetch(`${baseUrl(env)}/index.cfm/api/health`)).json()).engine || "";
+  const before = await versionCount();
+  const r = await partialRequest(IMPORT, { Accept: "application/json", "Content-Type": "application/json", "Content-Length": "50000000" }, "{ not json");
+  if (/^ColdFusion/.test(engine)) {
+    assert.equal(r.status, 400, r.text.slice(0, 300));
+    assert.equal(r.json, null, "ColdFusion's own page, not the application's JSON");
+  } else {
+    assert.equal(r.status, 401, r.text.slice(0, 300));
+    assert.equal(r.json.error.code, "UNAUTHENTICATED");
+  }
+  assert.equal(await versionCount(), before);
 });
 
 // ---- ADM-02 preview --------------------------------------------------------------------------

@@ -189,7 +189,10 @@ async function keyboardTraversal(page, view) {
   let wrapped = false;
   await page.evaluate(() => { document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0); });
   let first = null;
-  for (let i = 0; i < 600; i++) {
+  // Enough presses to go round the page twice, however many rows the data gives it (the admin version
+  // list grows by eight controls a version); the ceiling only turns a trap into a failure.
+  const presses = Math.max(600, 2 * result.expected + 50);
+  for (let i = 0; i < presses; i++) {
     await page.keyboard.press("Tab");
     const info = await page.evaluate(() => {
       const e = document.activeElement;

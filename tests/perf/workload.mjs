@@ -20,10 +20,16 @@ import { execFileSync } from "node:child_process";
 import sql from "mssql";
 import { baseUrl, connectionConfig, loadRuntimeEnv, root } from "../node/helpers.mjs";
 
-const env = loadRuntimeEnv();
+// loadRuntimeEnv passes on only ICFWALK_* from the process; the workload's own PERF_* settings too.
+const env = { ...loadRuntimeEnv(), ...Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith("PERF_") && v !== "")) };
 const database = env.ICFWALK_DB_NAME;
 const LEVELS = (env.PERF_LEVELS || "1,10,25").split(",").map(Number);
 const DURATION = Number(env.PERF_DURATION || 60) * 1000;
+// Which walks a walker edits: "any" of theirs (the default; most are completed, so most edits are
+// post-completion edits, which move a report's population) or "drafts" only (autosave while
+// observing, the common case). SOLO district reports are timed first with nothing else running.
+const EDIT = env.PERF_EDIT === "drafts" ? "drafts" : "any";
+const SOLO = Number(env.PERF_SOLO ?? 5);
 const TAG = "perf";
 const outDir = env.ICFWALK_EVIDENCE_DIR || path.join(root, ".runtime", "perf");
 const REQUEST_TIMEOUT = 60000;
@@ -135,11 +141,15 @@ async function walkerLoop(c, deadline, samples, ctx) {
     if (mine.length) {
       const pick = mine[Math.floor(Math.random() * mine.length)];
       const opened = await c.call("open walk", "GET", `/api/walks/${pick.id}`, undefined, samples);
-      const walk = opened.json?.walk;
+      let walk = opened.json?.walk;
+      if (walk && EDIT === "drafts" && walk.status !== "DRAFT") {
+        const drafts = mine.filter((w) => w.status === "DRAFT");
+        walk = drafts.length ? (await c.call("open walk", "GET", `/api/walks/${drafts[Math.floor(Math.random() * drafts.length)].id}`, undefined, samples)).json?.walk : null;
+      }
       if (walk && Math.random() < 0.5) {
         const responses = { ...walk.state.responses, comp_s1_notes: { textValue: `Perf note ${crypto.randomUUID()}` } };
         for (const k of Object.keys(responses)) if (responses[k] && typeof responses[k] === "object") delete responses[k].state;
-        await c.call("save walk", "PUT", `/api/walks/${pick.id}`, { rowVersion: walk.rowVersion, clientMutationId: crypto.randomUUID(), dimensions: walk.state.dimensions, responses }, samples);
+        await c.call("save walk", "PUT", `/api/walks/${walk.id}`, { rowVersion: walk.rowVersion, clientMutationId: crypto.randomUUID(), dimensions: walk.state.dimensions, responses }, samples);
       }
       if (Math.random() < 0.1) await c.call("summary", "GET", `/api/walks/${pick.id}/summary`, undefined, samples);
     }
@@ -180,10 +190,21 @@ const groups = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(root, "co
 
 const run = {
   startedAt: new Date().toISOString(), database, baseUrl: baseUrl(env), engine: health.engine, server, data: { walks: Number(seed.walks), responses: Number(seed.responses) },
-  method: { durationSeconds: DURATION / 1000, levels: LEVELS, mix: "4 of 5 virtual users are school walkers (list mine, open, save 50 %, summary 10 %, create+save+complete 5 %); 1 of 5 is the district walker (list scope=all, live district report, district CSV)", requestTimeoutMs: REQUEST_TIMEOUT },
+  method: { durationSeconds: DURATION / 1000, levels: LEVELS, edits: EDIT, soloReports: SOLO, thinkTimeMs: 0, mix: "closed loop, no think time: 4 of 5 virtual users are school walkers (list mine, open, save 50 %, summary 10 %, create+save+complete 5 %); 1 of 5 is the district walker (list scope=all, live district report, district CSV)", requestTimeoutMs: REQUEST_TIMEOUT },
   levels: [],
 };
 log(`${run.engine} on ${database}: ${run.data.walks} walks, ${run.data.responses} responses; levels ${LEVELS.join(",")} for ${DURATION / 1000}s`);
+
+// The district report alone: no other request is running.
+if (SOLO > 0) {
+  const soloSamples = [];
+  for (let i = 0; i < SOLO; i++) {
+    await district.call("report live district (solo)", "GET", `/api/reports/aggregate?versionId=${versionId}&orgUnitId=${districtId}`, undefined, soloSamples);
+    await district.call("report CSV district (solo)", "GET", `/api/reports/aggregate.csv?versionId=${versionId}&orgUnitId=${districtId}`, undefined, soloSamples);
+  }
+  run.solo = summarize(soloSamples, 1);
+  log(`solo: ${Object.entries(run.solo).map(([op, st]) => `${op} p50=${st.p50} max=${st.max} err=${st.errors}`).join("; ")}`);
+}
 
 const statsBefore = new Map((await queryStats()).map((r) => [r.k, r]));
 for (const level of LEVELS) {
@@ -221,15 +242,23 @@ for (const level of LEVELS) {
   log(`level ${level}: ${samples.length} requests in ${seconds.toFixed(0)}s; ${Object.entries(result.operations).map(([op, s]) => `${op} p50=${s.p50} p95=${s.p95} max=${s.max} err=${s.errors}`).join("; ")}`);
 }
 
-// One report release over the synthetic school year, timed once.
+// One report release over the synthetic school year, timed once per database: a release is never
+// repeated or removed, so a later run finds it and times reading it only.
 const releaser = client(`${TAG}-district-walker`);
 await releaser.call("me", "GET", "/api/me");
 const releaseSamples = [];
-const release = await releaser.call("create release", "POST", "/api/reports/releases", { observedFrom: "2025-08-15", observedTo: "2026-06-30" }, releaseSamples);
-run.release = { status: release.status, ms: Math.round(release.ms), code: release.json?.error?.code ?? null, blocks: release.json?.release?.blockCount ?? release.json?.blockCount ?? null };
+const [already] = await q("SELECT CONVERT(nvarchar(36), release_id) AS id FROM icf.report_release WHERE observed_from = '2025-08-15' AND observed_to = '2026-06-30'");
+let releaseId = already ? already.id : "";
+if (already) {
+  run.release = { status: "created by an earlier run on this database", releaseId };
+} else {
+  const release = await releaser.call("create release", "POST", "/api/reports/releases", { observedFrom: "2025-08-15", observedTo: "2026-06-30" }, releaseSamples);
+  run.release = { status: release.status, ms: Math.round(release.ms), code: release.json?.error?.code ?? null, blocks: release.json?.release?.blocks ?? release.json?.release?.blockCount ?? null };
+  releaseId = release.json?.release?.releaseId || release.json?.releaseId || "";
+}
 const reportOnly = client(`${TAG}-district-reports`);
 await reportOnly.call("me", "GET", "/api/me");
-const releasedRead = await reportOnly.call("report release read", "GET", `/api/reports/aggregate?versionId=${versionId}&orgUnitId=${districtId}&releaseId=${release.json?.release?.releaseId || release.json?.releaseId || ""}`, undefined, releaseSamples);
+const releasedRead = await reportOnly.call("report release read", "GET", `/api/reports/aggregate?versionId=${versionId}&orgUnitId=${districtId}&releaseId=${releaseId}`, undefined, releaseSamples);
 run.releaseRead = { status: releasedRead.status, ms: Math.round(releasedRead.ms) };
 log(`release: ${JSON.stringify(run.release)}; release read ${JSON.stringify(run.releaseRead)}`);
 

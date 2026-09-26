@@ -22,17 +22,28 @@ component output="false" {
 			.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 			.withZone(createObject("java", "java.time.ZoneOffset").UTC);
 		variables.Instant = createObject("java", "java.time.Instant");
+		// Performance (P8-14): a string with nothing to escape is written in one append, and struct
+		// keys are sorted by Java rather than by a CFML comparator; the bytes are unchanged. The
+		// pattern finds what writeString escapes: a quote, a backslash, a control character or a
+		// lone surrogate (Java matches by code point, so a valid surrogate pair is not found here and
+		// is copied whole, exactly as the character loop copies it).
+		variables.NEEDS_ESCAPE = createObject("java", "java.util.regex.Pattern").compile("[""\\\x00-\x1F\uD800-\uDFFF]");
+		variables.Collections = createObject("java", "java.util.Collections");
 		return this;
 	}
 
 	public string function serialize(any value) {
-		var sb = createObject("java", "java.lang.StringBuilder").init();
+		// The output is collected as parts and joined once: on Adobe ColdFusion each call to a Java
+		// StringBuilder's overloaded append costs several microseconds of method resolution, a
+		// hundred times arrayAppend's (P8-14). The parts live in a struct, which both engines pass by
+		// reference, so the writer below appends to one array whatever passArrayByReference says.
+		var buf = { "parts": [] };
 		if (!structKeyExists(arguments, "value")) {
-			sb.append("null");
+			arrayAppend(buf.parts, "null");
 		} else {
-			write(sb, arguments.value);
+			write(buf, arguments.value);
 		}
-		return sb.toString();
+		return arrayToList(buf.parts, "");
 	}
 
 	public string function sha256(required string text) {
@@ -57,75 +68,75 @@ component output="false" {
 		}
 	}
 
-	private void function write(required any sb, required any value) {
+	private void function write(required struct buf, required any value) {
 		if (!structKeyExists(arguments, "value")) {
-			arguments.sb.append("null");
+			arrayAppend(arguments.buf.parts, "null");
 			return;
 		}
 		var v = arguments.value;
 		if (isStruct(v)) {
-			writeStruct(arguments.sb, v);
+			writeStruct(arguments.buf, v);
 			return;
 		}
 		if (isArray(v)) {
-			arguments.sb.append("[");
+			arrayAppend(arguments.buf.parts, "[");
 			var n = arrayLen(v);
 			for (var i = 1; i <= n; i++) {
-				if (i > 1) arguments.sb.append(",");
-				if (!arrayIsDefined(v, i)) arguments.sb.append("null");
-				else write(arguments.sb, v[i]);
+				if (i > 1) arrayAppend(arguments.buf.parts, ",");
+				if (!arrayIsDefined(v, i)) arrayAppend(arguments.buf.parts, "null");
+				else write(arguments.buf, v[i]);
 			}
-			arguments.sb.append("]");
+			arrayAppend(arguments.buf.parts, "]");
 			return;
 		}
 		if (isInstanceOf(v, "java.lang.Boolean")) {
-			arguments.sb.append(v ? "true" : "false");
+			arrayAppend(arguments.buf.parts, v ? "true" : "false");
 			return;
 		}
 		if (isInstanceOf(v, "java.lang.Number")) {
-			arguments.sb.append(formatNumber(v));
+			arrayAppend(arguments.buf.parts, formatNumber(v));
 			return;
 		}
 		if (isInstanceOf(v, "java.util.Date")) {
-			writeString(arguments.sb, formatDate(v));
+			writeString(arguments.buf, formatDate(v));
 			return;
 		}
 		if (isInstanceOf(v, "java.lang.String")) {
-			writeString(arguments.sb, v);
+			writeString(arguments.buf, v);
 			return;
 		}
 		if (isQuery(v)) {
-			writeQuery(arguments.sb, v);
+			writeQuery(arguments.buf, v);
 			return;
 		}
 		if (isSimpleValue(v)) {
 			// CFML simple values whose Java type is not one of the above (rare engine wrappers).
-			if (isBoolean(v) && !isNumeric(v)) { arguments.sb.append(v ? "true" : "false"); return; }
-			if (isNumeric(v) && isValid("numeric", v) && !isInstanceOf(v, "java.lang.String")) { arguments.sb.append(formatNumber(v)); return; }
-			writeString(arguments.sb, toString(v));
+			if (isBoolean(v) && !isNumeric(v)) { arrayAppend(arguments.buf.parts, v ? "true" : "false"); return; }
+			if (isNumeric(v) && isValid("numeric", v) && !isInstanceOf(v, "java.lang.String")) { arrayAppend(arguments.buf.parts, formatNumber(v)); return; }
+			writeString(arguments.buf, toString(v));
 			return;
 		}
 		throw(type = "ICFWalk.Validation", message = "Canonical JSON cannot encode value of type " & v.getClass().getName(), errorcode = "CANONICAL_JSON_TYPE");
 	}
 
-	private void function writeStruct(required any sb, required struct value) {
-		var keys = structKeyArray(arguments.value);
-		arraySort(keys, function(a, b) {
-			return sgn(javaCast("string", a).compareTo(javaCast("string", b)));
-		});
-		arguments.sb.append("{");
-		var n = arrayLen(keys);
-		for (var i = 1; i <= n; i++) {
-			if (i > 1) arguments.sb.append(",");
-			writeString(arguments.sb, keys[i]);
-			arguments.sb.append(":");
-			if (!structKeyExists(arguments.value, keys[i])) arguments.sb.append("null");
-			else write(arguments.sb, arguments.value[keys[i]]);
+	private void function writeStruct(required struct buf, required struct value) {
+		// String.compareTo is UTF-16 code unit order, the order the rules require.
+		var keys = createObject("java", "java.util.ArrayList").init(structKeyArray(arguments.value));
+		variables.Collections.sort(keys);
+		arrayAppend(arguments.buf.parts, "{");
+		var n = keys.size();
+		for (var i = 0; i < n; i++) {
+			var key = keys.get(i);
+			if (i > 0) arrayAppend(arguments.buf.parts, ",");
+			writeString(arguments.buf, key);
+			arrayAppend(arguments.buf.parts, ":");
+			if (!structKeyExists(arguments.value, key)) arrayAppend(arguments.buf.parts, "null");
+			else write(arguments.buf, arguments.value[key]);
 		}
-		arguments.sb.append("}");
+		arrayAppend(arguments.buf.parts, "}");
 	}
 
-	private void function writeQuery(required any sb, required query value) {
+	private void function writeQuery(required struct buf, required query value) {
 		var rows = [];
 		var columns = listToArray(arguments.value.columnList);
 		for (var r = 1; r <= arguments.value.recordCount; r++) {
@@ -135,7 +146,7 @@ component output="false" {
 			}
 			arrayAppend(rows, row);
 		}
-		write(arguments.sb, rows);
+		write(arguments.buf, rows);
 	}
 
 	private string function formatNumber(required any value) {
@@ -148,38 +159,45 @@ component output="false" {
 		return bd.stripTrailingZeros().toPlainString();
 	}
 
-	private void function writeString(required any sb, required string value) {
+	private void function writeString(required struct buf, required string value) {
 		var s = javaCast("string", arguments.value);
+		if (!variables.NEEDS_ESCAPE.matcher(s).find()) {
+			arrayAppend(arguments.buf.parts, '"' & s & '"');
+			return;
+		}
+		// Something to escape: one UTF-16 code unit at a time, as JavaScript does.
+		var sb = createObject("java", "java.lang.StringBuilder").init();
 		var n = s.length();
-		arguments.sb.append('"');
+		sb.append('"');
 		var i = 0;
 		// Work with UTF-16 code units to mirror JavaScript semantics exactly.
 		while (i < n) {
 			var ch = s.charAt(i);
 			var c = javaCast("int", ch);
-			if (c == 34) arguments.sb.append('\"');
-			else if (c == 92) arguments.sb.append("\\");
-			else if (c == 8) arguments.sb.append("\b");
-			else if (c == 12) arguments.sb.append("\f");
-			else if (c == 10) arguments.sb.append("\n");
-			else if (c == 13) arguments.sb.append("\r");
-			else if (c == 9) arguments.sb.append("\t");
-			else if (c < 32) arguments.sb.append("\u" & right("000" & lCase(formatBaseN(c, 16)), 4));
+			if (c == 34) sb.append('\"');
+			else if (c == 92) sb.append("\\");
+			else if (c == 8) sb.append("\b");
+			else if (c == 12) sb.append("\f");
+			else if (c == 10) sb.append("\n");
+			else if (c == 13) sb.append("\r");
+			else if (c == 9) sb.append("\t");
+			else if (c < 32) sb.append("\u" & right("000" & lCase(formatBaseN(c, 16)), 4));
 			else if (c >= 55296 && c <= 56319) {
 				// High surrogate: valid only when followed by a low surrogate.
 				var nextUnit = (i + 1 < n) ? javaCast("int", s.charAt(i + 1)) : 0;
 				if (nextUnit >= 56320 && nextUnit <= 57343) {
-					arguments.sb.append(ch);
-					arguments.sb.append(s.charAt(i + 1));
+					sb.append(ch);
+					sb.append(s.charAt(i + 1));
 					i++;
 				} else {
-					arguments.sb.append("\u" & lCase(formatBaseN(c, 16)));
+					sb.append("\u" & lCase(formatBaseN(c, 16)));
 				}
 			}
-			else if (c >= 56320 && c <= 57343) arguments.sb.append("\u" & lCase(formatBaseN(c, 16)));
-			else arguments.sb.append(ch);
+			else if (c >= 56320 && c <= 57343) sb.append("\u" & lCase(formatBaseN(c, 16)));
+			else sb.append(ch);
 			i++;
 		}
-		arguments.sb.append('"');
+		sb.append('"');
+		arrayAppend(arguments.buf.parts, sb.toString());
 	}
 }
