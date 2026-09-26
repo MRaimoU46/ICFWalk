@@ -1,0 +1,37 @@
+{
+ "base": "http://127.0.0.1:8500",
+ "part": "1",
+ "of": "6",
+ "status": 200,
+ "wallSeconds": 872,
+ "engine": "ColdFusion Server 2023,0,25,330977",
+ "ok": false,
+ "totals": {
+  "failed": 10,
+  "passed": 115,
+  "skipped": 0
+ },
+ "elapsedMs": 872210,
+ "specs": [
+  "AuthorizationTest",
+  "DraftEditorTest",
+  "InstrumentAdministrationTest",
+  "InstrumentPublishServiceTest",
+  "PublishConcurrencyBarrierTest",
+  "ReportReleaseTest",
+  "SharedMetadataConcurrencyBarrierTest",
+  "WalkMutationResponseTest"
+ ],
+ "failed": [
+  "InstrumentPublishServiceTest.testATopLevelNullSnapshotIsARefusalAndNotAnEngineError: precondition: the exact bytes are stored assertExactTextEquals was given a null expected value, and null is not comparable.",
+  "InstrumentPublishServiceTest.testATopLevelScalarSnapshotIsRefused: Error Executing Database Query.",
+  "ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted: every deletion is refused by the database; not refused: one cell -> Error Executing Database Query. | one block -> Error Executing Database Query. | one recorde",
+  "ReportReleaseTest.testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit: Expected JSON [{\"COMPLETED\":10}] (16 chars) but got [{\"COMPLETED\":10.0}] (18 chars); the first difference is at character 16 ([}] expected, [.] found).",
+  "SharedMetadataConcurrencyBarrierTest.testAConflictRefusalMovesNothingAndLeavesOneDurableAudit: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testADeactivationIsNotLostByAConcurrentRename: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testARenameIsNotLostByAConcurrentDeactivation: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testEachAuditDescribesTheRowItActuallyReplaced: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testImportDecidesTheSharedConflictOnTheLockedCurrentRowNotItsEarlierLookup: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testImportQueuesForTheSharedRowAndThenDecidesOnIt: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se"
+ ]
+}

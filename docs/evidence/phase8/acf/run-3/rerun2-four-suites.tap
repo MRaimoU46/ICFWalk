@@ -1,0 +1,366 @@
+# ColdFusion rerun after P8-13 and the P6A-01 declared-length change, 2026-09-26T19:12:42Z
+TAP version 13
+# (node:14636) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+ok 1 - every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+  ---
+  duration_ms: 5116.37153
+  type: 'test'
+  ...
+# Subtest: ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+ok 2 - ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+  ---
+  duration_ms: 10445.562603
+  type: 'test'
+  ...
+# Subtest: P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+ok 3 - P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+  ---
+  duration_ms: 20848.005163
+  type: 'test'
+  ...
+# Subtest: ADM-01: an invalid document is refused with every issue and writes nothing
+ok 4 - ADM-01: an invalid document is refused with every issue and writes nothing
+  ---
+  duration_ms: 107.999208
+  type: 'test'
+  ...
+# Subtest: ADM-01: the import body contract and the size cap
+ok 5 - ADM-01: the import body contract and the size cap
+  ---
+  duration_ms: 141.986655
+  type: 'test'
+  ...
+# Subtest: P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+ok 6 - P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+  ---
+  duration_ms: 32.161201
+  type: 'test'
+  ...
+# Subtest: P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+ok 7 - P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+  ---
+  duration_ms: 111.429557
+  type: 'test'
+  ...
+# Subtest: P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+ok 8 - P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+  ---
+  duration_ms: 262.462517
+  type: 'test'
+  ...
+# Subtest: P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+ok 9 - P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+  ---
+  duration_ms: 113.014794
+  type: 'test'
+  ...
+# Subtest: P6A-01: a maintenance route without its token is hidden without its body being read
+ok 10 - P6A-01: a maintenance route without its token is hidden without its body being read
+  ---
+  duration_ms: 7.949133
+  type: 'test'
+  ...
+# Subtest: P6A-01: a body declared over the web server's own ceiling is refused without being read, by the application or before it
+ok 11 - P6A-01: a body declared over the web server's own ceiling is refused without being read, by the application or before it
+  ---
+  duration_ms: 33.564043
+  type: 'test'
+  ...
+# Subtest: ADM-02: preview returns exactly the render model the walk runtime serves
+ok 12 - ADM-02: preview returns exactly the render model the walk runtime serves
+  ---
+  duration_ms: 6535.257306
+  type: 'test'
+  ...
+# Subtest: ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+ok 13 - ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+  ---
+  duration_ms: 22176.933893
+  type: 'test'
+  ...
+# Subtest: ADM-06: malformed edit requests are refused with their paths
+ok 14 - ADM-06: malformed edit requests are refused with their paths
+  ---
+  duration_ms: 4407.944581
+  type: 'test'
+  ...
+# Subtest: ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+ok 15 - ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+  ---
+  duration_ms: 15740.97435
+  type: 'test'
+  ...
+# Subtest: ADM-07: retiring the only version in service needs explicit confirmation
+ok 16 - ADM-07: retiring the only version in service needs explicit confirmation
+  ---
+  duration_ms: 11725.470292
+  type: 'test'
+  ...
+# Subtest: ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+ok 17 - ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+  ---
+  duration_ms: 8578.347396
+  type: 'test'
+  ...
+# Subtest: a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+ok 18 - a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+  ---
+  duration_ms: 11585.674989
+  type: 'test'
+  ...
+# Subtest: Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+ok 19 - Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+  ---
+  duration_ms: 17874.686034
+  type: 'test'
+  ...
+# Subtest: Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+ok 20 - Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+  ---
+  duration_ms: 9778.514229
+  type: 'test'
+  ...
+# (node:17186) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: A11Y (phone-375): My Walks, the chooser and every editor state
+ok 21 - A11Y (phone-375): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 20935.526001
+  type: 'test'
+  ...
+# Subtest: A11Y (phone-375): live reports, and a report-only reader's released reports
+ok 22 - A11Y (phone-375): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 7350.581705
+  type: 'test'
+  ...
+# Subtest: A11Y (phone-375): every administration panel and its confirmation
+ok 23 - A11Y (phone-375): every administration panel and its confirmation
+  ---
+  duration_ms: 18375.131101
+  type: 'test'
+  ...
+# Subtest: A11Y (tablet-768): My Walks, the chooser and every editor state
+ok 24 - A11Y (tablet-768): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 16346.728558
+  type: 'test'
+  ...
+# Subtest: A11Y (tablet-768): live reports, and a report-only reader's released reports
+ok 25 - A11Y (tablet-768): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 7473.378776
+  type: 'test'
+  ...
+# Subtest: A11Y (tablet-768): every administration panel and its confirmation
+ok 26 - A11Y (tablet-768): every administration panel and its confirmation
+  ---
+  duration_ms: 20862.326409
+  type: 'test'
+  ...
+# Subtest: A11Y (desktop-1280): My Walks, the chooser and every editor state
+ok 27 - A11Y (desktop-1280): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 16281.688902
+  type: 'test'
+  ...
+# Subtest: A11Y (desktop-1280): live reports, and a report-only reader's released reports
+ok 28 - A11Y (desktop-1280): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 7547.580923
+  type: 'test'
+  ...
+# Subtest: A11Y (desktop-1280): every administration panel and its confirmation
+ok 29 - A11Y (desktop-1280): every administration panel and its confirmation
+  ---
+  duration_ms: 19835.994357
+  type: 'test'
+  ...
+# Subtest: A11Y (zoom-200): My Walks, the chooser and every editor state
+ok 30 - A11Y (zoom-200): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 16863.906038
+  type: 'test'
+  ...
+# Subtest: A11Y (zoom-200): live reports, and a report-only reader's released reports
+ok 31 - A11Y (zoom-200): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 7676.129866
+  type: 'test'
+  ...
+# Subtest: A11Y (zoom-200): every administration panel and its confirmation
+ok 32 - A11Y (zoom-200): every administration panel and its confirmation
+  ---
+  duration_ms: 19839.339861
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: every view is traversable with visible focus and no trap
+not ok 33 - A11Y-01 keyboard: every view is traversable with visible focus and no trap
+  ---
+  duration_ms: 7530.667541
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-a11y-sweep.test.mjs:388:1'
+  failureType: 'testCodeFailure'
+  error: 'admin versions: Tab cycled through the page without being trapped'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    keyboardTraversal (file:///home/user/ICFWalk/tests/node/browser-a11y-sweep.test.mjs:210:10)
+    async TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/browser-a11y-sweep.test.mjs:404:3)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: no page error anywhere in the sweep
+ok 34 - no page error anywhere in the sweep
+  ---
+  duration_ms: 1.088138
+  type: 'test'
+  ...
+# Subtest: ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+ok 35 - ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+  ---
+  duration_ms: 6570.183617
+  type: 'test'
+  ...
+# Subtest: ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+ok 36 - ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+  ---
+  duration_ms: 7670.433398
+  type: 'test'
+  ...
+# Subtest: ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+ok 37 - ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+  ---
+  duration_ms: 28258.393995
+  type: 'test'
+  ...
+# Subtest: ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+ok 38 - ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+  ---
+  duration_ms: 10612.323216
+  type: 'test'
+  ...
+# Subtest: ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+ok 39 - ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+  ---
+  duration_ms: 9879.406912
+  type: 'test'
+  ...
+# Subtest: Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+ok 40 - Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+  ---
+  duration_ms: 25799.30187
+  type: 'test'
+  ...
+# Subtest: P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+ok 41 - P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+  ---
+  duration_ms: 15496.847598
+  type: 'test'
+  ...
+# Subtest: P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+ok 42 - P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+  ---
+  duration_ms: 13258.283931
+  type: 'test'
+  ...
+# Subtest: P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+ok 43 - P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+  ---
+  duration_ms: 5953.272153
+  type: 'test'
+  ...
+# Subtest: P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+ok 44 - P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+  ---
+  duration_ms: 5900.664057
+  type: 'test'
+  ...
+# Subtest: P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+ok 45 - P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+  ---
+  duration_ms: 7336.854667
+  type: 'test'
+  ...
+# Subtest: A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+ok 46 - A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+  ---
+  duration_ms: 23658.520249
+  type: 'test'
+  ...
+# Subtest: P8-13 (browser): a success message is shown only once the page will take the next action
+ok 47 - P8-13 (browser): a success message is shown only once the page will take the next action
+  ---
+  duration_ms: 29762.892651
+  type: 'test'
+  ...
+# (node:24289) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: control: the observers do catch markup that reaches the page as HTML
+ok 48 - control: the observers do catch markup that reaches the page as HTML
+  ---
+  duration_ms: 11097.877642
+  type: 'test'
+  ...
+# Subtest: SEC-02: My Walks, the display name and the new-walk chooser show every payload as text
+ok 49 - SEC-02: My Walks, the display name and the new-walk chooser show every payload as text
+  ---
+  duration_ms: 7072.718209
+  type: 'test'
+  ...
+# Subtest: SEC-02: the editor, its email composer and its summary download keep every instrument label and stored value as text
+ok 50 - SEC-02: the editor, its email composer and its summary download keep every instrument label and stored value as text
+  ---
+  duration_ms: 5541.428395
+  type: 'test'
+  ...
+# Subtest: SEC-02: the completion errors name the hostile instrument's items as text
+ok 51 - SEC-02: the completion errors name the hostile instrument's items as text
+  ---
+  duration_ms: 3397.350499
+  type: 'test'
+  ...
+# Subtest: SEC-02: the conflict panel lists another session's values and the hostile labels as text
+ok 52 - SEC-02: the conflict panel lists another session's values and the hostile labels as text
+  ---
+  duration_ms: 4839.570534
+  type: 'test'
+  ...
+# Subtest: SEC-02: reports show hostile org unit names and never a stored note, as text
+ok 53 - SEC-02: reports show hostile org unit names and never a stored note, as text
+  ---
+  duration_ms: 2339.14326
+  type: 'test'
+  ...
+# Subtest: SEC-02: every administration view shows the hostile instrument as text
+ok 54 - SEC-02: every administration view shows the hostile instrument as text
+  ---
+  duration_ms: 20655.55057
+  type: 'test'
+  ...
+# Subtest: SEC-02: a payload in the path or query is never reflected as markup
+ok 55 - SEC-02: a payload in the path or query is never reflected as markup
+  ---
+  duration_ms: 2147.888971
+  type: 'test'
+  ...
+# Subtest: P8-06: the editor links an instrument's reference only when it is an http or https address
+ok 56 - P8-06: the editor links an instrument's reference only when it is an http or https address
+  ---
+  duration_ms: 2734.978749
+  type: 'test'
+  ...
+1..56
+# tests 56
+# suites 0
+# pass 55
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 595098.292182

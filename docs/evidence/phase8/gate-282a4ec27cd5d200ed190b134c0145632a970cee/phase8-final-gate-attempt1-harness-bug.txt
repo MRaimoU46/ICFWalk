@@ -1,0 +1,572 @@
+
+================================================================================
+== 2026-09-26T20:40:24Z  0. The gate script itself
+================================================================================
+#!/usr/bin/env bash
+# Phase 8 final gate: the exact Phase 8 code commit, from a clean tree, on brand-new databases, on
+# both engines.
+#
+# HEAD must be the Phase 8 code commit, with the Phase 0-7 records-only freeze tip and the frozen code
+# commit as ancestors, the tree clean and the remote branch equal to HEAD, and the frozen integration
+# branch and both source branches unchanged. Then, as the baseline gate did: npm ci, handoff
+# validation and package tests, every JavaScript file parsed, a brand-new SQL Server container
+# (pinned to the frozen gate's digest), migrations 001 to 007 with every re-application and 001
+# refused, the application on Lucee and the seed, and the full suite with the application required.
+# Phase 8 adds:
+#
+#   - Adobe ColdFusion 2023, the target engine: a brand-new database (001 to 007), a brand-new
+#     container of Adobe's image pinned by digest (tools/runtime/acf-up.sh), the seed, and the same
+#     full suite against it (CFML in 12 parts, docs/LOCAL_SETUP.md).
+#   - Nothing was removed: every Node test the baseline gate ran is present and passing in both runs,
+#     and every CFML test function of the frozen code still exists.
+#
+# The operations scenarios (upgrade and rollback, backup and restore, restart during autosave, the
+# production profile) are run and recorded separately, as Phase 8 requires.
+#
+# It writes nothing into the repository: TAP copies and screenshots go to OUT, outside it. It
+# rewrites the git-ignored .env's ICFWALK_DB_PASSWORD with the new container's generated password
+# (never printed). Every command is echoed with its exit code. It stops on the first unexpected
+# result.
+#
+# usage: gate.sh <expected HEAD sha> <output directory outside the repository>
+set -uo pipefail
+REPO=/home/user/ICFWalk
+BRANCH=claude/icfwalk-phase-8-hardening-handoff
+FROZEN_CODE=68f9026d39ba0ff44d12d6398c5e933971dad2f4   # the accepted, frozen Phase 0-7 code commit
+FREEZE_TIP=133f02192a99970029847bc2da2d31b9d8da06e1    # the records-only freeze tip Phase 8 started from
+INTEGRATION=claude/icfwalk-phase-6-7-integration
+P6_BRANCH=claude/icfwalk-phase-6-admin-audit-corrections; P6_TIP=64507deb075e267761179d78be966b7a4d3972cc
+P7_BRANCH=claude/icfwalk-phase-7-correction-n62s25;      P7_TIP=e0342143074f727475ae2d4cb6933fa279902f85
+MSSQL_IMAGE=mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090
+ACF_IMAGE=adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e
+BASELINE=docs/evidence/phase8/baseline-133f02192a99970029847bc2da2d31b9d8da06e1/phase8-baseline-gate-transcript.txt
+ACF_DB=icfwalk_acf_gate
+EXPECTED="$1"
+OUT="$2"
+cd "$REPO"
+
+step() { echo; echo "================================================================================"; echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ)  $*"; echo "================================================================================"; }
+run() { echo "\$ $*"; "$@"; local rc=$?; echo "[exit $rc]"; return $rc; }
+die() { echo; echo "GATE FAILED: $*"; exit 1; }
+totals() { # totals <tap> <label>: prints the Node and CFML totals and sets N_* and C_*
+  local tap="$1"
+  N_TESTS=$(grep -E '^# tests ' "$tap" | tail -1 | awk '{print $3}'); N_PASS=$(grep -E '^# pass ' "$tap" | tail -1 | awk '{print $3}')
+  N_FAIL=$(grep -E '^# fail ' "$tap" | tail -1 | awk '{print $3}'); N_SKIP=$(grep -E '^# skipped ' "$tap" | tail -1 | awk '{print $3}')
+  N_TODO=$(grep -E '^# todo ' "$tap" | tail -1 | awk '{print $3}'); N_CANC=$(grep -E '^# cancelled ' "$tap" | tail -1 | awk '{print $3}')
+  C_LINE=$(grep -E '^# engine=' "$tap" | tail -1)
+  C_PASS=$(echo "$C_LINE" | grep -o 'passed=[0-9]*' | cut -d= -f2); C_FAIL=$(echo "$C_LINE" | grep -o 'failed=[0-9]*' | cut -d= -f2)
+  C_SKIP=$(echo "$C_LINE" | grep -o 'skipped=[0-9]*' | cut -d= -f2)
+  echo "$2 node: tests=$N_TESTS pass=$N_PASS fail=$N_FAIL skipped=$N_SKIP todo=$N_TODO cancelled=$N_CANC"
+  echo "$2 cfml: ${C_LINE:-<no totals line>}"
+  grep -E '^not ok ' "$tap" || echo "$2: no failed Node test"
+}
+clean() { [ "$1" = 0 ] && [ "$N_FAIL" = 0 ] && [ "$N_SKIP" = 0 ] && [ "$N_TODO" = 0 ] && [ "$N_CANC" = 0 ] && [ "$N_TESTS" = "$N_PASS" ] && [ "${C_FAIL:-x}" = 0 ] && [ "${C_SKIP:-x}" = 0 ]; }
+
+step "0. The gate script itself"
+cat "$0"
+
+step "1. Repository identity before the gate"
+run date -u
+BR=$(git rev-parse --abbrev-ref HEAD); echo "branch $BR"
+[ "$BR" = "$BRANCH" ] || die "not on $BRANCH"
+HEAD_SHA=$(git rev-parse HEAD); TREE_SHA=$(git rev-parse 'HEAD^{tree}')
+echo "HEAD   $HEAD_SHA"; echo "TREE   $TREE_SHA"
+[ "$HEAD_SHA" = "$EXPECTED" ] || die "HEAD $HEAD_SHA is not the expected commit $EXPECTED"
+run git log -8 --format='%H %T %P %an %aI %s'
+git merge-base --is-ancestor "$FREEZE_TIP" HEAD && echo "$FREEZE_TIP (freeze tip) is an ancestor of HEAD" || die "the freeze tip is not an ancestor"
+git merge-base --is-ancestor "$FROZEN_CODE" HEAD && echo "$FROZEN_CODE (frozen code) is an ancestor of HEAD" || die "the frozen code commit is not an ancestor"
+echo "\$ git diff --stat $FREEZE_TIP HEAD   (the whole Phase 8 change set)"
+git diff --stat "$FREEZE_TIP" HEAD | tail -80
+echo "\$ git status --porcelain=v1 --untracked-files=all  (tracked, staged, unstaged and untracked)"
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo "${STATUS:-<empty>}"
+[ -z "$STATUS" ] || die "working tree is not clean"
+run git fetch origin "$BRANCH" || die "fetch failed"
+REMOTE_SHA=$(git rev-parse "origin/$BRANCH"); echo "origin/$BRANCH = $REMOTE_SHA"
+[ "$REMOTE_SHA" = "$HEAD_SHA" ] && echo "remote branch equals HEAD" || die "remote branch $REMOTE_SHA differs from HEAD"
+echo "--- the frozen integration branch and both source branches are unchanged"
+for pair in "$INTEGRATION=$FREEZE_TIP" "$P6_BRANCH=$P6_TIP" "$P7_BRANCH=$P7_TIP"; do
+  B=${pair%%=*}; W=${pair#*=}; R=$(git ls-remote origin "refs/heads/$B" | cut -f1)
+  echo "$B $R"; [ "$R" = "$W" ] || die "$B is $R, expected $W"
+done
+
+step "2. Runtime versions"
+run uname -srm
+echo "os $(. /etc/os-release; echo "$PRETTY_NAME")"
+run node --version
+run npm --version
+java -version 2>&1 | sed -e 's/^Picked up JAVA_TOOL_OPTIONS: .*/Picked up JAVA_TOOL_OPTIONS: [redacted: container proxy and truststore settings]/'
+run docker version --format 'docker client {{.Client.Version}} server {{.Server.Version}}'
+
+step "3. Dependencies from the lock file"
+run npm ci || die "npm ci failed"
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo "status after npm ci: ${STATUS:-<empty>}"
+[ -z "$STATUS" ] || die "npm ci changed the tree"
+run node -e 'for (const p of ["playwright","playwright-core","mssql","axe-core"]) console.log(p, require("/home/user/ICFWalk/node_modules/"+p+"/package.json").version)'
+echo "Chromium $(node -e 'const {chromium}=require("playwright");chromium.launch().then(async b=>{console.log(b.version());await b.close()})')"
+
+step "4. Handoff validation and package tests"
+run node scripts/validate-handoff.mjs || die "handoff validation failed"
+run npm run test:package || die "package tests failed"
+
+step "5. JavaScript syntax (every tracked .js and .mjs)"
+COUNT=0; FAILED=0
+for f in $(git ls-files '*.js' '*.mjs'); do COUNT=$((COUNT+1)); if node --check "$f" 2>&1; then :; else echo "SYNTAX ERROR $f"; FAILED=$((FAILED+1)); fi; done
+echo "checked $COUNT files, $FAILED syntax errors"
+[ "$FAILED" = 0 ] || die "syntax errors"
+
+step "6. No CFML test was removed: every test function of the frozen code's specs exists at HEAD"
+MISSING=0; FUNCS=0
+for f in $(git ls-tree -r --name-only "$FROZEN_CODE" tests/cfml/specs | grep '\.cfc$'); do
+  for fn in $(git show "$FROZEN_CODE:$f" | grep -oE 'function test[A-Za-z0-9_]+' | awk '{print $2}'); do
+    FUNCS=$((FUNCS+1))
+    git show "HEAD:$f" 2>/dev/null | grep -qE "function $fn\(" || { echo "MISSING $f $fn"; MISSING=$((MISSING+1)); }
+  done
+done
+echo "frozen CFML test functions: $FUNCS; missing at HEAD: $MISSING"
+[ "$MISSING" = 0 ] || die "a CFML test function was removed"
+echo "\$ git diff --stat $FROZEN_CODE HEAD -- tests"
+git diff --stat "$FROZEN_CODE" HEAD -- tests | tail -60
+
+step "7. A brand-new SQL Server container and database"
+tools/runtime/lucee-down.sh; echo "[lucee-down exit $?]"
+tools/runtime/acf-down.sh; echo "[acf-down exit $?]"
+run docker rm -f icfwalk-mssql
+run rm -f .runtime/mssql.env
+echo "\$ ICFWALK_MSSQL_IMAGE=$MSSQL_IMAGE tools/runtime/mssql-up.sh"
+ICFWALK_MSSQL_IMAGE="$MSSQL_IMAGE" tools/runtime/mssql-up.sh; RC=$?; echo "[exit $RC]"; [ "$RC" = 0 ] || die "SQL Server did not start"
+source .runtime/mssql.env
+[ -n "${MSSQL_SA_PASSWORD:-}" ] || die "the new container's password was not generated"
+NEWPW="$MSSQL_SA_PASSWORD" node -e 'const fs=require("fs");const pw=process.env.NEWPW;if(!pw)process.exit(1);const t=fs.readFileSync(".env","utf8");if(!/^ICFWALK_DB_PASSWORD=/m.test(t))process.exit(1);fs.writeFileSync(".env",t.replace(/^ICFWALK_DB_PASSWORD=.*$/m,()=>"ICFWALK_DB_PASSWORD="+pw))' || die "could not update .env"
+echo "(.env ICFWALK_DB_PASSWORD set to the new container's generated password; not printed)"
+run docker ps --filter name=icfwalk-mssql --format '{{.ID}} {{.Image}} {{.Status}} created {{.CreatedAt}}'
+run docker inspect --format '{{.Config.Image}} @ {{.Image}}' icfwalk-mssql
+SQLCMD=(docker exec icfwalk-mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b)
+"${SQLCMD[@]}" -h -1 -W -Q "SET NOCOUNT ON; SELECT @@VERSION; SELECT name, create_date FROM sys.databases WHERE name LIKE 'icfwalk%'; SELECT COUNT(*) AS tables_in_icfwalk_dev FROM icfwalk_dev.sys.tables;"
+
+step "8. Schema: 001 to 007 in order, then each of 002 to 007 re-applied, and 001 refused"
+run node scripts/db/apply-schema.mjs || die "schema application failed"
+for n in 002 003 004 005 006 007; do run node scripts/db/apply-schema.mjs --only "$n" || die "re-applying $n failed"; done
+echo "\$ node scripts/db/apply-schema.mjs --only 001   (must refuse: the schema already has tables)"
+node scripts/db/apply-schema.mjs --only 001; RC=$?; echo "[exit $RC]"
+[ "$RC" != 0 ] && echo "001 refused a second application, as designed" || die "001 re-applied"
+"${SQLCMD[@]}" -d icfwalk_dev -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(*) AS icf_tables FROM sys.tables WHERE schema_id = SCHEMA_ID('icf'); SELECT name FROM sys.triggers ORDER BY name; SELECT migration, step, state FROM icf.schema_migration_state;"
+
+step "9. Lucee: the application on the new database, and the instrument seed"
+run tools/runtime/lucee-up.sh || die "the application did not start"
+echo "lucee jars: $(ls .runtime/jars | tr '\n' ' ')"
+run curl -sS http://127.0.0.1:8888/index.cfm/api/health
+echo
+run node scripts/seed-instrument.mjs || die "seed failed"
+
+step "10. Lucee: the full suite (ICFWALK_REQUIRE_APP=1 npm test: Node, HTTP, Playwright and CFML)"
+rm -rf "${OUT:?}"; mkdir -p "$OUT/lucee" "$OUT/acf"
+echo "\$ ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR=<outside the repository> npm test"
+ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR="$OUT/lucee" npm test 2>&1 | tee "$OUT/lucee/npm-test.tap"
+L_RC=${PIPESTATUS[0]}; echo "[exit $L_RC]"
+totals "$OUT/lucee/npm-test.tap" lucee
+L_TESTS=$N_TESTS; L_CFML=$C_PASS
+clean "$L_RC" || die "the Lucee run did not pass cleanly"
+
+step "11. Adobe ColdFusion 2023: a brand-new database, a brand-new container, and the seed"
+tools/runtime/lucee-down.sh; echo "[lucee-down exit $?] (the machine is left to ColdFusion)"
+"${SQLCMD[@]}" -Q "CREATE DATABASE [$ACF_DB]" || die "could not create $ACF_DB"
+run node scripts/db/apply-schema.mjs --database "$ACF_DB" || die "schema application failed on $ACF_DB"
+for n in 002 003 004 005 006 007; do run node scripts/db/apply-schema.mjs --database "$ACF_DB" --only "$n" || die "re-applying $n failed on $ACF_DB"; done
+node scripts/db/apply-schema.mjs --database "$ACF_DB" --only 001; RC=$?; echo "[exit $RC]"
+[ "$RC" != 0 ] && echo "001 refused a second application, as designed" || die "001 re-applied on $ACF_DB"
+echo "\$ ICFWALK_DB_NAME=$ACF_DB ICFWALK_ACF_IMAGE=$ACF_IMAGE tools/runtime/acf-up.sh"
+ICFWALK_DB_NAME="$ACF_DB" ICFWALK_ACF_IMAGE="$ACF_IMAGE" tools/runtime/acf-up.sh; RC=$?; echo "[exit $RC]"; [ "$RC" = 0 ] || die "ColdFusion did not start"
+run docker inspect --format '{{.Config.Image}} @ {{.Image}} created {{.Created}}' icfwalk-acf
+run curl -sS http://127.0.0.1:8500/index.cfm/api/health
+echo
+ICFWALK_DB_NAME="$ACF_DB" ICFWALK_BASE_URL=http://127.0.0.1:8500 node scripts/seed-instrument.mjs; RC=$?; echo "[exit $RC]"; [ "$RC" = 0 ] || die "seed failed on ColdFusion"
+
+step "12. Adobe ColdFusion 2023: the full suite against it"
+echo "\$ ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_DB_NAME=$ACF_DB ICFWALK_CFML_SUITE_PARTS=12 ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR=<outside> npm test"
+ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_DB_NAME="$ACF_DB" ICFWALK_CFML_SUITE_PARTS=12 ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR="$OUT/acf" npm test 2>&1 | tee "$OUT/acf/npm-test.tap"
+A_RC=${PIPESTATUS[0]}; echo "[exit $A_RC]"
+totals "$OUT/acf/npm-test.tap" coldfusion
+A_TESTS=$N_TESTS; A_CFML=$C_PASS
+echo "$C_LINE" | grep -q 'engine=ColdFusion Server 2023' || die "the CFML suite did not run on ColdFusion 2023"
+clean "$A_RC" || die "the ColdFusion run did not pass cleanly"
+
+step "13. No Node test was removed: every test the baseline gate ran passed in both runs"
+grep -E '^ok [0-9]+ - ' "$BASELINE" | sed -E 's/^ok [0-9]+ - //' | sort -u > "$OUT/baseline-names.txt"
+MISSING=0
+for run_name in lucee acf; do
+  grep -E '^ok [0-9]+ - ' "$OUT/$run_name/npm-test.tap" | sed -E 's/^ok [0-9]+ - //' | sort -u > "$OUT/$run_name/passing-names.txt"
+  GONE=$(comm -23 "$OUT/baseline-names.txt" "$OUT/$run_name/passing-names.txt")
+  echo "$run_name: baseline names $(wc -l < "$OUT/baseline-names.txt"), passing names $(wc -l < "$OUT/$run_name/passing-names.txt"), baseline names not passing: ${GONE:-<none>}"
+  [ -z "$GONE" ] || MISSING=$((MISSING+1))
+done
+[ "$MISSING" = 0 ] || die "a Node test of the baseline is missing or not passing"
+echo "totals: baseline node 245 cfml 517; Lucee node $L_TESTS cfml $L_CFML; ColdFusion node $A_TESTS cfml $A_CFML"
+[ "$L_TESTS" -ge 245 ] && [ "$L_CFML" -ge 517 ] && [ "$A_TESTS" -ge 245 ] && [ "$A_CFML" -ge 517 ] || die "fewer tests than the baseline"
+[ "$L_TESTS" = "$A_TESTS" ] && [ "$L_CFML" = "$A_CFML" ] || die "the two engines ran different suites"
+
+step "14. Repository identity after the gate"
+run git rev-parse HEAD 'HEAD^{tree}'
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo "\$ git status --porcelain=v1 --untracked-files=all"; echo "${STATUS:-<empty>}"
+run git fetch origin "$BRANCH"
+run git ls-remote origin "refs/heads/$BRANCH"
+run date -u
+[ -z "$STATUS" ] || die "the gate changed the working tree"
+[ "$(git rev-parse HEAD)" = "$EXPECTED" ] || die "HEAD moved"
+echo "screenshots written outside the repository: lucee $(find "$OUT/lucee" -name '*.png' | wc -l), coldfusion $(find "$OUT/acf" -name '*.png' | wc -l)"
+echo; echo "GATE PASSED for $EXPECTED (Lucee node $L_TESTS, cfml $L_CFML; ColdFusion node $A_TESTS, cfml $A_CFML)"
+
+================================================================================
+== 2026-09-26T20:40:24Z  1. Repository identity before the gate
+================================================================================
+$ date -u
+Sat Sep 26 20:40:24 UTC 2026
+[exit 0]
+branch claude/icfwalk-phase-8-hardening-handoff
+HEAD   282a4ec27cd5d200ed190b134c0145632a970cee
+TREE   6bb9a2f3ea72a4c0719de8eae2d95d0bff54670a
+$ git log -8 --format=%H %T %P %an %aI %s
+282a4ec27cd5d200ed190b134c0145632a970cee 6bb9a2f3ea72a4c0719de8eae2d95d0bff54670a bd87b091d86b0d4730ab762f3b6c017f0a9bab35 Claude 2026-09-26T20:39:47+00:00 Phase 8 code: P8-13 and P8-14, ColdFusion suite portability, performance and runbook completion
+bd87b091d86b0d4730ab762f3b6c017f0a9bab35 e1ab8125701de283f3cc3017a4154e8495badc84 420d026482af690739cc8117726e4c7cafa59566 Claude 2026-09-26T19:01:07+00:00 Phase 8 checkpoint (not gated): P8-10 to P8-12, ColdFusion barrier portability, operations and performance suites
+420d026482af690739cc8117726e4c7cafa59566 42ef96e36398f400361a65e28b3a47de6b586dd4 9f9f56f3d1650f277e171355535195de69be515f Claude 2026-09-26T13:42:31+00:00 Phase 8 checkpoint (not gated): P8-05 to P8-09 corrections and new verification suites
+9f9f56f3d1650f277e171355535195de69be515f d41351d40732ed4aef8f41c31fe8c8e4b8d5a8ed 9456a27850fa969eec937e728a0019eba5475c9c Claude 2026-09-26T08:51:36+00:00 Phase 8 corrections P8-01 to P8-04: sessions replaced under an open page, and Adobe ColdFusion 2023
+9456a27850fa969eec937e728a0019eba5475c9c 6f89d33148b88dd58ae20326363f6b00f638262c 133f02192a99970029847bc2da2d31b9d8da06e1 Claude 2026-09-26T04:09:40+00:00 Phase 8 baseline: the full gate reproduced on the freeze tip before any change
+133f02192a99970029847bc2da2d31b9d8da06e1 a7ad1822baa4fa86c380c312361276c277895ffa c4a3e1391107f1774203064665fedda9eeefb64c Claude 2026-09-26T03:43:45+00:00 Phase 7 and the integrated Phase 0-7 baseline accepted and frozen at 68f9026
+c4a3e1391107f1774203064665fedda9eeefb64c 82f604c4693ee41543e4e53fb6b6ff6ccfad4e72 68f9026d39ba0ff44d12d6398c5e933971dad2f4 Claude 2026-09-25T14:30:46+00:00 Integration gate evidence for 68f9026 and the integration audit handoff
+68f9026d39ba0ff44d12d6398c5e933971dad2f4 9f8201a85cdf31b1e17745c15004f2f32ff065cc 64507deb075e267761179d78be966b7a4d3972cc e0342143074f727475ae2d4cb6933fa279902f85 Claude 2026-09-25T14:09:02+00:00 Integrate Phase 7 corrections (e034214) with accepted Phase 6 (158debc)
+[exit 0]
+133f02192a99970029847bc2da2d31b9d8da06e1 (freeze tip) is an ancestor of HEAD
+68f9026d39ba0ff44d12d6398c5e933971dad2f4 (frozen code) is an ancestor of HEAD
+$ git diff --stat 133f02192a99970029847bc2da2d31b9d8da06e1 HEAD   (the whole Phase 8 change set)
+ .../environment.md                                 |   61 +
+ .../gate.sh                                        |  159 ++
+ .../phase8-baseline-gate-transcript.txt            | 2805 ++++++++++++++++++++
+ manifest.json                                      |    4 +-
+ package.json                                       |    7 +-
+ src/audit/AuditRepository.cfc                      |    2 +-
+ src/authorization/OrgUnitRepository.cfc            |    2 +-
+ src/authorization/RoleScopeRepository.cfc          |    4 +-
+ src/config/ConfigLoader.cfc                        |   12 +-
+ src/controllers/HealthController.cfc               |   30 +-
+ src/controllers/MaintenanceController.cfc          |    4 +-
+ src/core/CanonicalJson.cfc                         |  128 +-
+ src/core/Db.cfc                                    |   26 +-
+ src/core/HtmlEncoder.cfc                           |    4 +-
+ src/core/JsonTypes.cfc                             |   20 +-
+ src/core/Logger.cfc                                |    6 +-
+ src/http/HttpRequestSource.cfc                     |    4 +-
+ src/http/JsonBodyParser.cfc                        |    2 +-
+ src/http/Responder.cfc                             |    8 +-
+ src/instrument/ConfigNormalizer.cfc                |    6 +-
+ src/instrument/DefinitionMapper.cfc                |   20 +-
+ src/instrument/DefinitionRepository.cfc            |    8 +-
+ src/instrument/DefinitionValidator.cfc             |   47 +-
+ src/instrument/DraftEditor.cfc                     |   46 +-
+ src/instrument/InstrumentAdminService.cfc          |   34 +-
+ src/instrument/InstrumentConfigValidator.cfc       |   14 +-
+ src/instrument/InstrumentDocumentExporter.cfc      |    2 +-
+ src/instrument/InstrumentImportService.cfc         |   22 +-
+ src/instrument/InstrumentMetadataService.cfc       |   10 +-
+ src/instrument/InstrumentPublishService.cfc        |    6 +-
+ src/instrument/InstrumentVersionComparer.cfc       |   24 +-
+ src/instrument/RenderContractValidator.cfc         |    4 +-
+ src/instrument/RenderModelBuilder.cfc              |   24 +-
+ src/instrument/SnapshotCompiler.cfc                |   10 +-
+ src/instrument/SnapshotService.cfc                 |    4 +-
+ src/instrument/VisibilityEngine.cfc                |   29 +-
+ src/reports/ReportService.cfc                      |   76 +-
+ src/walks/WalkPayloadValidator.cfc                 |   14 +-
+ src/walks/WalkRepository.cfc                       |   31 +-
+ src/walks/WalkService.cfc                          |   34 +-
+ src/walks/WalkSummaryFormatter.cfc                 |    2 +-
+ tests/cfml/BaseSpec.cfc                            |   38 +-
+ tests/cfml/specs/CanonicalJsonThroughputTest.cfc   |   52 +
+ tests/cfml/specs/ConfigLoaderTest.cfc              |    4 +-
+ tests/cfml/specs/DiscardIdentityBarrierTest.cfc    |   11 +-
+ .../cfml/specs/DraftReplacementConcurrencyTest.cfc |   21 +-
+ tests/cfml/specs/EngineBooleanTest.cfc             |   32 +
+ tests/cfml/specs/InstrumentPublishServiceTest.cfc  |    2 +-
+ tests/cfml/specs/LinkUrlSchemeTest.cfc             |   97 +
+ tests/cfml/specs/LongTextRetrievalTest.cfc         |   42 +
+ tests/cfml/specs/NullTextTest.cfc                  |   57 +
+ tests/cfml/specs/RenderModelTest.cfc               |   14 +-
+ tests/cfml/specs/ReportReleaseMembershipTest.cfc   |   10 +-
+ tests/cfml/specs/ReportReleaseTest.cfc             |    2 +-
+ tests/cfml/specs/RetireConcurrencyBarrierTest.cfc  |    6 +-
+ tests/cfml/specs/SnapshotCompilerTest.cfc          |    2 +-
+ tests/cfml/specs/WalkListBoundTest.cfc             |   87 +
+ tests/cfml/support/RecordingDb.cfc                 |   34 +
+ tests/cfml/support/TruncatingDb.cfc                |   29 +
+ tests/fixtures/acf2023-reserved-function-names.txt |  869 ++++++
+ tests/node/admin-instrument.test.mjs               |   33 +-
+ tests/node/browser-a11y-sweep.test.mjs             |  413 +++
+ tests/node/browser-admin.test.mjs                  |   62 +
+ tests/node/browser-session-recovery.test.mjs       |  177 ++
+ tests/node/browser-xss-sweep.test.mjs              |  529 ++++
+ tests/node/cfml-portability.test.mjs               |  223 ++
+ tests/node/cfml-suite.test.mjs                     |    7 +-
+ tests/node/null-text.test.mjs                      |  128 +
+ tests/node/security-surface.test.mjs               |  541 ++++
+ tests/node/sqlserver-2016.test.mjs                 |  122 +
+ tests/ops/database-operations.test.mjs             |  221 ++
+ tests/ops/production-profile.test.mjs              |  580 ++++
+ tests/ops/restart-during-autosave.test.mjs         |  462 ++++
+ tests/ops/upgrade-and-rollback.test.mjs            |  325 +++
+ tests/perf/seed.mjs                                |  246 ++
+ tests/perf/workload.mjs                            |  298 +++
+ tools/runtime/acf-down.sh                          |   10 +
+ tools/runtime/acf-up.sh                            |  179 ++
+ tools/runtime/web.xml                              |   10 +
+ 91 files changed, 10426 insertions(+), 411 deletions(-)
+$ git status --porcelain=v1 --untracked-files=all  (tracked, staged, unstaged and untracked)
+<empty>
+$ git fetch origin claude/icfwalk-phase-8-hardening-handoff
+From https://github.com/MRaimoU46/ICFWalk
+ * branch            claude/icfwalk-phase-8-hardening-handoff -> FETCH_HEAD
+[exit 0]
+origin/claude/icfwalk-phase-8-hardening-handoff = 282a4ec27cd5d200ed190b134c0145632a970cee
+remote branch equals HEAD
+--- the frozen integration branch and both source branches are unchanged
+claude/icfwalk-phase-6-7-integration 133f02192a99970029847bc2da2d31b9d8da06e1
+claude/icfwalk-phase-6-admin-audit-corrections 64507deb075e267761179d78be966b7a4d3972cc
+claude/icfwalk-phase-7-correction-n62s25 e0342143074f727475ae2d4cb6933fa279902f85
+
+================================================================================
+== 2026-09-26T20:40:26Z  2. Runtime versions
+================================================================================
+$ uname -srm
+Linux 6.18.44-fc-v37 x86_64
+[exit 0]
+os Ubuntu 24.04.4 LTS
+$ node --version
+v22.22.2
+[exit 0]
+$ npm --version
+10.9.7
+[exit 0]
+Picked up JAVA_TOOL_OPTIONS: [redacted: container proxy and truststore settings]
+openjdk version "21.0.10" 2026-01-20
+OpenJDK Runtime Environment (build 21.0.10+7-Ubuntu-124.04)
+OpenJDK 64-Bit Server VM (build 21.0.10+7-Ubuntu-124.04, mixed mode, sharing)
+$ docker version --format docker client {{.Client.Version}} server {{.Server.Version}}
+docker client 29.3.1 server 29.3.1
+[exit 0]
+
+================================================================================
+== 2026-09-26T20:40:27Z  3. Dependencies from the lock file
+================================================================================
+$ npm ci
+
+added 76 packages, and audited 77 packages in 3s
+
+15 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[exit 0]
+status after npm ci: <empty>
+$ node -e for (const p of ["playwright","playwright-core","mssql","axe-core"]) console.log(p, require("/home/user/ICFWalk/node_modules/"+p+"/package.json").version)
+playwright 1.56.1
+playwright-core 1.56.1
+mssql 12.7.2
+axe-core 4.13.0
+[exit 0]
+Chromium 141.0.7390.37
+
+================================================================================
+== 2026-09-26T20:40:30Z  4. Handoff validation and package tests
+================================================================================
+$ node scripts/validate-handoff.mjs
+{
+  "ok": true,
+  "checks": 51,
+  "errors": 0,
+  "counts": {
+    "sections": 23,
+    "items": 144,
+    "responseSets": 29,
+    "responseOptions": 138,
+    "rules": 12,
+    "dimensions": 10,
+    "dimensionValues": 95,
+    "instrumentDimensions": 10
+  }
+}
+[exit 0]
+$ npm run test:package
+
+> icfwalk@0.1.0 test:package
+> node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs
+
+TAP version 13
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 1 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.725614
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 2 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.31156
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 3 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.150867
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 4 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 266.860271
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 5 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.30558
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 6 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.540411
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 7 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.790643
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 8 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 5.973161
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 9 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.823203
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 10 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.412368
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 11 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.186587
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 12 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.608297
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 13 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.644063
+  type: 'test'
+  ...
+# Subtest: 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+ok 14 - 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+  ---
+  duration_ms: 0.66891
+  type: 'test'
+  ...
+# Subtest: 007 patch adds frozen report releases idempotently, additively, and guarded in the database
+ok 15 - 007 patch adds frozen report releases idempotently, additively, and guarded in the database
+  ---
+  duration_ms: 0.85572
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 16 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 1.769837
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 17 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.541998
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 18 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 30.516721
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 19 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 18.454183
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 20 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 15.417646
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 437.861518
+[exit 0]
+
+================================================================================
+== 2026-09-26T20:40:31Z  5. JavaScript syntax (every tracked .js and .mjs)
+================================================================================
+checked 58 files, 0 syntax errors
+
+================================================================================
+== 2026-09-26T20:40:33Z  6. No CFML test was removed: every test function of the frozen code's specs exists at HEAD
+================================================================================
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testPublishFreezesTheImportedSnapshotByteForByte
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testAPublishedVersionBecomesSelectableAsCurrent
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testPublishRecordsTheAuthenticatedPublisher
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testPublishingWithoutAValidPublisherIsRefusedAndChangesNothing
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testMarkPublishedRefusesAnEmptyPublisher
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testPublishingAPublishedVersionIsRefusedAndAudited
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testAssertDraftForWriteRefusesAPublishedVersion
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testAPublishedVersionCannotBeReimported
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testDefinitionsDriftIsRefusedAndNothingChanges
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testPublishingAnUnknownVersionIsNotFound
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testPublishingRefusesAMalformedVersionId
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticEmptyDefinitionsAreRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticBadSectionParentIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testDuplicateLogicalKeysCannotBePersistedAtAll
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticResponseSetWithoutOptionsIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticOptionInAForeignResponseSetIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticInvalidOptionOrderIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticMalformedConditionsAreRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticUnsupportedRuleEffectIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticRuleWithMissingTargetIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticInvalidDimensionDataTypeIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticDuplicateDimensionValueOrderIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticPlacementWithMissingRuleIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticSnapshotIdentityMismatchIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticSnapshotCountsMismatchIsRefused
+MISSING tests/cfml/specs/InstrumentPublishServiceTest.cfc testSemanticSnapshotFormatIsRefused
+MISSING tests/cfml/specs/ReportReleaseTest.cfc testReportOnlyUsersCannotReadLiveFigures
+MISSING tests/cfml/specs/ReportReleaseTest.cfc testNoFilterThatChangesWhoIsCountedIsAcceptedOnARelease
+MISSING tests/cfml/specs/ReportReleaseTest.cfc testOneWalkAndBelowMinimumPopulationsAreWithheldAndNeverStored
+frozen CFML test functions: 517; missing at HEAD: 29
+
+GATE FAILED: a CFML test function was removed
+gate exit=1

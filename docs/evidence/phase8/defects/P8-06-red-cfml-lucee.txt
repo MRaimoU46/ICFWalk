@@ -1,0 +1,6 @@
+engine=Lucee 6.2.8.20 ok=false {"failed":2,"passed":3,"skipped":0}
+LinkUrlSchemeTest.testAnEmptyLinkIsNoLink: passed
+LinkUrlSchemeTest.testAnImportAcceptsHttpAndHttpsLinks: passed
+LinkUrlSchemeTest.testAnImportRefusesEveryLinkThatIsNotHttpOrHttps: failed - an import accepted linkUrl "javascript:alert(1)"
+LinkUrlSchemeTest.testPublicationRefusesADraftHoldingSuchALink: failed - the shared rule set accepted a javascript: link
+LinkUrlSchemeTest.testTheSuppliedInstrumentHasALinkAndItIsAccepted: passed

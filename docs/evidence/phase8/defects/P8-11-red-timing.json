@@ -1,0 +1,1 @@
+{"label":"before","requests":20,"p50":1607,"p95":1996,"max":2063,"responseBytes":534590,"dimensionQuery":[{"executions":"21","lastRows":208205,"avgMs":270,"avgLogicalReads":6434},{"executions":"1","lastRows":520,"avgMs":2,"avgLogicalReads":37},{"executions":"1","lastRows":520,"avgMs":2,"avgLogicalReads":37}]}

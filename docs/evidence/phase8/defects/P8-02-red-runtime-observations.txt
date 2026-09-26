@@ -1,0 +1,51 @@
+Adobe ColdFusion 2023 Update 25 (ColdFusion Server 2023,0,25,330977), adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e,
+Microsoft JDBC 12.10.2 administrator datasource, SQL Server 2022 16.0.4295.3. Observed in order, each after the previous fix,
+through tools/runtime/acf-up.sh and the application's own routes. Verbatim answers.
+
+1. Frozen code, first request (GET /index.cfm/api/health): HTTP 500, ColdFusion's own error page:
+   "Invalid CFML construct found on line 66 at column 40." (app/Application.cfc, `var eq = find("=", line);`)
+   cfcompile over app, src and tests/cfml: 1 + 7 + 5 errors (P8-02-red-cfcompile-frozen-code.txt).
+
+2. After the compile fixes: GET /index.cfm/api/health
+   {"error":{"code":"STARTUP_FAILED","message":"The application could not start. Check the server log."}}
+   icfwalk.log: {"event":"application.start.failed","message":"Startup failure"}   <- the cause is lost (P8-03)
+   After P8-03's fix the same failure logs:
+   {"event":"application.start.failed","message":"Invalid ICFWalk configuration: ICFWALK_SSO_TRUSTED_PROXIES must list the SSO gateway/proxy addresses in production."}
+   (the verification script's environment file was not readable by the ColdFusion user; the application failed closed to
+   production defaults, as designed. Script corrected; not an application defect.)
+
+3. Health 200. POST /api/maintenance/instrument/import (node scripts/seed-instrument.mjs):
+   500 INTERNAL_ERROR, exceptionMessage "The value returned from the run function is not of type query."
+   (Db.run: queryExecute returns nothing for a statement without a result set on ColdFusion)
+
+4. After Db.run: the same import answers
+   422 IMPORT_ROUNDTRIP_MISMATCH "Persisted definitions do not match the imported document; the import was rolled back."
+   CFML specs on ColdFusion (?filter=):
+   CanonicalJsonTest passed 5 failed 1
+     testSharedVectorsProduceIdenticalCanonicalText - Element 4 is undefined in a Java object of type class coldfusion.runtime.Array. @ /icfwalk/src/core/CanonicalJson.cfc:75
+   SnapshotCompilerTest passed 1 failed 2
+     testCompiledSnapshotMatchesReferenceGolden - Snapshot checksum. Expected exactly [c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9] but got [9dd82fa865ae67610c20926663fc36e73d9afe510dacf35cd6562b7c81a0c4b0]
+     testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior - Expected exactly [Part 3 �� Conditions for Learning] (33 chars) but got [Part 3 · Conditions for Learning] (32 chars)
+   RenderModelTest passed 6 failed 3
+     testLayoutsAndNumberingComeFromResponseSetsAndOrder - Element QUESTIONNUMBER is undefined in a CFML structure referenced as part of an expression. @ RenderModelTest.cfc:124
+     testResponseOptionsAndDefinitionsMatchTheConfigurationExactly - Element DEFINITION is undefined in a CFML structure referenced as part of an expression. @ RenderModelTest.cfc:172
+     testSkippableComponentsDeriveApplicabilityFromRules - Element APPLICABILITYITEMKEY is undefined in a CFML structure referenced as part of an expression. @ RenderModelTest.cfc:146
+   Snapshot compiled on ColdFusion vs scripts/lib/snapshot.mjs: identical length (218124 bytes); definitions.dimensionValues
+   in the source order, not sorted by (dimensionCode, valueCode) -- ConfigNormalizer.sortBy sorts arguments.rows, and
+   ColdFusion passes a copy of an array to a function.
+
+5. After CanonicalJson/Logger (arrayIsDefined), ASCII source, this.passArrayByReference and the four test-side isNull
+   bindings: CanonicalJsonTest 6/6, SnapshotCompilerTest 3/3, RenderModelTest 9/9 on ColdFusion; the seed import answers
+   201, checksum c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9 (the golden).
+
+Probes against ColdFusion 2023's own compiler and runtime (minimal components, cfcompile and cf.sh), which established
+each rule before it was fixed or linted:
+  - `var X` rejected for: abstract and case contains default eq equal eqv false final function ge gt gte imp import
+    interface is le lt lte mod neq not or return switch true xor
+  - a UDF named evaluateCondition or release: "Parameter validation error" at the call (coldfusion.runtime.CFPage /
+    CfJspPage methods); renamed evalCond compiles
+  - `c ? ["A"] : []` and `c ? (["A"]) : []`: "Invalid CFML construct"; `c ? ["A","B"] : []`, `c ? [] : x`,
+    `c ? {"a":1} : {}` compile
+  - struct key assigned null: kept in structKeyList/structCount, structKeyExists NO, direct access throws
+  - array element null: arrayIsDefined NO, isNull(arr[i]) throws
+  - arraySort through a function argument: the caller's array is unchanged (pass by value)

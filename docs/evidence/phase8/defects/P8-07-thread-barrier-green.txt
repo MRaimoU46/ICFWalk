@@ -1,0 +1,5 @@
+# P8-07 (thread barrier) green: 2026-09-26T14:28:36Z snapshot base 420d026482af690739cc8117726e4c7cafa59566 + working tree; barrier reached through the spec variables scope
+DraftReplacementConcurrencyTest          8500 status=200 wall=84.9s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":6,"skipped":0}
+DraftReplacementConcurrencyTest          8888 status=200 wall=36.2s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":6,"skipped":0}
+DiscardIdentityBarrierTest               8500 status=200 wall=22.4s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":2,"skipped":0}
+DiscardIdentityBarrierTest               8888 status=200 wall=9.8s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":2,"skipped":0}

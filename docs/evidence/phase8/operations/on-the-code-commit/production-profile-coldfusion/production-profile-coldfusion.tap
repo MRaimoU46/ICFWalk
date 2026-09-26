@@ -1,0 +1,22 @@
+TAP version 13
+# (node:12625) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Started icfwalk-acf-prod from adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e (sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e)
+# Administrator datasource 'icfwalk' (Microsoft JDBC driver 12.10.2.jre11, Other): DSN_VERIFIED=YES 
+# Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"ef0ef51b-1416-4b65-95e5-2acbc6253ed2","status":"ok"}
+# Subtest: the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+ok 1 - the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+  ---
+  duration_ms: 166158.692898
+  type: 'test'
+  ...
+# engine Adobe ColdFusion 2023; session cookies: [{"name":"CFID","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"CFTOKEN","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"CFID","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"CFTOKEN","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]}]; without session authority: []
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 166761.042949

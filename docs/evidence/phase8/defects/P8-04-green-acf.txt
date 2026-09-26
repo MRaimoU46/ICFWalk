@@ -1,0 +1,10 @@
+Adobe ColdFusion 2023 Update 25, administrator datasource with disable_clob=false; HealthController with the long-text check
+engine ColdFusion Server 2023,0,25,330977
+LongTextRetrievalTest passed 3 failed 0 skipped 0
+   passed testTheDatasourceReturnsLongTextWhole - 
+   passed testTheHealthCheckRefusesADatasourceThatTruncatesLongText - 
+   passed testTheHealthCheckReportsWholeLongText - 
+$ GET /index.cfm/api/health
+{"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"ecbbc003-672b-485a-a8a4-eb5e21fe1239","engine":"ColdFusion Server 2023,0,25,330977","environment":"development","status":"ok"}
+$ GET /Application.cfc
+HTTP/1.1 500 Internal Server Error

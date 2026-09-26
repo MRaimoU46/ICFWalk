@@ -1,0 +1,2 @@
+WalkListBoundTest                        8888 status=200 wall=0.6s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":2,"skipped":0}
+WalkServiceTest                          8888 status=200 wall=10.7s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":24,"skipped":0}

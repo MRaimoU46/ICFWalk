@@ -1,0 +1,334 @@
+$ git diff --stat HEAD -- app src
+ app/assets/js/api.js | 36 ++++++++++++++++++++++++++++++++++--
+ app/assets/js/app.js |  1 +
+ 2 files changed, 35 insertions(+), 2 deletions(-)
+$ ICFWALK_REQUIRE_APP=1 node --test tests/node/browser-session-recovery.test.mjs tests/node/browser-export.test.mjs tests/node/browser-persistence.test.mjs tests/node/browser.test.mjs
+TAP version 13
+# Subtest: a save in flight and an edit behind it are both flushed before the summary is fetched
+ok 1 - a save in flight and an edit behind it are both flushed before the summary is fetched
+  ---
+  duration_ms: 1935.235416
+  type: 'test'
+  ...
+# Subtest: a definitive 4xx save rejection produces no download and an accurate message
+ok 2 - a definitive 4xx save rejection produces no download and an accurate message
+  ---
+  duration_ms: 3569.008006
+  type: 'test'
+  ...
+# Subtest: a conflict produces no download and leaves the conflict workflow open
+ok 3 - a conflict produces no download and leaves the conflict workflow open
+  ---
+  duration_ms: 3623.081082
+  type: 'test'
+  ...
+# Subtest: an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+ok 4 - an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+  ---
+  duration_ms: 3573.185905
+  type: 'test'
+  ...
+# Subtest: a genuine transport failure produces a browser-generated file from the screen state
+ok 5 - a genuine transport failure produces a browser-generated file from the screen state
+  ---
+  duration_ms: 675.435599
+  type: 'test'
+  ...
+# Subtest: a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+ok 6 - a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+  ---
+  duration_ms: 3559.63323
+  type: 'test'
+  ...
+# Subtest: an unresolved save stays retryable under its own mutation id and frozen request
+ok 7 - an unresolved save stays retryable under its own mutation id and frozen request
+  ---
+  duration_ms: 3724.326465
+  type: 'test'
+  ...
+# Subtest: an unexpected failure while reading the save response blocks the export
+ok 8 - an unexpected failure while reading the save response blocks the export
+  ---
+  duration_ms: 3588.607313
+  type: 'test'
+  ...
+# Subtest: a response that breaks after its headers blocks the export rather than falling back
+ok 9 - a response that breaks after its headers blocks the export rather than falling back
+  ---
+  duration_ms: 3566.168538
+  type: 'test'
+  ...
+# Subtest: a clean export with nothing unsent uses the authenticated summary GET
+ok 10 - a clean export with nothing unsent uses the authenticated summary GET
+  ---
+  duration_ms: 654.777373
+  type: 'test'
+  ...
+# Subtest: a read-only viewer exports straight from the server route
+ok 11 - a read-only viewer exports straight from the server route
+  ---
+  duration_ms: 397.706812
+  type: 'test'
+  ...
+# Subtest: SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+ok 12 - SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+  ---
+  duration_ms: 5193.25517
+  type: 'test'
+  ...
+# Subtest: WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+ok 13 - WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+  ---
+  duration_ms: 2023.353708
+  type: 'test'
+  ...
+# Subtest: SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+ok 14 - SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+  ---
+  duration_ms: 1757.383596
+  type: 'test'
+  ...
+# Subtest: SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+ok 15 - SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+  ---
+  duration_ms: 4200.550878
+  type: 'test'
+  ...
+# Subtest: WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+ok 16 - WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+  ---
+  duration_ms: 2439.196807
+  type: 'test'
+  ...
+# Subtest: WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+ok 17 - WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+  ---
+  duration_ms: 210.718511
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+ok 18 - A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+  ---
+  duration_ms: 2337.346913
+  type: 'test'
+  ...
+# Subtest: CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+ok 19 - CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+  ---
+  duration_ms: 2482.223163
+  type: 'test'
+  ...
+# Subtest: CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+ok 20 - CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+  ---
+  duration_ms: 1237.139969
+  type: 'test'
+  ...
+# Subtest: CORR: beforeunload protects in-flight and queued saves, not only dirty state
+ok 21 - CORR: beforeunload protects in-flight and queued saves, not only dirty state
+  ---
+  duration_ms: 1760.754073
+  type: 'test'
+  ...
+# Subtest: CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+ok 22 - CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+  ---
+  duration_ms: 1373.751969
+  type: 'test'
+  ...
+# Subtest: CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+ok 23 - CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+  ---
+  duration_ms: 3008.631512
+  type: 'test'
+  ...
+# Subtest: CORR2: a VOID committed but lost is retried from its record, not from the edited input
+ok 24 - CORR2: a VOID committed but lost is retried from its record, not from the edited input
+  ---
+  duration_ms: 1416.42236
+  type: 'test'
+  ...
+# Subtest: CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+ok 25 - CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+  ---
+  duration_ms: 4560.682957
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+ok 26 - CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+  ---
+  duration_ms: 3694.351471
+  type: 'test'
+  ...
+# Subtest: CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+ok 27 - CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+  ---
+  duration_ms: 3707.391632
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+ok 28 - CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+  ---
+  duration_ms: 3623.374948
+  type: 'test'
+  ...
+# Subtest: CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+ok 29 - CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+  ---
+  duration_ms: 1909.594753
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+ok 30 - CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+  ---
+  duration_ms: 4528.803532
+  type: 'test'
+  ...
+# Subtest: CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+ok 31 - CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+  ---
+  duration_ms: 3757.996544
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+ok 32 - CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+  ---
+  duration_ms: 3633.487607
+  type: 'test'
+  ...
+# Subtest: CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+ok 33 - CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+  ---
+  duration_ms: 2801.407639
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+ok 34 - CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+  ---
+  duration_ms: 1641.644876
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+ok 35 - CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+  ---
+  duration_ms: 2954.990834
+  type: 'test'
+  ...
+# Subtest: CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+ok 36 - CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+  ---
+  duration_ms: 1938.242563
+  type: 'test'
+  ...
+# Subtest: CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+ok 37 - CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+  ---
+  duration_ms: 1512.081442
+  type: 'test'
+  ...
+# Subtest: CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+ok 38 - CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+  ---
+  duration_ms: 2134.362405
+  type: 'test'
+  ...
+# Subtest: P8-01: an autosave after the server session is replaced is saved, exactly once, for the same person
+ok 39 - P8-01: an autosave after the server session is replaced is saved, exactly once, for the same person
+  ---
+  duration_ms: 3270.523579
+  type: 'test'
+  ...
+# Subtest: P8-01: a walk can still be started after the session is replaced
+ok 40 - P8-01: a walk can still be started after the session is replaced
+  ---
+  duration_ms: 1361.046703
+  type: 'test'
+  ...
+# Subtest: P8-01: a session that now belongs to someone else is never used to save the page's edits
+ok 41 - P8-01: a session that now belongs to someone else is never used to save the page's edits
+  ---
+  duration_ms: 3026.766611
+  type: 'test'
+  ...
+# Subtest: P8-01: no page error in any of the above
+ok 42 - P8-01: no page error in any of the above
+  ---
+  duration_ms: 0.683342
+  type: 'test'
+  ...
+# Subtest: WALK-01 empty My Walks state with the prototype wording and a New walk action
+ok 43 - WALK-01 empty My Walks state with the prototype wording and a New walk action
+  ---
+  duration_ms: 1660.396874
+  type: 'test'
+  ...
+# Subtest: editor renders every section, item, and option from the served instrument model
+ok 44 - editor renders every section, item, and option from the served instrument model
+  ---
+  duration_ms: 414.259924
+  type: 'test'
+  ...
+# Subtest: COND-01..05 grade choices follow the school of the walk's org unit
+ok 45 - COND-01..05 grade choices follow the school of the walk's org unit
+  ---
+  duration_ms: 5036.516291
+  type: 'test'
+  ...
+# Subtest: COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+ok 46 - COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+  ---
+  duration_ms: 54.497048
+  type: 'test'
+  ...
+# Subtest: COND-07..10 conditional classroom sections and retained hidden answers
+ok 47 - COND-07..10 conditional classroom sections and retained hidden answers
+  ---
+  duration_ms: 740.145469
+  type: 'test'
+  ...
+# Subtest: COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+ok 48 - COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+  ---
+  duration_ms: 429.073693
+  type: 'test'
+  ...
+# Subtest: COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+ok 49 - COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+  ---
+  duration_ms: 2247.141092
+  type: 'test'
+  ...
+# Subtest: A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+ok 50 - A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+  ---
+  duration_ms: 72.001262
+  type: 'test'
+  ...
+# Subtest: A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+ok 51 - A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+  ---
+  duration_ms: 1452.934569
+  type: 'test'
+  ...
+# Subtest: My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+ok 52 - My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+  ---
+  duration_ms: 822.763195
+  type: 'test'
+  ...
+# Subtest: A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ok 53 - A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+  ---
+  duration_ms: 1932.202811
+  type: 'test'
+  ...
+1..53
+# tests 53
+# suites 0
+# pass 53
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 125466.5153
+[exit 0]

@@ -1,0 +1,9 @@
+# synthetic workload on ColdFusion 2023 Update 25 after P8-14 (icfwalk-acf-perf, icfwalk_perf), edits=drafts, 2026-09-26T20:29:25Z
+(node:23495) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+20:29:26 ColdFusion Server 2023,0,25,330977 on icfwalk_perf: 30362 walks, 2216426 responses; levels 10,25 for 60s
+20:29:27 solo: report live district (solo) p50=133 max=145 err=0; report CSV district (solo) p50=122 max=133 err=0
+20:30:30 level 10: 2599 requests in 60s; list mine p50=245 p95=362 max=506 err=0; open walk p50=157 p95=280 max=371 err=0; summary p50=169 p95=301 max=373 err=0; create walk p50=304 p95=439 max=540 err=0; list district (scope=all) p50=540 p95=698 max=806 err=0; report live district p50=332 p95=470 max=531 err=0; save walk p50=220 p95=345 max=391 err=0; complete walk p50=186 p95=292 max=296 err=0; report CSV district p50=321 p95=438 max=509 err=0
+20:31:34 level 25: 2406 requests in 56s; list mine p50=530 p95=1095 max=1283 err=0; open walk p50=509 p95=1093 max=1337 err=0; summary p50=512 p95=1008 max=1221 err=0; save walk p50=494 p95=1143 max=1234 err=0; list district (scope=all) p50=991 p95=1471 max=1687 err=0; report live district p50=704 p95=1088 max=1326 err=0; report CSV district p50=689 p95=1076 max=1550 err=0; create walk p50=801 p95=1080 max=1630 err=0; complete walk p50=494 p95=1158 max=1313 err=0
+20:31:34 release: {"status":"created by an earlier run on this database","releaseId":"BAFF656D-0B1E-4428-AD55-3B3AE82274D6"}; release read {"status":200,"ms":29}
+20:31:36 written /tmp/claude-0/-home-user-ICFWalk/e9437e1b-d324-5285-a2bb-174004a03ffd/scratchpad/p8/perf/acf-after-p814-drafts/workload-ColdFusion-Server-2023-0-25-330977.json

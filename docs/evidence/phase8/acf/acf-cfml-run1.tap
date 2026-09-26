@@ -1,0 +1,203 @@
+TAP version 13
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 1 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 63.287634
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+not ok 2 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 19.433221
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-suite.test.mjs:50:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    500 !== 404
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 404
+  actual: 500
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-suite.test.mjs:52:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 3 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 70.094901
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+not ok 4 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 265503.613788
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-suite.test.mjs:98:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    part 1/6 reported failures
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-suite.test.mjs:121:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# AuthorizationTest.testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools: passed
+# AuthorizationTest.testAuth04SchoolRoleCannotReachWalkInUnassignedSchool: passed
+# AuthorizationTest.testAuth05ReportOnlyRolesCannotOpenOrEditWalks: passed
+# AuthorizationTest.testAuth06InstrumentAdminHasNoWalkOrReportAccess: passed
+# AuthorizationTest.testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing: passed
+# AuthorizationTest.testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch: passed
+# AuthorizationTest.testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected: passed
+# AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens: passed
+# AuthorizationTest.testEndingAnAssignmentRevokesAccessImmediately: passed
+# AuthorizationTest.testInactiveOrgUnitAssignmentGrantsNothing: passed
+# AuthorizationTest.testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable: passed
+# AuthorizationTest.testSchoolWalkRoleWorksInsideItsOwnSchool: passed
+# DraftEditorTest.testAnEditToTheSameValueIsNotAChange: passed
+# DraftEditorTest.testAnUnrelatedEditLeavesTheContentReviewSummaryAlone: passed
+# DraftEditorTest.testKeysAreMatchedExactlyNotCaseInsensitively: passed
+# DraftEditorTest.testMalformedRequestsAreRefusedWithStableCodes: passed
+# DraftEditorTest.testMarkingAnItemAsAPlaceholderAppendsItToTheSummary: passed
+# DraftEditorTest.testNullableFieldsClearAndRequiredFieldsRefuseBlank: passed
+# DraftEditorTest.testOnePromptEditChangesExactlyThatPrompt: passed
+# DraftEditorTest.testResolvingAPlaceholderUpdatesTheContentReviewSummaryInOrder: passed
+# DraftEditorTest.testSearchFindsEditableRowsByKeyAndWording: passed
+# DraftEditorTest.testSectionOptionAndVersionFieldsAreEditable: passed
+# DraftEditorTest.testTheNormalizedDocumentIsTheExactInverseOfCompilation: passed
+# InstrumentAdministrationTest.testACloneOntoAnExistingLabelIsRefusedAndAudited: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testADraftCanBeDiscardedButAPublishedVersionCannot: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testAMalformedCloneRequestIsRefused: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testAMalformedEditRequestIsRefused: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testAnEditThatBreaksTheInstrumentIsRefusedByTheSharedRules: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testAnEditThatChangesNothingWritesNothing: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testAnImportWithoutADocumentIsRefused: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testAPublishedVersionCannotBeEdited: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testCloneEditAndCompareShowTheExactPromptChange: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testImportOfTheSuppliedDocumentReturnsTheValidationSummary: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testOnlyAPublishedVersionCanBeRetired: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testPreviewIsTheRenderModelWalksRender: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testReportsStillOpenWhenNoVersionIsInService: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testRetiringAVersionInUseStopsNewWalksButNotHistoricalOnes: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testRetiringTheOnlyInServiceVersionRequiresConfirmation: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testStaleEditsAreRefusedAndChangeNothing: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentAdministrationTest.testThePlaceholderQueueListsExactlySeventeenWithSourceAndStatus: failed - beforeAll failed: Instrument version 'adm-98090189-v1' has a compiled snapshot that is not valid JSON.  @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testACountStoredAsTheExactMatchingStringIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:953
+# InstrumentPublishServiceTest.testAPublishedVersionBecomesSelectableAsCurrent: failed - Instrument version 'pub-9809be5d-adm04b' has a compiled snapshot that is not valid JSON. @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testAPublishedVersionCannotBeReimported: failed - Instrument version 'pub-9809be5d-adm05c' has a compiled snapshot that is not valid JSON. @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testAssertDraftForWriteRefusesAPublishedVersion: failed - Instrument version 'pub-9809be5d-adm05b' has a compiled snapshot that is not valid JSON. @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testATopLevelArraySnapshotIsRefused: passed
+# InstrumentPublishServiceTest.testATopLevelNullSnapshotIsARefusalAndNotAnEngineError: failed - precondition: the exact bytes are stored assertExactTextEquals was given a null expected value, and null is not comparable. @ /icfwalk/tests/cfml/BaseSpec.cfc:38
+# InstrumentPublishServiceTest.testATopLevelScalarSnapshotIsRefused: failed - Error Executing Database Query. @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testDefinitionsDriftIsRefusedAndNothingChanges: failed - the refusal says what is wrong Expected to find [no longer match] in [Instrument version 'pub-9809be5d-adm03' has a compiled snapshot that is not valid JSON.]. @ /icfwalk/tests/cfml/BaseSpec.cfc:38
+# InstrumentPublishServiceTest.testDuplicateLogicalKeysCannotBePersistedAtAll: passed
+# InstrumentPublishServiceTest.testEnvelopeWithAnUnexpectedCountIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithAnyMissingCountMemberIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithEmptyCountsIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithFractionalCountIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithNegativeCountIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithNoCountsIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithNonNumericCountIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testEnvelopeWithNoPlaceholderCountIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1135
+# InstrumentPublishServiceTest.testMarkPublishedRefusesAnEmptyPublisher: passed
+# InstrumentPublishServiceTest.testNegativeFractionalAndOversizedCountsAreRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:979
+# InstrumentPublishServiceTest.testNoncanonicalSnapshotBytesAreRefusedEvenWithAMatchingChecksum: failed - Error Executing Database Query. @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testPublishFreezesTheImportedSnapshotByteForByte: failed - Instrument version 'pub-9809be5d-adm04' has a compiled snapshot that is not valid JSON. @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testPublishingAnUnknownVersionIsNotFound: passed
+# InstrumentPublishServiceTest.testPublishingAPublishedVersionIsRefusedAndAudited: failed - Instrument version 'pub-9809be5d-adm05' has a compiled snapshot that is not valid JSON. @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testPublishingRefusesAMalformedVersionId: passed
+# InstrumentPublishServiceTest.testPublishingWithoutAValidPublisherIsRefusedAndChangesNothing: passed
+# InstrumentPublishServiceTest.testPublishRecordsTheAuthenticatedPublisher: failed - Instrument version 'pub-9809be5d-adm04c' has a compiled snapshot that is not valid JSON. @ /icfwalk/src/core/Errors.cfc:111
+# InstrumentPublishServiceTest.testSemanticActiveItemWithInactiveResponseSetIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticBadSectionParentIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticChoiceItemWithNoActiveOptionIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticChoiceItemWithoutResponseSetIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticDuplicateDimensionValueOrderIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticEmptyDefinitionsAreRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticInvalidDimensionDataTypeIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticInvalidOptionOrderIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticItemOrphanedByAnInactiveSectionIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticListPlacementWithNoActiveValuesIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticMalformedConditionsAreRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticMultiChoiceItemTypeIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticNoActiveRootIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticOptionInAForeignResponseSetIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticPlacementOfInactiveDimensionIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticPlacementWithMissingRuleIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticResponseSetWithoutOptionsIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticRuleWithMissingTargetIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticSectionOrphanedByAnInactiveParentIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticShortTextItemTypeIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticSnapshotCountsMismatchIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:581
+# InstrumentPublishServiceTest.testSemanticSnapshotFormatIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:597
+# InstrumentPublishServiceTest.testSemanticSnapshotIdentityMismatchIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:564
+# InstrumentPublishServiceTest.testSemanticTwoActiveRootsAreRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticUnknownOptionFilterIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSemanticUnsupportedRuleEffectIsRefused: failed - JSON parsing failure: Unexpected end of JSON string @ /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc:1098
+# InstrumentPublishServiceTest.testSnapshotWithNoncanonicalKeyOrderIsRefused: failed - Error Executing Database Query. @ /icfwalk/src/core/Db.cfc:19
+# RenderModelTest.testLayoutsAndNumberingComeFromResponseSetsAndOrder: passed
+# RenderModelTest.testModelSerializesToCanonicalJsonWithoutGuids: passed
+# RenderModelTest.testPlacementsCarryDimensionMetadataInAuthoredOrder: passed
+# RenderModelTest.testPresentationIsDerivedFromStructureNotNames: passed
+# RenderModelTest.testPromptsAndPlaceholdersComeFromTheConfiguration: passed
+# RenderModelTest.testResponseOptionsAndDefinitionsMatchTheConfigurationExactly: passed
+# RenderModelTest.testRulesArePassedThroughAndUnsupportedEffectsAreRefused: passed
+# RenderModelTest.testSkippableComponentsDeriveApplicabilityFromRules: passed
+# RenderModelTest.testTreeFollowsAuthoredParentsAndDisplayOrder: passed
+# ReportServiceTest.testCsvExportIsRfc4180AndNeutralizesFormulas: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testInstrumentAdminAndRolelessUsersAreRefused: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testLiveFiguresOnlyForSomeoneWhoCanOpenEveryWalkCounted: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRetainedAnswersOfAHiddenSectionAreCountedAsHidden: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt01SchoolRoleReportsOnlyItsAssignedSchool: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt02DistrictRoleAggregatesDescendantSchoolsOnly: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt04OnlyAnsweredScoresEnterTheAverage: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt05SectionMeansArePooledFromItemLevelResponses: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt06NarrativeEmailAndTeacherFieldsNeverLeave: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testRpt07EveryFilterNarrowsThePopulationWithinScope: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testTheCatalogIsDerivedFromTheVersionAndItsEngine: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testUnknownMalformedAndOutOfContractFiltersAreRefused: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testVoidedWalksNeverCountAndDraftsOnlyOnRequest: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# ReportServiceTest.testWalksOfAnotherVersionNeverJoinTheReport: failed - beforeAll failed: Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used.  @ /icfwalk/src/core/Errors.cfc:111
+# SnapshotCompilerTest.testCompiledSnapshotMatchesReferenceGolden: passed
+# SnapshotCompilerTest.testRuleTargetsResolveToKeysNotLogicalIds: passed
+# SnapshotCompilerTest.testSnapshotContainsNoDatabaseIdentifiersAndCarriesBehavior: passed
+# WalkReplayCoherenceTest.testAConcurrentSaveCannotLandBetweenTheCoherenceCheckAndTheDto: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testAnAlteredRequestAgainstALegacyRowIsTheSameRefusal: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testAnExactLookingRetryAgainstALegacyRowIsARefusal: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testAnOldSaveReplayedAfterALaterSaveCannotOverwriteIt: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testAReplayIsStillIdempotentWhileTheAggregateHasNotMoved: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testASupersededReplayNeverMaterializesTheNewerAggregate: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testAuthorizationAnswersBeforeTheLegacyConflict: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# WalkReplayCoherenceTest.testCreateCompleteAndVoidReplaysAreAlsoRefusedOnceSuperseded: failed - Instrument version 60AEF854-D792-435E-868D-F10C467DC18A does not match its stored checksum and cannot be used. @ /icfwalk/src/core/Errors.cfc:111
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 5 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 8794.661931
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 3
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 274631.165535
+exit 1

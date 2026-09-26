@@ -1,0 +1,45 @@
+{
+ "base": "http://127.0.0.1:8500",
+ "part": "6",
+ "of": "12",
+ "status": 200,
+ "wallSeconds": 44,
+ "engine": "ColdFusion Server 2023,0,25,330977",
+ "ok": false,
+ "totals": {
+  "failed": 22,
+  "passed": 14,
+  "skipped": 0
+ },
+ "elapsedMs": 43678,
+ "specs": [
+  "DiscardIdentityBarrierTest",
+  "InstrumentMetadataServiceTest",
+  "ReportIsolationTest",
+  "VisibilityEngineTest"
+ ],
+ "failed": [
+  "InstrumentMetadataServiceTest.testACaseOnlyDescriptionChangeIsMaterial: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testACaseOnlyNameChangeIsMaterial: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAKnownUserWithNoRoleAtAllIsDeniedAndChangesNothing: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAKnownUserWithoutInstrumentManageIsDeniedAndChangesNothing: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAMalformedActiveIsRefusedRatherThanCoerced: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAMissingInstrumentIsRefusedWithoutAuditingSuccess: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAnEmptyPatchIsRefusedWithoutAWrite: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAnInvalidDescriptionIsRefusedWithoutAWrite: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAnInvalidNameIsRefusedWithoutAWrite: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAnUnknownPatchMemberIsRefusedWithoutAWrite: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAPartialPatchKeepsTheStoredValueOfWhatItOmits: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAPatchWithNoMaterialDifferenceIsAnAuditFreeNoOp: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testAUserWithAnEffectiveInstrumentManageAssignmentSucceeds: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testTheAuditActorIsTheAuthorizedPrincipalAndCannotBeOverridden: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testTheAuditNamesChangedFieldsWithoutCopyingNarrativeContent: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testTheOperationRemainsUnreachableFromHttpAndControllers: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "InstrumentMetadataServiceTest.testTheOperationRequiresAPrincipalRatherThanAnActorId: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "ReportIsolationTest.testALiveReportAndAReleaseAreIsolatedAtTheScopeBoundary: the live report counts exactly school X's walks Expected JSON [{\"walks\":3,\"ones\":3,\"fives\":0}] (30 chars) but got [{\"walks\":3.0,\"ones\":3.0,\"fives\":0}] (34 chars",
+  "ReportIsolationTest.testAReleaseAndALiveReportAreIsolatedAtTheScopeBoundary: the live report counts exactly school Y's walks Expected JSON [{\"walks\":4,\"ones\":0,\"fives\":4}] (30 chars) but got [{\"walks\":4.0,\"ones\":0,\"fives\":4.0}] (34 chars",
+  "ReportIsolationTest.testAReportLeavesNoPopulationTableBehindOnSuccessOrFailure: Expected JSON [{\"walks\":3,\"ones\":3,\"fives\":0}] (30 chars) but got [{\"walks\":3.0,\"ones\":3.0,\"fives\":0}] (34 chars); the first difference is at character 11 ([,] ",
+  "ReportIsolationTest.testTwoReportsOnDisjointScopesAreIsolatedAtTheScopeBoundary: report A counts exactly school X's walks Expected JSON [{\"walks\":3,\"ones\":3,\"fives\":0}] (30 chars) but got [{\"walks\":3.0,\"ones\":3.0,\"fives\":0}] (34 chars); the ",
+  "VisibilityEngineTest.testMatchesTheSharedVectorsExactly: Vector 'numeric-looking codes must match exactly (1.0 is not 1; 9.0 is not grade 9)'. Expected exactly [..._q1\",\"prek_k_q2\",\"prek_k_q3\"],\"normalizedClear\":{\"cha"
+ ]
+}

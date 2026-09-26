@@ -1,0 +1,22 @@
+{
+ "base": "http://127.0.0.1:8500",
+ "part": "7",
+ "of": "12",
+ "status": 200,
+ "wallSeconds": 40,
+ "engine": "ColdFusion Server 2023,0,25,330977",
+ "ok": true,
+ "totals": {
+  "failed": 0,
+  "passed": 54,
+  "skipped": 0
+ },
+ "elapsedMs": 39675,
+ "specs": [
+  "DraftEditorTest",
+  "InstrumentMetadataServiceTest",
+  "ReportDisclosureTest",
+  "ValidatorRendererContractTest"
+ ],
+ "failed": []
+}

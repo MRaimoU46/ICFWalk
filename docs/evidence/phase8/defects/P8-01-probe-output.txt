@@ -1,0 +1,7 @@
+after the edit: Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)
+after Retry 1: Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)
+after Retry 2: Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)
+after Retry 3: Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)
+dialog: beforeunload
+after a reload, the note reads: "first note, saved"
+cleanup 200

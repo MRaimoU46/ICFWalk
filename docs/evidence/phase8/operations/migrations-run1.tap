@@ -1,0 +1,56 @@
+TAP version 13
+# (node:9451) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: a migration killed half way rolls back completely, and the same script then applies and re-applies cleanly
+not ok 1 - a migration killed half way rolls back completely, and the same script then applies and re-applies cleanly
+  ---
+  duration_ms: 1264.796406
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/ops/database-operations.test.mjs:151:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot resolve collation conflict between "SQL_Latin1_General_CP1_CI_AS" and "Latin1_General_CI_AS_KS_WS" in add operator occurring in SELECT statement column 1.'
+  code: 'EREQUEST'
+  name: 'RequestError'
+  stack: |-
+    handleError (/home/user/ICFWalk/node_modules/mssql/lib/tedious/request.js:427:15)
+    Connection.emit (node:events:519:28)
+    Connection.emit (/home/user/ICFWalk/node_modules/tedious/lib/connection.js:1022:18)
+    RequestTokenHandler.onErrorMessage (/home/user/ICFWalk/node_modules/tedious/lib/token/handler.js:285:21)
+    Readable.<anonymous> (/home/user/ICFWalk/node_modules/tedious/lib/token/token-stream-parser.js:19:33)
+    Readable.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+    readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)
+    Readable.push (node:internal/streams/readable:393:5)
+    nextAsync (node:internal/streams/from:194:22)
+  ...
+# Subtest: a migration refused by its own precondition changes nothing
+not ok 2 - a migration refused by its own precondition changes nothing
+  ---
+  duration_ms: 423.164169
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/ops/database-operations.test.mjs:205:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot resolve collation conflict between "SQL_Latin1_General_CP1_CI_AS" and "Latin1_General_CI_AS_KS_WS" in add operator occurring in SELECT statement column 1.'
+  code: 'EREQUEST'
+  name: 'RequestError'
+  stack: |-
+    handleError (/home/user/ICFWalk/node_modules/mssql/lib/tedious/request.js:427:15)
+    Connection.emit (node:events:519:28)
+    Connection.emit (/home/user/ICFWalk/node_modules/tedious/lib/connection.js:1022:18)
+    RequestTokenHandler.onErrorMessage (/home/user/ICFWalk/node_modules/tedious/lib/token/handler.js:285:21)
+    Readable.<anonymous> (/home/user/ICFWalk/node_modules/tedious/lib/token/token-stream-parser.js:19:33)
+    Readable.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+    readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)
+    Readable.push (node:internal/streams/readable:393:5)
+    nextAsync (node:internal/streams/from:194:22)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 0
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2229.010544

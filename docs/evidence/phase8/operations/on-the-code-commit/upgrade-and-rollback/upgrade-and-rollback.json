@@ -1,0 +1,92 @@
+{
+  "startedAt": "2026-09-26T21:14:52.846Z",
+  "database": "icfwalk_p8upgmuiw1kx9",
+  "phase6": "158debca5da2c4f3a07f602689cd08af9db9bd6e",
+  "frozen": "68f9026d39ba0ff44d12d6398c5e933971dad2f4",
+  "port": 8891,
+  "steps": {
+    "phase6Start": {
+      "secondsToAnswer": 4.805,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "schema": "present"
+        },
+        "correlationId": "a7598b14-a0a0-41c4-ba4d-e6291ef407cc",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "phase6Data": {
+      "tables": 24,
+      "walks": "5:1144119557",
+      "responses": "365:-2143251308",
+      "mutations": "15:-43973957",
+      "revisions": "4:470250067",
+      "audit": "29:-255942225"
+    },
+    "upgrade": {
+      "applied": "007_report_release.sql",
+      "tablesAdded": [
+        "report_release",
+        "report_release_block",
+        "report_release_cell",
+        "report_release_walk"
+      ],
+      "existingTablesUnchanged": 24
+    },
+    "releaseStart": {
+      "secondsToAnswer": 4.956,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "c7c27013-7218-4586-9fdb-ec723f153084",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "release": {
+      "listed": 4,
+      "reportWalks": 3,
+      "health": {
+        "database": "ok",
+        "longText": "ok",
+        "schema": "present"
+      },
+      "releaseCreated": 201,
+      "releaseId": "F98E1A51-9815-4BCF-AFD4-11A6CF662AB5"
+    },
+    "rollbackStart": {
+      "secondsToAnswer": 4.806,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "schema": "present"
+        },
+        "correlationId": "6c69e448-f3f7-4530-bc69-da5dc37f2f06",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "rollback": {
+      "listed": 5,
+      "reportWalks": 4,
+      "health": {
+        "database": "ok",
+        "schema": "present"
+      },
+      "releaseRead": 200
+    }
+  },
+  "finishedAt": "2026-09-26T21:15:24.346Z",
+  "workDirectory": "/tmp/icfwalk-upgrade-KomLhe"
+}

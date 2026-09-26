@@ -1,0 +1,9 @@
+# synthetic workload on Lucee 6.2.8.20 after P8-14 (8889, icfwalk_perf), edits=drafts, 2026-09-26T20:35:12Z
+(node:28951) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+20:35:12 Lucee 6.2.8.20 on icfwalk_perf: 30625 walks, 2235625 responses; levels 10,25 for 60s
+20:35:14 solo: report live district (solo) p50=184 max=227 err=0; report CSV district (solo) p50=186 max=194 err=0
+20:36:16 level 10: 4419 requests in 60s; list mine p50=165 p95=254 max=359 err=0; open walk p50=51 p95=97 max=244 err=0; save walk p50=147 p95=221 max=319 err=0; list district (scope=all) p50=549 p95=746 max=811 err=0; summary p50=64 p95=146 max=215 err=0; report live district p50=368 p95=644 max=812 err=0; create walk p50=250 p95=349 max=465 err=0; complete walk p50=113 p95=203 max=275 err=0; report CSV district p50=374 p95=628 max=1355 err=0
+20:37:17 level 25: 4541 requests in 59s; list mine p50=356 p95=540 max=756 err=0; open walk p50=179 p95=266 max=362 err=0; save walk p50=325 p95=481 max=5615 err=0; list district (scope=all) p50=1089 p95=1481 max=5730 err=0; summary p50=208 p95=328 max=411 err=0; report live district p50=697 p95=1171 max=5851 err=1; create walk p50=481 p95=2154 max=5374 err=0; report CSV district p50=641 p95=1131 max=6242 err=4; complete walk p50=286 p95=424 max=614 err=0
+20:37:17 release: {"status":"created by an earlier run on this database","releaseId":"BAFF656D-0B1E-4428-AD55-3B3AE82274D6"}; release read {"status":200,"ms":13}
+20:37:18 written /tmp/claude-0/-home-user-ICFWalk/e9437e1b-d324-5285-a2bb-174004a03ffd/scratchpad/p8/perf/lucee-after-p814-drafts/workload-Lucee-6.2.8.20.json

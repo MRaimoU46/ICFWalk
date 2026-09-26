@@ -1,0 +1,104 @@
+TAP version 13
+# Subtest: ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+ok 1 - ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+  ---
+  duration_ms: 11645.162583
+  type: 'test'
+  ...
+# Subtest: ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+ok 2 - ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+  ---
+  duration_ms: 8674.301187
+  type: 'test'
+  ...
+# Subtest: ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+not ok 3 - ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+  ---
+  duration_ms: 49021.335774
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-admin.test.mjs:256:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.waitForSelector: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#admin-panel .admin-compare-result .admin-summary-title') to be visible[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-admin.test.mjs:293:14)
+  ...
+# Subtest: ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+not ok 4 - ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+  ---
+  duration_ms: 40560.741987
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-admin.test.mjs:328:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.waitForSelector: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#admin-panel .admin-ph-table') to be visible[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-admin.test.mjs:358:14)
+  ...
+# Subtest: ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+ok 5 - ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+  ---
+  duration_ms: 10656.413293
+  type: 'test'
+  ...
+# Subtest: Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+ok 6 - Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+  ---
+  duration_ms: 25847.634755
+  type: 'test'
+  ...
+# Subtest: P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+ok 7 - P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+  ---
+  duration_ms: 15293.960294
+  type: 'test'
+  ...
+# Subtest: P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+ok 8 - P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+  ---
+  duration_ms: 12883.793634
+  type: 'test'
+  ...
+# Subtest: P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+ok 9 - P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+  ---
+  duration_ms: 5914.822463
+  type: 'test'
+  ...
+# Subtest: P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+ok 10 - P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+  ---
+  duration_ms: 5989.499512
+  type: 'test'
+  ...
+# Subtest: P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+ok 11 - P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+  ---
+  duration_ms: 7714.779993
+  type: 'test'
+  ...
+# Subtest: A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+ok 12 - A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+  ---
+  duration_ms: 23526.55597
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 10
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 223437.108163

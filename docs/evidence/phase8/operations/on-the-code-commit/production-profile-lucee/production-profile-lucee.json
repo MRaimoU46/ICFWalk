@@ -1,0 +1,234 @@
+{
+  "engine": "lucee",
+  "startedAt": "2026-09-26T21:14:20.961Z",
+  "database": "icfwalk_p8prodmuiw0wbl",
+  "runtimeLogin": "<generated, db_datareader + db_datawriter only>",
+  "phases": {
+    "bootstrap": {
+      "secondsToAnswer": 4.996,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "c372307d-8bfb-4467-9957-d094b56a5d32",
+        "status": "ok"
+      },
+      "testRunner": 404,
+      "wrongToken": 404,
+      "seeded": {
+        "instrument": 201,
+        "orgUnits": 200,
+        "people": 3,
+        "mappingBeforePublication": "400 INSTRUMENT_NOT_AVAILABLE",
+        "publish": 200,
+        "mapping": 200
+      }
+    },
+    "refusals": {
+      "no-trusted-proxies": {
+        "health": 500,
+        "code": "STARTUP_FAILED",
+        "apiStatus": 500,
+        "logNamesSetting": true
+      },
+      "environment-unset-with-dev-stub": {
+        "health": 500,
+        "code": "STARTUP_FAILED",
+        "apiStatus": 500,
+        "logNamesSetting": true
+      },
+      "insecure-cookies": {
+        "health": 500,
+        "code": "STARTUP_FAILED",
+        "apiStatus": 500,
+        "logNamesSetting": true
+      }
+    },
+    "steady": {
+      "secondsToAnswer": 3.881,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "41dafc23-d3de-41c0-a50b-8510ae848bdf",
+        "status": "ok"
+      },
+      "maintenanceWithRightToken": 404,
+      "identity": {
+        "the development stub's header": {
+          "status": 401,
+          "code": "UNAUTHENTICATED"
+        },
+        "the gateway subject without the secret": {
+          "status": 401,
+          "code": "UNAUTHENTICATED"
+        },
+        "a wrong secret": {
+          "status": 401,
+          "code": "UNAUTHENTICATED"
+        },
+        "a wrong secret of the same length": {
+          "status": 401,
+          "code": "UNAUTHENTICATED"
+        },
+        "the right secret from an address outside the list": {
+          "status": 401,
+          "code": "UNAUTHENTICATED"
+        },
+        "an unprovisioned subject": {
+          "status": 401,
+          "code": "USER_NOT_PROVISIONED"
+        }
+      },
+      "displayNameOnTheSignInResponse": "the provisioned name; the claim from the next request",
+      "sessionCookies": [
+        {
+          "name": "cfid",
+          "attributes": [
+            "Path=/",
+            "Secure",
+            "HttpOnly",
+            "SameSite=Lax"
+          ]
+        },
+        {
+          "name": "cftoken",
+          "attributes": [
+            "Path=/",
+            "Secure",
+            "HttpOnly",
+            "SameSite=Lax"
+          ]
+        },
+        {
+          "name": "cfid",
+          "attributes": [
+            "Path=/",
+            "Secure",
+            "HttpOnly",
+            "SameSite=Lax"
+          ]
+        },
+        {
+          "name": "cftoken",
+          "attributes": [
+            "Path=/",
+            "Secure",
+            "HttpOnly",
+            "SameSite=Lax"
+          ]
+        },
+        {
+          "name": "JSESSIONID",
+          "attributes": [
+            "Path=/",
+            "HttpOnly",
+            "SameSite=Lax"
+          ]
+        }
+      ],
+      "authorityOf JSESSIONID": {
+        "writeWithoutIt": 201,
+        "writeWithItAlone": 403
+      },
+      "cookieFindings": [
+        "JSESSIONID lacks Secure"
+      ],
+      "cookiesWithoutSessionAuthority": [
+        "JSESSIONID"
+      ],
+      "csrf": {
+        "missing": 403,
+        "wrong": 403
+      },
+      "work": {
+        "create": 201,
+        "save": 200,
+        "staleSave": 409,
+        "complete": 200,
+        "summary": 200,
+        "report": 200
+      },
+      "rotatedOnIdentityChange": [
+        "cfid"
+      ],
+      "outage": {
+        "health": 503,
+        "api": 500,
+        "recoveredWithoutRestartSeconds": 0.08,
+        "after": {
+          "health": "ok",
+          "walks": 2
+        }
+      },
+      "errors": {
+        "malformed JSON": {
+          "status": 400,
+          "code": "INVALID_JSON_BODY",
+          "keys": [
+            "code",
+            "correlationId",
+            "details",
+            "message"
+          ]
+        },
+        "unknown route": {
+          "status": 404,
+          "code": "NOT_FOUND",
+          "keys": [
+            "code",
+            "correlationId",
+            "message"
+          ]
+        },
+        "malformed id": {
+          "status": 400,
+          "code": "INVALID_WALK_ID",
+          "keys": [
+            "code",
+            "correlationId",
+            "details",
+            "message"
+          ]
+        },
+        "database offline": {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "keys": [
+            "code",
+            "correlationId",
+            "details",
+            "message"
+          ],
+          "correlationId": true
+        }
+      },
+      "auditEvents": {
+        "INSTRUMENT_VERSION_CREATED": 1,
+        "INSTRUMENT_VERSION_PUBLISHED": 1,
+        "MAINTENANCE_TASK_INVOKED": 11,
+        "ORG_UNITS_IMPORTED": 2,
+        "ROLE_ASSIGNED": 3,
+        "USER_PROVISIONED": 3,
+        "USER_SIGNED_IN": 6,
+        "WALK_COMPLETED": 1,
+        "WALK_CREATED": 2,
+        "WALK_SAVE_CONFLICT": 1,
+        "WALK_SUMMARY_EXPORTED": 1
+      },
+      "logLines": 68
+    }
+  },
+  "runtimeRoles": [
+    "db_datareader",
+    "db_datawriter"
+  ],
+  "runtimeExtraPermissions": 0,
+  "finishedAt": "2026-09-26T21:14:52.449Z"
+}

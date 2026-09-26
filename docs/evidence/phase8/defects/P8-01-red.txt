@@ -1,0 +1,81 @@
+$ git rev-parse HEAD; git status --short
+9456a27850fa969eec937e728a0019eba5475c9c
+?? tests/node/browser-session-recovery.test.mjs
+$ git diff HEAD --stat -- app src   (the application code is unmodified: must be empty)
+$ ICFWALK_REQUIRE_APP=1 node --test tests/node/browser-session-recovery.test.mjs
+TAP version 13
+# Subtest: P8-01: an autosave after the server session is replaced is saved, exactly once, for the same person
+not ok 1 - P8-01: an autosave after the server session is replaced is saved, exactly once, for the same person
+  ---
+  duration_ms: 3339.873367
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-session-recovery.test.mjs:117:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    the save succeeds without a reload
+    + actual - expected
+    
+    + 'Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)'
+    - 'All changes saved'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'All changes saved'
+  actual: 'Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/browser-session-recovery.test.mjs:125:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: P8-01: a walk can still be started after the session is replaced
+not ok 2 - P8-01: a walk can still be started after the session is replaced
+  ---
+  duration_ms: 21494.691691
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-session-recovery.test.mjs:139:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.waitForSelector: Timeout 20000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#view-walk:not([hidden])') to be visible[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-session-recovery.test.mjs:148:14)
+  ...
+# Subtest: P8-01: a session that now belongs to someone else is never used to save the page's edits
+not ok 3 - P8-01: a session that now belongs to someone else is never used to save the page's edits
+  ---
+  duration_ms: 3066.949981
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-session-recovery.test.mjs:155:1'
+  failureType: 'testCodeFailure'
+  error: 'Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Could not save — changes kept on screen only (CSRF_TOKEN_INVALID: Missing or invalid CSRF token.)'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/browser-session-recovery.test.mjs:167:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: P8-01: no page error in any of the above
+ok 4 - P8-01: no page error in any of the above
+  ---
+  duration_ms: 1.918028
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 1
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 28550.937114
+[exit 1]

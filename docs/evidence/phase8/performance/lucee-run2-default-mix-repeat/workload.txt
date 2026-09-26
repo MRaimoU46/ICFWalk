@@ -1,0 +1,10 @@
+# synthetic workload on Lucee 6.2.8.20 (8889, icfwalk_perf), edits to drafts only, 2026-09-26T19:41:51Z
+(node:8986) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+19:41:52 Lucee 6.2.8.20 on icfwalk_perf: 30088 walks, 2196424 responses; levels 1,10,25 for 60s
+19:42:02 solo: report live district (solo) p50=1049 max=1079 err=0; report CSV district (solo) p50=971 max=1066 err=0
+19:43:02 level 1: 1210 requests in 60s; list mine p50=68 p95=91 max=123 err=0; open walk p50=23 p95=32 max=41 err=0; save walk p50=58 p95=76 max=90 err=0; summary p50=21 p95=31 max=33 err=0; create walk p50=90 p95=111 max=111 err=0; complete walk p50=44 p95=58 max=58 err=0
+19:44:05 level 10: 1364 requests in 62s; list mine p50=502 p95=911 max=1161 err=0; open walk p50=157 p95=370 max=629 err=0; save walk p50=374 p95=780 max=936 err=0; create walk p50=829 p95=1234 max=1271 err=0; complete walk p50=248 p95=555 max=642 err=0; summary p50=180 p95=442 max=698 err=0; list district (scope=all) p50=2327 p95=3035 max=3035 err=0; report live district p50=null p95=null max=null err=6; report CSV district p50=6390 p95=6390 max=6390 err=5
+19:45:21 level 25: 1357 requests in 74s; list mine p50=1260 p95=2113 max=3351 err=0; open walk p50=442 p95=842 max=1967 err=0; save walk p50=995 p95=1923 max=2946 err=0; summary p50=348 p95=984 max=2342 err=0; create walk p50=1302 p95=4979 max=5301 err=0; complete walk p50=600 p95=1341 max=2331 err=0; list district (scope=all) p50=5550 p95=7268 max=7268 err=0; report live district p50=24750 p95=24994 max=24994 err=7; report CSV district p50=3768 p95=24371 max=24371 err=5
+19:45:21 release: {"status":409,"ms":22,"code":"REPORT_RELEASE_OVERLAP","blocks":null}; release read {"status":400,"ms":21}
+19:45:22 written /tmp/claude-0/-home-user-ICFWalk/e9437e1b-d324-5285-a2bb-174004a03ffd/scratchpad/p8/perf/lucee-run2-drafts/workload-Lucee-6.2.8.20.json

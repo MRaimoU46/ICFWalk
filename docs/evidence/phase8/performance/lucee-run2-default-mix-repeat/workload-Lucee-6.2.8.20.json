@@ -1,0 +1,839 @@
+{
+  "startedAt": "2026-09-26T19:41:52.353Z",
+  "database": "icfwalk_perf",
+  "baseUrl": "http://127.0.0.1:8889",
+  "engine": "Lucee 6.2.8.20",
+  "server": {
+    "version": "16.0.4295.3",
+    "edition": "Developer Edition (64-bit)",
+    "cpus": 4,
+    "memoryMb": "12876"
+  },
+  "data": {
+    "walks": 30088,
+    "responses": 2196424
+  },
+  "method": {
+    "durationSeconds": 60,
+    "levels": [
+      1,
+      10,
+      25
+    ],
+    "edits": "any",
+    "soloReports": 5,
+    "thinkTimeMs": 0,
+    "mix": "closed loop, no think time: 4 of 5 virtual users are school walkers (list mine, open, save 50 %, summary 10 %, create+save+complete 5 %); 1 of 5 is the district walker (list scope=all, live district report, district CSV)",
+    "requestTimeoutMs": 60000
+  },
+  "levels": [
+    {
+      "concurrency": 1,
+      "seconds": 60.012,
+      "requests": 1210,
+      "operations": {
+        "list mine": {
+          "count": 443,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 7.4,
+          "p50": 68,
+          "p95": 91,
+          "p99": 112,
+          "max": 123,
+          "meanBytes": 45547
+        },
+        "open walk": {
+          "count": 443,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 7.4,
+          "p50": 23,
+          "p95": 32,
+          "p99": 35,
+          "max": 41,
+          "meanBytes": 5537
+        },
+        "save walk": {
+          "count": 240,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 4,
+          "p50": 58,
+          "p95": 76,
+          "p99": 80,
+          "max": 90,
+          "meanBytes": 5659
+        },
+        "summary": {
+          "count": 46,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.8,
+          "p50": 21,
+          "p95": 31,
+          "p99": 33,
+          "max": 33,
+          "meanBytes": 4639
+        },
+        "create walk": {
+          "count": 19,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.3,
+          "p50": 90,
+          "p95": 111,
+          "p99": 111,
+          "max": 111,
+          "meanBytes": 5202
+        },
+        "complete walk": {
+          "count": 19,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.3,
+          "p50": 44,
+          "p95": 58,
+          "p99": 58,
+          "max": 58,
+          "meanBytes": 5513
+        }
+      },
+      "blocking": {
+        "samples": 60,
+        "blockedMax": 0,
+        "longestWaitMs": 0
+      },
+      "topWaits": [
+        {
+          "wait": "PREEMPTIVE_OS_FLUSHFILEBUFFERS",
+          "ms": 219,
+          "count": 346
+        },
+        {
+          "wait": "WRITELOG",
+          "ms": 161,
+          "count": 342
+        },
+        {
+          "wait": "PAGEIOLATCH_EX",
+          "ms": 18,
+          "count": 43
+        },
+        {
+          "wait": "RESERVED_MEMORY_ALLOCATION_EXT",
+          "ms": 15,
+          "count": 19674
+        },
+        {
+          "wait": "PREEMPTIVE_OS_QUERYREGISTRY",
+          "ms": 6,
+          "count": 29
+        },
+        {
+          "wait": "SOS_SCHEDULER_YIELD",
+          "ms": 1,
+          "count": 48
+        }
+      ],
+      "resourcesBefore": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 2,
+          "internalMb": 1.875,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 1,
+        "sessionsWithOpenTransactions": 0,
+        "engine": null
+      },
+      "resourcesAfter": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 1.8125,
+          "internalMb": 1.875,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 1,
+        "sessionsWithOpenTransactions": 0,
+        "engine": null
+      }
+    },
+    {
+      "concurrency": 10,
+      "seconds": 62.172,
+      "requests": 1364,
+      "operations": {
+        "list mine": {
+          "count": 499,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 8,
+          "p50": 502,
+          "p95": 911,
+          "p99": 1060,
+          "max": 1161,
+          "meanBytes": 103281
+        },
+        "open walk": {
+          "count": 499,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 8,
+          "p50": 157,
+          "p95": 370,
+          "p99": 528,
+          "max": 629,
+          "meanBytes": 5803
+        },
+        "save walk": {
+          "count": 259,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 4.2,
+          "p50": 374,
+          "p95": 780,
+          "p99": 927,
+          "max": 936,
+          "meanBytes": 5902
+        },
+        "create walk": {
+          "count": 23,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.4,
+          "p50": 829,
+          "p95": 1234,
+          "p99": 1271,
+          "max": 1271,
+          "meanBytes": 5221
+        },
+        "complete walk": {
+          "count": 23,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.4,
+          "p50": 248,
+          "p95": 555,
+          "p99": 642,
+          "max": 642,
+          "meanBytes": 5531
+        },
+        "summary": {
+          "count": 43,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.7,
+          "p50": 180,
+          "p95": 442,
+          "p99": 698,
+          "max": 698,
+          "meanBytes": 4764
+        },
+        "list district (scope=all)": {
+          "count": 6,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.1,
+          "p50": 2327,
+          "p95": 3035,
+          "p99": 3035,
+          "max": 3035,
+          "meanBytes": 514455
+        },
+        "report live district": {
+          "count": 6,
+          "errors": 6,
+          "errorKinds": [
+            "409 REPORT_POPULATION_CHANGED"
+          ],
+          "perSecond": 0.1,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "meanBytes": 218
+        },
+        "report CSV district": {
+          "count": 6,
+          "errors": 5,
+          "errorKinds": [
+            "409 REPORT_POPULATION_CHANGED"
+          ],
+          "perSecond": 0.1,
+          "p50": 6390,
+          "p95": 6390,
+          "p99": 6390,
+          "max": 6390,
+          "meanBytes": 6058
+        }
+      },
+      "blocking": {
+        "samples": 62,
+        "blockedMax": 1,
+        "longestWaitMs": 69
+      },
+      "topWaits": [
+        {
+          "wait": "SOS_SCHEDULER_YIELD",
+          "ms": 76315,
+          "count": 32465
+        },
+        {
+          "wait": "CXCONSUMER",
+          "ms": 59143,
+          "count": 50
+        },
+        {
+          "wait": "LATCH_EX",
+          "ms": 14606,
+          "count": 2319
+        },
+        {
+          "wait": "LCK_M_S",
+          "ms": 11506,
+          "count": 143
+        },
+        {
+          "wait": "RESERVED_MEMORY_ALLOCATION_EXT",
+          "ms": 4535,
+          "count": 1178544
+        },
+        {
+          "wait": "PREEMPTIVE_OS_FLUSHFILEBUFFERS",
+          "ms": 3595,
+          "count": 585
+        },
+        {
+          "wait": "WRITELOG",
+          "ms": 3252,
+          "count": 583
+        },
+        {
+          "wait": "HTDELETE",
+          "ms": 3181,
+          "count": 504
+        }
+      ],
+      "resourcesBefore": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 1.8125,
+          "internalMb": 1.875,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 1,
+        "sessionsWithOpenTransactions": 0,
+        "engine": null
+      },
+      "resourcesAfter": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 2,
+          "internalMb": 1.875,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 1,
+        "sessionsWithOpenTransactions": 0,
+        "engine": null
+      }
+    },
+    {
+      "concurrency": 25,
+      "seconds": 74.261,
+      "requests": 1357,
+      "operations": {
+        "list mine": {
+          "count": 480,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 6.5,
+          "p50": 1260,
+          "p95": 2113,
+          "p99": 2720,
+          "max": 3351,
+          "meanBytes": 106775
+        },
+        "open walk": {
+          "count": 480,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 6.5,
+          "p50": 442,
+          "p95": 842,
+          "p99": 1206,
+          "max": 1967,
+          "meanBytes": 5828
+        },
+        "save walk": {
+          "count": 276,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 3.7,
+          "p50": 995,
+          "p95": 1923,
+          "p99": 2261,
+          "max": 2946,
+          "meanBytes": 5919
+        },
+        "summary": {
+          "count": 43,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.6,
+          "p50": 348,
+          "p95": 984,
+          "p99": 2342,
+          "max": 2342,
+          "meanBytes": 4756
+        },
+        "create walk": {
+          "count": 24,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.3,
+          "p50": 1302,
+          "p95": 4979,
+          "p99": 5301,
+          "max": 5301,
+          "meanBytes": 5223
+        },
+        "complete walk": {
+          "count": 24,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.3,
+          "p50": 600,
+          "p95": 1341,
+          "p99": 2331,
+          "max": 2331,
+          "meanBytes": 5530
+        },
+        "list district (scope=all)": {
+          "count": 10,
+          "errors": 0,
+          "errorKinds": [],
+          "perSecond": 0.1,
+          "p50": 5550,
+          "p95": 7268,
+          "p99": 7268,
+          "max": 7268,
+          "meanBytes": 513377
+        },
+        "report live district": {
+          "count": 10,
+          "errors": 7,
+          "errorKinds": [
+            "409 REPORT_POPULATION_CHANGED"
+          ],
+          "perSecond": 0.1,
+          "p50": 24750,
+          "p95": 24994,
+          "p99": 24994,
+          "max": 24994,
+          "meanBytes": 16994
+        },
+        "report CSV district": {
+          "count": 10,
+          "errors": 5,
+          "errorKinds": [
+            "409 REPORT_POPULATION_CHANGED"
+          ],
+          "perSecond": 0.1,
+          "p50": 3768,
+          "p95": 24371,
+          "p99": 24371,
+          "max": 24371,
+          "meanBytes": 17740
+        }
+      },
+      "blocking": {
+        "samples": 76,
+        "blockedMax": 4,
+        "longestWaitMs": 2270
+      },
+      "topWaits": [
+        {
+          "wait": "SOS_SCHEDULER_YIELD",
+          "ms": 379099,
+          "count": 42500
+        },
+        {
+          "wait": "CXCONSUMER",
+          "ms": 147792,
+          "count": 74
+        },
+        {
+          "wait": "LCK_M_S",
+          "ms": 77459,
+          "count": 296
+        },
+        {
+          "wait": "LATCH_EX",
+          "ms": 36093,
+          "count": 3593
+        },
+        {
+          "wait": "RESERVED_MEMORY_ALLOCATION_EXT",
+          "ms": 18839,
+          "count": 1374844
+        },
+        {
+          "wait": "HTBUILD",
+          "ms": 10483,
+          "count": 576
+        },
+        {
+          "wait": "PREEMPTIVE_OS_FLUSHFILEBUFFERS",
+          "ms": 8139,
+          "count": 761
+        },
+        {
+          "wait": "HTDELETE",
+          "ms": 7265,
+          "count": 576
+        }
+      ],
+      "resourcesBefore": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 2,
+          "internalMb": 1.875,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 1,
+        "sessionsWithOpenTransactions": 0,
+        "engine": null
+      },
+      "resourcesAfter": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 2.0625,
+          "internalMb": 1.875,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 1,
+        "sessionsWithOpenTransactions": 0,
+        "engine": null
+      }
+    }
+  ],
+  "solo": {
+    "report live district (solo)": {
+      "count": 5,
+      "errors": 0,
+      "errorKinds": [],
+      "perSecond": 5,
+      "p50": 1049,
+      "p95": 1079,
+      "p99": 1079,
+      "max": 1079,
+      "meanBytes": 56131
+    },
+    "report CSV district (solo)": {
+      "count": 5,
+      "errors": 0,
+      "errorKinds": [],
+      "perSecond": 5,
+      "p50": 971,
+      "p95": 1066,
+      "p99": 1066,
+      "max": 1066,
+      "meanBytes": 35255
+    }
+  },
+  "release": {
+    "status": 409,
+    "ms": 22,
+    "code": "REPORT_RELEASE_OVERLAP",
+    "blocks": null
+  },
+  "releaseRead": {
+    "status": 400,
+    "ms": 21
+  },
+  "topStatements": [
+    {
+      "rank": 1,
+      "executions": 4242,
+      "totalMs": 11103,
+      "avgMs": 2.6,
+      "avgCpuMs": 1.7,
+      "avgLogicalReads": 222,
+      "avgRows": 1,
+      "maxMs": 177,
+      "scans": [],
+      "statement": "SELECT v.version_id, v.instrument_id, i.code AS instrument_code, v.version_label, v.status, v.checksum_sha256, v.compiled_snapshot_json, v.published_by_user_id, v.published_at, v.effective_start, v.updated_at, v.row_version FROM [icf].[instrument_version] v JOIN [icf].[instrument] i ON i.instrument_id = v.instrument_id WHERE v.version_id = @P0",
+      "plan": "plans/statement-01.sqlplan"
+    },
+    {
+      "rank": 2,
+      "executions": 1,
+      "totalMs": 7976,
+      "avgMs": 7975.8,
+      "avgCpuMs": 7182.9,
+      "avgLogicalReads": 28128,
+      "avgRows": 82,
+      "maxMs": 7976,
+      "scans": [
+        "Clustered Index Scan #icf_rp_BB0A8ED360154980B6995719BD9A9B5D"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_BB0A8ED360154980B6995719BD9A9B5D p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-02.sqlplan"
+    },
+    {
+      "rank": 3,
+      "executions": 1,
+      "totalMs": 7529,
+      "avgMs": 7528.8,
+      "avgCpuMs": 7074,
+      "avgLogicalReads": 28130,
+      "avgRows": 82,
+      "maxMs": 7529,
+      "scans": [
+        "Clustered Index Scan #icf_rp_690340DFB2244013920F6B86AEFF9575"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_690340DFB2244013920F6B86AEFF9575 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-03.sqlplan"
+    },
+    {
+      "rank": 4,
+      "executions": 1,
+      "totalMs": 7469,
+      "avgMs": 7468.6,
+      "avgCpuMs": 6263.4,
+      "avgLogicalReads": 28153,
+      "avgRows": 82,
+      "maxMs": 7469,
+      "scans": [
+        "Clustered Index Scan #icf_rp_0AF484C686B84CE4A9C11C05DAC36C80"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_0AF484C686B84CE4A9C11C05DAC36C80 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-04.sqlplan"
+    },
+    {
+      "rank": 5,
+      "executions": 1,
+      "totalMs": 7285,
+      "avgMs": 7284.7,
+      "avgCpuMs": 6622,
+      "avgLogicalReads": 28144,
+      "avgRows": 82,
+      "maxMs": 7285,
+      "scans": [
+        "Clustered Index Scan #icf_rp_2F2173086F994B4B9850DD9B4C7CA19A"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_2F2173086F994B4B9850DD9B4C7CA19A p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-05.sqlplan"
+    },
+    {
+      "rank": 6,
+      "executions": 1,
+      "totalMs": 7224,
+      "avgMs": 7223.7,
+      "avgCpuMs": 5964.5,
+      "avgLogicalReads": 28149,
+      "avgRows": 82,
+      "maxMs": 7224,
+      "scans": [
+        "Clustered Index Scan #icf_rp_D0DA3AF5FBBE4349983C481232F59F45"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_D0DA3AF5FBBE4349983C481232F59F45 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-06.sqlplan"
+    },
+    {
+      "rank": 7,
+      "executions": 1,
+      "totalMs": 7021,
+      "avgMs": 7021.3,
+      "avgCpuMs": 7307.1,
+      "avgLogicalReads": 28134,
+      "avgRows": 82,
+      "maxMs": 7021,
+      "scans": [
+        "Clustered Index Scan #icf_rp_9C6680665CD5469194AB48227D56A6BD"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_9C6680665CD5469194AB48227D56A6BD p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-07.sqlplan"
+    },
+    {
+      "rank": 8,
+      "executions": 1,
+      "totalMs": 6972,
+      "avgMs": 6971.9,
+      "avgCpuMs": 6003.1,
+      "avgLogicalReads": 28149,
+      "avgRows": 82,
+      "maxMs": 6972,
+      "scans": [
+        "Clustered Index Scan #icf_rp_25231E81B4DD4079A321620947DCCAF9"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_25231E81B4DD4079A321620947DCCAF9 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-08.sqlplan"
+    },
+    {
+      "rank": 9,
+      "executions": 1,
+      "totalMs": 6955,
+      "avgMs": 6954.6,
+      "avgCpuMs": 6176.4,
+      "avgLogicalReads": 28149,
+      "avgRows": 82,
+      "maxMs": 6955,
+      "scans": [
+        "Clustered Index Scan #icf_rp_20BBF4B3687A48669D9D8CDE1A060CA7"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_20BBF4B3687A48669D9D8CDE1A060CA7 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-09.sqlplan"
+    },
+    {
+      "rank": 10,
+      "executions": 1,
+      "totalMs": 6851,
+      "avgMs": 6851.3,
+      "avgCpuMs": 6468.8,
+      "avgLogicalReads": 28138,
+      "avgRows": 82,
+      "maxMs": 6851,
+      "scans": [
+        "Clustered Index Scan #icf_rp_2E6F818AACF04D5F930D38BC436AB54E"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_2E6F818AACF04D5F930D38BC436AB54E p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-10.sqlplan"
+    },
+    {
+      "rank": 11,
+      "executions": 1,
+      "totalMs": 6847,
+      "avgMs": 6846.7,
+      "avgCpuMs": 6397.4,
+      "avgLogicalReads": 28138,
+      "avgRows": 82,
+      "maxMs": 6847,
+      "scans": [
+        "Clustered Index Scan #icf_rp_962ABBEE09244058AE44E78C74B8865F"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_962ABBEE09244058AE44E78C74B8865F p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-11.sqlplan"
+    },
+    {
+      "rank": 12,
+      "executions": 1,
+      "totalMs": 6645,
+      "avgMs": 6644.6,
+      "avgCpuMs": 6245.3,
+      "avgLogicalReads": 28145,
+      "avgRows": 82,
+      "maxMs": 6645,
+      "scans": [
+        "Clustered Index Scan #icf_rp_5483CE657C994970972C87CD26678B67"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_5483CE657C994970972C87CD26678B67 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-12.sqlplan"
+    },
+    {
+      "rank": 13,
+      "executions": 1,
+      "totalMs": 6134,
+      "avgMs": 6133.6,
+      "avgCpuMs": 6013,
+      "avgLogicalReads": 28138,
+      "avgRows": 82,
+      "maxMs": 6134,
+      "scans": [
+        "Clustered Index Scan #icf_rp_9DD3E10E82B34A2EA90899C598E500DE"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_9DD3E10E82B34A2EA90899C598E500DE p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-13.sqlplan"
+    },
+    {
+      "rank": 14,
+      "executions": 1,
+      "totalMs": 6131,
+      "avgMs": 6130.5,
+      "avgCpuMs": 5876.4,
+      "avgLogicalReads": 28149,
+      "avgRows": 82,
+      "maxMs": 6131,
+      "scans": [
+        "Clustered Index Scan #icf_rp_A563BF128A5F4A25ABA55662C40BDA31"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_A563BF128A5F4A25ABA55662C40BDA31 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-14.sqlplan"
+    },
+    {
+      "rank": 15,
+      "executions": 3302,
+      "totalMs": 5161,
+      "avgMs": 1.6,
+      "avgCpuMs": 1,
+      "avgLogicalReads": 715,
+      "avgRows": 73,
+      "maxMs": 107,
+      "scans": [
+        "Index Scan item_definition"
+      ],
+      "statement": "SELECT r.response_id, i.item_key, r.response_state, r.selected_option_id, o.stored_code, r.text_value FROM [icf].[walk_response] r JOIN [icf].[item_definition] i ON i.item_id = r.item_id LEFT JOIN [icf].[response_option] o ON o.option_id = r.selected_option_id WHERE r.walk_id = @P0",
+      "plan": "plans/statement-15.sqlplan"
+    }
+  ],
+  "missingIndexes": [
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[version_id], [org_unit_id], [status]",
+      "inequality": null,
+      "included": "[row_version]",
+      "seeks": "187",
+      "scans": "0",
+      "benefit": 15976
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[version_id], [status]",
+      "inequality": null,
+      "included": "[org_unit_id], [row_version]",
+      "seeks": "187",
+      "scans": "0",
+      "benefit": 10605
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[org_unit_id], [owner_user_id]",
+      "inequality": "[status]",
+      "included": "[version_id], [observed_at], [created_at], [updated_at], [completed_at], [voided_at], [void_reason], [row_version]",
+      "seeks": "2978",
+      "scans": "0",
+      "benefit": 9774
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[status]",
+      "inequality": "[observed_at]",
+      "included": "[version_id]",
+      "seeks": "1",
+      "scans": "0",
+      "benefit": 59
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[version_id], [status]",
+      "inequality": "[observed_at]",
+      "included": "[org_unit_id], [row_version]",
+      "seeks": "1",
+      "scans": "0",
+      "benefit": 58
+    }
+  ],
+  "finishedAt": "2026-09-26T19:45:22.097Z",
+  "leftovers": {
+    "sqlServerMb": 4178,
+    "tempdb": {
+      "userMb": 2.0625,
+      "internalMb": 1.875,
+      "versionStoreMb": 0
+    },
+    "tempTablesInTempdb": 1,
+    "sessionsWithOpenTransactions": 0,
+    "engine": null
+  }
+}

@@ -1,0 +1,1 @@
+WalkListBoundTest                        8888 status=200 wall=0.3s engine=Lucee 6.2.8.20 totals={"failed":1,"passed":1,"skipped":0} FAILED: testAWideScopeReadsTheDimensionValuesOfTheListedWalksOnly: the dimension read returned 520 rows, 20 of them for walks the list did not keep Expected [0] but got [20].

@@ -1,0 +1,35 @@
+TAP version 13
+# (node:11793) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+not ok 1 - the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+  ---
+  duration_ms: 13063.998953
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/ops/production-profile.test.mjs:345:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"error":{"code":"INSTRUMENT_NOT_AVAILABLE","correlationId":"4e3c2773-fd98-4936-a92d-5ba4859454cc","details":{},"message":"No renderable instrument version is available to validate schoolValueCode against."}}
+    
+    400 !== 200
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 400
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/ops/production-profile.test.mjs:367:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14095.536039

@@ -1,0 +1,294 @@
+=== /icfwalk/app
+/icfwalk/app/Application.cfc... 
+coldfusion.compiler.ParseException: Invalid CFML construct found on line 66 at column 40.
+	at coldfusion.compiler.cfml40.generateParseException(cfml40.java:25157)
+	at coldfusion.compiler.cfml40.jj_consume_token(cfml40.java:25008)
+	at coldfusion.compiler.cfml40.UnaryExpression(cfml40.java:9773)
+	at coldfusion.compiler.cfml40.ExponentialExpression(cfml40.java:9725)
+	at coldfusion.compiler.cfml40.MultiplyDivisionExpression(cfml40.java:9676)
+	at coldfusion.compiler.cfml40.IntegerDivisionExpression(cfml40.java:9657)
+	at coldfusion.compiler.cfml40.ModExpression(cfml40.java:9638)
+	at coldfusion.compiler.cfml40.AdditionExpression(cfml40.java:9589)
+	at coldfusion.compiler.cfml40.ConcatExpression(cfml40.java:9570)
+	at coldfusion.compiler.cfml40.ComparisonExpression(cfml40.java:9433)
+	at coldfusion.compiler.cfml40.NotExpression(cfml40.java:9337)
+	at coldfusion.compiler.cfml40.AndExpression(cfml40.java:9307)
+	at coldfusion.compiler.cfml40.OrExpression(cfml40.java:9288)
+	at coldfusion.compiler.cfml40.XorExpression(cfml40.java:9269)
+	at coldfusion.compiler.cfml40.EqvExpression(cfml40.java:9250)
+	at coldfusion.compiler.cfml40.ImpExpression(cfml40.java:9231)
+	at coldfusion.compiler.cfml40.HookExpression(cfml40.java:9154)
+	at coldfusion.compiler.cfml40.expr(cfml40.java:9139)
+	at coldfusion.compiler.cfml40.cfScriptExpression(cfml40.java:4467)
+	at coldfusion.compiler.cfml40.SimpleStatement(cfml40.java:995)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3053)
+	at coldfusion.compiler.cfml40.cfscriptBlock(cfml40.java:4416)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3023)
+	at coldfusion.compiler.cfml40.ComplexStatement(cfml40.java:3309)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3005)
+	at coldfusion.compiler.cfml40.cfscriptBlock(cfml40.java:4416)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3023)
+	at coldfusion.compiler.cfml40.ComplexStatement(cfml40.java:3131)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3005)
+	at coldfusion.compiler.cfml40.consumeFunctionBody(cfml40.java:5676)
+	at coldfusion.compiler.cfml40.functionDefinition(cfml40.java:5604)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3029)
+	at coldfusion.compiler.cfml40.start(cfml40.java:8449)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:726)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:668)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:489)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/app/index.cfm... successful 1
+total 2
+elapsed 0.18 sec
+
+Errors found: 1
+Error 1: /icfwalk/app/Application.cfc
+Invalid CFML construct found on line 66 at column 40.
+
+Errors found in 1 of 2 templates
+=== /icfwalk/src
+/icfwalk/src/identity/AuthenticationService.cfc... /icfwalk/src/identity/IdentityProvider.cfc... /icfwalk/src/identity/IdentityProviderFactory.cfc... /icfwalk/src/identity/HeaderIdentityProvider.cfc... /icfwalk/src/identity/UserRepository.cfc... /icfwalk/src/identity/SessionService.cfc... /icfwalk/src/identity/DevelopmentIdentityProvider.cfc... /icfwalk/src/controllers/InstrumentController.cfc... /icfwalk/src/controllers/WalkController.cfc... /icfwalk/src/controllers/ReportController.cfc... /icfwalk/src/controllers/AdminInstrumentController.cfc... /icfwalk/src/controllers/MaintenanceController.cfc... /icfwalk/src/controllers/AuthController.cfc... /icfwalk/src/controllers/ShellController.cfc... /icfwalk/src/controllers/HealthController.cfc... /icfwalk/src/config/ConfigLoader.cfc... 
+coldfusion.compiler.ParseException: Invalid CFML construct found on line 211 at column 32.
+	at coldfusion.compiler.cfml40.generateParseException(cfml40.java:25157)
+	at coldfusion.compiler.cfml40.jj_consume_token(cfml40.java:25008)
+	at coldfusion.compiler.cfml40.UnaryExpression(cfml40.java:9773)
+	at coldfusion.compiler.cfml40.ExponentialExpression(cfml40.java:9725)
+	at coldfusion.compiler.cfml40.MultiplyDivisionExpression(cfml40.java:9676)
+	at coldfusion.compiler.cfml40.IntegerDivisionExpression(cfml40.java:9657)
+	at coldfusion.compiler.cfml40.ModExpression(cfml40.java:9638)
+	at coldfusion.compiler.cfml40.AdditionExpression(cfml40.java:9589)
+	at coldfusion.compiler.cfml40.ConcatExpression(cfml40.java:9570)
+	at coldfusion.compiler.cfml40.ComparisonExpression(cfml40.java:9433)
+	at coldfusion.compiler.cfml40.NotExpression(cfml40.java:9337)
+	at coldfusion.compiler.cfml40.AndExpression(cfml40.java:9307)
+	at coldfusion.compiler.cfml40.OrExpression(cfml40.java:9288)
+	at coldfusion.compiler.cfml40.XorExpression(cfml40.java:9269)
+	at coldfusion.compiler.cfml40.EqvExpression(cfml40.java:9250)
+	at coldfusion.compiler.cfml40.ImpExpression(cfml40.java:9231)
+	at coldfusion.compiler.cfml40.HookExpression(cfml40.java:9154)
+	at coldfusion.compiler.cfml40.expr(cfml40.java:9139)
+	at coldfusion.compiler.cfml40.cfScriptExpression(cfml40.java:4467)
+	at coldfusion.compiler.cfml40.SimpleStatement(cfml40.java:995)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3053)
+	at coldfusion.compiler.cfml40.cfscriptBlock(cfml40.java:4416)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3023)
+	at coldfusion.compiler.cfml40.ComplexStatement(cfml40.java:3309)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3005)
+	at coldfusion.compiler.cfml40.consumeFunctionBody(cfml40.java:5676)
+	at coldfusion.compiler.cfml40.functionDefinition(cfml40.java:5604)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3029)
+	at coldfusion.compiler.cfml40.start(cfml40.java:8449)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:726)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:668)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:489)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/http/Router.cfc... /icfwalk/src/http/JsonBodyParser.cfc... /icfwalk/src/http/Responder.cfc... /icfwalk/src/http/MaintenanceGuard.cfc... /icfwalk/src/http/HttpRequestSource.cfc... /icfwalk/src/audit/AuditRepository.cfc... /icfwalk/src/Bootstrap.cfc... /icfwalk/src/walks/WalkService.cfc... 
+coldfusion.compiler.ASTvariableDefinition$VarAlreadyDefinedException: PRINCIPAL is already defined in argument scope.
+	at coldfusion.compiler.ASTvariableDefinition.register(ASTvariableDefinition.java:113)
+	at coldfusion.compiler.SemanticAnalyzer.transform(SemanticAnalyzer.java:538)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:166)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:505)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/walks/WalkRepository.cfc... /icfwalk/src/walks/WalkSummaryFormatter.cfc... /icfwalk/src/walks/WalkPayloadValidator.cfc... /icfwalk/src/authorization/RoleScopeRepository.cfc... /icfwalk/src/authorization/OrgUnitRepository.cfc... /icfwalk/src/authorization/AuthorizationService.cfc... /icfwalk/src/instrument/RenderModelBuilder.cfc... /icfwalk/src/instrument/DefinitionValidator.cfc... 
+coldfusion.compiler.ASTvariableDefinition$VarAlreadyDefinedException: S is already defined in argument scope.
+	at coldfusion.compiler.ASTvariableDefinition.register(ASTvariableDefinition.java:113)
+	at coldfusion.compiler.SemanticAnalyzer.transform(SemanticAnalyzer.java:538)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:166)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:505)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/instrument/InstrumentImportService.cfc... 
+coldfusion.compiler.ASTvariableDefinition$VarAlreadyDefinedException: NORMALIZED is already defined in argument scope.
+	at coldfusion.compiler.ASTvariableDefinition.register(ASTvariableDefinition.java:113)
+	at coldfusion.compiler.SemanticAnalyzer.transform(SemanticAnalyzer.java:538)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:166)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:505)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/instrument/DefinitionMapper.cfc... /icfwalk/src/instrument/InstrumentMetadataService.cfc... /icfwalk/src/instrument/DraftEditor.cfc... /icfwalk/src/instrument/SnapshotService.cfc... /icfwalk/src/instrument/RenderContractValidator.cfc... /icfwalk/src/instrument/InstrumentAdminService.cfc... /icfwalk/src/instrument/SnapshotCompiler.cfc... /icfwalk/src/instrument/VisibilityEngine.cfc... 
+coldfusion.compiler.validation.CFMLCompileError: CFML compilation error.
+	at coldfusion.compiler.NeoTranslator.validate(NeoTranslator.java:625)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:502)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/instrument/InstrumentConfigValidator.cfc... 
+coldfusion.compiler.ASTvariableDefinition$VarAlreadyDefinedException: CFG is already defined in argument scope.
+	at coldfusion.compiler.ASTvariableDefinition.register(ASTvariableDefinition.java:113)
+	at coldfusion.compiler.SemanticAnalyzer.transform(SemanticAnalyzer.java:538)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:166)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:505)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/instrument/InstrumentDocumentExporter.cfc... /icfwalk/src/instrument/ConfigNormalizer.cfc... /icfwalk/src/instrument/DefinitionRepository.cfc... /icfwalk/src/instrument/InstrumentPublishService.cfc... /icfwalk/src/instrument/InstrumentVersionComparer.cfc... /icfwalk/src/reports/ReportRepository.cfc... /icfwalk/src/reports/ReportService.cfc... 
+coldfusion.compiler.ParseException: Invalid CFML construct found on line 993 at column 71.
+	at coldfusion.compiler.cfml40.generateParseException(cfml40.java:25157)
+	at coldfusion.compiler.cfml40.jj_consume_token(cfml40.java:25008)
+	at coldfusion.compiler.cfml40.consumeFunctionBody(cfml40.java:5689)
+	at coldfusion.compiler.cfml40.functionDefinition(cfml40.java:5604)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3029)
+	at coldfusion.compiler.cfml40.start(cfml40.java:8449)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:726)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:668)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:489)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/src/reports/DisclosureControl.cfc... /icfwalk/src/core/RequestContext.cfc... /icfwalk/src/core/Errors.cfc... /icfwalk/src/core/JsonTypes.cfc... /icfwalk/src/core/Db.cfc... /icfwalk/src/core/HtmlEncoder.cfc... /icfwalk/src/core/CanonicalJson.cfc... /icfwalk/src/core/Logger.cfc... successful 50
+total 57
+elapsed 1.107 sec
+
+Errors found: 7
+Error 1: /icfwalk/src/config/ConfigLoader.cfc
+Invalid CFML construct found on line 211 at column 32.
+
+Error 2: /icfwalk/src/walks/WalkService.cfc
+PRINCIPAL is already defined in argument scope.
+
+Error 3: /icfwalk/src/instrument/DefinitionValidator.cfc
+S is already defined in argument scope.
+
+Error 4: /icfwalk/src/instrument/InstrumentImportService.cfc
+NORMALIZED is already defined in argument scope.
+
+Error 5: /icfwalk/src/instrument/VisibilityEngine.cfc
+Location: line 144
+Parameter validation error for the EVALUATECONDITION function.
+
+Error 6: /icfwalk/src/instrument/InstrumentConfigValidator.cfc
+CFG is already defined in argument scope.
+
+Error 7: /icfwalk/src/reports/ReportService.cfc
+Invalid CFML construct found on line 993 at column 71.
+
+Errors found in 7 of 57 templates
+=== /icfwalk/tests/cfml
+/icfwalk/tests/cfml/TestRunner.cfc... /icfwalk/tests/cfml/specs/SnapshotServiceTest.cfc... /icfwalk/tests/cfml/specs/WalkSummaryCoherenceTest.cfc... /icfwalk/tests/cfml/specs/ReportServiceTest.cfc... /icfwalk/tests/cfml/specs/InstrumentImmutabilityTest.cfc... /icfwalk/tests/cfml/specs/ReportCoherenceTest.cfc... /icfwalk/tests/cfml/specs/PublishConcurrencyBarrierTest.cfc... /icfwalk/tests/cfml/specs/DiscardIdentityBarrierTest.cfc... /icfwalk/tests/cfml/specs/WalkMutationResponseTest.cfc... /icfwalk/tests/cfml/specs/DimensionVersionIsolationTest.cfc... /icfwalk/tests/cfml/specs/ValidatorRendererContractTest.cfc... /icfwalk/tests/cfml/specs/WalkSchoolScopeTest.cfc... /icfwalk/tests/cfml/specs/RequestBodyReadBoundTest.cfc... /icfwalk/tests/cfml/specs/RouterBodyOrderTest.cfc... /icfwalk/tests/cfml/specs/CanonicalJsonTest.cfc... /icfwalk/tests/cfml/specs/InstrumentPublishServiceTest.cfc... /icfwalk/tests/cfml/specs/Migration006LifecycleTest.cfc... /icfwalk/tests/cfml/specs/ExactAssertionTest.cfc... /icfwalk/tests/cfml/specs/GlobalIdentityBoundaryTest.cfc... /icfwalk/tests/cfml/specs/InstrumentVersionComparerTest.cfc... /icfwalk/tests/cfml/specs/WalkSummaryFormatterTest.cfc... /icfwalk/tests/cfml/specs/ReportReleaseMembershipTest.cfc... 
+coldfusion.compiler.validation.CFMLCompileError: CFML compilation error.
+	at coldfusion.compiler.NeoTranslator.validate(NeoTranslator.java:625)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:502)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/tests/cfml/specs/WalkServiceTest.cfc... /icfwalk/tests/cfml/specs/ReportDisclosureTest.cfc... /icfwalk/tests/cfml/specs/InstrumentAdministrationTest.cfc... /icfwalk/tests/cfml/specs/SharedInstrumentBoundaryTest.cfc... /icfwalk/tests/cfml/specs/ReportIsolationTest.cfc... /icfwalk/tests/cfml/specs/ImportPublishEquivalenceTest.cfc... /icfwalk/tests/cfml/specs/DraftReplacementConcurrencyTest.cfc... /icfwalk/tests/cfml/specs/AuthorizationTest.cfc... /icfwalk/tests/cfml/specs/WalkCorrectionTest.cfc... /icfwalk/tests/cfml/specs/RetireConcurrencyBarrierTest.cfc... 
+coldfusion.compiler.ScriptParseExceptions$ReservedKeywordAsVariableNameException: Reserved keyword "import" can't be used as a variable name.
+	at coldfusion.compiler.ScriptParseExceptions.ReservedKeywordAsVariableNameException(ScriptParseExceptions.java:360)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:2855)
+	at coldfusion.compiler.cfml40.consumeFunctionBody(cfml40.java:5676)
+	at coldfusion.compiler.cfml40.functionDefinition(cfml40.java:5604)
+	at coldfusion.compiler.cfml40.cfscriptStatement(cfml40.java:3029)
+	at coldfusion.compiler.cfml40.start(cfml40.java:8449)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:726)
+	at coldfusion.compiler.NeoTranslator.parsePage(NeoTranslator.java:668)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:489)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/tests/cfml/specs/ReportReleaseTest.cfc... /icfwalk/tests/cfml/specs/ConfigLoaderTest.cfc... 
+coldfusion.compiler.ASTvariableDefinition$VarAlreadyDefinedException: VALUES is already defined in argument scope.
+	at coldfusion.compiler.ASTvariableDefinition.register(ASTvariableDefinition.java:113)
+	at coldfusion.compiler.SemanticAnalyzer.transform(SemanticAnalyzer.java:538)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:166)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.Treewalker.postorder(Treewalker.java:29)
+	at coldfusion.compiler.NeoTranslator.parseAndTransform(NeoTranslator.java:505)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:438)
+	at coldfusion.compiler.NeoTranslator.translateJava(NeoTranslator.java:183)
+	at coldfusion.tools.Compiler.main(Compiler.java:348)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at coldfusion.tools.CommandLineInvoker.main(CommandLineInvoker.java:112)
+/icfwalk/tests/cfml/specs/VisibilityEngineTest.cfc... /icfwalk/tests/cfml/specs/InstrumentConfigValidatorTest.cfc... /icfwalk/tests/cfml/specs/InstrumentScopeTest.cfc... /icfwalk/tests/cfml/specs/SharedMetadataConcurrencyBarrierTest.cfc... /icfwalk/tests/cfml/specs/WalkReplayCoherenceTest.cfc... /icfwalk/tests/cfml/specs/InstrumentDocumentExporterTest.cfc... /icfwalk/tests/cfml/specs/DefinitionValidatorTest.cfc... /icfwalk/tests/cfml/specs/IdentityTest.cfc... /icfwalk/tests/cfml/specs/SnapshotCompilerTest.cfc... /icfwalk/tests/cfml/specs/InstrumentMetadataServiceTest.cfc... /icfwalk/tests/cfml/specs/DraftEditorTest.cfc... /icfwalk/tests/cfml/specs/RenderModelTest.cfc... /icfwalk/tests/cfml/specs/InstrumentImportServiceTest.cfc... /icfwalk/tests/cfml/specs/LoggerTest.cfc... /icfwalk/tests/cfml/support/RouterTestDoubles.cfc... /icfwalk/tests/cfml/support/InterceptingWalkRepository.cfc... /icfwalk/tests/cfml/support/StreamedRequestSource.cfc... /icfwalk/tests/cfml/support/FakeRequestSource.cfc... /icfwalk/tests/cfml/support/SpyJsonBodyParser.cfc... /icfwalk/tests/cfml/support/InterceptingDefinitionRepository.cfc... /icfwalk/tests/cfml/support/FixtureCleanup.cfc... /icfwalk/tests/cfml/support/CapturingLogger.cfc... /icfwalk/tests/cfml/support/RecordingInputStream.cfc... /icfwalk/tests/cfml/support/InterceptingDb.cfc... /icfwalk/tests/cfml/support/Fixtures.cfc... /icfwalk/tests/cfml/support/StubConfigLoader.cfc... /icfwalk/tests/cfml/support/ConcurrencyBarrier.cfc... /icfwalk/tests/cfml/support/InterceptingReportRepository.cfc... /icfwalk/tests/cfml/BaseSpec.cfc... successful 60
+total 63
+elapsed 0.309 sec
+
+Errors found: 5
+Error 1: /icfwalk/tests/cfml/specs/ReportReleaseMembershipTest.cfc
+Location: line 117
+Parameter validation error for the RELEASE function.
+
+Error 2: /icfwalk/tests/cfml/specs/ReportReleaseMembershipTest.cfc
+Location: line 125
+Parameter validation error for the RELEASE function.
+
+Error 3: /icfwalk/tests/cfml/specs/ReportReleaseMembershipTest.cfc
+Location: line 149
+Parameter validation error for the RELEASE function.
+
+Error 4: /icfwalk/tests/cfml/specs/RetireConcurrencyBarrierTest.cfc
+Reserved keyword "import" can't be used as a variable name.
+
+Error 5: /icfwalk/tests/cfml/specs/ConfigLoaderTest.cfc
+VALUES is already defined in argument scope.
+
+Errors found in 5 of 63 templates

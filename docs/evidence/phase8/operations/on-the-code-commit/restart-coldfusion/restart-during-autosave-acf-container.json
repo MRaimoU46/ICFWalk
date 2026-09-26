@@ -1,0 +1,249 @@
+{
+  "startedAt": "2026-09-26T21:10:20.065Z",
+  "baseUrl": "http://127.0.0.1:8500",
+  "database": "icfwalk_acf_gate",
+  "scenarios": {
+    "midTransaction": {
+      "before": {
+        "rowVersion": "145292",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726502494,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 2,
+        "revisions": 0,
+        "note": "saved before the crash"
+      },
+      "blocker": {
+        "sessionId": 51,
+        "lockOnWalkMutation": "S"
+      },
+      "blockedSave": {
+        "sessionId": 54,
+        "waitType": "LCK_M_IX",
+        "waitResource": "OBJECT: 7:254623950:0 ",
+        "command": "INSERT",
+        "program": "Microsoft JDBC Driver for SQL Server"
+      },
+      "blockedSaveLocks": [
+        {
+          "tableName": null,
+          "resourceType": "DATABASE",
+          "mode": "S",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "app_user",
+          "resourceType": "OBJECT",
+          "mode": "IS",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk",
+          "resourceType": "KEY",
+          "mode": "X",
+          "status": "GRANT",
+          "n": 3
+        },
+        {
+          "tableName": "walk",
+          "resourceType": "OBJECT",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk",
+          "resourceType": "PAGE",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 2
+        },
+        {
+          "tableName": "walk_mutation",
+          "resourceType": "OBJECT",
+          "mode": "IX",
+          "status": "WAIT",
+          "n": 1
+        },
+        {
+          "tableName": "walk_response",
+          "resourceType": "KEY",
+          "mode": "X",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk_response",
+          "resourceType": "OBJECT",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk_response",
+          "resourceType": "PAGE",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 1
+        }
+      ],
+      "uncommittedRead": {
+        "note": "typed while the server died",
+        "rowVersion": "145294"
+      },
+      "clientMutationId": "B41E83AD-F9FC-47A5-82E5-8EB4FD895B59",
+      "crash": {
+        "how": "docker kill --signal KILL icfwalk-acf (the whole ColdFusion container)",
+        "at": 1790457024074
+      },
+      "connectionError": "UND_ERR_SOCKET",
+      "secondsUntilSqlServerDroppedTheSession": 0,
+      "afterCrash": {
+        "rowVersion": "145292",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726502494,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 2,
+        "revisions": 0,
+        "note": "saved before the crash"
+      },
+      "pageStatusWhileDown": "Could not reach the server — your changes are kept on this page. Retry when you are back online.",
+      "restart": {
+        "secondsToHealthy": 16.5,
+        "health": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        }
+      },
+      "pageStatusAfterRetry": "All changes saved",
+      "saves": [
+        {
+          "outcome": "failed net::ERR_CONNECTION_REFUSED",
+          "clientMutationId": "B41E83AD-F9FC-47A5-82E5-8EB4FD895B59",
+          "replayed": null
+        },
+        {
+          "outcome": "403 CSRF_TOKEN_INVALID",
+          "clientMutationId": "B41E83AD-F9FC-47A5-82E5-8EB4FD895B59",
+          "replayed": null
+        },
+        {
+          "outcome": "200",
+          "clientMutationId": "B41E83AD-F9FC-47A5-82E5-8EB4FD895B59",
+          "replayed": false
+        }
+      ],
+      "afterRetry": {
+        "rowVersion": "145297",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726502469,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 3,
+        "revisions": 0,
+        "note": "typed while the server died"
+      }
+    },
+    "afterCommit": {
+      "before": {
+        "rowVersion": "145376",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726465674,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 2,
+        "revisions": 0,
+        "note": "saved before the second crash"
+      },
+      "crash": {
+        "how": "docker kill --signal KILL icfwalk-acf (the whole ColdFusion container)",
+        "at": 1790457045546
+      },
+      "connectionError": "ECONNREFUSED",
+      "answerTheServerSent": {
+        "status": 200,
+        "rowVersion": "0x00000000000237E2",
+        "replayed": null
+      },
+      "clientMutationId": "EC14DDAD-D73E-49C8-A198-808EB97C473A",
+      "afterCrash": {
+        "rowVersion": "145378",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726465716,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 3,
+        "revisions": 0,
+        "note": "committed but never answered"
+      },
+      "restart": {
+        "secondsToHealthy": 16.4,
+        "health": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        }
+      },
+      "pageStatusAfterRetry": "All changes saved",
+      "saves": [
+        {
+          "outcome": "failed net::ERR_CONNECTION_RESET",
+          "clientMutationId": "EC14DDAD-D73E-49C8-A198-808EB97C473A",
+          "replayed": null
+        },
+        {
+          "outcome": "403 CSRF_TOKEN_INVALID",
+          "clientMutationId": "EC14DDAD-D73E-49C8-A198-808EB97C473A",
+          "replayed": null
+        },
+        {
+          "outcome": "200",
+          "clientMutationId": "EC14DDAD-D73E-49C8-A198-808EB97C473A",
+          "replayed": true
+        }
+      ],
+      "afterRetry": {
+        "rowVersion": "145378",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726465716,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 3,
+        "revisions": 0,
+        "note": "committed but never answered"
+      },
+      "afterNextEdit": {
+        "rowVersion": "145381",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": 726465713,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 4,
+        "revisions": 0,
+        "note": "the next edit after the restart"
+      }
+    }
+  },
+  "engine": "ColdFusion Server 2023,0,25,330977",
+  "pageErrors": [],
+  "finishedAt": "2026-09-26T21:11:03.957Z"
+}

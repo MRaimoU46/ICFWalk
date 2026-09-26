@@ -1,0 +1,73 @@
+TAP version 13
+# (node:8966) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: the route inventory: every route in Router.cfc is classified here, and nothing else is
+ok 1 - the route inventory: every route in Router.cfc is classified here, and nothing else is
+  ---
+  duration_ms: 578.772837
+  type: 'test'
+  ...
+# Subtest: anonymous: every session route is 401 with nothing but an error; maintenance routes do not exist; health answers
+ok 2 - anonymous: every session route is 401 with nothing but an error; maintenance routes do not exist; health answers
+  ---
+  duration_ms: 586.988442
+  type: 'test'
+  ...
+# Subtest: the capability wall: each route admits exactly the roles that hold its capability, and a refusal writes only its ACCESS_DENIED audit
+ok 3 - the capability wall: each route admits exactly the roles that hold its capability, and a refusal writes only its ACCESS_DENIED audit
+  ---
+  duration_ms: 14908.871188
+  type: 'test'
+  ...
+# Subtest: CSRF: every state-changing session route refuses a missing, malformed, foreign or ended session's token, and nothing is written
+ok 4 - CSRF: every state-changing session route refuses a missing, malformed, foreign or ended session's token, and nothing is written
+  ---
+  duration_ms: 915.197228
+  type: 'test'
+  ...
+# Subtest: request size: a declared body one byte over the route's limit is refused 413, naming the limit, before it is sent
+ok 5 - request size: a declared body one byte over the route's limit is refused 413, naming the limit, before it is sent
+  ---
+  duration_ms: 199.649413
+  type: 'test'
+  ...
+# Subtest: injection: every path parameter refuses SQL, markup, traversal and oversized values as data, quickly and without a leak
+ok 6 - injection: every path parameter refuses SQL, markup, traversal and oversized values as data, quickly and without a leak
+  ---
+  duration_ms: 2116.707551
+  type: 'test'
+  ...
+# Subtest: injection: every free query parameter is data, never SQL, and never a 5xx
+ok 7 - injection: every free query parameter is data, never SQL, and never a 5xx
+  ---
+  duration_ms: 1670.868781
+  type: 'test'
+  ...
+# Subtest: the session: its id is rotated at sign-in, its cookie is HttpOnly and SameSite=Lax and lives no longer than the browser, and a signed-out session's token is dead
+ok 8 - the session: its id is rotated at sign-in, its cookie is HttpOnly and SameSite=Lax and lives no longer than the browser, and a signed-out session's token is dead
+  ---
+  duration_ms: 60.346934
+  type: 'test'
+  ...
+# anonymous visit set: cfid, cftoken; sign-in set: cfid, cftoken, JSESSIONID
+# Subtest: methods: an unknown method is 405 and TRACE never echoes the request
+ok 9 - methods: an unknown method is 405 and TRACE never echoes the request
+  ---
+  duration_ms: 21.586355
+  type: 'test'
+  ...
+# Subtest: a synthetic identity header is never taken for identity outside the development stub, and the stub validates what it is given
+ok 10 - a synthetic identity header is never taken for identity outside the development stub, and the stub validates what it is given
+  ---
+  duration_ms: 9.169362
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21617.347472

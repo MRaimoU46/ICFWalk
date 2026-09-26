@@ -1,0 +1,7 @@
+Adobe ColdFusion 2023 Update 25, administrator datasource with default long-text settings; src/controllers/HealthController.cfc unmodified
+$ POST /index.cfm/api/maintenance/tests/run?filter=LongTextRetrieval
+engine ColdFusion Server 2023,0,25,330977
+LongTextRetrievalTest passed 0 failed 3 skipped 0
+   failed testTheDatasourceReturnsLongTextWhole - a 300,001-character value is read back whole Expected [300001] but got [32000].
+   failed testTheHealthCheckRefusesADatasourceThatTruncatesLongText - a load balancer takes the node out Expected [503] but got [200].
+   failed testTheHealthCheckReportsWholeLongText - Element BODY.checks.longText is undefined in R.

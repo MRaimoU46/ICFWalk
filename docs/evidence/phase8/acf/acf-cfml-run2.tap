@@ -1,0 +1,184 @@
+TAP version 13
+# Subtest: health endpoint reports database and schema state with a correlation id
+ok 1 - health endpoint reports database and schema state with a correlation id
+  ---
+  duration_ms: 106.686085
+  type: 'test'
+  ...
+# Subtest: only index.cfm is served; other templates and unknown routes are JSON 404s
+ok 2 - only index.cfm is served; other templates and unknown routes are JSON 404s
+  ---
+  duration_ms: 31.70754
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints are hidden without a valid token
+ok 3 - maintenance endpoints are hidden without a valid token
+  ---
+  duration_ms: 129.545092
+  type: 'test'
+  ...
+# Subtest: CFML test suite passes (unit specs and DB-04..09 integration specs)
+not ok 4 - CFML test suite passes (unit specs and DB-04..09 integration specs)
+  ---
+  duration_ms: 618985.495118
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-suite.test.mjs:98:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    part 1/6 reported failures
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-suite.test.mjs:121:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# AuthorizationTest.testAuth03DistrictWalkRoleReachesWalksAcrossDescendantSchools: passed
+# AuthorizationTest.testAuth04SchoolRoleCannotReachWalkInUnassignedSchool: passed
+# AuthorizationTest.testAuth05ReportOnlyRolesCannotOpenOrEditWalks: passed
+# AuthorizationTest.testAuth06InstrumentAdminHasNoWalkOrReportAccess: passed
+# AuthorizationTest.testAuth07NotYetEffectiveAndExpiredAssignmentsGrantNothing: passed
+# AuthorizationTest.testAuth08IncludeDescendantsCoversOnlyTheAssignedBranch: passed
+# AuthorizationTest.testAuth09TamperedOrgUnitAndWalkIdentifiersAreRejected: passed
+# AuthorizationTest.testDeniedAccessIsAuditedWithoutNarrativeOrTokens: passed
+# AuthorizationTest.testEndingAnAssignmentRevokesAccessImmediately: passed
+# AuthorizationTest.testInactiveOrgUnitAssignmentGrantsNothing: passed
+# AuthorizationTest.testOnlyTheOwnerMayEditEvenWhenDetailsAreReadable: passed
+# AuthorizationTest.testSchoolWalkRoleWorksInsideItsOwnSchool: passed
+# DraftEditorTest.testAnEditToTheSameValueIsNotAChange: passed
+# DraftEditorTest.testAnUnrelatedEditLeavesTheContentReviewSummaryAlone: passed
+# DraftEditorTest.testKeysAreMatchedExactlyNotCaseInsensitively: passed
+# DraftEditorTest.testMalformedRequestsAreRefusedWithStableCodes: passed
+# DraftEditorTest.testMarkingAnItemAsAPlaceholderAppendsItToTheSummary: passed
+# DraftEditorTest.testNullableFieldsClearAndRequiredFieldsRefuseBlank: passed
+# DraftEditorTest.testOnePromptEditChangesExactlyThatPrompt: passed
+# DraftEditorTest.testResolvingAPlaceholderUpdatesTheContentReviewSummaryInOrder: passed
+# DraftEditorTest.testSearchFindsEditableRowsByKeyAndWording: passed
+# DraftEditorTest.testSectionOptionAndVersionFieldsAreEditable: passed
+# DraftEditorTest.testTheNormalizedDocumentIsTheExactInverseOfCompilation: passed
+# InstrumentAdministrationTest.testACloneOntoAnExistingLabelIsRefusedAndAudited: passed
+# InstrumentAdministrationTest.testADraftCanBeDiscardedButAPublishedVersionCannot: passed
+# InstrumentAdministrationTest.testAMalformedCloneRequestIsRefused: passed
+# InstrumentAdministrationTest.testAMalformedEditRequestIsRefused: passed
+# InstrumentAdministrationTest.testAnEditThatBreaksTheInstrumentIsRefusedByTheSharedRules: passed
+# InstrumentAdministrationTest.testAnEditThatChangesNothingWritesNothing: passed
+# InstrumentAdministrationTest.testAnImportWithoutADocumentIsRefused: passed
+# InstrumentAdministrationTest.testAPublishedVersionCannotBeEdited: passed
+# InstrumentAdministrationTest.testCloneEditAndCompareShowTheExactPromptChange: passed
+# InstrumentAdministrationTest.testImportOfTheSuppliedDocumentReturnsTheValidationSummary: passed
+# InstrumentAdministrationTest.testOnlyAPublishedVersionCanBeRetired: passed
+# InstrumentAdministrationTest.testPreviewIsTheRenderModelWalksRender: passed
+# InstrumentAdministrationTest.testReportsStillOpenWhenNoVersionIsInService: passed
+# InstrumentAdministrationTest.testRetiringAVersionInUseStopsNewWalksButNotHistoricalOnes: passed
+# InstrumentAdministrationTest.testRetiringTheOnlyInServiceVersionRequiresConfirmation: passed
+# InstrumentAdministrationTest.testStaleEditsAreRefusedAndChangeNothing: passed
+# InstrumentAdministrationTest.testThePlaceholderQueueListsExactlySeventeenWithSourceAndStatus: passed
+# InstrumentPublishServiceTest.testACountStoredAsTheExactMatchingStringIsRefused: passed
+# InstrumentPublishServiceTest.testAPublishedVersionBecomesSelectableAsCurrent: passed
+# InstrumentPublishServiceTest.testAPublishedVersionCannotBeReimported: passed
+# InstrumentPublishServiceTest.testAssertDraftForWriteRefusesAPublishedVersion: passed
+# InstrumentPublishServiceTest.testATopLevelArraySnapshotIsRefused: passed
+# InstrumentPublishServiceTest.testATopLevelNullSnapshotIsARefusalAndNotAnEngineError: failed - precondition: the exact bytes are stored assertExactTextEquals was given a null expected value, and null is not comparable. @ /icfwalk/tests/cfml/BaseSpec.cfc:38
+# InstrumentPublishServiceTest.testATopLevelScalarSnapshotIsRefused: failed - Error Executing Database Query. @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testDefinitionsDriftIsRefusedAndNothingChanges: passed
+# InstrumentPublishServiceTest.testDuplicateLogicalKeysCannotBePersistedAtAll: passed
+# InstrumentPublishServiceTest.testEnvelopeWithAnUnexpectedCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithAnyMissingCountMemberIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithEmptyCountsIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithFractionalCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNegativeCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNoCountsIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNonNumericCountIsRefused: passed
+# InstrumentPublishServiceTest.testEnvelopeWithNoPlaceholderCountIsRefused: passed
+# InstrumentPublishServiceTest.testMarkPublishedRefusesAnEmptyPublisher: passed
+# InstrumentPublishServiceTest.testNegativeFractionalAndOversizedCountsAreRefused: passed
+# InstrumentPublishServiceTest.testNoncanonicalSnapshotBytesAreRefusedEvenWithAMatchingChecksum: passed
+# InstrumentPublishServiceTest.testPublishFreezesTheImportedSnapshotByteForByte: passed
+# InstrumentPublishServiceTest.testPublishingAnUnknownVersionIsNotFound: passed
+# InstrumentPublishServiceTest.testPublishingAPublishedVersionIsRefusedAndAudited: passed
+# InstrumentPublishServiceTest.testPublishingRefusesAMalformedVersionId: passed
+# InstrumentPublishServiceTest.testPublishingWithoutAValidPublisherIsRefusedAndChangesNothing: passed
+# InstrumentPublishServiceTest.testPublishRecordsTheAuthenticatedPublisher: passed
+# InstrumentPublishServiceTest.testSemanticActiveItemWithInactiveResponseSetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticBadSectionParentIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticChoiceItemWithNoActiveOptionIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticChoiceItemWithoutResponseSetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticDuplicateDimensionValueOrderIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticEmptyDefinitionsAreRefused: passed
+# InstrumentPublishServiceTest.testSemanticInvalidDimensionDataTypeIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticInvalidOptionOrderIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticItemOrphanedByAnInactiveSectionIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticListPlacementWithNoActiveValuesIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticMalformedConditionsAreRefused: passed
+# InstrumentPublishServiceTest.testSemanticMultiChoiceItemTypeIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticNoActiveRootIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticOptionInAForeignResponseSetIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticPlacementOfInactiveDimensionIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticPlacementWithMissingRuleIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticResponseSetWithoutOptionsIsRefused: passed
+# InstrumentPublishServiceTest.testSemanticRuleWithMissingTargetIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticSectionOrphanedByAnInactiveParentIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticShortTextItemTypeIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticSnapshotCountsMismatchIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticSnapshotFormatIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticSnapshotIdentityMismatchIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticTwoActiveRootsAreRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticUnknownOptionFilterIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSemanticUnsupportedRuleEffectIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.testSnapshotWithNoncanonicalKeyOrderIsRefused: failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# InstrumentPublishServiceTest.(afterAll): failed - The request has exceeded the allowable time limit Tag: CFQUERY @ /icfwalk/src/core/Db.cfc:19
+# PublishConcurrencyBarrierTest.testImportVersusPublishQueuesRatherThanDeadlocking: skipped - icf schema is not present in datasource 'icfwalk'.
+# PublishConcurrencyBarrierTest.testPublishVersusImportReachesOneSerialOutcome: skipped - icf schema is not present in datasource 'icfwalk'.
+# PublishConcurrencyBarrierTest.testPublishVersusNewDimensionIdentityReachesOneSerialOutcome: skipped - icf schema is not present in datasource 'icfwalk'.
+# PublishConcurrencyBarrierTest.testPublishVersusNewDimensionValueIdentityReachesOneSerialOutcome: skipped - icf schema is not present in datasource 'icfwalk'.
+# PublishConcurrencyBarrierTest.testPublishVersusPublishReachesOneSerialOutcome: skipped - icf schema is not present in datasource 'icfwalk'.
+# ReportReleaseTest.testAReleaseDoesNotChangeWhenWalksDo: skipped - icf schema is not present.
+# ReportReleaseTest.testAReleaseRequestIsExactlyAClosedPeriod: skipped - icf schema is not present.
+# ReportReleaseTest.testASectionMeanOnTooFewRatingsIsWithheld: skipped - icf schema is not present.
+# ReportReleaseTest.testLogsAndAuditCarryNoWithheldFigureOrNarrative: skipped - icf schema is not present.
+# ReportReleaseTest.testNoBreakdownWithholdsASingleRecoverableCell: skipped - icf schema is not present.
+# ReportReleaseTest.testNoFilterThatChangesWhoIsCountedIsAcceptedOnARelease: skipped - icf schema is not present.
+# ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted: skipped - icf schema is not present.
+# ReportReleaseTest.testOneWalkAndBelowMinimumPopulationsAreWithheldAndNeverStored: skipped - icf schema is not present.
+# ReportReleaseTest.testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit: skipped - icf schema is not present.
+# ReportReleaseTest.testOnlySomeoneWhoCanOpenEveryWalkMayRelease: skipped - icf schema is not present.
+# ReportReleaseTest.testReleasedDatesNeverOverlap: skipped - icf schema is not present.
+# ReportReleaseTest.testReportOnlyUsersCannotReadLiveFigures: skipped - icf schema is not present.
+# ReportReleaseTest.testSmallDimensionValueAndStateCellsAreWithheld: skipped - icf schema is not present.
+# ReportReleaseTest.testSmallItemCellsAndTheirComplementsAreWithheld: skipped - icf schema is not present.
+# ReportReleaseTest.testTheDistrictIsTheSumOfWhatEachSchoolPublishes: skipped - icf schema is not present.
+# ReportReleaseTest.testTheExportCarriesExactlyWhatTheJsonPublishes: skipped - icf schema is not present.
+# SharedMetadataConcurrencyBarrierTest.testAConflictRefusalMovesNothingAndLeavesOneDurableAudit: skipped - icf schema is not present in datasource 'icfwalk'.
+# SharedMetadataConcurrencyBarrierTest.testADeactivationIsNotLostByAConcurrentRename: skipped - icf schema is not present in datasource 'icfwalk'.
+# SharedMetadataConcurrencyBarrierTest.testARenameIsNotLostByAConcurrentDeactivation: skipped - icf schema is not present in datasource 'icfwalk'.
+# SharedMetadataConcurrencyBarrierTest.testEachAuditDescribesTheRowItActuallyReplaced: skipped - icf schema is not present in datasource 'icfwalk'.
+# SharedMetadataConcurrencyBarrierTest.testImportDecidesTheSharedConflictOnTheLockedCurrentRowNotItsEarlierLookup: skipped - icf schema is not present in datasource 'icfwalk'.
+# SharedMetadataConcurrencyBarrierTest.testImportQueuesForTheSharedRowAndThenDecidesOnIt: skipped - icf schema is not present in datasource 'icfwalk'.
+# WalkMutationResponseTest.testACompleteAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: skipped - icf schema is not present.
+# WalkMutationResponseTest.testANoopSaveOnACompletedWalkIsAlsoCoherent: skipped - icf schema is not present.
+# WalkMutationResponseTest.testASaveAnsweredWithItsOwnStateWhenAnotherSessionCommitsAtTheCommitBoundary: skipped - icf schema is not present.
+# WalkMutationResponseTest.testNoConcurrentWriterCanCommitWhileTheResponseIsBeingBuilt: skipped - icf schema is not present.
+# WalkMutationResponseTest.testTheResponseCoherenceInvariantHoldsForBothSaveAndComplete: skipped - icf schema is not present.
+# Subtest: seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+ok 5 - seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+  ---
+  duration_ms: 9370.139071
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 4
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 628821.034843
+exit 1

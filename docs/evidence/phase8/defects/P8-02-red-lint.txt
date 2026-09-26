@@ -1,0 +1,180 @@
+$ git diff --stat HEAD -- src app tests/cfml   (the CFML is unmodified: must be empty)
+ app/assets/js/api.js | 36 ++++++++++++++++++++++++++++++++++--
+ app/assets/js/app.js |  1 +
+ 2 files changed, 35 insertions(+), 2 deletions(-)
+$ node --test tests/node/cfml-portability.test.mjs
+TAP version 13
+# Subtest: rule 1: no reserved word is a variable name
+not ok 1 - rule 1: no reserved word is a variable name
+  ---
+  duration_ms: 64.54937
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-portability.test.mjs:84:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   'app/Application.cfc:66 var eq',
+    +   'src/config/ConfigLoader.cfc:211 var eq',
+    +   'tests/cfml/specs/RetireConcurrencyBarrierTest.cfc:214 var import'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'app/Application.cfc:66 var eq'
+    1: 'src/config/ConfigLoader.cfc:211 var eq'
+    2: 'tests/cfml/specs/RetireConcurrencyBarrierTest.cfc:214 var import'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-portability.test.mjs:90:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: rule 2: no function re-declares one of its own arguments
+not ok 2 - rule 2: no function re-declares one of its own arguments
+  ---
+  duration_ms: 50.30258
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-portability.test.mjs:93:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   'src/instrument/DefinitionValidator.cfc:434 checkCounts() re-declares its argument s',
+    +   'src/instrument/DefinitionValidator.cfc:766 checkConditions() re-declares its argument rule',
+    +   'src/instrument/InstrumentConfigValidator.cfc:179 collectAuthoringIds() re-declares its argument cfg',
+    +   'src/instrument/InstrumentConfigValidator.cfc:196 checkReferences() re-declares its argument cfg',
+    +   'src/instrument/InstrumentImportService.cfc:168 writeNormalizedDraft() re-declares its argument normalized',
+    +   'src/reports/ReportService.cfc:271 createRelease() re-declares its argument principal',
+    +   'src/reports/ReportService.cfc:648 compute() re-declares its argument f',
+    +   'src/reports/ReportService.cfc:709 liveReport() re-declares its argument f',
+    +   'src/reports/ReportService.cfc:851 releaseReport() re-declares its argument f',
+    +   'src/walks/WalkService.cfc:278 save() re-declares its argument principal',
+    +   'src/walks/WalkService.cfc:359 complete() re-declares its argument principal',
+    +   'src/walks/WalkService.cfc:787 replay() re-declares its argument principal',
+    +   'tests/cfml/specs/ConfigLoaderTest.cfc:6 loader() re-declares its argument values'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'src/instrument/DefinitionValidator.cfc:434 checkCounts() re-declares its argument s'
+    1: 'src/instrument/DefinitionValidator.cfc:766 checkConditions() re-declares its argument rule'
+    2: 'src/instrument/InstrumentConfigValidator.cfc:179 collectAuthoringIds() re-declares its argument cfg'
+    3: 'src/instrument/InstrumentConfigValidator.cfc:196 checkReferences() re-declares its argument cfg'
+    4: 'src/instrument/InstrumentImportService.cfc:168 writeNormalizedDraft() re-declares its argument normalized'
+    5: 'src/reports/ReportService.cfc:271 createRelease() re-declares its argument principal'
+    6: 'src/reports/ReportService.cfc:648 compute() re-declares its argument f'
+    7: 'src/reports/ReportService.cfc:709 liveReport() re-declares its argument f'
+    8: 'src/reports/ReportService.cfc:851 releaseReport() re-declares its argument f'
+    9: 'src/walks/WalkService.cfc:278 save() re-declares its argument principal'
+    10: 'src/walks/WalkService.cfc:359 complete() re-declares its argument principal'
+    11: 'src/walks/WalkService.cfc:787 replay() re-declares its argument principal'
+    12: 'tests/cfml/specs/ConfigLoaderTest.cfc:6 loader() re-declares its argument values'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-portability.test.mjs:119:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+not ok 3 - rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+  ---
+  duration_ms: 17.673464
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-portability.test.mjs:122:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   'src/instrument/VisibilityEngine.cfc:144 unscoped call to evaluateCondition()',
+    +   'tests/cfml/specs/ReportReleaseMembershipTest.cfc:117 unscoped call to release()',
+    +   'tests/cfml/specs/ReportReleaseMembershipTest.cfc:125 unscoped call to release()',
+    +   'tests/cfml/specs/ReportReleaseMembershipTest.cfc:149 unscoped call to release()'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'src/instrument/VisibilityEngine.cfc:144 unscoped call to evaluateCondition()'
+    1: 'tests/cfml/specs/ReportReleaseMembershipTest.cfc:117 unscoped call to release()'
+    2: 'tests/cfml/specs/ReportReleaseMembershipTest.cfc:125 unscoped call to release()'
+    3: 'tests/cfml/specs/ReportReleaseMembershipTest.cfc:149 unscoped call to release()'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-portability.test.mjs:138:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rule 4: no conditional's true branch is a one-element array of a string literal
+not ok 4 - rule 4: no conditional's true branch is a one-element array of a string literal
+  ---
+  duration_ms: 2.202763
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-portability.test.mjs:141:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   'src/reports/ReportService.cfc:993 ? ["ANSWERED"] :',
+    +   'src/reports/ReportService.cfc:1032 ? ["ANSWERED"] :'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'src/reports/ReportService.cfc:993 ? ["ANSWERED"] :'
+    1: 'src/reports/ReportService.cfc:1032 ? ["ANSWERED"] :'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-portability.test.mjs:149:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: the rules read every CFML template and component
+ok 5 - the rules read every CFML template and component
+  ---
+  duration_ms: 0.418962
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 1
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 476.786481
+[exit 1]

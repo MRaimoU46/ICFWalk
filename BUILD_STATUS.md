@@ -4380,3 +4380,64 @@ LibreOffice Calc output and accessibility checked with axe-core and the keyboard
 This section supersedes, as the current state, every candidate statement above: "Phase 6 and Phase 7
 integration" (an integration candidate awaiting audit) and the Phase 7 sections (Phase 7 not frozen
 or accepted, its findings awaiting re-audit or verification). Those sections are kept as delivered.
+
+## Phase 8: hardening and handoff (submitted for independent final audit)
+
+Phase 8 hardened the frozen Phase 0-7 baseline and prepared its handoff. It is **submitted for
+independent final audit**; it is not accepted, frozen, production-ready or production-certified.
+Evidence: `docs/evidence/phase8/` (start with its `README.md`).
+
+- **Branch and baseline.** `claude/icfwalk-phase-8-hardening-handoff`, started from the records-only
+  freeze tip `133f02192a99970029847bc2da2d31b9d8da06e1`; the frozen code `68f9026` is its ancestor.
+  Before any change the existing full gate was rerun there and reproduced the frozen totals (245/245
+  Node/HTTP/Playwright, 517/517 CFML). The frozen integration branch and both source branches were
+  not touched.
+- **Code commit:** `282a4ec27cd5d200ed190b134c0145632a970cee`. The commit that adds this section changes records only and is the
+  records tip.
+- **Adobe ColdFusion 2023, the target engine, was run for the first time** (Update 25, Adobe's image,
+  built-in web server, Microsoft JDBC). The frozen code did not start on it (P8-02). Everything below
+  that says "both engines" ran on it and on Lucee.
+- **Defects found and corrected: P8-01 to P8-14** (`docs/evidence/phase8/DEFECTS.md`): 2 CRITICAL
+  (P8-02, P8-04), 2 HIGH (P8-01, P8-08), 7 MEDIUM (P8-03, P8-05, P8-06, P8-10, P8-11, P8-12, P8-14),
+  3 LOW (P8-07, P8-09, P8-13). Each was reproduced by a failing regression before it was corrected.
+  None is open.
+- **The final gate on `282a4ec27cd5d200ed190b134c0145632a970cee`** (`docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/`): clean tree, `npm ci`,
+  handoff validation, package tests, every script parsed, a brand-new SQL Server container, migrations
+  001 to 007 with every re-application and 001 refused, then the full suite on brand-new databases:
+  Lucee 6.2.8.20: Node/HTTP/Playwright 299/299 and CFML 534/534; Adobe ColdFusion 2023 Update 25: Node/HTTP/Playwright 299/299 and CFML 534/534; 0 failed, skipped, todo or cancelled on either. Every Node test of the baseline gate passed on both engines, and every CFML test
+  function of the frozen code still exists.
+- **Operations, run separately on the code commit** (`docs/evidence/phase8/operations/`): upgrade of a
+  Phase 6 installation with its data through 007, this release on it, and rollback to the frozen
+  release; backup and restore to a separate database, including the 2 GB synthetic district; a
+  migration killed half way and one refused by its precondition; the application server killed during
+  an autosave on both engines; the production profile on both engines (fail-closed starts,
+  gateway-only identity, Secure/HttpOnly/SameSite=Lax cookies that end with the browser and rotate,
+  CSRF, safe error bodies, a database outage recovered without a restart, clean logs and audit, a
+  runtime login with data permissions only).
+- **Security** (SEC-01 to SEC-05 across every route): `tests/node/security-surface.test.mjs`,
+  `browser-xss-sweep.test.mjs`, `null-text.test.mjs`, `production-profile.test.mjs`.
+- **Accessibility** (A11Y-01 to A11Y-05): `browser-a11y-sweep.test.mjs`, 17 views in their real states
+  at 375, 768 and 1280 px and 200 % zoom, axe-core with no serious or critical violation, and keyboard
+  traversal with visible focus and no trap, on both engines.
+- **Performance**: a reproducible synthetic workload (30,000 walks), measured on both engines before
+  and after P8-11 and P8-14. **No target was set, so performance acceptance is not complete** (D8).
+- **Runbooks**: `docs/OPERATIONS.md` (new), with `docs/LOCAL_SETUP.md`, `docs/ENDPOINTS.md`,
+  `docs/VERIFICATION_CHECKLISTS.md` and `database/README.md` aligned.
+
+**Not performed here** (each has a checklist and an evidence slot in `docs/VERIFICATION_CHECKLISTS.md`
+and is NOT TESTABLE HERE until run there): ColdFusion 2023 with its own SQL Server driver behind IIS
+or Apache with the connector (1), SQL Server 2016 (2), connector request limits (3), Microsoft Excel
+(4), a real screen reader (5), the district SSO gateway and TLS (6), performance acceptance (7).
+
+**Owner decisions still open**: D1 to D12 and D14 (`docs/evidence/phase8/OWNER_DECISIONS.md`); D13
+(k = 3, frozen releases) is decided.
+
+**Open lower-severity risks**: live district reports can answer 409 "run the report again" under
+sustained edits to completed walks (by design; now rare; D14); the walk table is scanned by My Walks
+and report candidate selection (indexes suggested, not added; D8); the instrument version row,
+snapshot included, is read on every walk request; the response to the request that signs a person in
+shows the stored display name until the next request; on Lucee only, the servlet container's
+JSESSIONID lacks `Secure` behind a TLS-terminating gateway and is proven to carry no session.
+
+This section is the current state for Phase 8. The sections above keep the status recorded when each
+was delivered.

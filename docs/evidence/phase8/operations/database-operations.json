@@ -1,0 +1,60 @@
+{
+  "startedAt": "2026-09-26T14:05:05.292Z",
+  "source": "icfwalk_p8l",
+  "restored": "icfwalk_p8l_restore_p8opsmuigov4c",
+  "scratch": "icfwalk_p8opsmuigov4c_mig",
+  "server": {
+    "v": "16.0.4295.3",
+    "e": "Developer Edition (64-bit)"
+  },
+  "backupRestore": {
+    "backupFile": "/var/opt/mssql/data/p8opsmuigov4c.bak",
+    "backupSeconds": 0.261,
+    "logicalFiles": [
+      "D:icfwalk_p8l",
+      "L:icfwalk_p8l_log"
+    ],
+    "restoreSeconds": 0.875,
+    "checkdbMessages": 0,
+    "tables": 28,
+    "rows": 653,
+    "snapshotsVerified": 1
+  },
+  "killedMigration": {
+    "blockedAt": {
+      "wait_type": "LCK_M_SCH_M",
+      "blocking_session_id": 78,
+      "command": "CREATE TABLE"
+    },
+    "exclusiveLocksHeldByTheMigration": 336,
+    "migrationOutcome": {
+      "ok": false,
+      "error": "Cannot continue the execution because the session is in the kill state."
+    },
+    "reapplied": [
+      {
+        "script": "007_report_release.sql",
+        "ok": true,
+        "errorNumber": null,
+        "error": null
+      },
+      {
+        "script": "007_report_release.sql",
+        "ok": true,
+        "errorNumber": null,
+        "error": null
+      }
+    ]
+  },
+  "refusedMigration": {
+    "results": [
+      {
+        "script": "007_report_release.sql",
+        "ok": false,
+        "errorNumber": 50061,
+        "error": "The icf schema does not exist. Apply 001_schema.sql through 006_version_scoped_dimensions.sql before this patch."
+      }
+    ]
+  },
+  "finishedAt": "2026-09-26T14:05:09.675Z"
+}

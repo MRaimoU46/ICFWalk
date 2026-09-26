@@ -1,0 +1,66 @@
+TAP version 13
+# (node:29205) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: control: the observers do catch markup that reaches the page as HTML
+ok 1 - control: the observers do catch markup that reaches the page as HTML
+  ---
+  duration_ms: 7182.58458
+  type: 'test'
+  ...
+# Subtest: SEC-02: My Walks, the display name and the new-walk chooser show every payload as text
+ok 2 - SEC-02: My Walks, the display name and the new-walk chooser show every payload as text
+  ---
+  duration_ms: 6650.735661
+  type: 'test'
+  ...
+# Subtest: SEC-02: the editor, its email composer and its summary download keep every instrument label and stored value as text
+ok 3 - SEC-02: the editor, its email composer and its summary download keep every instrument label and stored value as text
+  ---
+  duration_ms: 4772.368136
+  type: 'test'
+  ...
+# Subtest: SEC-02: the completion errors name the hostile instrument's items as text
+ok 4 - SEC-02: the completion errors name the hostile instrument's items as text
+  ---
+  duration_ms: 2432.871923
+  type: 'test'
+  ...
+# Subtest: SEC-02: the conflict panel lists another session's values and the hostile labels as text
+ok 5 - SEC-02: the conflict panel lists another session's values and the hostile labels as text
+  ---
+  duration_ms: 3758.070495
+  type: 'test'
+  ...
+# Subtest: SEC-02: reports show hostile org unit names and never a stored note, as text
+ok 6 - SEC-02: reports show hostile org unit names and never a stored note, as text
+  ---
+  duration_ms: 1683.001951
+  type: 'test'
+  ...
+# Subtest: SEC-02: every administration view shows the hostile instrument as text
+ok 7 - SEC-02: every administration view shows the hostile instrument as text
+  ---
+  duration_ms: 11372.58301
+  type: 'test'
+  ...
+# Subtest: SEC-02: a payload in the path or query is never reflected as markup
+ok 8 - SEC-02: a payload in the path or query is never reflected as markup
+  ---
+  duration_ms: 1536.17452
+  type: 'test'
+  ...
+# Subtest: P8-06: the editor links an instrument's reference only when it is an http or https address
+ok 9 - P8-06: the editor links an instrument's reference only when it is an http or https address
+  ---
+  duration_ms: 1666.686326
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42194.22546

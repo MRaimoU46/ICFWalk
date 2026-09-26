@@ -1,0 +1,10 @@
+# synthetic workload on Lucee 6.2.8.20 after P8-14 (8889, icfwalk_perf), edits=any, 2026-09-26T20:32:05Z
+(node:28807) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+20:32:06 Lucee 6.2.8.20 on icfwalk_perf: 30449 walks, 2222777 responses; levels 1,10,25 for 60s
+20:32:08 solo: report live district (solo) p50=190 max=383 err=0; report CSV district (solo) p50=192 max=238 err=0
+20:33:09 level 1: 1609 requests in 60s; list mine p50=45 p95=63 max=95 err=0; open walk p50=19 p95=24 max=69 err=0; save walk p50=50 p95=61 max=110 err=0; create walk p50=89 p95=140 max=140 err=0; complete walk p50=39 p95=51 max=51 err=0; summary p50=23 p95=29 max=44 err=0
+20:34:09 level 10: 4076 requests in 60s; list mine p50=155 p95=252 max=372 err=0; open walk p50=54 p95=100 max=300 err=0; save walk p50=158 p95=250 max=384 err=0; summary p50=72 p95=151 max=214 err=0; create walk p50=267 p95=366 max=421 err=0; list district (scope=all) p50=567 p95=822 max=972 err=0; complete walk p50=113 p95=178 max=205 err=0; report live district p50=470 p95=922 max=1599 err=3; report CSV district p50=528 p95=1014 max=1689 err=1
+20:35:11 level 25: 3859 requests in 59s; list mine p50=410 p95=622 max=844 err=0; open walk p50=206 p95=302 max=451 err=0; save walk p50=388 p95=576 max=780 err=0; create walk p50=538 p95=756 max=850 err=0; list district (scope=all) p50=1240 p95=1701 max=2096 err=0; complete walk p50=309 p95=460 max=572 err=0; summary p50=228 p95=335 max=450 err=0; report live district p50=877 p95=2100 max=2458 err=6; report CSV district p50=888 p95=2034 max=2510 err=4
+20:35:11 release: {"status":"created by an earlier run on this database","releaseId":"BAFF656D-0B1E-4428-AD55-3B3AE82274D6"}; release read {"status":200,"ms":13}
+20:35:12 written /tmp/claude-0/-home-user-ICFWalk/e9437e1b-d324-5285-a2bb-174004a03ffd/scratchpad/p8/perf/lucee-after-p814-any/workload-Lucee-6.2.8.20.json

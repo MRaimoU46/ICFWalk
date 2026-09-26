@@ -1,0 +1,19 @@
+# P8-14 green: CanonicalJson collects parts and joins once, appends plain strings whole, sorts keys in Java; 2026-09-26T20:04:08Z, working tree on bd87b09; 8500 = ColdFusion 2023 Update 25, 8889 = Lucee 6.2.8.20. Output unchanged: the shared canonical JSON vectors and every snapshot checksum spec.
+CanonicalJsonThroughputTest              8500 status=200 wall=0.5s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":1,"skipped":0}
+CanonicalJsonThroughputTest              8889 status=200 wall=0.2s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":1,"skipped":0}
+CanonicalJsonTest                        8500 status=200 wall=0.0s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":6,"skipped":0}
+CanonicalJsonTest                        8889 status=200 wall=0.0s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":6,"skipped":0}
+SnapshotCompilerTest                     8500 status=200 wall=0.4s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":3,"skipped":0}
+SnapshotCompilerTest                     8889 status=200 wall=0.3s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":3,"skipped":0}
+SnapshotServiceTest                      8500 status=200 wall=0.3s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":4,"passed":0,"skipped":0} FAILED: testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: beforeAll failed: Instrument version '2026-09-17 aligned prototype' is PUBLISHED and cannot be imported over. Create a n | testInvalidAndUnknownVersionsFailClosed: beforeAll failed: Instrument version '2026-09-17 aligned prototype' is PUBLISHED and cannot be imported over. Create a n | testProductionSemanticsRequireAPublishedVersion: beforeAll failed: Instrument version '2026-09-17 aligned prototype' is PUBLISHED and cannot be imported over. Create a n
+SnapshotServiceTest                      8889 status=200 wall=0.3s engine=Lucee 6.2.8.20 totals={"failed":4,"passed":0,"skipped":0} FAILED: testCurrentVersionFallsBackToTheSeededDraftOutsideProduction: beforeAll failed: Instrument version '2026-09-17 aligned prototype' is PUBLISHED and cannot be imported over. Create a n | testInvalidAndUnknownVersionsFailClosed: beforeAll failed: Instrument version '2026-09-17 aligned prototype' is PUBLISHED and cannot be imported over. Create a n | testProductionSemanticsRequireAPublishedVersion: beforeAll failed: Instrument version '2026-09-17 aligned prototype' is PUBLISHED and cannot be imported over. Create a n
+ImportPublishEquivalenceTest             8500 status=200 wall=1.5s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":14,"skipped":0}
+ImportPublishEquivalenceTest             8889 status=200 wall=1.5s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":14,"skipped":0}
+InstrumentImportServiceTest              8500 status=200 wall=747.5s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":1,"passed":10,"skipped":0} FAILED: (afterAll): The request has exceeded the allowable time limit Tag: CFQUERY
+# Stopped here on purpose. Both instances were pointed at the synthetic performance database
+# (icfwalk_perf: 30,000 walks, 2.2 million responses, the seeded version published by the seed):
+#  - SnapshotServiceTest cannot set up there on either engine: its beforeAll re-imports the seeded
+#    DRAFT, which that database has published ("is PUBLISHED and cannot be imported over").
+#  - InstrumentImportServiceTest passed its 10 cases on ColdFusion; its afterAll fixture cleanup ran
+#    unindexed deletes over 2.2 million responses and hit ColdFusion's 600 s request limit.
+# Neither touches CanonicalJson. Every spec runs on a brand-new database in the final gate.

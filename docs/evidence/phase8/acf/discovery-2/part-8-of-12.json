@@ -1,0 +1,25 @@
+{
+ "base": "http://127.0.0.1:8500",
+ "part": "8",
+ "of": "12",
+ "status": 200,
+ "wallSeconds": 783,
+ "engine": "ColdFusion Server 2023,0,25,330977",
+ "ok": false,
+ "totals": {
+  "failed": 2,
+  "passed": 74,
+  "skipped": 0
+ },
+ "elapsedMs": 783325,
+ "specs": [
+  "DraftReplacementConcurrencyTest",
+  "InstrumentPublishServiceTest",
+  "ReportIsolationTest",
+  "VisibilityEngineTest"
+ ],
+ "failed": [
+  "DraftReplacementConcurrencyTest.testAnExportNeverPairsOneStatesMetadataWithAnotherStatesDocument: the edit really committed inside the export's window",
+  "VisibilityEngineTest.testMatchesTheSharedVectorsExactly: Vector 'numeric-looking codes must match exactly (1.0 is not 1; 9.0 is not grade 9)'. Expected exactly [..._q1\",\"prek_k_q2\",\"prek_k_q3\"],\"normalizedClear\":{\"cha"
+ ]
+}

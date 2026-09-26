@@ -1,0 +1,11 @@
+# P8-07 (thread barrier) diagnosis, 2026-09-26, ColdFusion 2023 Update 25 (8500) and Lucee 6.2.8.20 (8888).
+# Snapshot-only diagnostic spec (never committed). The export spec's edit thread:
+{"status":"COMPLETED","awaited":false,"outcome":"edited","error":"(none)","elapsed":5073,"awaitMs":60010.0}
+#   -> the edit committed in 5 s; its B_COMMITTED signal never reached the page thread (60 s ceiling).
+# Which routes carry a signal from a cfthread back to the page thread (ColdFusion):
+{"viaAttribute":false,"viaClosureAttribute":false (attributes.done(): "The done method was not found."),"viaNestedClosure":false,"viaVariables":true}
+# The variables-scope route, also from a thread started inside a closure:
+# ColdFusion: {"viaVariablesDirect":true,"viaVariablesInClosure":true}
+# Lucee:      {"viaVariablesDirect":true,"viaVariablesInClosure":true}
+# Cause: ColdFusion hands a cfthread a deep copy of its attributes (documented behavior); a
+# ConcurrencyBarrier passed as one is a copy. Lucee passes the same object.

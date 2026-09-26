@@ -1,0 +1,37 @@
+TAP version 13
+# (node:12194) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+not ok 1 - the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+  ---
+  duration_ms: 31433.734808
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/ops/production-profile.test.mjs:348:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    the gateway's name claim is used
+    + actual - expected
+    
+    + 'Production profile walker'
+    - 'P8Prod Walker b7a3f57f'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'P8Prod Walker b7a3f57f'
+  actual: 'Production profile walker'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/ops/production-profile.test.mjs:442:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 32478.991156

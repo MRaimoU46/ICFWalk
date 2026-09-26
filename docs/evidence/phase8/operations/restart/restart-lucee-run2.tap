@@ -1,0 +1,132 @@
+TAP version 13
+# (node:11379) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: A: a save killed mid-transaction leaves nothing behind, and Retry after the restart saves it exactly once
+not ok 1 - A: a save killed mid-transaction leaves nothing behind, and Retry after the restart saves it exactly once
+  ---
+  duration_ms: 12760.155965
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/ops/restart-during-autosave.test.mjs:307:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    every attempt is the same request under the same mutation id
+    + actual - expected
+    
+      {
+    +   changedAt: '2026-09-26T09:08:34.541Z',
+    -   changedAt: '2026-09-26T09:08:27.132Z',
+        clientMutationId: '3C90CEE4-F162-4271-BD4D-719688E4B0E2',
+        dimensions: {},
+        responses: {
+          comp_s1_notes: {
+            textValue: 'typed while the server died'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    walkId: '63839C4A-85B3-45B0-88FC-85086CF5D879'
+    versionId: '00C9B241-AE9E-49A0-901C-A2390120C130'
+    rowVersion: '0x0000000000000AD2'
+    clientMutationId: '3C90CEE4-F162-4271-BD4D-719688E4B0E2'
+    changedAt: '2026-09-26T09:08:27.132Z'
+    dimensions:
+    responses:
+      comp_s3_applicable:
+        storedCode: 'no'
+      comp_s4_applicable:
+        storedCode: 'no'
+      comp_s1_notes:
+        textValue: 'typed while the server died'
+  actual:
+    walkId: '63839C4A-85B3-45B0-88FC-85086CF5D879'
+    versionId: '00C9B241-AE9E-49A0-901C-A2390120C130'
+    rowVersion: '0x0000000000000AD2'
+    clientMutationId: '3C90CEE4-F162-4271-BD4D-719688E4B0E2'
+    changedAt: '2026-09-26T09:08:34.541Z'
+    dimensions:
+    responses:
+      comp_s3_applicable:
+        storedCode: 'no'
+      comp_s4_applicable:
+        storedCode: 'no'
+      comp_s1_notes:
+        textValue: 'typed while the server died'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/ops/restart-during-autosave.test.mjs:368:35)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# saves: failed net::ERR_CONNECTION_REFUSED | 403 CSRF_TOKEN_INVALID | 200
+# Subtest: B: a save committed just before the server died is replayed on Retry, not applied twice
+not ok 2 - B: a save committed just before the server died is replayed on Retry, not applied twice
+  ---
+  duration_ms: 11352.734747
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/ops/restart-during-autosave.test.mjs:388:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   changedAt: '2026-09-26T09:08:45.927Z',
+    -   changedAt: '2026-09-26T09:08:38.537Z',
+        clientMutationId: '8891B0C7-2D70-41A6-893B-62109DBB2425',
+        dimensions: {},
+        responses: {
+          comp_s1_notes: {
+            textValue: 'committed but never answered'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    walkId: '89E7FE8A-DE10-41F8-A06A-86E97F61253C'
+    versionId: '00C9B241-AE9E-49A0-901C-A2390120C130'
+    rowVersion: '0x0000000000000B29'
+    clientMutationId: '8891B0C7-2D70-41A6-893B-62109DBB2425'
+    changedAt: '2026-09-26T09:08:38.537Z'
+    dimensions:
+    responses:
+      comp_s3_applicable:
+        storedCode: 'no'
+      comp_s4_applicable:
+        storedCode: 'no'
+      comp_s1_notes:
+        textValue: 'committed but never answered'
+  actual:
+    walkId: '89E7FE8A-DE10-41F8-A06A-86E97F61253C'
+    versionId: '00C9B241-AE9E-49A0-901C-A2390120C130'
+    rowVersion: '0x0000000000000B29'
+    clientMutationId: '8891B0C7-2D70-41A6-893B-62109DBB2425'
+    changedAt: '2026-09-26T09:08:45.927Z'
+    dimensions:
+    responses:
+      comp_s3_applicable:
+        storedCode: 'no'
+      comp_s4_applicable:
+        storedCode: 'no'
+      comp_s1_notes:
+        textValue: 'committed but never answered'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/ops/restart-during-autosave.test.mjs:436:33)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# saves: failed net::ERR_CONNECTION_RESET | 403 CSRF_TOKEN_INVALID | 200 (replayed)
+# Subtest: no page error in either scenario
+ok 3 - no page error in either scenario
+  ---
+  duration_ms: 0.641169
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 1
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 24970.497684

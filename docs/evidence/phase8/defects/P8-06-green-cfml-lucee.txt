@@ -1,0 +1,4 @@
+LinkUrlSchemeTest                        8888 status=200 wall=1.9s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":5,"skipped":0}
+DefinitionValidatorTest                  8888 status=200 wall=3.4s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":50,"skipped":0}
+InstrumentConfigValidatorTest            8888 status=200 wall=1.5s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":18,"skipped":0}
+ValidatorRendererContractTest            8888 status=200 wall=1.2s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":18,"skipped":0}

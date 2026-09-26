@@ -1,0 +1,24 @@
+{
+ "base": "http://127.0.0.1:8500",
+ "part": "9",
+ "of": "12",
+ "status": 200,
+ "wallSeconds": 8,
+ "engine": "ColdFusion Server 2023,0,25,330977",
+ "ok": false,
+ "totals": {
+  "failed": 1,
+  "passed": 24,
+  "skipped": 0
+ },
+ "elapsedMs": 7604,
+ "specs": [
+  "EngineBooleanTest",
+  "InstrumentScopeTest",
+  "ReportReleaseMembershipTest",
+  "WalkCorrectionTest"
+ ],
+ "failed": [
+  "ReportReleaseMembershipTest.testTheDatabaseRefusesToPutAReleasedWalkIntoAnotherRelease: the database refuses a second release of the same walk: Error Executing Database Query."
+ ]
+}

@@ -1,0 +1,78 @@
+HEAD 282a4ec27cd5d200ed190b134c0145632a970cee tree 6bb9a2f3ea72a4c0719de8eae2d95d0bff54670a, clean
+{"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"38bccf4a-a6e4-497e-a57c-4b138f8377f3","engine":"ColdFusion Server 2023,0,25,330977","environment":"development","status":"ok"}
+
+== 2026-09-26T21:10:19Z  restart-coldfusion
+ok 1 - A: a save killed mid-transaction leaves nothing behind, and Retry after the restart saves it exactly once
+ok 2 - B: a save committed just before the server died is replayed on Retry, not applied twice
+ok 3 - no page error in either scenario
+# tests 3
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+[exit 0]
+Removed icfwalk-acf
+
+== 2026-09-26T21:11:04Z  production-profile-coldfusion
+ok 1 - the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+# tests 1
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+[exit 0]
+Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"f5a31d47-0ba9-4abd-9dce-4ac7c99f68de","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+
+== 2026-09-26T21:13:55Z  restart-lucee
+ok 1 - A: a save killed mid-transaction leaves nothing behind, and Retry after the restart saves it exactly once
+ok 2 - B: a save committed just before the server died is replayed on Retry, not applied twice
+ok 3 - no page error in either scenario
+# tests 3
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+[exit 0]
+
+== 2026-09-26T21:14:20Z  production-profile-lucee
+ok 1 - the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+# tests 1
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+[exit 0]
+
+== 2026-09-26T21:14:52Z  upgrade-and-rollback
+ok 1 - an installation made by the Phase 6 release upgrades with 007, changing nothing that existed, and this release serves it; the frozen release serves it after a rollback
+# tests 1
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+[exit 0]
+Stopped Lucee (pid 16130)
+
+== 2026-09-26T21:15:24Z  database-operations
+ok 1 - a COPY_ONLY backup verifies, restores to a separate database, passes CHECKDB, and holds exactly the source's data
+ok 2 - a migration killed half way rolls back completely, and the same script then applies and re-applies cleanly
+ok 3 - a migration refused by its own precondition changes nothing
+# tests 3
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+[exit 0]
+
+== 2026-09-26T21:15:29Z  identity after
+282a4ec27cd5d200ed190b134c0145632a970cee
+status: <clean>
+
+OPERATIONS PASSED on 282a4ec27cd5d200ed190b134c0145632a970cee
+ops exit=0

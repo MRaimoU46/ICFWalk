@@ -1,0 +1,299 @@
+002 patch adds response_option.definition idempotently
+003 patch adds icf.walk_mutation idempotently
+004 patch adds walk_mutation.request_fingerprint idempotently and additively
+005 patch adds icf.org_unit_dimension_map idempotently and additively
+006 adopts a database the earlier form already migrated, and infers no membership there
+006 on a clean database runs the transition once and records it, and a re-apply is a no-op
+006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+006 refuses a half-finished transition rather than guessing membership
+007 patch adds frozen report releases idempotently, additively, and guarded in the database
+A11Y (desktop-1280): My Walks, the chooser and every editor state
+A11Y (desktop-1280): every administration panel and its confirmation
+A11Y (desktop-1280): live reports, and a report-only reader's released reports
+A11Y (phone-375): My Walks, the chooser and every editor state
+A11Y (phone-375): every administration panel and its confirmation
+A11Y (phone-375): live reports, and a report-only reader's released reports
+A11Y (tablet-768): My Walks, the chooser and every editor state
+A11Y (tablet-768): every administration panel and its confirmation
+A11Y (tablet-768): live reports, and a report-only reader's released reports
+A11Y (zoom-200): My Walks, the chooser and every editor state
+A11Y (zoom-200): every administration panel and its confirmation
+A11Y (zoom-200): live reports, and a report-only reader's released reports
+A11Y-01 / A11Y-03 / A11Y-05 (admin): keyboard operation, axe-core, and 375 px without horizontal loss
+A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+A11Y-01 keyboard: every view is traversable with visible focus and no trap
+A11Y-01 keyboard: pills toggle with Enter/Space, accordions with Enter, focus stays visible
+A11Y-01: the composer is fully operable from the keyboard
+A11Y-03 axe-core: no serious or critical WCAG 2.1 AA violations in the editor and the list
+A11Y-03: axe-core finds no serious or critical violation in either composer state
+A11Y-03: axe-core finds no serious or critical violations in the conflict panel and completion-error states
+A11Y-05 responsive: no horizontal overflow at 375, 768, and 1280 px; screenshots captured
+ADM-01 (browser): an instrument-admin-only user lands on administration and imports a document from a file
+ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+ADM-01: an invalid document is refused with every issue and writes nothing
+ADM-01: the import body contract and the size cap
+ADM-02 (browser): the preview renders through the walk renderer, with conditional behavior, and saves nothing
+ADM-02: preview returns exactly the render model the walk runtime serves
+ADM-04 / ADM-07 (browser): publish and retire ask first; retiring the only version in service asks twice
+ADM-06 (browser): a new draft from a published version, a prompt edited, and the comparison
+ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+ADM-06: malformed edit requests are refused with their paths
+ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+ADM-07: retiring the only version in service needs explicit confirmation
+ADM-08 (browser): the placeholder queue searches, links to the editor, and shrinks when a placeholder is resolved
+ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+AUTH-01 / SEC-03: walk routes require an identity and a CSRF token; role-less users are refused
+AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+AUTH-01: every report route requires an identity and discloses nothing without one
+AUTH-01: shell and instrument routes deny anonymous callers (HTML page for browsers, JSON for APIs)
+AUTH-04 / AUTH-09: another school's walker, a colleague, tampered and malformed identifiers
+AUTH-04/05 the summary route authorizes every request exactly as opening the walk does
+AUTH-05 / AUTH-06: report-only and instrument-admin roles never reach walk data or edit endpoints
+AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+CFML SQL references only known icf tables
+CFML test suite passes (unit specs and DB-04..09 integration specs)
+COND-01..04 grade choices follow the selected school's group; Other shows PreK-12
+COND-01..05 grade choices follow the school of the walk's org unit
+COND-05 an invalid grade is cleared and dependent visibility recalculates
+COND-06 Period shows for 6-12 only; hidden value retained as HIDDEN by policy
+COND-06 Period shows for grades 6-12 only and its value is retained while hidden
+COND-07..09 conditional classroom sections
+COND-07..10 conditional classroom sections and retained hidden answers
+COND-10 hidden conditional answers are retained and reappear
+COND-11..13 skippable components default to No, clear ratings on No, keep notes, return UNANSWERED on Yes
+COND-11..15 skippable components: default No, clear on No, notes kept, counts use answered ratings only
+COND-12 persisted: applicability No clears ratings, keeps notes, and stores NOT_APPLICABLE in the same save
+COND-14 definition toggles show labels 1-5 and the exact per-question definitions
+COND-15 answered requires a valid option; unanswered never becomes zero
+CORR2: CREATE and COMPLETE replays are refused once the walk has moved on
+CORR2: a COMPLETE committed but answered 5xx is retried with the same id, and never reused across walks
+CORR2: a CREATE committed but lost is retried with the same id and body, and yields exactly one walk
+CORR2: a SAVE committed but lost, retried after another session saved, becomes a conflict rather than a silent overwrite
+CORR2: a VOID committed but lost is retried from its record, not from the edited input
+CORR2: a legacy mutation row with no request fingerprint is never replayed as a success
+CORR2: an ambiguous outcome retries the exact same mutation id and body on every route
+CORR2: an idempotent SAVE replay never hands stale session state a newer row version
+CORR2: the School dimension follows an explicit mapping and fails closed without one
+CORR2: the alignment endpoint considers exact code matches only, and only as candidates
+CORR3: alignment reports candidates and persists nothing without an explicit per-pair confirmation
+CORR3: an ambiguous COMPLETE stays resolvable after the walk is reloaded from server state
+CORR3: an ambiguous VOID stays resolvable after navigation destroys the row that started it
+CORR3: editing during an in-flight SAVE keeps that save's record; a lost response retries it first, then the queued edit under a new id
+CORR3: editing during an in-flight SAVE keeps that save's record; an HTTP 5xx retries it first, then the queued edit under a new id
+CORR3: the School dimension's free-text value is never stored as a school's identity
+CORR4: a resolved VOID never leaves a dirty editor without an explicit decision
+CORR4: a retry that is itself ambiguous returns the operation to AMBIGUOUS with live controls
+CORR4: activating Retry twice on an ambiguous COMPLETE dispatches one request and offers no second Retry
+CORR4: activating Retry twice on an ambiguous CREATE dispatches one request and offers no second Retry
+CORR4: activating Retry twice on an ambiguous VOID dispatches one request and offers no second Retry
+CORR4: an ambiguous COMPLETE resolved while a SAVE is on the wire strands neither operation
+CORR4: retrying an ambiguous COMPLETE keeps a newer editor change that autosave has not dispatched
+CORR4: retrying an ambiguous CREATE never switches the editor away from a dirty walk
+CORR4: retrying an ambiguous CREATE while another walk's SAVE is on the wire strands neither
+CORR: a committed mutation whose answer was lost replays on retry; the same id with a changed request is refused
+CORR: a create mutation id from a school the caller lost never discloses that walk
+CORR: a failed save plus Back/List keeps the editor and the unsaved input until an explicit decision
+CORR: an unresolved conflict plus Back/List demands an explicit discard before leaving
+CORR: beforeunload protects in-flight and queued saves, not only dirty state
+CORR: every mutation route requires clientMutationId; save/complete/void also require rowVersion
+CSRF: every state-changing session route refuses a missing, malformed, foreign or ended session's token, and nothing is written
+DB-01..03 supplied scripts against an empty SQL Server database
+Excel round-trip (browser): download a workbook, edit it, upload it as a new draft; problems name their cells
+Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+JS engine reproduces every shared vector (parity contract with the CFML engine)
+JS formatter reproduces every shared vector (parity contract with the CFML formatter)
+My Walks: card shows grade/content, date and relative time; open, delete with confirmation, cancel
+P6A-01 (browser): a file over the workbook or document limit is refused before the whole file is read
+P6A-01: a body declared over the web server's own ceiling is refused without being read, by the application or before it
+P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+P6A-01: a maintenance route without its token is hidden without its body being read
+P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+P6A-02 (browser): a label created by someone else after the page loaded is never silently replaced
+P6A-02 (browser): two sessions read a draft at C1, B saves C2, and A's upload from the stale page cannot overwrite C2
+P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+P6A-04 (browser): a file the browser cannot read is reported in the page's error flow and leaves the page usable
+P6A-04 (browser): a workbook the reader rejects sends nothing and leaves the page usable
+P6A-04: a malformed cell or row reference is a structured workbook problem
+P6A-04: a numeric character reference outside Unicode is a structured XML problem
+P6A-04: any other shape the reader does not expect is a structured problem, not an exception
+P6A-04: surrogate and XML-forbidden character references are structured XML problems
+P7C-01 / P7C-02 (structural): report tables are connection-local, and release membership is never read out
+P8-01: a session that now belongs to someone else is never used to save the page's edits
+P8-01: a walk can still be started after the session is replaced
+P8-01: an autosave after the server session is replaced is saved, exactly once, for the same person
+P8-01: no page error in any of the above
+P8-06: the editor links an instrument's reference only when it is an http or https address
+P8-08: a person named Null keeps the name
+P8-08: a walk keeps every free-text value that spells null, in any case, exactly
+P8-08: org units named null and NULL keep their names
+P8-13 (browser): a success message is shown only once the page will take the next action
+PKG-01 validate-handoff exits 0 with all checks confirmed
+PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+PKG-03 exactly 17 placeholders split 3/3/3/3/5
+PKG-04 prototype SHA-256 equals JSON source metadata
+PKG-05 aligned workbook table row counts equal JSON counts
+RPT-01: a school report role reads its school's release; another school is 404 over HTTP
+RPT-02: district roles aggregate their descendant schools and nothing else, live or released
+RPT-03 (browser): a report-only user reads released figures only and is never sent a withheld value
+RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+RPT-03: a report-only role is refused every live figure, however the request is narrowed
+RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+SAVE-01 / SAVE-02: several changes within 700 ms coalesce into one save; status advances to All changes saved with a new row version
+SAVE-03: a network failure keeps the input on screen with a specific message; Retry saves with the same mutation id
+SAVE-04 / SAVE-05: two sessions; the stale session gets a conflict panel, can keep its edits, and the merged save uses the new row version
+SAVE-04 / SAVE-06: a stale write is a 409 without overwrite; the same mutation id replays without duplicates
+SAVE-07 the email draft schema is enforced on the server, whatever the browser sends
+SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+SEC-02 (structural): the reports view builds its DOM without HTML strings
+SEC-02 stored markup is exported verbatim as text, never escaped and never dropped
+SEC-02 stored markup reaches the export as inert text, never escaped and never executed
+SEC-02: My Walks, the display name and the new-walk chooser show every payload as text
+SEC-02: a payload in the path or query is never reflected as markup
+SEC-02: every administration view shows the hostile instrument as text
+SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+SEC-02: reports show hostile org unit names and never a stored note, as text
+SEC-02: the completion errors name the hostile instrument's items as text
+SEC-02: the conflict panel lists another session's values and the hostile labels as text
+SEC-02: the editor, its email composer and its summary download keep every instrument label and stored value as text
+SEC-05 the export audit event carries identifiers and counts only, never narrative text
+SQL Server 2016: no migration uses T-SQL that SQL Server 2016 does not have
+SQL Server 2016: no statement the application sends uses T-SQL that SQL Server 2016 does not have
+SQL Server 2016: the scan finds what it looks for
+SUM-01/05 GET /api/walks/{id}/summary returns the vector text with safe download headers
+SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+SUM-02/03/04 the exported text reports blanks, skipped components, and hides hidden values
+SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+SUM-02/COND-15 component averages use answered scores only; a blank is never a zero
+SUM-03 a skipped component is labelled, has no average and no ratings, and keeps its notes
+SUM-04 hidden sections and a hidden Period are excluded but not destroyed
+SUM-05 a punctuated label cannot steer the Content-Disposition file name
+SUM-05 file names carry only safe characters and no path can be steered through them
+SUM-06 the draft follows the settings order, includes only checked parts, and names its kinds
+SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+SUM-07/09 the email draft round-trips through the ordinary save path in canonical form
+SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+SUM-08 a header-injection attempt in the recipient is stored as text and never interpreted
+SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+SUM-09: Clear empties the generated text and leaves every other answer alone
+WALK-01 empty My Walks state with the prototype wording and a New walk action
+WALK-02 / WALK-03: create pins the current version and owner; a retried create yields one walk
+WALK-02 / WALK-05 / SAVE-08: the walk survives a reload; markup typed into notes is shown as text and never executes
+WALK-05 / SAVE-08 / SEC-01: saved values survive retrieval; markup and SQL metacharacters are stored and returned as data
+WALK-06 / WALK-08: a completed walk is voided with a reason (never deleted); drafts void from the list
+WALK-09 / WALK-10 / A11Y-02: completion errors are field-specific and announced; a valid walk completes and is badged in the list
+WALK-09 / WALK-10 / WALK-08 / WALK-06: completion validation, completion, delete refusal, and void
+WALK-11: the walk instrument route serves the walk's pinned version render model
+a 200 whose body is not JSON blocks the export and never claims the server was unreachable
+a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+a checksum-matching semantically invalid DRAFT is refused with the validation response and changes nothing
+a clean export with nothing unsent uses the authenticated summary GET
+a conflict produces no download and leaves the conflict workflow open
+a definitive 4xx save rejection produces no download and an accurate message
+a genuine transport failure produces a browser-generated file from the screen state
+a missing sheet, a missing column, a duplicate column and a damaged document sheet are each named
+a placement of a dimension that has no values at all is not ambiguous
+a publish racing a mutation ends in one serial order, and published content never changes after
+a read-only viewer exports straight from the server route
+a refused filter is announced and leaves no stale results behind
+a response that breaks after its headers blocks the export rather than falling back
+a retry after an assumed-lost successful response cannot publish twice or alter the frozen state
+a save in flight and an edit behind it are both flushed before the summary is fetched
+a synthetic identity header is never taken for identity outside the development stub, and the stub validates what it is given
+a voided walk still exports for a reader, and the export never mutates the walk
+a walk user moves between My walks and Reports and sees only their own scope
+a workbook LibreOffice Calc opened and saved reads back unchanged
+an HTTP 5xx blocks the export as an unfinished save, not as a network failure
+an administrator publishes a DRAFT: frozen bytes, stored publisher, one audit
+an unexpected failure while reading the save response blocks the export
+an unresolved save stays retryable under its own mutation id and frozen request
+anonymous: every session route is 401 with nothing but an error; maintenance routes do not exist; health answers
+averageText matches JavaScript toFixed(1) on every shared rounding vector
+brief 14.1 conditional cards print in prototype order: the content card before the class-type card
+canonicalize is stable under key insertion order
+canonicalize rejects undefined and non-finite numbers
+cells typed in a spreadsheet's own ways are read as their column means them
+compiled snapshot matches the golden checksums and counts
+control: the observers do catch markup that reaches the page as HTML
+download then upload with no change gives back the exact document, and the bytes are reproducible
+editor renders every section, item, and option from the served instrument model
+edits made in LibreOffice Calc come back exactly, and nothing else moves
+engine rejects unsupported operators instead of guessing
+every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+every path the server reports is located on the sheet row it came from
+every selectable part the instrument offers resolves to a section, and a bad one throws
+exporting follows the read decision: a reader may, a report-only role may not
+file names are safe and the format is named
+files that are not workbooks, or are hostile, are refused without being expanded
+fixtures
+fixtures: org units, users, and roles through maintenance endpoints
+health endpoint reports database and schema state with a correlation id
+injection: every free query parameter is data, never SQL, and never a 5xx
+injection: every path parameter refuses SQL, markup, traversal and oversized values as data, quickly and without a leak
+mailtoUrl percent-encodes every value, so a recipient can never become a mail header
+maintenance endpoints are hidden without a valid token
+maintenance endpoints stay token-guarded even for signed-in admins
+methods: an unknown method is 405 and TRACE never echoes the request
+no mail-delivery construct exists anywhere in the shipped source
+no page error anywhere in the sweep
+no route, controller action, or configuration key accepts a recipient
+only index.cfm is served; other templates and unknown routes are JSON 404s
+options describe the version, the scope, the releases and the reportable surface only
+problems in a workbook are reported by sheet, row and column, and nothing is produced
+publish answers 404 for an unknown version without disclosing or mutating anything
+publish refuses a malformed version id
+publish refuses a missing and an invalid CSRF token
+publish refuses a signed-in user without instrument.manage
+publish refuses an anonymous request and discloses nothing
+publish takes no request body, and a client cannot name the publisher
+publishing twice is a deterministic conflict and creates no second success event
+read-only: the server refuses a reader's save, and every composer control is one the editor disables
+releases (browser): someone who can open every walk releases dates from the page
+releases: only someone who can open every walk may release, with CSRF, a closed period, and no overlap
+repeated publish/mutation races never deadlock: the two paths share one lock order
+report routes are read-only: other methods are refused before anything runs
+reports are driven by the instrument, not by names written into the report code
+repository columns exist in 001_schema.sql
+request size: a declared body one byte over the route's limit is refused 413, naming the limit, before it is sent
+rule 1: no reserved word is a variable name
+rule 2: no function re-declares one of its own arguments
+rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+rule 4: no conditional's true branch is a one-element array of a string literal
+rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+rule 7: the application never asks isNull() about a value, only about a query cell
+rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+schema-critical constraints the importer relies on are present
+seed import of the aligned DRAFT is idempotent through the maintenance endpoint
+shared canonical JSON vectors (reference implementation)
+shell page is served to signed-in users with a strict CSP and no embedded content
+signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+snapshot preserves exact prototype wording and skippable defaults
+snapshot references are logical keys, never GUIDs, and rules resolve to keys
+text survives exactly: markup, quotes, accents, emoji, line breaks, edge spaces, Excel escapes, long text
+the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+the browser never posts a draft anywhere: the only outbound action is a mailto: URL
+the capability wall: each route admits exactly the roles that hold its capability, and a refusal writes only its ACCESS_DENIED audit
+the composer's document serializes to the server's canonical form and survives a round trip
+the documented remediation removes only the approved (dimension_code, value_code) pair
+the file name is driven by behavior.export.fileNamePattern, not by a restated list
+the formatter is pure: it never mutates the state or the model it is given
+the placeholder summary follows the items and is otherwise left exactly as it was
+the publish route's no-body contract is exact: {}, whitespace and null are all bodies
+the reviewed aligned workbook in config/ reads to exactly the supplied instrument
+the route inventory: every route in Router.cfc is classified here, and nothing else is
+the rules read every CFML template and component
+the session: its id is rotated at sign-in, its cookie is HttpOnly and SameSite=Lax and lives no longer than the browser, and a signed-out session's token is dead
+the stored states are already normalized, so a vector describes a real persisted walk
+the summary export is the only new endpoint and it is read-only
+the text shape is stable: LF only, no trailing newline, no BOM
+two concurrent publishes produce exactly one transition and one deterministic refusal
+users without any capability are forbidden; walk, report, and admin roles may load the instrument
+walk-state helpers: a blank state presets no School value; display text; rating summary

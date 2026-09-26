@@ -1,0 +1,9 @@
+# targeted green on ColdFusion 2023 Update 25 after reinit, 2026-09-26T14:32:27Z, snapshot = working tree on 420d026
+VisibilityEngineTest                     8500 status=200 wall=3.6s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":10,"skipped":0}
+EngineBooleanTest                        8500 status=200 wall=0.0s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":2,"skipped":0}
+InstrumentMetadataServiceTest            8500 status=200 wall=5.4s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":17,"skipped":0}
+SharedMetadataConcurrencyBarrierTest     8500 status=200 wall=19.6s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":6,"skipped":0}
+ReportReleaseMembershipTest              8500 status=200 wall=3.1s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":2,"skipped":0}
+WalkListBoundTest                        8500 status=200 wall=0.3s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":2,"skipped":0}
+NullTextTest                             8500 status=200 wall=0.0s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":4,"skipped":0}
+LinkUrlSchemeTest                        8500 status=200 wall=1.3s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":0,"passed":5,"skipped":0}

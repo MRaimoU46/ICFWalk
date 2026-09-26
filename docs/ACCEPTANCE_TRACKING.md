@@ -404,3 +404,34 @@ path was provided or is in the repository, so this file cites none and restates 
   Adobe ColdFusion 2023 (the runtime note at the top), SQL Server 2016, IIS/Apache or connector-level
   limits, Microsoft Excel and a real screen reader. This is not production certification.
 - **Freeze record:** `docs/evidence/phase6-7-freeze.md`.
+
+## Phase 8: hardening and handoff (submitted for independent final audit)
+
+Every acceptance ID was re-run on the Phase 8 code commit `282a4ec27cd5d200ed190b134c0145632a970cee` on **both engines**, Adobe
+ColdFusion 2023 Update 25 and Lucee 6.2.8.20, each on a brand-new SQL Server 2022 database
+(Lucee 6.2.8.20: Node/HTTP/Playwright 299/299 and CFML 534/534; Adobe ColdFusion 2023 Update 25: Node/HTTP/Playwright 299/299 and CFML 534/534; 0 failed, skipped, todo or cancelled on either). The per-ID ledger, with method, evidence, environment, result and what is still not
+verified, is `docs/evidence/phase8/ACCEPTANCE_LEDGER.md`. Phase 8 is submitted for independent final
+audit and is not accepted or frozen.
+
+What changed in the status of the rows above:
+
+- **Adobe ColdFusion 2023:** every CFML-backed PASS above now also holds on ColdFusion 2023 (the note
+  at the top of this file). Reaching it took P8-02, P8-03, P8-04, P8-08, P8-09 and P8-10.
+- **SEC-04:** PASS in the production profile on both engines (`tests/ops/production-profile.test.mjs`):
+  Secure, HttpOnly, SameSite=Lax, no expiry (P8-05), rotation at sign-in, identity only from the
+  trusted gateway with its secret, and refused starts for every unsafe setting. ColdFusion's
+  `this.sessionCookie` handling, NOT TESTABLE HERE before, is tested. TLS and the real gateway remain
+  NOT TESTABLE HERE (checklist 6).
+- **SEC-06:** PASS. The application server was killed during an autosave, mid-transaction and after
+  commit, on Lucee and on ColdFusion; Retry after the restart committed each change exactly once
+  (`tests/ops/restart-during-autosave.test.mjs`).
+- **SEC-07:** PASS for this environment, from the documented steps, which P8-12 corrected (the
+  bootstrap order failed in production). IIS or Apache with the connector remain NOT TESTABLE HERE.
+- **SEC-01, SEC-02, SEC-03, SEC-05:** extended to every route and view (`security-surface`,
+  `browser-xss-sweep`, `null-text`, the production profile's log and audit checks).
+- **A11Y-01 to A11Y-05:** extended to 17 views in their real states at four layouts on both engines
+  (`browser-a11y-sweep`). A real screen reader remains NOT TESTABLE HERE (checklist 5).
+- **DB-01 to DB-03:** also a static check that no migration or statement needs a SQL Server newer than
+  2016 (`sqlserver-2016.test.mjs`). SQL Server 2016 itself remains NOT TESTABLE HERE (checklist 2).
+- **WALK-04, RPT-01 to RPT-07:** P8-11 and P8-14 changed how fast, not what (the shared vectors and
+  checksums prove the bytes); performance acceptance is not complete without criteria (D8).

@@ -1,0 +1,10 @@
+# synthetic workload on ColdFusion 2023 Update 25 (icfwalk-acf-perf, icfwalk_perf), edits=any, 2026-09-26T19:50:23Z
+(node:10908) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+19:50:24 ColdFusion Server 2023,0,25,330977 on icfwalk_perf: 30217 walks, 2205841 responses; levels 1,10,25 for 60s
+19:50:37 solo: report live district (solo) p50=1419 max=1659 err=0; report CSV district (solo) p50=1065 max=1135 err=0
+19:51:40 level 1: 292 requests in 60s; list mine p50=406 p95=451 max=505 err=0; open walk p50=68 p95=82 max=102 err=0; save walk p50=126 p95=153 max=211 err=0; summary p50=44 p95=64 max=64 err=0; create walk p50=170 p95=195 max=195 err=0; complete walk p50=116 p95=120 max=120 err=0
+19:52:48 level 10: 520 requests in 65s; list mine p50=2145 p95=3848 max=5896 err=0; open walk p50=187 p95=571 max=2275 err=0; summary p50=105 p95=290 max=290 err=0; save walk p50=345 p95=1008 max=1431 err=0; create walk p50=292 p95=932 max=932 err=0; complete walk p50=256 p95=1553 max=1553 err=0; list district (scope=all) p50=8081 p95=9468 max=9468 err=0; report live district p50=3787 p95=9244 max=9244 err=3; report CSV district p50=2298 p95=5925 max=5925 err=2
+19:54:10 level 25: 415 requests in 76s; list mine p50=5284 p95=10659 max=14106 err=0; open walk p50=493 p95=8361 max=11060 err=0; save walk p50=950 p95=7424 max=10349 err=0; summary p50=212 p95=5276 max=5276 err=0; create walk p50=878 p95=6873 max=6873 err=0; complete walk p50=843 p95=5275 max=5275 err=0; list district (scope=all) p50=18622 p95=24084 max=24084 err=0; report live district p50=4161 p95=6198 max=6198 err=4; report CSV district p50=4546 p95=8980 max=8980 err=4
+19:54:10 release: {"status":"created by an earlier run on this database","releaseId":"BAFF656D-0B1E-4428-AD55-3B3AE82274D6"}; release read {"status":200,"ms":511}
+19:54:12 written /tmp/claude-0/-home-user-ICFWalk/e9437e1b-d324-5285-a2bb-174004a03ffd/scratchpad/p8/perf/acf-any/workload-ColdFusion-Server-2023-0-25-330977.json

@@ -1,0 +1,3 @@
+# P8-14 red: CanonicalJson throughput before the correction, 2026-09-26T19:59:21Z, working tree on bd87b09; 8500 = ColdFusion 2023 Update 25 (icfwalk-acf-perf), 8889 = Lucee 6.2.8.20
+CanonicalJsonThroughputTest              8500 status=200 wall=4.1s engine=ColdFusion Server 2023,0,25,330977 totals={"failed":1,"passed":0,"skipped":0} FAILED: testAMyWalksSizedResponseSerializesQuickly: serializing 178995 bytes took 976 ms at best of three (ceiling 250 ms)
+CanonicalJsonThroughputTest              8889 status=200 wall=1.1s engine=Lucee 6.2.8.20 totals={"failed":0,"passed":1,"skipped":0}

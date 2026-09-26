@@ -1,0 +1,29 @@
+{
+ "base": "http://127.0.0.1:8500",
+ "part": "2",
+ "of": "12",
+ "status": 200,
+ "wallSeconds": 65,
+ "engine": "ColdFusion Server 2023,0,25,330977",
+ "ok": false,
+ "totals": {
+  "failed": 6,
+  "passed": 29,
+  "skipped": 0
+ },
+ "elapsedMs": 64562,
+ "specs": [
+  "CanonicalJsonTest",
+  "InstrumentConfigValidatorTest",
+  "PublishConcurrencyBarrierTest",
+  "SharedMetadataConcurrencyBarrierTest"
+ ],
+ "failed": [
+  "SharedMetadataConcurrencyBarrierTest.testAConflictRefusalMovesNothingAndLeavesOneDurableAudit: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testADeactivationIsNotLostByAConcurrentRename: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testARenameIsNotLostByAConcurrentDeactivation: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testEachAuditDescribesTheRowItActuallyReplaced: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testImportDecidesTheSharedConflictOnTheLockedCurrentRowNotItsEarlierLookup: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se",
+  "SharedMetadataConcurrencyBarrierTest.testImportQueuesForTheSharedRowAndThenDecidesOnIt: Whether an instrument is in service must be a boolean; this patch supplies an unsupported value. It is not coerced, because taking a published version out of se"
+ ]
+}
