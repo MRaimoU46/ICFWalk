@@ -764,10 +764,15 @@ Create, save, complete and void all update the walk row in the same transaction 
 writes, and a no-op save writes nothing, so a moved row version is exactly the signal needed. A walk
 left out because of what S2 read (a filter it failed) was left out on the strength of one committed
 state; every walk that is counted was unchanged from its selection to the check. The transaction is
-READ COMMITTED and exists to keep the temp tables on one connection -- it holds no lock a writer
-waits on. `ReportCoherenceTest` forces a real committed save between the dimension and item
-aggregates through `tests/cfml/support/InterceptingReportRepository` and proves the recomputation;
-with the check removed the same test reports Grade 7 beside rating 5, a state the walk never held
+READ COMMITTED and exists to keep the temp tables on one connection. It holds no lock between
+statements, so a writer commits mid-report; but a statement holds shared locks while it scans, and
+its page locks on `icf.walk_response` can deadlock with an autosave inserting response rows. SQL
+Server then ends the report as the victim (error 1205), and the report is discarded and computed
+again like one that saw a walk move, within the same three attempts; if the third is a victim too,
+the database's error is the answer (A8-03, `ReportDeadlockVictimTest`). `ReportCoherenceTest` forces
+a real committed save between the dimension and item aggregates through
+`tests/cfml/support/InterceptingReportRepository` and proves the recomputation; with the check
+removed the same test reports Grade 7 beside rating 5, a state the walk never held
 (`docs/evidence/phase7-red-before-fix.md`).
 
 **Isolation between concurrent requests** (audit finding P7C-01). `beginPopulation` returns a handle

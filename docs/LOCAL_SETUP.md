@@ -219,14 +219,16 @@ and `of` still runs everything in one request, which is fine for a filtered run.
 
 `tools/runtime/acf-up.sh` runs the same repository, read-only, on Adobe ColdFusion 2023 in Adobe's
 official container image (`ICFWALK_ACF_IMAGE`; pin it by digest for a recorded run, as Phase 8 did
-with Update 25), and waits for `/api/health`. `tools/runtime/acf-down.sh` removes the container. It
-is the target engine, but not the production stack: the site is ColdFusion's built-in web server on
-port 8500 (not IIS or Apache through the connector), the edition is Developer, and the datasource is
-administrator-defined through Microsoft's JDBC driver registered as an "Other" driver, because the
-`sqlserver` (DataDirect) package that `cfpm` downloads from adobe.com is not reachable everywhere.
-The script turns on "Enable long text retrieval (CLOB)" for that datasource (P8-04) and raises the
-Administrator's request timeout (`ICFWALK_ACF_REQUEST_TIMEOUT`, default 600 seconds) for the same
-reason `lucee-up.sh` raises Lucee's.
+with Update 25), and waits for `/api/health` to answer 200, which needs a migrated database
+(`ICFWALK_ACF_EXPECT_HEALTH` names another status: a database without the schema answers 503).
+`tools/runtime/acf-down.sh` removes the container. It is the target engine, but not the production
+stack: the site is ColdFusion's built-in web server on port 8500 (not IIS or Apache through the
+connector), the edition is Developer, and the datasource is administrator-defined through
+Microsoft's JDBC driver registered as an "Other" driver, because the `sqlserver` (DataDirect)
+package that `cfpm` downloads from adobe.com is not reachable everywhere. The script turns on
+"Enable long text retrieval (CLOB)" for that datasource (P8-04) and raises the Administrator's
+request timeout (`ICFWALK_ACF_REQUEST_TIMEOUT`, default 600 seconds) for the same reason
+`lucee-up.sh` raises Lucee's.
 
 Run the suites against it with the harness pointed at port 8500:
 

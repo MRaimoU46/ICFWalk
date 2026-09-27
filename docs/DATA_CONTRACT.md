@@ -693,7 +693,9 @@ committed states, so the report is discarded and recomputed, at most three times
 request is refused with 409 `REPORT_POPULATION_CHANGED`. Every counted walk therefore contributes
 exactly one committed state, and no statistic mixes two states of one walk. Every mutation path
 updates the walk row in the same transaction as its child writes, which is what makes the row
-version a sufficient signal; the report holds no lock a writer waits on.
+version a sufficient signal. The report holds no lock between its statements; while one scans, its
+shared locks can deadlock with an autosave, and an attempt SQL Server ends as the deadlock victim is
+discarded and computed again within the same three attempts (A8-03).
 
 **Two kinds of report.** The population above is a *live* report's. Live figures are served only
 to a caller who holds `walk.read` on every unit the report would count: that person can open each

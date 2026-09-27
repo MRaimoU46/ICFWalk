@@ -27,6 +27,10 @@
 # ICFWALK_DB_* lines are dropped the same way), and ICFWALK_ACF_CONTAINER another container name, with
 # its own state directory: tests/ops/production-profile.test.mjs runs the production profile that way.
 #
+# ICFWALK_ACF_EXPECT_HEALTH names the /api/health status that counts as started (default 200, which
+# needs a migrated database). tests/ops/readiness-schema-missing.test.mjs starts ColdFusion on a database
+# with no ICFWalk schema, which must answer 503 (A8-01), and so waits for 503 instead.
+#
 # Usage: tools/runtime/acf-up.sh          start (or reuse) the container and wait for /api/health
 #        tools/runtime/acf-down.sh        stop and remove it
 # Then:  ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_REQUIRE_APP=1 npm test
@@ -39,6 +43,7 @@ STATE="$RUNTIME/acf"
 APP_ENV_SOURCE="${ICFWALK_ACF_APP_ENV_FILE:-$ROOT/.env}"
 IMAGE="${ICFWALK_ACF_IMAGE:-adobecoldfusion/coldfusion2023:latest}"
 TIMEOUT="${ICFWALK_ACF_REQUEST_TIMEOUT:-600}"
+EXPECT_HEALTH="${ICFWALK_ACF_EXPECT_HEALTH:-200}"
 PORT=8500
 mkdir -p "$STATE"
 chmod 700 "$STATE"
@@ -169,11 +174,11 @@ docker exec "$CONTAINER" /opt/coldfusion/cfusion/bin/coldfusion start >/dev/null
 
 for i in $(seq 1 90); do
   code=$(health)
-  if [ "$code" = "200" ]; then
+  if [ "$code" = "$EXPECT_HEALTH" ]; then
     echo "Health: $(curl -sS --max-time 10 "http://127.0.0.1:$PORT/index.cfm/api/health")"
     exit 0
   fi
   sleep 2
 done
-echo "The application did not answer on port $PORT; see docker logs $CONTAINER and /opt/coldfusion/cfusion/logs" >&2
+echo "The application did not answer $EXPECT_HEALTH on port $PORT (last: ${code:-none}); see docker logs $CONTAINER and /opt/coldfusion/cfusion/logs" >&2
 exit 1

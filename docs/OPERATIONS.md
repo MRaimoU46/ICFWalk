@@ -186,8 +186,11 @@ curl -sS https://<host>/index.cfm/api/health
 # {"application":"ICFWalk","status":"ok","checks":{"database":"ok","schema":"present","longText":"ok"},"correlationId":"..."}
 ```
 
-A 503 names the failing check. `database: unavailable` is the datasource; `longText: truncated` is
-section 4.2 step 1; `schema: missing` is section 4.1.
+Only this answer is ready: HTTP 200 and `status: ok` come only with `database: ok`, `schema:
+present` and `longText: ok` together. Anything else is HTTP 503 and `status: degraded`, and the
+failing check says why: `database: unavailable` is the datasource (`schema` and `longText` then read
+`unknown`); `schema: missing` means the database answers but the migrations of section 4.1 were not
+applied to the database the datasource names; `longText: truncated` is section 4.2 step 1.
 
 ### 4.4 Web server and connector
 
@@ -405,13 +408,17 @@ verified, and the application run against the restored copy -- is in
 
 | HTTP | `status` | Meaning |
 | --- | --- | --- |
-| 200 | `ok` | The database answers, the schema is present, long text comes back whole. |
-| 503 | `degraded` | `checks.database = unavailable` (datasource, network, login) or `checks.longText = truncated` (section 4.2). |
+| 200 | `ok` | All three at once: the database answers (`checks.database = ok`), the schema is present (`checks.schema = present`), and long text comes back whole (`checks.longText = ok`). |
+| 503 | `degraded` | Anything else: the database is unavailable (`checks.database = unavailable`: datasource, network, login; `schema` and `longText` are then `unknown`), the schema is missing (`checks.schema = missing`: the database answers but the migrations were not applied to it, section 4.1), or long text is truncated (`checks.longText = truncated`, section 4.2). |
 
-`checks.schema = missing` with 200 means the database answers but migrations were not applied.
-The long-text check runs at most every ten minutes. In production the body carries no environment
-or engine information. Point the load balancer's health probe at it; alert on two consecutive
-non-200 answers.
+The endpoint fails closed, and that is what makes it the load balancer's readiness probe: every
+state above in which the node could not serve walks answers 503, and only a node that can answers
+200 (correction A8-01; before it, a database without the schema answered 200).
+`tests/ops/readiness-schema-missing.test.mjs` proves it on either engine against a brand-new
+database: 503 with `schema: missing` before the migrations, 200 after them. Point the load
+balancer's readiness probe at it, taking a node out on 503 and back on 200; alert on two consecutive
+non-200 answers. The long-text check runs at most every ten minutes. In production the body carries
+no environment or engine information.
 
 ### 8.2 Logs
 
@@ -464,8 +471,12 @@ GROUP BY event_type;
 ### 8.4 SQL Server
 
 Watch the usual: failed backups, log growth, blocking longer than a few seconds
-(`sys.dm_exec_requests` with `blocking_session_id <> 0`), deadlocks (the application retries
-nothing on its own; a person sees "could not save" and Retry), and CHECKDB results.
+(`sys.dm_exec_requests` with `blocking_session_id <> 0`), deadlocks, and CHECKDB results. A live
+report or CSV that SQL Server ends as a deadlock victim is computed again, within its three
+attempts, and logged `report.deadlock.victim` (A8-03); if all three are victims the request fails
+with `INTERNAL_ERROR` and a person runs it again. Nothing else is retried on its own: a save that
+loses a deadlock shows "could not save" and Retry. SQL Server's `system_health` session keeps every
+deadlock graph.
 
 ## 9. Routine operations
 
@@ -573,9 +584,21 @@ What to know from it, on one 4-CPU machine holding SQL Server, the engine and th
 * **Live district reports refuse rather than mix states.** A report reads its population, then
   checks that no walk in it changed; after three changed attempts it answers 409
   `REPORT_POPULATION_CHANGED` ("run the report again"). Edits to completed walks while a district
-  report runs are what trigger it; edits to drafts do not. It was frequent before P8-14 made reports
-  fast, and is now rare (none on ColdFusion at 25 walkers; a few in twenty on Lucee at its higher
-  write rate). Frozen releases (section 9.4) are unaffected and answer in tens of milliseconds.
+  report runs are what trigger it; edits to drafts do not. How often depends on how long a report
+  takes and how fast walks change, and no rate is claimed (see "What the Phase 8 report timings
+  describe", below). Frozen releases (section 9.4) are unaffected and answer in tens of milliseconds.
+* **A live report can be a deadlock victim.** Its aggregate scans take shared page locks on
+  `icf.walk_response`, and under autosave load SQL Server can end one as a deadlock victim (error
+  1205). It is computed again within its three attempts (A8-03); only a report that is the victim
+  three times over fails, with `INTERNAL_ERROR`. Each deadlock costs the report and the autosave it
+  met up to SQL Server's detection interval, about five seconds.
+* **What the Phase 8 report timings describe.** The Phase 8 runs after P8-14
+  (`docs/evidence/phase8/performance/*-after-p814-*`) counted, in their live district reports, only
+  the few hundred walks created during those runs, not the synthetic year's 24,000: their recorded
+  plans and row counts show it, and `docs/evidence/phase8-correction-a8/` has the likely cause (a
+  test fixture version left published in that database). Over the full population a live district
+  report on Lucee took seconds at 25 walkers (`docs/evidence/phase8-correction-a8/`). Performance
+  acceptance remains open (D8).
 * **My Walks scans the walk table.** Its `TOP 500 ... ORDER BY updated_at` reads every walk in scope,
   and the report's candidate selection reads every walk of the version; SQL Server suggests indexes
   on `icf.walk (org_unit_id, owner_user_id)` and `(version_id, org_unit_id, status) INCLUDE
@@ -615,5 +638,6 @@ What to know from it, on one 4-CPU machine holding SQL Server, the engine and th
 - [ ] Maintenance and the test runner off; no maintenance token configured.
 - [ ] Secrets in the secret store; environment file readable by the service account only.
 - [ ] Backups scheduled, verified, and restored in a drill.
-- [ ] Health probe and log alerts in place (section 8).
+- [ ] Load balancer readiness probe on `/index.cfm/api/health` (200 only with the database, the
+      schema and long text all ok, 503 otherwise; section 8.1) and log alerts in place (section 8).
 - [ ] ColdFusion and SQL Server patched to current updates; trusted cache on.

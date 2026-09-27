@@ -58,7 +58,10 @@
  * is read and verified after every aggregate is read. A live report -- or a release being created
  * -- that saw any walk move is discarded and recomputed, at most MAX_ATTEMPTS times; after that the
  * caller receives 409 REPORT_POPULATION_CHANGED rather than figures that describe no committed
- * state. No lock is held that a writer waits on.
+ * state. No lock is held between statements, but a statement's shared locks can deadlock with an
+ * autosave (ReportRepository, "THE POPULATION"): a live report that SQL Server ends as a deadlock
+ * victim is discarded and recomputed the same way, within the same MAX_ATTEMPTS (A8-03). If its last
+ * attempt is a victim too, the database's error is the answer, not REPORT_POPULATION_CHANGED.
  */
 component output="false" {
 
@@ -651,26 +654,36 @@ component output="false" {
 		var itemIds = [];
 		for (var it in reportedItems(f)) arrayAppend(itemIds, it.itemId);
 		for (var attempt = 1; attempt <= variables.MAX_ATTEMPTS; attempt++) {
-			var outcome = variables.db.transact(function() {
-				var population = reports.beginPopulation();
-				var result = { "units": [], "dimensions": {}, "items": [], "moved": 0 };
-				for (var d in catalog.dimensions) result.dimensions[d.code] = [];
-				if (arrayLen(f.unitIds)) {
-					reports.loadScope(population, f.unitIds);
-					// S1: walk rows only, row versions captured.
-					reports.selectCandidates(population, f.version.versionId, f.statuses, f.observedFrom, f.observedBefore);
-					// S2: population filters and every aggregate read child rows.
-					for (var df in f.dimensionFilters) reports.restrictToDimensionValue(population, df.dimension.dimensionId, df.value.valueId, df.dimension.visibility);
-					if (!structIsEmpty(f.optionFilter)) reports.restrictToOption(population, f.optionFilter.itemId, f.optionFilter.optionId);
-					result.units = reports.unitStatusCounts(population);
-					for (var d in catalog.dimensions) result.dimensions[d.code] = reports.dimensionCounts(population, d.dimensionId, d.visibility);
-					result.items = reports.itemCounts(population, itemIds);
-					// S3: every walk still at the row version S1 captured, or the report is discarded.
-					result.moved = reports.verifyPopulation(population);
-				}
-				reports.endPopulation(population);
-				return result;
-			});
+			var outcome = {};
+			try {
+				outcome = variables.db.transact(function() {
+					var population = reports.beginPopulation();
+					var result = { "units": [], "dimensions": {}, "items": [], "moved": 0 };
+					for (var d in catalog.dimensions) result.dimensions[d.code] = [];
+					if (arrayLen(f.unitIds)) {
+						reports.loadScope(population, f.unitIds);
+						// S1: walk rows only, row versions captured.
+						reports.selectCandidates(population, f.version.versionId, f.statuses, f.observedFrom, f.observedBefore);
+						// S2: population filters and every aggregate read child rows.
+						for (var df in f.dimensionFilters) reports.restrictToDimensionValue(population, df.dimension.dimensionId, df.value.valueId, df.dimension.visibility);
+						if (!structIsEmpty(f.optionFilter)) reports.restrictToOption(population, f.optionFilter.itemId, f.optionFilter.optionId);
+						result.units = reports.unitStatusCounts(population);
+						for (var d in catalog.dimensions) result.dimensions[d.code] = reports.dimensionCounts(population, d.dimensionId, d.visibility);
+						result.items = reports.itemCounts(population, itemIds);
+						// S3: every walk still at the row version S1 captured, or the report is discarded.
+						result.moved = reports.verifyPopulation(population);
+					}
+					reports.endPopulation(population);
+					return result;
+				});
+			} catch (any e) {
+				// SQL Server ended this attempt as a deadlock victim and rolled its transaction back whole,
+				// temporary tables included: nothing was read that could be returned. It is discarded like
+				// an attempt that saw a walk move, and computed again (A8-03).
+				if (attempt == variables.MAX_ATTEMPTS || !isDeadlockVictim(e)) rethrow;
+				variables.logger.warn("report.deadlock.victim", { "versionId": f.version.versionId, "attempt": attempt });
+				continue;
+			}
 			if (outcome.moved == 0) {
 				outcome["attempts"] = attempt;
 				return outcome;
@@ -681,6 +694,19 @@ component output="false" {
 			"Walks in this report changed while it was being prepared. Run the report again.",
 			"REPORT_POPULATION_CHANGED", { "attempts": variables.MAX_ATTEMPTS }
 		);
+	}
+
+	/**
+	 * Whether SQL Server ended the statement because it chose this transaction as a deadlock victim:
+	 * error 1205, SQLSTATE 40001. Both engines expose the driver's error number and state on a database
+	 * exception; each is read on its own, so an exception without them is simply not a deadlock victim.
+	 */
+	private boolean function isDeadlockVictim(required any exception) {
+		var number = "";
+		var state = "";
+		try { number = arguments.exception.nativeErrorCode; } catch (any ignored) {}
+		try { state = arguments.exception.sqlState; } catch (any ignored) {}
+		return (isSimpleValue(number) && isNumeric(number) && number == 1205) || (isSimpleValue(state) && compare(state, "40001") == 0);
 	}
 
 	/** The report envelope both kinds share; the figures are filled in by the caller. */

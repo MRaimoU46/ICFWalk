@@ -1,6 +1,7 @@
 /**
- * Liveness/readiness endpoint. Reports whether the database answers; never reports configuration
- * values or secrets. Returns 503 when the database is unavailable so load balancers can react.
+ * Liveness/readiness endpoint. Never reports configuration values or secrets. Answers 200 and
+ * status "ok" only when the database answers, the ICFWalk schema is present and long text comes back
+ * whole; anything else is 503 and "degraded", so a load balancer takes the node out (A8-01).
  */
 component output="false" {
 
@@ -31,7 +32,7 @@ component output="false" {
 		} catch (any e) {
 			database = "unavailable";
 		}
-		var healthy = database == "ok" && longText != "truncated";
+		var healthy = database == "ok" && schema == "present" && longText == "ok";
 		var body = {
 			"application": "ICFWalk",
 			"status": healthy ? "ok" : "degraded",

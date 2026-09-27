@@ -38,7 +38,12 @@
  * rollback on any failure (SQL Server rolls back the creation of a temporary table with the
  * transaction that created it). ReportIsolationTest proves both, and runs two reports, and a report
  * and a release, concurrently on disjoint scopes behind a barrier. The transaction is READ
- * COMMITTED and takes no lock a writer waits on, so a report never blocks autosave.
+ * COMMITTED: it holds no lock between statements, so a save commits while a report is part way
+ * through (COHERENCE, below). A statement does take shared locks while it reads, though, page by page
+ * on a large scan, and an autosave can wait on them. The two can also deadlock: the aggregate scan of
+ * walk_response holds a page and asks for the next while an autosave holds that next page's intent
+ * lock and asks for the first. SQL Server then ends the report as the deadlock victim (error 1205,
+ * finding A8-03), and ReportService computes it again (ReportDeadlockVictimTest).
  *
  * COHERENCE. Each walk's row version is captured when the population is selected -- from the walk
  * row alone, before any child row is read -- and verified again after every aggregate has been

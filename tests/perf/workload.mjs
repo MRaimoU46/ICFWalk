@@ -10,9 +10,20 @@
 // one in five, who is the district walker: My Walks across the whole district, then a live district
 // report and its CSV. After the levels, one report release over the synthetic school year is timed.
 //
+// Every answer that is not a success is kept with what is needed to trace it (finding A8-03): the
+// operation, the HTTP status, the application's error code, the correlation id, the elapsed time and
+// when it was sent. Every request carries its own X-Correlation-Id (the application adopts a safe
+// caller-supplied id, src/core/RequestContext.cfc), so even a request that timed out can be found in the log.
+// The one expected refusal is 409 REPORT_POPULATION_CHANGED (a live report that saw its walks change
+// three times answers it by design, open decision D14); every other failure is unexpected. For each
+// unexpected answer the run reads the application's log (PERF_LOG_FILE, or the ColdFusion container's
+// log through PERF_ENGINE_CONTAINER) and keeps the events written under that correlation id, among
+// them the request.failed event, reduced to named fields with data values removed from the exception
+// message. No cookie, CSRF token, secret, note text, name or email address is recorded.
+//
 //   ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=http://127.0.0.1:8889 ICFWALK_EVIDENCE_DIR=<dir> \
 //     PERF_LEVELS=1,10,25 PERF_DURATION=60 PERF_ENGINE_PID=<jvm pid> | PERF_ENGINE_CONTAINER=<name> \
-//     node tests/perf/workload.mjs
+//     PERF_LOG_FILE=<Lucee's icfwalk.log> node tests/perf/workload.mjs
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -36,19 +47,55 @@ const REQUEST_TIMEOUT = 60000;
 if (!database || database === "icfwalk_dev") throw new Error("Set ICFWALK_DB_NAME to the seeded performance database.");
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
+// ---- what a failure is, and what of it may be kept (A8-03) ------------------------------------------------
+
+// The one expected refusal: a live report (or a release) whose walks changed while it was prepared,
+// three times over, answers this by design (docs/OPERATIONS.md section 12, open decision D14).
+const EXPECTED_REFUSAL = "409 REPORT_POPULATION_CHANGED";
+
+/** An exception message with the data values SQL Server or the engine may quote in it taken out. */
+function scrub(text, max = 300) {
+  if (typeof text !== "string") return null;
+  return text
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "<email removed>")
+    .replace(/(Truncated value: )'[^']*'?/g, "$1'<value removed>'")
+    .replace(/(duplicate key value is )\([^)]*\)?/g, "$1(<value removed>)")
+    .replace(/(conversion failed when converting (?:the )?[a-z ]*value )'[^']*'/gi, "$1'<value removed>'")
+    .replace(/Perf note [0-9a-f-]{36}/gi, "<note removed>")
+    .replace(/Synthetic [A-Za-z ]+\d+[^.'"]*/g, "<synthetic text removed>")
+    .slice(0, max);
+}
+
+/** An error body, reduced to its code, message and (development only) the exception's type and message. */
+function safeErrorBody(json) {
+  const e = json?.error;
+  if (!e) return null;
+  const d = e.details && typeof e.details === "object" ? e.details : {};
+  return {
+    code: e.code ?? null, message: scrub(e.message, 200),
+    exceptionType: typeof d.exceptionType === "string" ? d.exceptionType.slice(0, 120) : null,
+    exceptionMessage: scrub(d.exceptionMessage),
+    detailKeys: Object.keys(d).filter((k) => !["exceptionType", "exceptionMessage", "exceptionDetail"].includes(k)).sort(),
+  };
+}
+
 // ---- HTTP ---------------------------------------------------------------------------------------------
 
 function client(subject) {
   const cookies = new Map();
   let csrf = "";
   const call = async (op, method, p, body, samples) => {
-    const headers = { Accept: "application/json", "X-ICFWalk-Dev-Subject": subject };
+    // The request's own correlation id: the application adopts it (it matches its safe-token rule), echoes
+    // it and writes it on every log line of the request, so a failure is traceable even without an answer.
+    const correlationId = `perf-${crypto.randomUUID()}`;
+    const headers = { Accept: "application/json", "X-ICFWalk-Dev-Subject": subject, "X-Correlation-Id": correlationId };
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (csrf && method !== "GET") headers["X-ICFWalk-CSRF-Token"] = csrf;
     const cookie = [...cookies.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
     if (cookie) headers.Cookie = cookie;
+    const sentAt = new Date().toISOString();
     const t0 = performance.now();
-    let status = 0, text = "", error = null;
+    let status = 0, text = "", error = null, echoed = null;
     try {
       const response = await fetch(`${baseUrl(env)}/index.cfm${p}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
       for (const line of response.headers.getSetCookie()) {
@@ -57,6 +104,7 @@ function client(subject) {
         cookies.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
       }
       status = response.status;
+      echoed = response.headers.get("x-correlation-id");
       text = await response.text();
     } catch (e) {
       error = e.name === "TimeoutError" ? "timeout" : String(e.cause?.code || e.message);
@@ -65,10 +113,71 @@ function client(subject) {
     let json = null;
     try { json = JSON.parse(text); } catch { json = null; }
     if (json && json.csrfToken) csrf = json.csrfToken;
-    if (samples) samples.push({ op, ms, status, bytes: text.length, error: error || (status >= 400 ? `${status} ${json?.error?.code || ""}`.trim() : null) });
+    if (samples) {
+      const kind = error || (status >= 400 ? `${status} ${json?.error?.code || ""}`.trim() : null);
+      const sample = { op, ms, status, bytes: text.length, error: kind };
+      if (kind) {
+        Object.assign(sample, { code: json?.error?.code ?? null, correlationId, sentAt, expected: kind === EXPECTED_REFUSAL });
+        if (echoed !== correlationId) sample.correlationIdAnswered = echoed;
+        if (!sample.expected) sample.response = safeErrorBody(json);
+      }
+      samples.push(sample);
+    }
     return { status, json, text, ms };
   };
   return { call, subject };
+}
+
+/** Every answer that was not a success, in the order sent, with what identifies it. */
+function failures(samples, phase) {
+  return samples.filter((s) => s.error).map((s) => ({
+    phase, op: s.op, status: s.status, kind: s.error, code: s.code, expected: s.expected, correlationId: s.correlationId,
+    ...(s.correlationIdAnswered !== undefined ? { correlationIdAnswered: s.correlationIdAnswered } : {}),
+    ms: Math.round(s.ms), sentAt: s.sentAt, ...(s.expected ? {} : { response: s.response }),
+  })).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+}
+
+// ---- the application's log, for the unexpected answers ----------------------------------------------------
+
+function applicationLog() {
+  try {
+    if (env.PERF_LOG_FILE) {
+      const dir = path.dirname(env.PERF_LOG_FILE);
+      const stem = path.basename(env.PERF_LOG_FILE).replace(/\.log$/, "");
+      const files = fs.readdirSync(dir).filter((f) => f.startsWith(stem) && f.includes(".log")).sort();
+      return { source: `${env.PERF_LOG_FILE} (${files.join(", ")})`, text: files.map((f) => fs.readFileSync(path.join(dir, f), "utf8")).join("\n") };
+    }
+    if (env.PERF_ENGINE_CONTAINER) {
+      const text = execFileSync("docker", ["exec", env.PERF_ENGINE_CONTAINER, "sh", "-c", "cat /opt/coldfusion/cfusion/logs/icfwalk*.log 2>/dev/null || true"], { encoding: "utf8", maxBuffer: 512 * 1024 * 1024 });
+      return { source: `container ${env.PERF_ENGINE_CONTAINER}: /opt/coldfusion/cfusion/logs/icfwalk*.log`, text };
+    }
+  } catch (e) { return { source: null, error: e.message, text: "" }; }
+  return { source: null, error: "set PERF_LOG_FILE (Lucee) or PERF_ENGINE_CONTAINER (ColdFusion) to collect it", text: "" };
+}
+
+/** The application's events (one canonical JSON object inside each engine log line), by correlation id. */
+function eventsByCorrelation(text) {
+  const out = new Map();
+  for (const line of text.split("\n")) {
+    const at = line.indexOf("\"{");
+    const end = line.lastIndexOf("}");
+    if (at < 0 || end < at) continue;
+    let e;
+    try { e = JSON.parse(line.slice(at + 1, end + 1).replace(/""/g, "\"")); } catch { continue; }
+    if (!e.correlationId) continue;
+    if (!out.has(e.correlationId)) out.set(e.correlationId, []);
+    out.get(e.correlationId).push(e);
+  }
+  return out;
+}
+
+/** A log event reduced to named fields; the exception message loses any data value it quoted. */
+function redactedEvent(e) {
+  const f = e.fields && typeof e.fields === "object" ? e.fields : {};
+  const kept = {};
+  for (const k of ["type", "code", "status", "path", "at", "versionId", "attempt", "moved", "attempts", "items", "rows", "ms"]) if (f[k] !== undefined) kept[k] = f[k];
+  if (f.exceptionMessage !== undefined) kept.exceptionMessage = scrub(f.exceptionMessage);
+  return { ts: e.ts, level: e.level, event: e.event, correlationId: e.correlationId, fields: kept };
 }
 
 // ---- SQL observations ---------------------------------------------------------------------------------
@@ -121,8 +230,11 @@ function summarize(samples, seconds) {
   for (const [op, list] of Object.entries(byOp)) {
     const ms = list.filter((s) => !s.error).map((s) => s.ms).sort((a, b) => a - b);
     const errors = list.filter((s) => s.error);
+    const errorCounts = {};
+    for (const e of errors) errorCounts[e.error] = (errorCounts[e.error] || 0) + 1;
     out[op] = {
       count: list.length, errors: errors.length, errorKinds: [...new Set(errors.map((e) => e.error))].slice(0, 5),
+      errorCounts, expectedRefusals: errors.filter((e) => e.expected).length, unexpected: errors.filter((e) => !e.expected).length,
       perSecond: Math.round((list.length / seconds) * 10) / 10,
       p50: ms.length ? Math.round(pct(ms, 50)) : null, p95: ms.length ? Math.round(pct(ms, 95)) : null, p99: ms.length ? Math.round(pct(ms, 99)) : null,
       max: ms.length ? Math.round(ms[ms.length - 1]) : null, meanBytes: Math.round(list.reduce((n, s) => n + s.bytes, 0) / list.length),
@@ -190,7 +302,8 @@ const groups = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(root, "co
 
 const run = {
   startedAt: new Date().toISOString(), database, baseUrl: baseUrl(env), engine: health.engine, server, data: { walks: Number(seed.walks), responses: Number(seed.responses) },
-  method: { durationSeconds: DURATION / 1000, levels: LEVELS, edits: EDIT, soloReports: SOLO, thinkTimeMs: 0, mix: "closed loop, no think time: 4 of 5 virtual users are school walkers (list mine, open, save 50 %, summary 10 %, create+save+complete 5 %); 1 of 5 is the district walker (list scope=all, live district report, district CSV)", requestTimeoutMs: REQUEST_TIMEOUT },
+  method: { durationSeconds: DURATION / 1000, levels: LEVELS, edits: EDIT, soloReports: SOLO, thinkTimeMs: 0, mix: "closed loop, no think time: 4 of 5 virtual users are school walkers (list mine, open, save 50 %, summary 10 %, create+save+complete 5 %); 1 of 5 is the district walker (list scope=all, live district report, district CSV)", requestTimeoutMs: REQUEST_TIMEOUT,
+    failures: `every non-success answer kept with operation, status, error code, correlation id (sent by the harness as X-Correlation-Id), elapsed ms and time sent; ${EXPECTED_REFUSAL} is the one expected refusal, everything else is unexpected and is matched to the application log` },
   levels: [],
 };
 log(`${run.engine} on ${database}: ${run.data.walks} walks, ${run.data.responses} responses; levels ${LEVELS.join(",")} for ${DURATION / 1000}s`);
@@ -203,6 +316,7 @@ if (SOLO > 0) {
     await district.call("report CSV district (solo)", "GET", `/api/reports/aggregate.csv?versionId=${versionId}&orgUnitId=${districtId}`, undefined, soloSamples);
   }
   run.solo = summarize(soloSamples, 1);
+  run.soloFailures = failures(soloSamples, "solo");
   log(`solo: ${Object.entries(run.solo).map(([op, st]) => `${op} p50=${st.p50} max=${st.max} err=${st.errors}`).join("; ")}`);
 }
 
@@ -237,7 +351,7 @@ for (const level of LEVELS) {
   const topWaits = [...waitsAfter.values()].map((w) => ({ wait: w.w, ms: Number(w.ms) - Number(waitsBefore.get(w.w)?.ms || 0), count: Number(w.n) - Number(waitsBefore.get(w.w)?.n || 0) }))
     .filter((w) => w.ms > 0 && !BENIGN_WAITS.test(w.wait)).sort((a, b) => b.ms - a.ms).slice(0, 8);
   const after = await resources();
-  const result = { concurrency: level, seconds, requests: samples.length, operations: summarize(samples, seconds), blocking, topWaits, resourcesBefore: before, resourcesAfter: after };
+  const result = { concurrency: level, seconds, requests: samples.length, operations: summarize(samples, seconds), failures: failures(samples, `level ${level}`), blocking, topWaits, resourcesBefore: before, resourcesAfter: after };
   run.levels.push(result);
   log(`level ${level}: ${samples.length} requests in ${seconds.toFixed(0)}s; ${Object.entries(result.operations).map(([op, s]) => `${op} p50=${s.p50} p95=${s.p95} max=${s.max} err=${s.errors}`).join("; ")}`);
 }
@@ -261,6 +375,24 @@ await reportOnly.call("me", "GET", "/api/me");
 const releasedRead = await reportOnly.call("report release read", "GET", `/api/reports/aggregate?versionId=${versionId}&orgUnitId=${districtId}&releaseId=${releaseId}`, undefined, releaseSamples);
 run.releaseRead = { status: releasedRead.status, ms: Math.round(releasedRead.ms) };
 log(`release: ${JSON.stringify(run.release)}; release read ${JSON.stringify(run.releaseRead)}`);
+run.releaseFailures = failures(releaseSamples, "release");
+
+// Every answer that was not a success, counted by kind; each unexpected one with its log events.
+const allFailures = [...(run.soloFailures || []), ...run.levels.flatMap((l) => l.failures), ...run.releaseFailures];
+const unexpected = allFailures.filter((f) => !f.expected);
+const appLog = unexpected.length ? applicationLog() : { source: "not read: no unexpected answer", text: "" };
+const byCorrelation = eventsByCorrelation(appLog.text);
+for (const f of unexpected) f.logEvents = (byCorrelation.get(f.correlationId) || []).map(redactedEvent);
+const countBy = (list) => list.reduce((m, f) => ({ ...m, [f.kind]: (m[f.kind] || 0) + 1 }), {});
+run.failureTotals = {
+  expectedRefusals: allFailures.filter((f) => f.expected).length, unexpected: unexpected.length,
+  byKind: countBy(allFailures), unexpectedByKind: countBy(unexpected),
+  unexpectedWithRequestFailedEvent: unexpected.filter((f) => f.logEvents.some((e) => e.event === "request.failed")).length,
+  logSource: appLog.source, ...(appLog.error ? { logError: appLog.error } : {}),
+};
+run.unexpectedFailures = unexpected;
+log(`failures: ${run.failureTotals.expectedRefusals} expected (${EXPECTED_REFUSAL}); ${unexpected.length} unexpected ${JSON.stringify(run.failureTotals.unexpectedByKind)}, ${run.failureTotals.unexpectedWithRequestFailedEvent} with their request.failed event${appLog.source ? ` (${appLog.source})` : ""}${appLog.error ? `; log not read: ${appLog.error}` : ""}`);
+for (const f of unexpected) log(`unexpected: ${f.phase} ${f.op} ${f.kind} ${f.correlationId} ${f.ms} ms ${f.sentAt}; ${f.logEvents.filter((e) => e.event === "request.failed").map((e) => `${e.fields.type}: ${e.fields.exceptionMessage}`).join(" | ") || "no request.failed event"}`);
 
 // The statements that took the most time over the whole run, with their plans.
 const statsAfter = await queryStats();
