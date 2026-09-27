@@ -1,0 +1,18 @@
+# A8-03 red: ReportDeadlockVictimTest against the unchanged ReportService (Lucee)
+# at 2026-09-27T01:26:46.441Z against http://127.0.0.1:8888
+# HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc branch claude/icfwalk-phase-8-correction-cgsc7q
+# git status --porcelain=v1 --untracked-files=all:
+#    M src/controllers/HealthController.cfc
+#    M tests/perf/workload.mjs
+#    M tools/runtime/acf-up.sh
+#   ?? tests/cfml/specs/HealthReadinessTest.cfc
+#   ?? tests/cfml/specs/ReportDeadlockVictimTest.cfc
+#   ?? tests/cfml/support/SchemaAbsentDb.cfc
+#   ?? tests/ops/readiness-schema-missing.test.mjs
+# sha256 b809c0d8fd4624cc991e1b8478d308db6f408fe82f3b8ee25c69132df231e78a  src/reports/ReportService.cfc  (at HEAD: b809c0d8fd4624cc991e1b8478d308db6f408fe82f3b8ee25c69132df231e78a, unchanged)
+# sha256 390aee3559acbccae54eaece29dbee948d3c576368e1fddc59a41a19c401ddad  tests/cfml/specs/ReportDeadlockVictimTest.cfc  (at HEAD: <absent at HEAD>)
+# health 200 {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"71737abe-50dd-45b9-82d7-49e880f70d39","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+engine=Lucee 6.2.8.20 http=200 ok=false {"failed":2,"passed":0,"skipped":0} wall=8.5s
+ReportDeadlockVictimTest.testAReportChosenAsADeadlockVictimIsComputedAgain: failed - the session SQL Server let through committed Expected exactly [committed] (9 chars) but got [failed: variable [RESULT] doesn't exist] (39 chars); the first difference is at character 1 ([c] expected, [f] found). @ tests/cfml/BaseSpec.cfc:51
+ReportDeadlockVictimTest.testAReportChosenAsTheVictimOnEveryAttemptStillFails: failed - every attempt, all three, met a deadlock Expected [3] but got [1]. @ tests/cfml/BaseSpec.cfc:51
+# result: NOT ALL PASSED

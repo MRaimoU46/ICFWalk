@@ -1,0 +1,20 @@
+# A8-01 red: HealthReadinessTest against the unchanged HealthController (Lucee)
+# at 2026-09-27T00:48:17.093Z against http://127.0.0.1:8888
+# HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc branch claude/icfwalk-phase-8-correction-cgsc7q
+# git status --porcelain=v1 --untracked-files=all:
+#   ?? tests/cfml/specs/HealthReadinessTest.cfc
+#   ?? tests/cfml/support/SchemaAbsentDb.cfc
+# sha256 63976171917ca6c85c5af9303135432a429ae4d3182de2f16d106af7eb3f1117  src/controllers/HealthController.cfc  (at HEAD: 63976171917ca6c85c5af9303135432a429ae4d3182de2f16d106af7eb3f1117, unchanged)
+fatal: path 'tests/cfml/specs/HealthReadinessTest.cfc' exists on disk, but not in 'HEAD'
+# sha256 f5b113a54d1010d8957bdea4356b110d509429e569e81a13738a0fa13065c020  tests/cfml/specs/HealthReadinessTest.cfc  (at HEAD: <absent at HEAD>)
+fatal: path 'tests/cfml/support/SchemaAbsentDb.cfc' exists on disk, but not in 'HEAD'
+# sha256 927ec6be8c77b68d2dcfb59eb99f4f062e2a50ad0be45df90e2de1b6a3205484  tests/cfml/support/SchemaAbsentDb.cfc  (at HEAD: <absent at HEAD>)
+# health 200 {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"ec9c4960-6b0a-4e57-9cd1-9b3a7487ee6c","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+engine=Lucee 6.2.8.20 http=200 ok=false {"failed":2,"passed":4,"skipped":0} wall=0.2s
+HealthReadinessTest.testAnUnreachableDatabaseIsNotReady: passed
+HealthReadinessTest.testAReachableDatabaseWithoutTheSchemaIsNotReady: failed - HTTP status for {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"missing"},"correlationId":"128143bc-9477-43f5-9923-bd7d9050c7d9","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"} Expected [503] but got [200]. @ tests/cfml/BaseSpec.cfc:51
+HealthReadinessTest.testProductionAnswersTheSameWithoutTheSchemaAndNamesNothing: failed - HTTP status for {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"missing"},"correlationId":"128143bc-9477-43f5-9923-bd7d9050c7d9","status":"ok"} Expected [503] but got [200]. @ tests/cfml/BaseSpec.cfc:51
+HealthReadinessTest.testTheDatabaseWithItsSchemaAndWholeLongTextIsReady: passed
+HealthReadinessTest.testTruncatedLongTextIsNotReadyEvenWithTheSchema: passed
+HealthReadinessTest.testWithoutTheSchemaAndWithTruncatedLongTextItIsNotReady: passed
+# result: NOT ALL PASSED

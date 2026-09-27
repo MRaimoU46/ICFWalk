@@ -1,0 +1,14 @@
+# A8-03 workload run: engine=acf edits=drafts levels=10,25 duration=60s solo=5, 2026-09-27T10:35:53Z
+# workload harness: HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640; sha256 ab19da2caad88ae4605b08bc6664a42ee363a6355315bfe832dfa1b6cd5929e2 tests/perf/workload.mjs
+# status: <clean>
+# engine: ColdFusion container icfwalk-acf-perf
+# other engines answering: 8888=000 8889=000 8500=200
+$ ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=http://127.0.0.1:8500 PERF_LEVELS=10,25 PERF_DURATION=60 PERF_EDIT=drafts PERF_ENGINE_CONTAINER=icfwalk-acf-perf ICFWALK_EVIDENCE_DIR=<out> node tests/perf/workload.mjs
+10:35:54 ColdFusion Server 2023,0,25,330977 on icfwalk_perf: 31142 walks, 2273366 responses; levels 10,25 for 60s
+10:36:05 solo: report live district (solo) p50=1087 max=1310 err=0; report CSV district (solo) p50=1088 max=1119 err=0
+10:37:10 level 10: 918 requests in 61s; list mine p50=536 p95=1207 max=1855 err=0; open walk p50=417 p95=1126 max=1453 err=0; list district (scope=all) p50=861 p95=1349 max=1772 err=0; save walk p50=560 p95=1309 max=1445 err=0; report live district p50=2491 p95=3568 max=4088 err=0; create walk p50=869 p95=1318 max=1398 err=0; complete walk p50=459 p95=1103 max=1666 err=0; report CSV district p50=2796 p95=3833 max=3882 err=0; summary p50=476 p95=978 max=1137 err=0
+10:38:19 level 25: 925 requests in 58s; list mine p50=1453 p95=3482 max=4532 err=0; open walk p50=1261 p95=3131 max=4360 err=0; summary p50=1054 p95=3324 max=3493 err=0; list district (scope=all) p50=1497 p95=3039 max=3210 err=0; save walk p50=1368 p95=3203 max=4034 err=0; report live district p50=3948 p95=10108 max=10590 err=0; report CSV district p50=3859 p95=10041 max=10595 err=0; create walk p50=1540 p95=2949 max=2988 err=0; complete walk p50=1443 p95=3332 max=3436 err=0
+10:38:20 release: {"status":"created by an earlier run on this database","releaseId":"B8ED65E9-73E4-4258-821A-0E6D719B154A"}; release read {"status":200,"ms":237}
+10:38:20 failures: 0 expected (409 REPORT_POPULATION_CHANGED); 0 unexpected {}, 0 with their request.failed event (not read: no unexpected answer)
+10:38:21 written /tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/evidence/a8-03/series-acf-drafts-fixed/run1/workload-ColdFusion-Server-2023-0-25-330977.json
+[exit 0]

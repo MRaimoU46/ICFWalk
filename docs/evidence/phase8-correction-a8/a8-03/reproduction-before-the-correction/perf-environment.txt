@@ -1,0 +1,39 @@
+# A8-03 performance environment: 2026-09-27T01:04:54Z
+$ sqlcmd: CREATE DATABASE [icfwalk_perf]
+[exit 0]
+$ node scripts/db/apply-schema.mjs --database icfwalk_perf
+(node:9022) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  "script": "001_schema.sql",
+  "ok": true,
+  "script": "002_alignment_patch.sql",
+  "ok": true,
+  "script": "003_walk_mutation.sql",
+  "ok": true,
+  "script": "004_mutation_fingerprint.sql",
+  "ok": true,
+  "script": "005_org_unit_dimension_map.sql",
+  "ok": true,
+  "script": "006_version_scoped_dimensions.sql",
+  "ok": true,
+  "script": "007_report_release.sql",
+  "ok": true,
+[exit 0]
+$ perf-lucee.sh start <scratch>
+source: HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc
+source status:  M src/controllers/HealthController.cfc
+ M tests/perf/workload.mjs
+ M tools/runtime/acf-up.sh
+?? tests/cfml/specs/HealthReadinessTest.cfc
+?? tests/cfml/support/SchemaAbsentDb.cfc
+?? tests/ops/readiness-schema-missing.test.mjs
+copied tree sha256 of the running code: d4182546eef2c68a8b7336c0c1b9c6ecef825ad1920e1b9bcfd5d858d749a4a5 (src and app .cfc/.cfm/.js)
+        same list in the repository:     d4182546eef2c68a8b7336c0c1b9c6ecef825ad1920e1b9bcfd5d858d749a4a5
+perf Lucee pid 9063 on 8889: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"897cbac9-6a4b-41b6-8919-d597037590dc","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+[exit 0]
+$ ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=http://127.0.0.1:8889 node scripts/seed-instrument.mjs
+  "status": 201,
+  "created": true,
+  "versionLabel": "2026-09-17 aligned prototype",
+  "warningCount": 17,
+[exit 0]

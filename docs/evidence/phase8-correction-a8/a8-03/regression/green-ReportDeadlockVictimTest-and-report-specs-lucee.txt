@@ -1,0 +1,78 @@
+# A8-03 green: ReportDeadlockVictimTest and the existing report specs against the corrected ReportService (Lucee, restarted after the edit)
+# at 2026-09-27T01:28:21.115Z against http://127.0.0.1:8888
+# HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc branch claude/icfwalk-phase-8-correction-cgsc7q
+# git status --porcelain=v1 --untracked-files=all:
+#    M src/controllers/HealthController.cfc
+#    M src/reports/ReportService.cfc
+#    M tests/perf/workload.mjs
+#    M tools/runtime/acf-up.sh
+#   ?? tests/cfml/specs/HealthReadinessTest.cfc
+#   ?? tests/cfml/specs/ReportDeadlockVictimTest.cfc
+#   ?? tests/cfml/support/SchemaAbsentDb.cfc
+#   ?? tests/ops/readiness-schema-missing.test.mjs
+# sha256 09155310ef72123fc59f3d158079281bfbb4248b83e3d8e54bbc98a4fb63e954  src/reports/ReportService.cfc  (at HEAD: b809c0d8fd4624cc991e1b8478d308db6f408fe82f3b8ee25c69132df231e78a)
+# sha256 0e584348e5bd7bb5a6921fbbf31df46138a0f71f3c197a88eea9991f8ff8ff0b  tests/cfml/specs/ReportDeadlockVictimTest.cfc  (at HEAD: <absent at HEAD>)
+# health 200 {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"53a1cdc2-1b1e-47e7-ac1f-da1162a08662","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":2,"skipped":0} wall=10.1s
+ReportDeadlockVictimTest.testAReportChosenAsADeadlockVictimIsComputedAgain: passed
+ReportDeadlockVictimTest.testAReportChosenAsTheVictimOnEveryAttemptStillFails: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":5,"skipped":0} wall=3.6s
+ReportCoherenceTest.testAReleaseFreezesEveryWalkInOneCommittedState: passed
+ReportCoherenceTest.testAReportThatNeverSeesAStableStateIsRefused: passed
+ReportCoherenceTest.testAReportThatStraddlesACommittedSaveIsRecomputedCoherently: passed
+ReportCoherenceTest.testAStablePopulationIsReportedOnTheFirstAttempt: passed
+ReportCoherenceTest.testAWalkVoidedMidReportLeavesThePopulationCleanly: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":7,"skipped":0} wall=7.4s
+ReportIsolationTest.testALiveReportAndAReleaseAreIsolatedAtTheScopeBoundary: passed
+ReportIsolationTest.testAPopulationIsRefusedOutsideATransaction: passed
+ReportIsolationTest.testAPopulationRefusesToContinueOnAnotherConnection: passed
+ReportIsolationTest.testAReleaseAndALiveReportAreIsolatedAtTheScopeBoundary: passed
+ReportIsolationTest.testAReportLeavesNoPopulationTableBehindOnSuccessOrFailure: passed
+ReportIsolationTest.testPopulationTablesAreConnectionLocalAndUniquePerComputation: passed
+ReportIsolationTest.testTwoReportsOnDisjointScopesAreIsolatedAtTheScopeBoundary: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":15,"skipped":0} wall=9.4s
+ReportServiceTest.testCsvExportIsRfc4180AndNeutralizesFormulas: passed
+ReportServiceTest.testInstrumentAdminAndRolelessUsersAreRefused: passed
+ReportServiceTest.testLiveFiguresOnlyForSomeoneWhoCanOpenEveryWalkCounted: passed
+ReportServiceTest.testRetainedAnswersOfAHiddenSectionAreCountedAsHidden: passed
+ReportServiceTest.testRpt01SchoolRoleReportsOnlyItsAssignedSchool: passed
+ReportServiceTest.testRpt02DistrictRoleAggregatesDescendantSchoolsOnly: passed
+ReportServiceTest.testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier: passed
+ReportServiceTest.testRpt04OnlyAnsweredScoresEnterTheAverage: passed
+ReportServiceTest.testRpt05SectionMeansArePooledFromItemLevelResponses: passed
+ReportServiceTest.testRpt06NarrativeEmailAndTeacherFieldsNeverLeave: passed
+ReportServiceTest.testRpt07EveryFilterNarrowsThePopulationWithinScope: passed
+ReportServiceTest.testTheCatalogIsDerivedFromTheVersionAndItsEngine: passed
+ReportServiceTest.testUnknownMalformedAndOutOfContractFiltersAreRefused: passed
+ReportServiceTest.testVoidedWalksNeverCountAndDraftsOnlyOnRequest: passed
+ReportServiceTest.testWalksOfAnotherVersionNeverJoinTheReport: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":16,"skipped":0} wall=6.1s
+ReportReleaseTest.testAReleaseDoesNotChangeWhenWalksDo: passed
+ReportReleaseTest.testAReleaseRequestIsExactlyAClosedPeriod: passed
+ReportReleaseTest.testASectionMeanOnTooFewRatingsIsWithheld: passed
+ReportReleaseTest.testLogsAndAuditCarryNoWithheldFigureOrNarrative: passed
+ReportReleaseTest.testNoBreakdownWithholdsASingleRecoverableCell: passed
+ReportReleaseTest.testNoFilterThatChangesWhoIsCountedIsAcceptedOnARelease: passed
+ReportReleaseTest.testNoPartOfAReleaseCanBeDeleted: passed
+ReportReleaseTest.testOneWalkAndBelowMinimumPopulationsAreWithheldAndNeverStored: passed
+ReportReleaseTest.testOnlyCompletedWalksOfThePeriodAreReleasedWithNoStatusSplit: passed
+ReportReleaseTest.testOnlySomeoneWhoCanOpenEveryWalkMayRelease: passed
+ReportReleaseTest.testReleasedDatesNeverOverlap: passed
+ReportReleaseTest.testReportOnlyUsersCannotReadLiveFigures: passed
+ReportReleaseTest.testSmallDimensionValueAndStateCellsAreWithheld: passed
+ReportReleaseTest.testSmallItemCellsAndTheirComplementsAreWithheld: passed
+ReportReleaseTest.testTheDistrictIsTheSumOfWhatEachSchoolPublishes: passed
+ReportReleaseTest.testTheExportCarriesExactlyWhatTheJsonPublishes: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":2,"skipped":0} wall=2.6s
+ReportReleaseMembershipTest.testAWalkWhoseDateIsCorrectedIntoLaterDatesIsNeverCountedByASecondRelease: passed
+ReportReleaseMembershipTest.testTheDatabaseRefusesToPutAReleasedWalkIntoAnotherRelease: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":8,"skipped":0} wall=0.8s
+ReportDisclosureTest.testAPartialBreakdownNeverWithholdsExactlyOneCell: passed
+ReportDisclosureTest.testAPartialPatternThatWouldPinItsCellsIsWithheldWhole: passed
+ReportDisclosureTest.testEveryWithheldCellHasAtLeastTwoConsistentValuesFork3: passed
+ReportDisclosureTest.testEveryWithheldCellHasAtLeastTwoConsistentValuesFork4: passed
+ReportDisclosureTest.testInstrumentRulesLinkBreakdownsIntoGroups: passed
+ReportDisclosureTest.testKnownBreakdowns: passed
+ReportDisclosureTest.testTheGroupRuleIsAllOrNothing: passed
+ReportDisclosureTest.testTheMinimumCannotGoBelowTheApprovedFloor: passed
+# result: ALL PASSED

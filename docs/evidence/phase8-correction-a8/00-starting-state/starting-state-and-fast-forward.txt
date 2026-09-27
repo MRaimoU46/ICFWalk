@@ -1,0 +1,758 @@
+
+================================================================================
+== 2026-09-27T00:40:03Z  A. Starting state as the session found it (before any branch movement)
+================================================================================
+$ date -u
+Sun Sep 27 00:40:03 UTC 2026
+[exit 0]
+$ git branch --show-current
+claude/icfwalk-phase-8-correction-cgsc7q
+[exit 0]
+$ git rev-parse HEAD
+2a3f2ecb4f070401cba00518c0db8a2de823a29d
+[exit 0]
+$ git rev-parse HEAD^{tree}
+63741c4e91698ba4d13bd2b3b612f768486920b7
+[exit 0]
+$ git rev-parse --abbrev-ref --symbolic-full-name @{u}
+fatal: no upstream configured for branch 'claude/icfwalk-phase-8-correction-cgsc7q'
+[exit 128]
+$ git status --porcelain=v2 --branch --untracked-files=all
+# branch.oid 2a3f2ecb4f070401cba00518c0db8a2de823a29d
+# branch.head claude/icfwalk-phase-8-correction-cgsc7q
+[exit 0]
+$ git ls-remote origin refs/heads/claude/icfwalk-phase-8-correction-cgsc7q refs/heads/claude/icfwalk-phase-8-hardening-handoff
+10f476ba9a69359f23a259be0e903afeed64b415	refs/heads/claude/icfwalk-phase-8-hardening-handoff
+[exit 0]
+HEAD is 2a3f2ecb4f070401cba00518c0db8a2de823a29d; the audited handoff tip is 10f476ba9a69359f23a259be0e903afeed64b415
+DISCREPANCY: HEAD is not the audited tip (the session harness created claude/icfwalk-phase-8-correction-cgsc7q at 2a3f2ecb4f070401cba00518c0db8a2de823a29d)
+10f476ba9a69359f23a259be0e903afeed64b415 ancestor of HEAD: NO
+282a4ec27cd5d200ed190b134c0145632a970cee ancestor of HEAD: NO
+133f02192a99970029847bc2da2d31b9d8da06e1 ancestor of HEAD: NO
+68f9026d39ba0ff44d12d6398c5e933971dad2f4 ancestor of HEAD: NO
+--- is the starting HEAD an ancestor of the audited tip (would a fast-forward lose anything)?
+yes: 2a3f2ecb4f070401cba00518c0db8a2de823a29d is an ancestor of 10f476ba9a69359f23a259be0e903afeed64b415
+commits on the starting HEAD that the audited tip lacks: 0
+commits the audited tip adds: 19
+$ git log --format=%h %s 2a3f2ecb4f070401cba00518c0db8a2de823a29d..10f476ba9a69359f23a259be0e903afeed64b415
+10f476b Phase 8 records: final gate, operations, ledger and handoff (records only)
+282a4ec Phase 8 code: P8-13 and P8-14, ColdFusion suite portability, performance and runbook completion
+bd87b09 Phase 8 checkpoint (not gated): P8-10 to P8-12, ColdFusion barrier portability, operations and performance suites
+420d026 Phase 8 checkpoint (not gated): P8-05 to P8-09 corrections and new verification suites
+9f9f56f Phase 8 corrections P8-01 to P8-04: sessions replaced under an open page, and Adobe ColdFusion 2023
+9456a27 Phase 8 baseline: the full gate reproduced on the freeze tip before any change
+133f021 Phase 7 and the integrated Phase 0-7 baseline accepted and frozen at 68f9026
+c4a3e13 Integration gate evidence for 68f9026 and the integration audit handoff
+68f9026 Integrate Phase 7 corrections (e034214) with accepted Phase 6 (158debc)
+64507de Phase 6 accepted: the independent re-audit passed, P6A-R01 closed
+330ffb4 Phase 6 frozen: P6A-R01 gate transcript, environment record and freeze record
+158debc Phase 6 re-audit correction P6A-R01: the body reader takes at most one byte past the limit
+3e11686 Audit corrections: release gate transcript for 06660a2, environment record and re-audit handoff
+06660a2 Phase 6 administration audit corrections: P6A-01 to P6A-04
+e034214 Gate evidence for 98321a16df64005f9b55fcd9bc3b9b4d4a071e4e
+98321a1 Phase 7 correction, round 3: no part of a release is ever deleted
+9ef9b97 ReportReleaseTest: create its own district outside DR
+b67df76 Phase 7 correction, round 2: report isolation and one release per walk
+0c74dbd Phase 7 correction: enforce the approved RPT-03 privacy rule (P7-01)
+[exit 0]
+
+Owner decision (asked in-session, answered: 'Fast-forward, proceed'): fast-forward the designated
+branch to the audited tip with git merge --ff-only. No reset, no rewrite, no force-push.
+
+================================================================================
+== 2026-09-27T00:40:03Z  B. Fast-forward
+================================================================================
+status before: <empty>
+$ git merge --ff-only 10f476ba9a69359f23a259be0e903afeed64b415
+Updating 2a3f2ec..10f476b
+Fast-forward
+ .env.example                                       |    8 +-
+ BUILD_STATUS.md                                    |  871 ++-
+ app/Application.cfc                                |   53 +-
+ app/assets/js/admin.js                             |  170 +-
+ app/assets/js/api.js                               |   36 +-
+ app/assets/js/app.js                               |    1 +
+ app/assets/js/renderer.js                          |   24 +-
+ app/assets/js/reports.js                           |  185 +-
+ app/assets/js/workbook.js                          |   93 +-
+ database/007_report_release.sql                    |  485 ++
+ database/README.md                                 |   11 +-
+ docs/ACCEPTANCE_TRACKING.md                        |  132 +-
+ docs/ARCHITECTURE.md                               |  145 +-
+ docs/DATA_CONTRACT.md                              |  222 +-
+ docs/ENDPOINTS.md                                  |   50 +-
+ docs/LOCAL_SETUP.md                                |  172 +-
+ docs/OPEN_DECISIONS.md                             |   32 +-
+ docs/OPERATIONS.md                                 |  619 ++
+ docs/VERIFICATION_CHECKLISTS.md                    |  215 +
+ .../README.md                                      |   37 +
+ .../SHA256SUMS                                     |    5 +
+ .../gate.sh                                        |  179 +
+ .../phase6-7-integration-environment.md            |   75 +
+ .../phase6-7-integration-gate-transcript.txt       | 2851 ++++++++++
+ .../remerge-diff.txt                               | 1121 ++++
+ .../README.md                                      |   36 +
+ .../SHA256SUMS                                     |    8 +
+ .../envrecord.py                                   |  214 +
+ .../gate.sh                                        |  131 +
+ .../mutate.py                                      |  112 +
+ ...df64005f9b55fcd9bc3b9b4d4a071e4e-environment.md |  129 +
+ ...05f9b55fcd9bc3b9b4d4a071e4e-gate-transcript.txt | 2506 ++++++++
+ ...6df64005f9b55fcd9bc3b9b4d4a071e4e-mutations.txt |  406 ++
+ ...321a16df64005f9b55fcd9bc3b9b4d4a071e4e-push.txt |    9 +
+ docs/evidence/phase6-7-freeze.md                   |  133 +
+ docs/evidence/phase6-7-integration-handoff.md      |  128 +
+ .../phase6-admin-audit-corrections-environment.md  |  115 +
+ .../phase6-admin-audit-corrections-handoff.md      |  112 +
+ ...hase6-admin-audit-corrections-red-before-fix.md |  233 +
+ ...phase6-admin-audit-corrections-release-gate.txt | 2332 ++++++++
+ docs/evidence/phase6-admin-audit-handoff.md        |    5 +
+ .../phase6-admin-read-bound-environment.md         |   79 +
+ .../phase6-admin-read-bound-red-before-fix.md      |  152 +
+ .../phase6-admin-read-bound-release-gate.txt       | 2345 ++++++++
+ docs/evidence/phase6-freeze.md                     |  115 +
+ .../evidence/phase7-correction-2-red-before-fix.md |  556 ++
+ .../evidence/phase7-correction-3-red-before-fix.md |   57 +
+ docs/evidence/phase7-correction-red-before-fix.md  |  469 ++
+ docs/evidence/phase8/ACCEPTANCE_LEDGER.md          |  142 +
+ docs/evidence/phase8/DEFECTS.md                    |   30 +
+ docs/evidence/phase8/OWNER_DECISIONS.md            |   40 +
+ docs/evidence/phase8/README.md                     |   57 +
+ docs/evidence/phase8/SHA256SUMS                    |  200 +
+ .../acf/admin-versions--desktop-1280.png           |  Bin 0 -> 96309 bytes
+ .../acf/admin-versions--phone-375.png              |  Bin 0 -> 70070 bytes
+ .../acf/admin-versions--tablet-768.png             |  Bin 0 -> 89896 bytes
+ .../accessibility/acf/admin-versions--zoom-200.png |  Bin 0 -> 143250 bytes
+ .../acf/completion-errors--desktop-1280.png        |  Bin 0 -> 138739 bytes
+ .../acf/completion-errors--phone-375.png           |  Bin 0 -> 91132 bytes
+ .../acf/completion-errors--tablet-768.png          |  Bin 0 -> 139664 bytes
+ .../acf/completion-errors--zoom-200.png            |  Bin 0 -> 168381 bytes
+ .../acf/conflict-panel--desktop-1280.png           |  Bin 0 -> 103481 bytes
+ .../acf/conflict-panel--phone-375.png              |  Bin 0 -> 63190 bytes
+ .../acf/conflict-panel--tablet-768.png             |  Bin 0 -> 100303 bytes
+ .../accessibility/acf/conflict-panel--zoom-200.png |  Bin 0 -> 108876 bytes
+ ...onal-sections-and-definitions--desktop-1280.png |  Bin 0 -> 120800 bytes
+ ...itional-sections-and-definitions--phone-375.png |  Bin 0 -> 77407 bytes
+ ...tional-sections-and-definitions--tablet-768.png |  Bin 0 -> 141903 bytes
+ ...ditional-sections-and-definitions--zoom-200.png |  Bin 0 -> 157001 bytes
+ .../phase8/accessibility/acf/findings.json         |  953 ++++
+ .../accessibility/acf/my-walks--desktop-1280.png   |  Bin 0 -> 70411 bytes
+ .../accessibility/acf/my-walks--phone-375.png      |  Bin 0 -> 54570 bytes
+ .../accessibility/acf/my-walks--tablet-768.png     |  Bin 0 -> 61561 bytes
+ .../accessibility/acf/my-walks--zoom-200.png       |  Bin 0 -> 104691 bytes
+ .../acf/reports-live--desktop-1280.png             |  Bin 0 -> 94242 bytes
+ .../accessibility/acf/reports-live--phone-375.png  |  Bin 0 -> 56278 bytes
+ .../accessibility/acf/reports-live--tablet-768.png |  Bin 0 -> 102506 bytes
+ .../accessibility/acf/reports-live--zoom-200.png   |  Bin 0 -> 104979 bytes
+ .../phase8/accessibility/lucee/findings.json       |  953 ++++
+ docs/evidence/phase8/acf/acf-cfml-run1.tap         |  203 +
+ docs/evidence/phase8/acf/acf-cfml-run2.tap         |  184 +
+ docs/evidence/phase8/acf/acf-part1of6-timing.json  |   37 +
+ docs/evidence/phase8/acf/cfcompile-after-1.txt     |   15 +
+ docs/evidence/phase8/acf/cfcompile-before.txt      |  294 +
+ docs/evidence/phase8/acf/diag-8500.json            |    1 +
+ docs/evidence/phase8/acf/diag-8888.json            |    1 +
+ docs/evidence/phase8/acf/diag-null-semantics.txt   |   32 +
+ .../phase8/acf/discovery-1/part-1-of-12.json       |   23 +
+ .../phase8/acf/discovery-1/part-2-of-12.json       |   29 +
+ .../phase8/acf/discovery-1/part-3-of-12.json       |   22 +
+ .../phase8/acf/discovery-1/part-4-of-12.json       |   22 +
+ .../phase8/acf/discovery-1/part-5-of-12.json       |   22 +
+ .../phase8/acf/discovery-1/part-6-of-12.json       |   45 +
+ .../phase8/acf/discovery-1/part-7-of-12.json       |    0
+ docs/evidence/phase8/acf/discovery-1/progress.txt  |    6 +
+ .../phase8/acf/discovery-2/part-1-of-12.json       |   23 +
+ .../phase8/acf/discovery-2/part-10-of-12.json      |   22 +
+ .../phase8/acf/discovery-2/part-11-of-12.json      |   22 +
+ .../phase8/acf/discovery-2/part-12-of-12.json      |   22 +
+ .../phase8/acf/discovery-2/part-2-of-12.json       |   23 +
+ .../phase8/acf/discovery-2/part-3-of-12.json       |   23 +
+ .../phase8/acf/discovery-2/part-4-of-12.json       |   22 +
+ .../phase8/acf/discovery-2/part-5-of-12.json       |   22 +
+ .../phase8/acf/discovery-2/part-6-of-12.json       |   22 +
+ .../phase8/acf/discovery-2/part-7-of-12.json       |   22 +
+ .../phase8/acf/discovery-2/part-8-of-12.json       |   25 +
+ .../phase8/acf/discovery-2/part-9-of-12.json       |   24 +
+ docs/evidence/phase8/acf/discovery-2/progress.txt  |   13 +
+ docs/evidence/phase8/acf/run-3/acf-cfml-run3.tap   |  576 ++
+ docs/evidence/phase8/acf/run-3/acf-node-run3.tap   | 1886 +++++++
+ .../phase8/acf/run-3/admin-rerun-browser-admin.tap |  104 +
+ .../phase8/acf/run-3/rerun2-four-suites.tap        |  366 ++
+ docs/evidence/phase8/acf/run-3/rerun3-a11y.tap     |   97 +
+ docs/evidence/phase8/acf/visibility.json           |    1 +
+ .../README.md                                      |   19 +
+ .../SHA256SUMS                                     |    4 +
+ .../environment.md                                 |   61 +
+ .../gate.sh                                        |  159 +
+ .../phase8-baseline-gate-transcript.txt            | 2805 +++++++++
+ .../phase8/defects/P8-01-green-targeted.txt        |  334 ++
+ .../evidence/phase8/defects/P8-01-probe-output.txt |    7 +
+ docs/evidence/phase8/defects/P8-01-red.txt         |   81 +
+ .../defects/P8-02-red-cfcompile-frozen-code.txt    |  294 +
+ docs/evidence/phase8/defects/P8-02-red-lint.txt    |  180 +
+ .../defects/P8-02-red-runtime-observations.txt     |   51 +
+ docs/evidence/phase8/defects/P8-04-green-acf.txt   |   10 +
+ docs/evidence/phase8/defects/P8-04-red-acf.txt     |    7 +
+ .../phase8/defects/P8-05-green-both-engines.txt    |   24 +
+ docs/evidence/phase8/defects/P8-05-green-lucee.tap |   73 +
+ docs/evidence/phase8/defects/P8-05-red-acf.txt     |   11 +
+ docs/evidence/phase8/defects/P8-05-red-lucee.tap   |   86 +
+ .../phase8/defects/P8-06-green-browser-lucee.tap   |   66 +
+ .../phase8/defects/P8-06-green-cfml-lucee.txt      |    4 +
+ .../phase8/defects/P8-06-red-browser-lucee.tap     |   84 +
+ .../phase8/defects/P8-06-red-cfml-lucee.txt        |    6 +
+ .../phase8/defects/P8-07-thread-barrier-diag.txt   |   11 +
+ .../phase8/defects/P8-07-thread-barrier-green.txt  |    5 +
+ .../phase8/defects/P8-07-thread-barrier-red.txt    |    5 +
+ docs/evidence/phase8/defects/P8-08-red-8500.tap    |   64 +
+ docs/evidence/phase8/defects/P8-08-red-8888.tap    |   28 +
+ .../phase8/defects/P8-11-green-cfml-lucee.txt      |    2 +
+ .../phase8/defects/P8-11-green-timing.json         |    1 +
+ .../phase8/defects/P8-11-red-cfml-lucee.txt        |    1 +
+ docs/evidence/phase8/defects/P8-11-red-timing.json |    1 +
+ docs/evidence/phase8/defects/P8-12-green-lucee.tap |   20 +
+ docs/evidence/phase8/defects/P8-12-red-lucee.tap   |   36 +
+ docs/evidence/phase8/defects/P8-13-green-lucee.tap |   17 +
+ docs/evidence/phase8/defects/P8-13-red-lucee.tap   |   28 +
+ docs/evidence/phase8/defects/P8-14-green.txt       |   19 +
+ docs/evidence/phase8/defects/P8-14-red.txt         |    3 +
+ .../evidence/phase8/defects/acf-targeted-green.txt |    9 +
+ docs/evidence/phase8/defects/p8-01-probe.mjs       |   30 +
+ docs/evidence/phase8/environment.md                |   49 +
+ .../acf/npm-test.tap                               | 2368 ++++++++
+ .../acf/passing-names.txt                          |  299 +
+ .../baseline-names.txt                             |  245 +
+ .../gate.sh                                        |  217 +
+ .../lucee/npm-test.tap                             | 2368 ++++++++
+ .../lucee/passing-names.txt                        |  299 +
+ .../phase8-final-gate-attempt1-harness-bug.txt     |  572 ++
+ .../phase8-final-gate-transcript.txt               | 5960 ++++++++++++++++++++
+ .../at-scale/database-operations-at-scale.tap      |   33 +
+ .../operations/at-scale/database-operations.json   |   60 +
+ .../phase8/operations/database-operations-run1.tap |   32 +
+ .../phase8/operations/database-operations.json     |   60 +
+ .../evidence/phase8/operations/migrations-run1.tap |   56 +
+ .../evidence/phase8/operations/migrations-run2.tap |   25 +
+ .../database-operations/database-operations.json   |   60 +
+ .../database-operations/database-operations.tap    |   32 +
+ .../operations/on-the-code-commit/lucee-up.txt     |    4 +
+ .../on-the-code-commit/ops-final-transcript.txt    |   78 +
+ .../operations/on-the-code-commit/ops-final.sh     |   46 +
+ .../production-profile-acf.json                    |  219 +
+ .../production-profile-coldfusion.tap              |   22 +
+ .../production-profile-lucee.json                  |  234 +
+ .../production-profile-lucee.tap                   |   19 +
+ .../restart-coldfusion/restart-coldfusion.tap      |   32 +
+ .../restart-during-autosave-acf-container.json     |  249 +
+ .../restart-during-autosave-lucee.json             |  249 +
+ .../restart-lucee/restart-lucee.tap                |   32 +
+ .../upgrade-and-rollback/upgrade-and-rollback.json |   92 +
+ .../upgrade-and-rollback/upgrade-and-rollback.tap  |   20 +
+ .../operations/production-profile/acf-run1.tap     |   23 +
+ .../operations/production-profile/lucee-run1.tap   |   35 +
+ .../operations/production-profile/lucee-run2.tap   |   37 +
+ .../operations/production-profile/lucee-run3.tap   |   40 +
+ .../operations/production-profile/lucee-run4.tap   |   19 +
+ .../production-profile/production-profile-acf.json |  219 +
+ .../production-profile-lucee.json                  |  234 +
+ .../phase8/operations/restart/restart-acf.tap      |   33 +
+ .../restart-during-autosave-acf-container.json     |  249 +
+ .../restart/restart-during-autosave-lucee.json     |  249 +
+ .../operations/restart/restart-lucee-run1.tap      |   50 +
+ .../operations/restart/restart-lucee-run2.tap      |  132 +
+ .../operations/restart/restart-lucee-run3.tap      |   32 +
+ .../phase8/operations/upgrade-and-rollback.json    |   92 +
+ docs/evidence/phase8/operations/upgrade-run1.tap   |   37 +
+ docs/evidence/phase8/operations/upgrade-run2.tap   |   20 +
+ docs/evidence/phase8/performance/README.md         |  204 +
+ .../acf-after-p814-any/plans/statement-01.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-02.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-03.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-04.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-05.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-06.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-07.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-08.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-09.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-10.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-11.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-12.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-13.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-14.sqlplan  |    1 +
+ .../acf-after-p814-any/plans/statement-15.sqlplan  |    1 +
+ ...orkload-ColdFusion-Server-2023-0-25-330977.json |  890 +++
+ .../performance/acf-after-p814-any/workload.txt    |   10 +
+ ...orkload-ColdFusion-Server-2023-0-25-330977.json |  745 +++
+ .../performance/acf-after-p814-drafts/workload.txt |    9 +
+ ...orkload-ColdFusion-Server-2023-0-25-330977.json |  861 +++
+ .../phase8/performance/acf-any/workload.txt        |   10 +
+ ...orkload-ColdFusion-Server-2023-0-25-330977.json |  706 +++
+ .../phase8/performance/acf-drafts/workload.txt     |    9 +
+ .../plans/statement-01.sqlplan                     |    1 +
+ .../plans/statement-02.sqlplan                     |    1 +
+ .../plans/statement-03.sqlplan                     |    1 +
+ .../plans/statement-04.sqlplan                     |    1 +
+ .../plans/statement-05.sqlplan                     |    1 +
+ .../plans/statement-06.sqlplan                     |    1 +
+ .../plans/statement-07.sqlplan                     |    1 +
+ .../plans/statement-08.sqlplan                     |    1 +
+ .../plans/statement-09.sqlplan                     |    1 +
+ .../plans/statement-10.sqlplan                     |    1 +
+ .../plans/statement-11.sqlplan                     |    1 +
+ .../plans/statement-12.sqlplan                     |    1 +
+ .../plans/statement-13.sqlplan                     |    1 +
+ .../plans/statement-14.sqlplan                     |    1 +
+ .../plans/statement-15.sqlplan                     |    1 +
+ .../workload-Lucee-6.2.8.20.json                   |  909 +++
+ .../performance/lucee-after-p814-any/workload.txt  |   10 +
+ .../workload-Lucee-6.2.8.20.json                   |  754 +++
+ .../lucee-after-p814-drafts/workload.txt           |    9 +
+ .../lucee-run1/workload-Lucee-6.2.8.20.json        |  822 +++
+ .../phase8/performance/lucee-run1/workload.txt     |    9 +
+ .../workload-Lucee-6.2.8.20.json                   |  839 +++
+ .../lucee-run2-default-mix-repeat/workload.txt     |   10 +
+ .../lucee-run3-drafts/workload-Lucee-6.2.8.20.json |  711 +++
+ .../performance/lucee-run3-drafts/workload.txt     |    9 +
+ .../phase8/performance/seed-transcript.txt         |   17 +
+ docs/evidence/phase8/performance/seed.json         |   22 +
+ docs/evidence/phase8/performance/tables.mjs        |   39 +
+ docs/evidence/screenshots/reports-desktop.png      |  Bin 91169 -> 95790 bytes
+ docs/evidence/screenshots/reports-phone.png        |  Bin 77944 -> 78691 bytes
+ manifest.json                                      |   12 +-
+ package.json                                       |    7 +-
+ scripts/db/apply-schema.mjs                        |    5 +-
+ src/Bootstrap.cfc                                  |    5 +
+ src/audit/AuditRepository.cfc                      |    2 +-
+ src/authorization/OrgUnitRepository.cfc            |    2 +-
+ src/authorization/RoleScopeRepository.cfc          |    4 +-
+ src/config/ConfigLoader.cfc                        |   29 +-
+ src/controllers/AdminInstrumentController.cfc      |   23 +-
+ src/controllers/HealthController.cfc               |   30 +-
+ src/controllers/MaintenanceController.cfc          |   29 +-
+ src/controllers/ReportController.cfc               |   15 +-
+ src/core/CanonicalJson.cfc                         |  128 +-
+ src/core/Db.cfc                                    |   26 +-
+ src/core/HtmlEncoder.cfc                           |    4 +-
+ src/core/JsonTypes.cfc                             |   20 +-
+ src/core/Logger.cfc                                |    6 +-
+ src/http/HttpRequestSource.cfc                     |  140 +
+ src/http/JsonBodyParser.cfc                        |   30 +
+ src/http/MaintenanceGuard.cfc                      |   18 +-
+ src/http/Responder.cfc                             |    8 +-
+ src/http/Router.cfc                                |  221 +-
+ src/instrument/ConfigNormalizer.cfc                |    6 +-
+ src/instrument/DefinitionMapper.cfc                |   20 +-
+ src/instrument/DefinitionRepository.cfc            |   16 +-
+ src/instrument/DefinitionValidator.cfc             |   47 +-
+ src/instrument/DraftEditor.cfc                     |   46 +-
+ src/instrument/InstrumentAdminService.cfc          |   77 +-
+ src/instrument/InstrumentConfigValidator.cfc       |   14 +-
+ src/instrument/InstrumentDocumentExporter.cfc      |    2 +-
+ src/instrument/InstrumentImportService.cfc         |  164 +-
+ src/instrument/InstrumentMetadataService.cfc       |   10 +-
+ src/instrument/InstrumentPublishService.cfc        |    6 +-
+ src/instrument/InstrumentVersionComparer.cfc       |   24 +-
+ src/instrument/RenderContractValidator.cfc         |    4 +-
+ src/instrument/RenderModelBuilder.cfc              |   24 +-
+ src/instrument/SnapshotCompiler.cfc                |   10 +-
+ src/instrument/SnapshotService.cfc                 |   29 +-
+ src/instrument/VisibilityEngine.cfc                |   29 +-
+ src/reports/DisclosureControl.cfc                  |  198 +
+ src/reports/ReportRepository.cfc                   |  410 +-
+ src/reports/ReportService.cfc                      |  945 +++-
+ src/views/shell.html                               |   13 +
+ src/walks/WalkPayloadValidator.cfc                 |   14 +-
+ src/walks/WalkRepository.cfc                       |   31 +-
+ src/walks/WalkService.cfc                          |   34 +-
+ src/walks/WalkSummaryFormatter.cfc                 |    2 +-
+ tests/cfml/BaseSpec.cfc                            |   38 +-
+ tests/cfml/specs/CanonicalJsonThroughputTest.cfc   |   52 +
+ tests/cfml/specs/ConfigLoaderTest.cfc              |   18 +-
+ tests/cfml/specs/DiscardIdentityBarrierTest.cfc    |  215 +
+ .../cfml/specs/DraftReplacementConcurrencyTest.cfc |  473 ++
+ tests/cfml/specs/EngineBooleanTest.cfc             |   32 +
+ tests/cfml/specs/InstrumentPublishServiceTest.cfc  |    2 +-
+ tests/cfml/specs/LinkUrlSchemeTest.cfc             |   97 +
+ tests/cfml/specs/LongTextRetrievalTest.cfc         |   42 +
+ tests/cfml/specs/NullTextTest.cfc                  |   57 +
+ tests/cfml/specs/RenderModelTest.cfc               |   14 +-
+ tests/cfml/specs/ReportCoherenceTest.cfc           |   82 +-
+ tests/cfml/specs/ReportDisclosureTest.cfc          |  172 +
+ tests/cfml/specs/ReportIsolationTest.cfc           |  386 ++
+ tests/cfml/specs/ReportReleaseMembershipTest.cfc   |  171 +
+ tests/cfml/specs/ReportReleaseTest.cfc             |  670 +++
+ tests/cfml/specs/ReportServiceTest.cfc             |  137 +-
+ tests/cfml/specs/RequestBodyReadBoundTest.cfc      |  205 +
+ tests/cfml/specs/RetireConcurrencyBarrierTest.cfc  |    6 +-
+ tests/cfml/specs/RouterBodyOrderTest.cfc           |  226 +
+ tests/cfml/specs/SnapshotCompilerTest.cfc          |    2 +-
+ tests/cfml/specs/WalkListBoundTest.cfc             |   87 +
+ tests/cfml/support/FakeRequestSource.cfc           |   46 +
+ tests/cfml/support/Fixtures.cfc                    |   29 +
+ .../support/InterceptingDefinitionRepository.cfc   |   13 +
+ .../cfml/support/InterceptingReportRepository.cfc  |   48 +-
+ tests/cfml/support/RecordingDb.cfc                 |   34 +
+ tests/cfml/support/RecordingInputStream.cfc        |   44 +
+ tests/cfml/support/RouterTestDoubles.cfc           |   57 +
+ tests/cfml/support/SpyJsonBodyParser.cfc           |   21 +
+ tests/cfml/support/StreamedRequestSource.cfc       |   42 +
+ tests/cfml/support/TruncatingDb.cfc                |   29 +
+ tests/fixtures/acf2023-reserved-function-names.txt |  869 +++
+ tests/node/admin-instrument.test.mjs               |  274 +-
+ tests/node/browser-a11y-sweep.test.mjs             |  413 ++
+ tests/node/browser-admin.test.mjs                  |  285 +
+ tests/node/browser-reports.test.mjs                |  196 +-
+ tests/node/browser-session-recovery.test.mjs       |  177 +
+ tests/node/browser-xss-sweep.test.mjs              |  529 ++
+ tests/node/cfml-portability.test.mjs               |  223 +
+ tests/node/cfml-suite.test.mjs                     |    7 +-
+ tests/node/db-scripts.test.mjs                     |  164 +
+ tests/node/helpers.mjs                             |   31 +
+ tests/node/null-text.test.mjs                      |  128 +
+ tests/node/reports.test.mjs                        |  223 +-
+ tests/node/schema-contract.test.mjs                |   49 +-
+ tests/node/security-surface.test.mjs               |  541 ++
+ tests/node/sqlserver-2016.test.mjs                 |  122 +
+ tests/node/workbook.test.mjs                       |   80 +
+ tests/ops/database-operations.test.mjs             |  221 +
+ tests/ops/production-profile.test.mjs              |  580 ++
+ tests/ops/restart-during-autosave.test.mjs         |  462 ++
+ tests/ops/upgrade-and-rollback.test.mjs            |  325 ++
+ tests/perf/seed.mjs                                |  246 +
+ tests/perf/workload.mjs                            |  298 +
+ tools/runtime/acf-down.sh                          |   10 +
+ tools/runtime/acf-up.sh                            |  179 +
+ tools/runtime/web.xml                              |   10 +
+ 357 files changed, 64765 insertions(+), 975 deletions(-)
+ create mode 100644 database/007_report_release.sql
+ create mode 100644 docs/OPERATIONS.md
+ create mode 100644 docs/VERIFICATION_CHECKLISTS.md
+ create mode 100644 docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/README.md
+ create mode 100644 docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/SHA256SUMS
+ create mode 100644 docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/gate.sh
+ create mode 100644 docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/phase6-7-integration-environment.md
+ create mode 100644 docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/phase6-7-integration-gate-transcript.txt
+ create mode 100644 docs/evidence/gate/phase6-7-integration-68f9026d39ba0ff44d12d6398c5e933971dad2f4/remerge-diff.txt
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/README.md
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/SHA256SUMS
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/envrecord.py
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/gate.sh
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/mutate.py
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e-environment.md
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e-gate-transcript.txt
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e-mutations.txt
+ create mode 100644 docs/evidence/gate/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e/phase7-correction-3-98321a16df64005f9b55fcd9bc3b9b4d4a071e4e-push.txt
+ create mode 100644 docs/evidence/phase6-7-freeze.md
+ create mode 100644 docs/evidence/phase6-7-integration-handoff.md
+ create mode 100644 docs/evidence/phase6-admin-audit-corrections-environment.md
+ create mode 100644 docs/evidence/phase6-admin-audit-corrections-handoff.md
+ create mode 100644 docs/evidence/phase6-admin-audit-corrections-red-before-fix.md
+ create mode 100644 docs/evidence/phase6-admin-audit-corrections-release-gate.txt
+ create mode 100644 docs/evidence/phase6-admin-read-bound-environment.md
+ create mode 100644 docs/evidence/phase6-admin-read-bound-red-before-fix.md
+ create mode 100644 docs/evidence/phase6-admin-read-bound-release-gate.txt
+ create mode 100644 docs/evidence/phase6-freeze.md
+ create mode 100644 docs/evidence/phase7-correction-2-red-before-fix.md
+ create mode 100644 docs/evidence/phase7-correction-3-red-before-fix.md
+ create mode 100644 docs/evidence/phase7-correction-red-before-fix.md
+ create mode 100644 docs/evidence/phase8/ACCEPTANCE_LEDGER.md
+ create mode 100644 docs/evidence/phase8/DEFECTS.md
+ create mode 100644 docs/evidence/phase8/OWNER_DECISIONS.md
+ create mode 100644 docs/evidence/phase8/README.md
+ create mode 100644 docs/evidence/phase8/SHA256SUMS
+ create mode 100644 docs/evidence/phase8/accessibility/acf/admin-versions--desktop-1280.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/admin-versions--phone-375.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/admin-versions--tablet-768.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/admin-versions--zoom-200.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/completion-errors--desktop-1280.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/completion-errors--phone-375.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/completion-errors--tablet-768.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/completion-errors--zoom-200.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/conflict-panel--desktop-1280.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/conflict-panel--phone-375.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/conflict-panel--tablet-768.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/conflict-panel--zoom-200.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/editor-expanded-with-conditional-sections-and-definitions--desktop-1280.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/editor-expanded-with-conditional-sections-and-definitions--phone-375.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/editor-expanded-with-conditional-sections-and-definitions--tablet-768.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/editor-expanded-with-conditional-sections-and-definitions--zoom-200.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/findings.json
+ create mode 100644 docs/evidence/phase8/accessibility/acf/my-walks--desktop-1280.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/my-walks--phone-375.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/my-walks--tablet-768.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/my-walks--zoom-200.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/reports-live--desktop-1280.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/reports-live--phone-375.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/reports-live--tablet-768.png
+ create mode 100644 docs/evidence/phase8/accessibility/acf/reports-live--zoom-200.png
+ create mode 100644 docs/evidence/phase8/accessibility/lucee/findings.json
+ create mode 100644 docs/evidence/phase8/acf/acf-cfml-run1.tap
+ create mode 100644 docs/evidence/phase8/acf/acf-cfml-run2.tap
+ create mode 100644 docs/evidence/phase8/acf/acf-part1of6-timing.json
+ create mode 100644 docs/evidence/phase8/acf/cfcompile-after-1.txt
+ create mode 100644 docs/evidence/phase8/acf/cfcompile-before.txt
+ create mode 100644 docs/evidence/phase8/acf/diag-8500.json
+ create mode 100644 docs/evidence/phase8/acf/diag-8888.json
+ create mode 100644 docs/evidence/phase8/acf/diag-null-semantics.txt
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-1-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-2-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-3-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-4-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-5-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-6-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/part-7-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-1/progress.txt
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-1-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-10-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-11-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-12-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-2-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-3-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-4-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-5-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-6-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-7-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-8-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/part-9-of-12.json
+ create mode 100644 docs/evidence/phase8/acf/discovery-2/progress.txt
+ create mode 100644 docs/evidence/phase8/acf/run-3/acf-cfml-run3.tap
+ create mode 100644 docs/evidence/phase8/acf/run-3/acf-node-run3.tap
+ create mode 100644 docs/evidence/phase8/acf/run-3/admin-rerun-browser-admin.tap
+ create mode 100644 docs/evidence/phase8/acf/run-3/rerun2-four-suites.tap
+ create mode 100644 docs/evidence/phase8/acf/run-3/rerun3-a11y.tap
+ create mode 100644 docs/evidence/phase8/acf/visibility.json
+ create mode 100644 docs/evidence/phase8/baseline-133f02192a99970029847bc2da2d31b9d8da06e1/README.md
+ create mode 100644 docs/evidence/phase8/baseline-133f02192a99970029847bc2da2d31b9d8da06e1/SHA256SUMS
+ create mode 100644 docs/evidence/phase8/baseline-133f02192a99970029847bc2da2d31b9d8da06e1/environment.md
+ create mode 100755 docs/evidence/phase8/baseline-133f02192a99970029847bc2da2d31b9d8da06e1/gate.sh
+ create mode 100644 docs/evidence/phase8/baseline-133f02192a99970029847bc2da2d31b9d8da06e1/phase8-baseline-gate-transcript.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-01-green-targeted.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-01-probe-output.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-01-red.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-02-red-cfcompile-frozen-code.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-02-red-lint.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-02-red-runtime-observations.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-04-green-acf.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-04-red-acf.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-05-green-both-engines.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-05-green-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-05-red-acf.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-05-red-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-06-green-browser-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-06-green-cfml-lucee.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-06-red-browser-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-06-red-cfml-lucee.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-07-thread-barrier-diag.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-07-thread-barrier-green.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-07-thread-barrier-red.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-08-red-8500.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-08-red-8888.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-11-green-cfml-lucee.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-11-green-timing.json
+ create mode 100644 docs/evidence/phase8/defects/P8-11-red-cfml-lucee.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-11-red-timing.json
+ create mode 100644 docs/evidence/phase8/defects/P8-12-green-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-12-red-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-13-green-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-13-red-lucee.tap
+ create mode 100644 docs/evidence/phase8/defects/P8-14-green.txt
+ create mode 100644 docs/evidence/phase8/defects/P8-14-red.txt
+ create mode 100644 docs/evidence/phase8/defects/acf-targeted-green.txt
+ create mode 100644 docs/evidence/phase8/defects/p8-01-probe.mjs
+ create mode 100644 docs/evidence/phase8/environment.md
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/acf/npm-test.tap
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/acf/passing-names.txt
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/baseline-names.txt
+ create mode 100755 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/gate.sh
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/lucee/npm-test.tap
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/lucee/passing-names.txt
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/phase8-final-gate-attempt1-harness-bug.txt
+ create mode 100644 docs/evidence/phase8/gate-282a4ec27cd5d200ed190b134c0145632a970cee/phase8-final-gate-transcript.txt
+ create mode 100644 docs/evidence/phase8/operations/at-scale/database-operations-at-scale.tap
+ create mode 100644 docs/evidence/phase8/operations/at-scale/database-operations.json
+ create mode 100644 docs/evidence/phase8/operations/database-operations-run1.tap
+ create mode 100644 docs/evidence/phase8/operations/database-operations.json
+ create mode 100644 docs/evidence/phase8/operations/migrations-run1.tap
+ create mode 100644 docs/evidence/phase8/operations/migrations-run2.tap
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/database-operations/database-operations.json
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/database-operations/database-operations.tap
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/lucee-up.txt
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/ops-final-transcript.txt
+ create mode 100755 docs/evidence/phase8/operations/on-the-code-commit/ops-final.sh
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/production-profile-coldfusion/production-profile-acf.json
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/production-profile-coldfusion/production-profile-coldfusion.tap
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/production-profile-lucee/production-profile-lucee.json
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/production-profile-lucee/production-profile-lucee.tap
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/restart-coldfusion/restart-coldfusion.tap
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/restart-coldfusion/restart-during-autosave-acf-container.json
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/restart-lucee/restart-during-autosave-lucee.json
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/restart-lucee/restart-lucee.tap
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/upgrade-and-rollback/upgrade-and-rollback.json
+ create mode 100644 docs/evidence/phase8/operations/on-the-code-commit/upgrade-and-rollback/upgrade-and-rollback.tap
+ create mode 100644 docs/evidence/phase8/operations/production-profile/acf-run1.tap
+ create mode 100644 docs/evidence/phase8/operations/production-profile/lucee-run1.tap
+ create mode 100644 docs/evidence/phase8/operations/production-profile/lucee-run2.tap
+ create mode 100644 docs/evidence/phase8/operations/production-profile/lucee-run3.tap
+ create mode 100644 docs/evidence/phase8/operations/production-profile/lucee-run4.tap
+ create mode 100644 docs/evidence/phase8/operations/production-profile/production-profile-acf.json
+ create mode 100644 docs/evidence/phase8/operations/production-profile/production-profile-lucee.json
+ create mode 100644 docs/evidence/phase8/operations/restart/restart-acf.tap
+ create mode 100644 docs/evidence/phase8/operations/restart/restart-during-autosave-acf-container.json
+ create mode 100644 docs/evidence/phase8/operations/restart/restart-during-autosave-lucee.json
+ create mode 100644 docs/evidence/phase8/operations/restart/restart-lucee-run1.tap
+ create mode 100644 docs/evidence/phase8/operations/restart/restart-lucee-run2.tap
+ create mode 100644 docs/evidence/phase8/operations/restart/restart-lucee-run3.tap
+ create mode 100644 docs/evidence/phase8/operations/upgrade-and-rollback.json
+ create mode 100644 docs/evidence/phase8/operations/upgrade-run1.tap
+ create mode 100644 docs/evidence/phase8/operations/upgrade-run2.tap
+ create mode 100644 docs/evidence/phase8/performance/README.md
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-01.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-02.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-03.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-04.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-05.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-06.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-07.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-08.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-09.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-10.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-11.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-12.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-13.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-14.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/plans/statement-15.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/workload-ColdFusion-Server-2023-0-25-330977.json
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-any/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-drafts/workload-ColdFusion-Server-2023-0-25-330977.json
+ create mode 100644 docs/evidence/phase8/performance/acf-after-p814-drafts/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/acf-any/workload-ColdFusion-Server-2023-0-25-330977.json
+ create mode 100644 docs/evidence/phase8/performance/acf-any/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/acf-drafts/workload-ColdFusion-Server-2023-0-25-330977.json
+ create mode 100644 docs/evidence/phase8/performance/acf-drafts/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-01.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-02.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-03.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-04.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-05.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-06.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-07.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-08.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-09.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-10.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-11.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-12.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-13.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-14.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/plans/statement-15.sqlplan
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/workload-Lucee-6.2.8.20.json
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-any/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-drafts/workload-Lucee-6.2.8.20.json
+ create mode 100644 docs/evidence/phase8/performance/lucee-after-p814-drafts/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/lucee-run1/workload-Lucee-6.2.8.20.json
+ create mode 100644 docs/evidence/phase8/performance/lucee-run1/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/lucee-run2-default-mix-repeat/workload-Lucee-6.2.8.20.json
+ create mode 100644 docs/evidence/phase8/performance/lucee-run2-default-mix-repeat/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/lucee-run3-drafts/workload-Lucee-6.2.8.20.json
+ create mode 100644 docs/evidence/phase8/performance/lucee-run3-drafts/workload.txt
+ create mode 100644 docs/evidence/phase8/performance/seed-transcript.txt
+ create mode 100644 docs/evidence/phase8/performance/seed.json
+ create mode 100644 docs/evidence/phase8/performance/tables.mjs
+ create mode 100644 src/http/HttpRequestSource.cfc
+ create mode 100644 src/http/JsonBodyParser.cfc
+ create mode 100644 src/reports/DisclosureControl.cfc
+ create mode 100644 tests/cfml/specs/CanonicalJsonThroughputTest.cfc
+ create mode 100644 tests/cfml/specs/DiscardIdentityBarrierTest.cfc
+ create mode 100644 tests/cfml/specs/DraftReplacementConcurrencyTest.cfc
+ create mode 100644 tests/cfml/specs/EngineBooleanTest.cfc
+ create mode 100644 tests/cfml/specs/LinkUrlSchemeTest.cfc
+ create mode 100644 tests/cfml/specs/LongTextRetrievalTest.cfc
+ create mode 100644 tests/cfml/specs/NullTextTest.cfc
+ create mode 100644 tests/cfml/specs/ReportDisclosureTest.cfc
+ create mode 100644 tests/cfml/specs/ReportIsolationTest.cfc
+ create mode 100644 tests/cfml/specs/ReportReleaseMembershipTest.cfc
+ create mode 100644 tests/cfml/specs/ReportReleaseTest.cfc
+ create mode 100644 tests/cfml/specs/RequestBodyReadBoundTest.cfc
+ create mode 100644 tests/cfml/specs/RouterBodyOrderTest.cfc
+ create mode 100644 tests/cfml/specs/WalkListBoundTest.cfc
+ create mode 100644 tests/cfml/support/FakeRequestSource.cfc
+ create mode 100644 tests/cfml/support/RecordingDb.cfc
+ create mode 100644 tests/cfml/support/RecordingInputStream.cfc
+ create mode 100644 tests/cfml/support/RouterTestDoubles.cfc
+ create mode 100644 tests/cfml/support/SpyJsonBodyParser.cfc
+ create mode 100644 tests/cfml/support/StreamedRequestSource.cfc
+ create mode 100644 tests/cfml/support/TruncatingDb.cfc
+ create mode 100644 tests/fixtures/acf2023-reserved-function-names.txt
+ create mode 100644 tests/node/browser-a11y-sweep.test.mjs
+ create mode 100644 tests/node/browser-session-recovery.test.mjs
+ create mode 100644 tests/node/browser-xss-sweep.test.mjs
+ create mode 100644 tests/node/cfml-portability.test.mjs
+ create mode 100644 tests/node/null-text.test.mjs
+ create mode 100644 tests/node/security-surface.test.mjs
+ create mode 100644 tests/node/sqlserver-2016.test.mjs
+ create mode 100644 tests/ops/database-operations.test.mjs
+ create mode 100644 tests/ops/production-profile.test.mjs
+ create mode 100644 tests/ops/restart-during-autosave.test.mjs
+ create mode 100644 tests/ops/upgrade-and-rollback.test.mjs
+ create mode 100644 tests/perf/seed.mjs
+ create mode 100644 tests/perf/workload.mjs
+ create mode 100755 tools/runtime/acf-down.sh
+ create mode 100755 tools/runtime/acf-up.sh
+[exit 0]
+
+================================================================================
+== 2026-09-27T00:40:04Z  C. The six pre-edit checks, on the fast-forwarded branch
+================================================================================
+--- 1. branch, HEAD, tree, upstream, status
+$ git branch --show-current
+claude/icfwalk-phase-8-correction-cgsc7q
+[exit 0]
+HEAD   10f476ba9a69359f23a259be0e903afeed64b415
+TREE   94cbd1a3442d18626af4bec3d3ef9aaa48d078dc
+$ git rev-parse --abbrev-ref --symbolic-full-name @{u}
+fatal: no upstream configured for branch 'claude/icfwalk-phase-8-correction-cgsc7q'
+[exit 128]  (no upstream is configured; origin/claude/icfwalk-phase-8-correction-cgsc7q is 2a3f2ecb4f070401cba00518c0db8a2de823a29d, an ancestor of HEAD, so the eventual push is a fast-forward)
+origin/claude/icfwalk-phase-8-correction-cgsc7q is an ancestor of HEAD: yes
+$ git status --porcelain=v2 --branch --untracked-files=all
+# branch.oid 10f476ba9a69359f23a259be0e903afeed64b415
+# branch.head claude/icfwalk-phase-8-correction-cgsc7q
+[exit 0]
+--- 2. HEAD is exactly 10f476ba9a69359f23a259be0e903afeed64b415?
+yes
+$ git log -2 --format=%H %T %P %an %aI %s
+10f476ba9a69359f23a259be0e903afeed64b415 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc 282a4ec27cd5d200ed190b134c0145632a970cee Claude 2026-09-26T21:17:11+00:00 Phase 8 records: final gate, operations, ledger and handoff (records only)
+282a4ec27cd5d200ed190b134c0145632a970cee 6bb9a2f3ea72a4c0719de8eae2d95d0bff54670a bd87b091d86b0d4730ab762f3b6c017f0a9bab35 Claude 2026-09-26T20:39:47+00:00 Phase 8 code: P8-13 and P8-14, ColdFusion suite portability, performance and runbook completion
+[exit 0]
+--- 3. ancestry
+282a4ec27cd5d200ed190b134c0145632a970cee is an ancestor of HEAD: yes
+133f02192a99970029847bc2da2d31b9d8da06e1 is an ancestor of HEAD: yes
+68f9026d39ba0ff44d12d6398c5e933971dad2f4 is an ancestor of HEAD: yes
+tested Phase 8 code commit 282a4ec27cd5d200ed190b134c0145632a970cee tree 6bb9a2f3ea72a4c0719de8eae2d95d0bff54670a
+tree matches the recorded tested tree 6bb9a2f3ea72a4c0719de8eae2d95d0bff54670a
+--- 4. restricted diff 282a4ec27cd5d200ed190b134c0145632a970cee..HEAD over: src app tests scripts tools database config package.json package-lock.json manifest.json .env.example
+$ git diff --name-status 282a4ec27cd5d200ed190b134c0145632a970cee HEAD -- src app tests scripts tools database config package.json package-lock.json manifest.json .env.example
+<empty>
+$ git diff --stat 282a4ec27cd5d200ed190b134c0145632a970cee HEAD   (everything that differs is a record)
+ docs/evidence/phase8/performance/seed.json         |   22 +
+ docs/evidence/phase8/performance/tables.mjs        |   39 +
+ 199 files changed, 31482 insertions(+)
+--- 5. clean working tree
+status: <empty>
+--- 6. no material difference remains
+ALL PRE-EDIT CHECKS PASSED at 2026-09-27T00:40:04Z
+
+================================================================================
+== 2026-09-27T00:40:26Z  D. Addendum: the designated branch on the remote
+================================================================================
+Section C said the eventual push is a fast-forward of origin/claude/icfwalk-phase-8-correction-cgsc7q.
+That is corrected here: the remote-tracking ref exists only in this clone (the session harness wrote it);
+the remote has no branch of that name, so the first push creates it. No force is needed either way.
+$ git ls-remote origin 'refs/heads/claude/icfwalk-phase-8-correction*'
+[exit 0]  (no output: the branch does not exist on origin)
+$ git ls-remote origin refs/heads/claude/icfwalk-phase-8-hardening-handoff
+10f476ba9a69359f23a259be0e903afeed64b415	refs/heads/claude/icfwalk-phase-8-hardening-handoff
+[exit 0]
+$ git for-each-ref refs/remotes/origin/
+refs/remotes/origin/claude/icfwalk-phase-6-admin-publish 2a3f2ecb4f070401cba00518c0db8a2de823a29d
+refs/remotes/origin/claude/icfwalk-phase-8-correction-cgsc7q 2a3f2ecb4f070401cba00518c0db8a2de823a29d
+refs/remotes/origin/claude/icfwalk-phase-8-hardening-handoff 10f476ba9a69359f23a259be0e903afeed64b415
+[exit 0]

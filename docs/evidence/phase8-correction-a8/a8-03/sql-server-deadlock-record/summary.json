@@ -1,0 +1,1967 @@
+{
+  "graphs": 31,
+  "deadlocks": [
+    {
+      "file": "deadlock-01.xml",
+      "processes": [
+        {
+          "id": "processfa00a7468",
+          "role": "victim",
+          "spid": 61,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158351",
+          "waitMs": 2627,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf95e13088",
+          "role": "survivor",
+          "spid": 70,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158138",
+          "waitMs": 2357,
+          "logUsed": 62228,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158351",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158138",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-02.xml",
+      "processes": [
+        {
+          "id": "process100280c4e8",
+          "role": "victim",
+          "spid": 63,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1352,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00c5c28",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1324,
+          "logUsed": 52172,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-03.xml",
+      "processes": [
+        {
+          "id": "processf8367dc28",
+          "role": "victim",
+          "spid": 76,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1590,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00a7468",
+          "role": "survivor",
+          "spid": 76,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:128189",
+          "waitMs": 1590,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:128189",
+          "waitMs": 1562,
+          "logUsed": 6988,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        },
+        {
+          "id": "processf80059468",
+          "role": "survivor",
+          "spid": 74,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1582,
+          "logUsed": 9672,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "128189",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "survivor S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "128189",
+          "mode": "IX",
+          "owners": [
+            "survivor S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-04.xml",
+      "processes": [
+        {
+          "id": "processf8367d468",
+          "role": "victim",
+          "spid": 81,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158444",
+          "waitMs": 91,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": ""
+        },
+        {
+          "id": "processf80059088",
+          "role": "survivor",
+          "spid": 63,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158447",
+          "waitMs": 22,
+          "logUsed": 66944,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158444",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158447",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-05.xml",
+      "processes": [
+        {
+          "id": "processfa00a7468",
+          "role": "victim",
+          "spid": 74,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1329,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00c5c28",
+          "role": "survivor",
+          "spid": 63,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1239,
+          "logUsed": 9672,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-06.xml",
+      "processes": [
+        {
+          "id": "processfa00a6108",
+          "role": "victim",
+          "spid": 62,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1188,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1207,
+          "logUsed": 54044,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-07.xml",
+      "processes": [
+        {
+          "id": "processfa00c5c28",
+          "role": "victim",
+          "spid": 65,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158569",
+          "waitMs": 126,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 63,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158573",
+          "waitMs": 48,
+          "logUsed": 77224,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158569",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158573",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-08.xml",
+      "processes": [
+        {
+          "id": "process1001c7d088",
+          "role": "victim",
+          "spid": 90,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (8aa1a0fca776)",
+          "waitMs": 2536,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "processf95cd28c8",
+          "role": "survivor",
+          "spid": 91,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (5cca42dc2e7f)",
+          "waitMs": 2538,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-09.xml",
+      "processes": [
+        {
+          "id": "processf95cd28c8",
+          "role": "victim",
+          "spid": 90,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (8aa1a0fca776)",
+          "waitMs": 4826,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "process1001c7d088",
+          "role": "survivor",
+          "spid": 91,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (5cca42dc2e7f)",
+          "waitMs": 4826,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-10.xml",
+      "processes": [
+        {
+          "id": "process1001c7c108",
+          "role": "victim",
+          "spid": 53,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (9fdc6a900ff6)",
+          "waitMs": 1158,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "processfa00c5848",
+          "role": "survivor",
+          "spid": 54,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (dccf5683dcd8)",
+          "waitMs": 1161,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-11.xml",
+      "processes": [
+        {
+          "id": "processfa00c5848",
+          "role": "victim",
+          "spid": 53,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (9fdc6a900ff6)",
+          "waitMs": 4813,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "process1001c7c108",
+          "role": "survivor",
+          "spid": 54,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (dccf5683dcd8)",
+          "waitMs": 4814,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-12.xml",
+      "processes": [
+        {
+          "id": "processf917c7c28",
+          "role": "victim",
+          "spid": 53,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (c4dedcc240a2)",
+          "waitMs": 780,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "processf8367d848",
+          "role": "survivor",
+          "spid": 54,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (d5a29473d3d0)",
+          "waitMs": 781,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-13.xml",
+      "processes": [
+        {
+          "id": "processf917c7c28",
+          "role": "victim",
+          "spid": 53,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (c4dedcc240a2)",
+          "waitMs": 4719,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "processf8367d848",
+          "role": "survivor",
+          "spid": 54,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (d5a29473d3d0)",
+          "waitMs": 4721,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-14.xml",
+      "processes": [
+        {
+          "id": "processf8367d848",
+          "role": "victim",
+          "spid": 54,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (c4dedcc240a2)",
+          "waitMs": 2460,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "processf917c7c28",
+          "role": "survivor",
+          "spid": 53,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (d5a29473d3d0)",
+          "waitMs": 2462,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-15.xml",
+      "processes": [
+        {
+          "id": "processf8367d848",
+          "role": "victim",
+          "spid": 53,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (c4dedcc240a2)",
+          "waitMs": 1200,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        },
+        {
+          "id": "processf917c7c28",
+          "role": "survivor",
+          "spid": 54,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 5:72057594045857792 (d5a29473d3d0)",
+          "waitMs": 1201,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-16.xml",
+      "processes": [
+        {
+          "id": "processfa00a6108",
+          "role": "victim",
+          "spid": 57,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (a455cc3c0f92)",
+          "waitMs": 4495,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        },
+        {
+          "id": "processfa00c5848",
+          "role": "survivor",
+          "spid": 58,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (e369307cdee1)",
+          "waitMs": 4497,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-17.xml",
+      "processes": [
+        {
+          "id": "processfa00a6108",
+          "role": "victim",
+          "spid": 57,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (a455cc3c0f92)",
+          "waitMs": 4792,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        },
+        {
+          "id": "processfa00c5848",
+          "role": "survivor",
+          "spid": 58,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (e369307cdee1)",
+          "waitMs": 4793,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-18.xml",
+      "processes": [
+        {
+          "id": "processfa00c5848",
+          "role": "victim",
+          "spid": 57,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (a455cc3c0f92)",
+          "waitMs": 2436,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        },
+        {
+          "id": "processfa00a6108",
+          "role": "survivor",
+          "spid": 58,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (e369307cdee1)",
+          "waitMs": 2438,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-19.xml",
+      "processes": [
+        {
+          "id": "processfa00a6108",
+          "role": "victim",
+          "spid": 57,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (a455cc3c0f92)",
+          "waitMs": 1176,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        },
+        {
+          "id": "processfa00c5848",
+          "role": "survivor",
+          "spid": 58,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "U",
+          "waitResource": "KEY: 8:72057594045857792 (e369307cdee1)",
+          "waitMs": 1177,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": "SELECT user_id FROM [icf].[app_user] WITH (UPDLOCK, ROWLOCK) WHERE user_id = @P0 select SCOPE_IDENTITY() AS GENERATED_KEYS"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "survivor U"
+          ],
+          "waiters": [
+            "victim U"
+          ]
+        },
+        {
+          "kind": "keylock",
+          "object": "icfwalk_acf_dev.icf.app_user",
+          "index": "PK_app_user",
+          "page": null,
+          "mode": "U",
+          "owners": [
+            "victim U"
+          ],
+          "waiters": [
+            "survivor U"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-20.xml",
+      "processes": [
+        {
+          "id": "process1001c7c4e8",
+          "role": "victim",
+          "spid": 77,
+          "ecid": 1,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:161719",
+          "waitMs": 2584,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "process1065e288c8",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:161833",
+          "waitMs": 2361,
+          "logUsed": 71628,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "161719",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "161833",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-21.xml",
+      "processes": [
+        {
+          "id": "processfa00c48c8",
+          "role": "victim",
+          "spid": 70,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:164720",
+          "waitMs": 2544,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": ""
+        },
+        {
+          "id": "processf95e13088",
+          "role": "survivor",
+          "spid": 66,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:164722",
+          "waitMs": 2452,
+          "logUsed": 75800,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "164720",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "164722",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-22.xml",
+      "processes": [
+        {
+          "id": "processf917c6108",
+          "role": "victim",
+          "spid": 53,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:165002",
+          "waitMs": 4034,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf95cd3c28",
+          "role": "survivor",
+          "spid": 53,
+          "ecid": 2,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:164942",
+          "waitMs": 4164,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "process1065e28108",
+          "role": "survivor",
+          "spid": 58,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:164942",
+          "waitMs": 4125,
+          "logUsed": 42860,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        },
+        {
+          "id": "processf8367d848",
+          "role": "survivor",
+          "spid": 77,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:165007",
+          "waitMs": 3947,
+          "logUsed": 53304,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        },
+        {
+          "id": "processfa00c48c8",
+          "role": "survivor",
+          "spid": 72,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:165007",
+          "waitMs": 4007,
+          "logUsed": 72464,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "165002",
+          "mode": "IX",
+          "owners": [
+            "survivor IX",
+            "survivor IX",
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "164942",
+          "mode": "IX",
+          "owners": [
+            "survivor IX",
+            "survivor IX"
+          ],
+          "waiters": [
+            "survivor S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "164942",
+          "mode": "IX",
+          "owners": [
+            "survivor S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "165007",
+          "mode": "S",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "165007",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-23.xml",
+      "processes": [
+        {
+          "id": "processf95e128c8",
+          "role": "victim",
+          "spid": 65,
+          "ecid": 1,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:165556",
+          "waitMs": 3780,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 60,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:165584",
+          "waitMs": 3701,
+          "logUsed": 59588,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "165556",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "165584",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-24.xml",
+      "processes": [
+        {
+          "id": "processf87e4b848",
+          "role": "victim",
+          "spid": 54,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:166597",
+          "waitMs": 2402,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00c48c8",
+          "role": "survivor",
+          "spid": 69,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:166499",
+          "waitMs": 2256,
+          "logUsed": 9672,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "166597",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "166499",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-25.xml",
+      "processes": [
+        {
+          "id": "processebeab7088",
+          "role": "victim",
+          "spid": 74,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169269",
+          "waitMs": 1061,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processe87dfd468",
+          "role": "survivor",
+          "spid": 84,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169394",
+          "waitMs": 823,
+          "logUsed": 55980,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169269",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169394",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-26.xml",
+      "processes": [
+        {
+          "id": "processf0b6868c8",
+          "role": "victim",
+          "spid": 87,
+          "ecid": 2,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169269",
+          "waitMs": 4436,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processe87dfb088",
+          "role": "survivor",
+          "spid": 70,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169394",
+          "waitMs": 4433,
+          "logUsed": 49860,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169269",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169394",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-27.xml",
+      "processes": [
+        {
+          "id": "processf29e18108",
+          "role": "victim",
+          "spid": 86,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169489",
+          "waitMs": 411,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf0b688108",
+          "role": "survivor",
+          "spid": 79,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169490",
+          "waitMs": 311,
+          "logUsed": 65544,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169489",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169490",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-28.xml",
+      "processes": [
+        {
+          "id": "processebeabbc28",
+          "role": "victim",
+          "spid": 87,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169269",
+          "waitMs": 415,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processe87dfd468",
+          "role": "survivor",
+          "spid": 73,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169394",
+          "waitMs": 248,
+          "logUsed": 66064,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169269",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169394",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-29.xml",
+      "processes": [
+        {
+          "id": "processebeab7468",
+          "role": "victim",
+          "spid": 84,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169268",
+          "waitMs": 138,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processebeab6108",
+          "role": "survivor",
+          "spid": 71,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169393",
+          "waitMs": 71,
+          "logUsed": 60368,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169268",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169393",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-30.xml",
+      "processes": [
+        {
+          "id": "processebeab7088",
+          "role": "victim",
+          "spid": 69,
+          "ecid": 2,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169268",
+          "waitMs": 320,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processe9042a108",
+          "role": "survivor",
+          "spid": 79,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169393",
+          "waitMs": 310,
+          "logUsed": 54664,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169268",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169393",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-31.xml",
+      "processes": [
+        {
+          "id": "processebeabb088",
+          "role": "victim",
+          "spid": 85,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:169269",
+          "waitMs": 2932,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processe9042a108",
+          "role": "survivor",
+          "spid": 79,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:169394",
+          "waitMs": 2515,
+          "logUsed": 55480,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169269",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "169394",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    }
+  ]
+}

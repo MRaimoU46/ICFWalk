@@ -1,0 +1,48 @@
+{
+  "finding": "A8-01",
+  "engine": "acf",
+  "startedAt": "2026-09-27T11:57:29.394Z",
+  "database": {
+    "name": "icfwalk_a801readymujrkmgh",
+    "databaseId": 8,
+    "createDate": "2026-09-27T11:57:29.483",
+    "collation": "SQL_Latin1_General_CP1_CI_AS",
+    "compatibilityLevel": 160,
+    "state": "ONLINE",
+    "serverVersion": "16.0.4295.3",
+    "serverEdition": "Developer Edition (64-bit)",
+    "tables": 0,
+    "icfSchemas": 0,
+    "instrumentTable": 0
+  },
+  "runtimeLogin": "<generated, db_datareader + db_datawriter only>",
+  "steps": {
+    "beforeMigrations": {
+      "secondsToAnswer": 0.055,
+      "status": 200,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "missing"
+        },
+        "correlationId": "fe172b7e-8bed-4619-bd66-901c7ee4e03b",
+        "status": "ok"
+      },
+      "applicationSessionsOnTheDatabase": 0
+    }
+  },
+  "normalEnvironmentBefore": {
+    "url": "http://127.0.0.1:8888",
+    "status": 0
+  },
+  "directConnection": {
+    "asRuntimeLogin": true,
+    "databaseName": "icfwalk_a801readymujrkmgh",
+    "db_datareader": true,
+    "db_datawriter": true,
+    "db_owner": false
+  },
+  "finishedAt": "2026-09-27T11:58:25.522Z"
+}

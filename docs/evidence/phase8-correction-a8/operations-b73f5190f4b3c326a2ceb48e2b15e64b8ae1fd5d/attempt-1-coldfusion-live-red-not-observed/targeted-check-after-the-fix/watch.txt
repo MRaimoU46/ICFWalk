@@ -1,0 +1,7 @@
+11:50:28 container icfwalk-acf-ready is running
+11:50:28 health: curl: (28) Operation timed out after 10000 milliseconds with 0 bytes received
+404 in 10.000747s
+11:50:48 health: curl: (7) Failed to connect to 127.0.0.1 port 8500 after 0 ms: Couldn't connect to server
+000 in 0.000157s
+11:50:58 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002126s

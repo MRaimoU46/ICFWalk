@@ -1,0 +1,6 @@
+1 deadlock graph(s) from 2026-09-27T01:50:17.000Z to 2026-09-27T01:52:41.000Z
+--- 01 at 2026-09-27T01:52:05.4530000 victim processf87e4b848
+  VICTIM   spid 54 iso read committed (2) lockMode S waitresource PAGE: 7:1:166597  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 69 iso read committed (2) lockMode IX waitresource PAGE: 7:1:166499  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq

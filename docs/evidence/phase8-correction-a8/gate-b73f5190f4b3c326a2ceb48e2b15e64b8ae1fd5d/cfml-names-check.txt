@@ -1,0 +1,9 @@
+$ tools/cfml-names.sh b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d lucee/npm-test.tap acf/npm-test.tap   (after the gate, in the repository at b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d; reads git objects and the TAP only)
+at 2026-09-27T12:01:49Z, HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d, status: 0 entries
+expected at b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d: 542 (unique 542); of the tested Phase 8 code 282a4ec27cd5d200ed190b134c0145632a970cee: 534
+added by this correction: HealthReadinessTest.testAReachableDatabaseWithoutTheSchemaIsNotReady HealthReadinessTest.testAnUnreachableDatabaseIsNotReady HealthReadinessTest.testProductionAnswersTheSameWithoutTheSchemaAndNamesNothing HealthReadinessTest.testTheDatabaseWithItsSchemaAndWholeLongTextIsReady HealthReadinessTest.testTruncatedLongTextIsNotReadyEvenWithTheSchema HealthReadinessTest.testWithoutTheSchemaAndWithTruncatedLongTextItIsNotReady ReportDeadlockVictimTest.testAReportChosenAsADeadlockVictimIsComputedAgain ReportDeadlockVictimTest.testAReportChosenAsTheVictimOnEveryAttemptStillFails 
+of the Phase 8 code, not expected at b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d: 0
+lucee/npm-test.tap (Lucee 6.2.8.20): result lines 542, passed 542; expected but not passed: <none>; passed but not expected: <none>; passed twice: <none>
+acf/npm-test.tap (ColdFusion Server 2023,0,25,330977): result lines 542, passed 542; expected but not passed: <none>; passed but not expected: <none>; passed twice: <none>
+EVERY CFML TEST FUNCTION PASSED BY NAME on every engine given
+[exit 0]

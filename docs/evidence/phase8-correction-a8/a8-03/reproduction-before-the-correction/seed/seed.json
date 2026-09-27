@@ -1,0 +1,22 @@
+{
+  "database": "icfwalk_perf",
+  "baseUrl": "http://127.0.0.1:8889",
+  "shape": {
+    "schools": 50,
+    "walkersPerSchool": 6,
+    "templatesPerGroup": 4,
+    "requestedWalks": 30000
+  },
+  "counts": {
+    "walks": 30000,
+    "completed": 24000,
+    "drafts": 4500,
+    "voided": 1500,
+    "dimensionValues": 219005,
+    "responses": 2190000,
+    "selections": 0,
+    "users": 303,
+    "orgUnits": 51
+  },
+  "seconds": 152
+}

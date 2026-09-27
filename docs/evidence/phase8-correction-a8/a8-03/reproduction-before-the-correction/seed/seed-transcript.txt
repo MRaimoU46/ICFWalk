@@ -1,0 +1,17 @@
+01:05:10 seeding icfwalk_perf at http://127.0.0.1:8889: 50 schools, 30000 walks
+01:05:21 303 users with roles
+01:05:21 published 2026-09-17 aligned prototype
+01:05:24 12 template walks created and completed through the API
+01:05:31 copied 2500/29988
+01:05:39 copied 5000/29988
+01:05:48 copied 7500/29988
+01:05:57 copied 10000/29988
+01:06:07 copied 12500/29988
+01:06:17 copied 15000/29988
+01:06:29 copied 17500/29988
+01:06:41 copied 20000/29988
+01:06:54 copied 22500/29988
+01:07:07 copied 25000/29988
+01:07:20 copied 27500/29988
+01:07:35 copied 29988/29988
+01:07:43 {"database":"icfwalk_perf","baseUrl":"http://127.0.0.1:8889","shape":{"schools":50,"walkersPerSchool":6,"templatesPerGroup":4,"requestedWalks":30000},"counts":{"walks":30000,"completed":24000,"drafts":4500,"voided":1500,"dimensionValues":219005,"responses":2190000,"selections":0,"users":303,"orgUnits":51},"seconds":152}

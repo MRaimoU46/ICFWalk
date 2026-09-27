@@ -1,0 +1,24 @@
+# A8-01 green: HealthReadinessTest and LongTextRetrievalTest against the corrected HealthController (Lucee, restarted after the edit)
+# at 2026-09-27T00:48:47.516Z against http://127.0.0.1:8888
+# HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc branch claude/icfwalk-phase-8-correction-cgsc7q
+# git status --porcelain=v1 --untracked-files=all:
+#    M src/controllers/HealthController.cfc
+#   ?? tests/cfml/specs/HealthReadinessTest.cfc
+#   ?? tests/cfml/support/SchemaAbsentDb.cfc
+# sha256 8fe812c629569def4085450d8c598e6537b7a87acb18fb7a2229d04c0f754beb  src/controllers/HealthController.cfc  (at HEAD: 63976171917ca6c85c5af9303135432a429ae4d3182de2f16d106af7eb3f1117)
+# sha256 f5b113a54d1010d8957bdea4356b110d509429e569e81a13738a0fa13065c020  tests/cfml/specs/HealthReadinessTest.cfc  (at HEAD: <absent at HEAD>)
+# sha256 927ec6be8c77b68d2dcfb59eb99f4f062e2a50ad0be45df90e2de1b6a3205484  tests/cfml/support/SchemaAbsentDb.cfc  (at HEAD: <absent at HEAD>)
+# sha256 55574a58fb38e9daea9fc4091602fc9268af97674e8a5a7e3ce7aba67d687c0d  tests/cfml/specs/LongTextRetrievalTest.cfc  (at HEAD: 55574a58fb38e9daea9fc4091602fc9268af97674e8a5a7e3ce7aba67d687c0d, unchanged)
+# health 200 {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"c9b04332-48ff-4d89-af47-db1b9a8432d1","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":6,"skipped":0} wall=0.2s
+HealthReadinessTest.testAnUnreachableDatabaseIsNotReady: passed
+HealthReadinessTest.testAReachableDatabaseWithoutTheSchemaIsNotReady: passed
+HealthReadinessTest.testProductionAnswersTheSameWithoutTheSchemaAndNamesNothing: passed
+HealthReadinessTest.testTheDatabaseWithItsSchemaAndWholeLongTextIsReady: passed
+HealthReadinessTest.testTruncatedLongTextIsNotReadyEvenWithTheSchema: passed
+HealthReadinessTest.testWithoutTheSchemaAndWithTruncatedLongTextItIsNotReady: passed
+engine=Lucee 6.2.8.20 http=200 ok=true {"failed":0,"passed":3,"skipped":0} wall=0.1s
+LongTextRetrievalTest.testTheDatasourceReturnsLongTextWhole: passed
+LongTextRetrievalTest.testTheHealthCheckRefusesADatasourceThatTruncatesLongText: passed
+LongTextRetrievalTest.testTheHealthCheckReportsWholeLongText: passed
+# result: ALL PASSED

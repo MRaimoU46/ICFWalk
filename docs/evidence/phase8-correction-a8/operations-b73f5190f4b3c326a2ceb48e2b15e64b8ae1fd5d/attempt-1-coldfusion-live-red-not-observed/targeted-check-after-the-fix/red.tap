@@ -1,0 +1,34 @@
+TAP version 13
+# (node:11160) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Started icfwalk-acf-ready from adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e (sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e)
+# Administrator datasource 'a801readymujrbe3s_ds' (Microsoft JDBC driver 12.10.2.jre11, Other): DSN_VERIFIED=YES 
+# Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"missing"},"correlationId":"834fa567-30b3-4e37-9f36-4f23656d28b5","status":"ok"}
+# Subtest: the readiness probe on a reachable database without the ICFWalk schema: 503 until it is migrated, 200 after (A8-01)
+not ok 1 - the readiness probe on a reachable database without the ICFWalk schema: 503 until it is migrated, 200 after (A8-01)
+  ---
+  duration_ms: 55889.986449
+  type: 'test'
+  location: '/tmp/icfwalk-red-b1gGSc/tests/ops/readiness-schema-missing.test.mjs:309:1'
+  failureType: 'testCodeFailure'
+  error: 'health answered 200 before the ICFWalk schema exists: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"missing"},"correlationId":"0d481d8f-cb7b-45ad-866e-146e3188c091","status":"ok"}'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 200
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/icfwalk-red-b1gGSc/tests/ops/readiness-schema-missing.test.mjs:316:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 56603.686584

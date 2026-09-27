@@ -1,0 +1,98 @@
+[
+  {
+    "file": "deadlock-01.xml",
+    "process": "processfa00a7468",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-01.xml",
+    "process": "processf95e13088",
+    "role": "survivor",
+    "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+  },
+  {
+    "file": "deadlock-02.xml",
+    "process": "process100280c4e8",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-02.xml",
+    "process": "processfa00c5c28",
+    "role": "survivor",
+    "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+  },
+  {
+    "file": "deadlock-03.xml",
+    "process": "processf8367dc28",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-03.xml",
+    "process": "processfa00a7468",
+    "role": "survivor",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-03.xml",
+    "process": "processf8367d468",
+    "role": "survivor",
+    "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+  },
+  {
+    "file": "deadlock-03.xml",
+    "process": "processf80059468",
+    "role": "survivor",
+    "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+  },
+  {
+    "file": "deadlock-04.xml",
+    "process": "processf8367d468",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-04.xml",
+    "process": "processf80059088",
+    "role": "survivor",
+    "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+  },
+  {
+    "file": "deadlock-05.xml",
+    "process": "processfa00a7468",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-05.xml",
+    "process": "processfa00c5c28",
+    "role": "survivor",
+    "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+  },
+  {
+    "file": "deadlock-06.xml",
+    "process": "processfa00a6108",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-06.xml",
+    "process": "processf8367d468",
+    "role": "survivor",
+    "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+  },
+  {
+    "file": "deadlock-07.xml",
+    "process": "processfa00c5c28",
+    "role": "victim",
+    "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_<population> p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 , @P31 , @P32 , @P33"
+  },
+  {
+    "file": "deadlock-07.xml",
+    "process": "processf8367d468",
+    "role": "survivor",
+    "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+  }
+]

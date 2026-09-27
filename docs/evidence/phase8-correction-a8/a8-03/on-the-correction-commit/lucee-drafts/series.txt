@@ -1,0 +1,8 @@
+# A8-03 series: 5 run(s), engine=lucee edits=drafts levels=10,25, HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640, clean, 2026-09-27T01:40:45Z
+run 1: exit 0, 2026-09-27T01:40:45.000Z .. 2026-09-27T01:43:12.000Z | expected409=0 unexpected=0 {} | L10: 2132 req, live 14 p50 4243 ms, csv 14; L25: 2807 req, live 15 p50 9005 ms, csv 15 | deadlock graphs: (node:15566) | report.deadlock.victim logged: 1 | request.failed logged: 0
+run 2: exit 0, 2026-09-27T01:43:12.000Z .. 2026-09-27T01:45:36.000Z | expected409=0 unexpected=0 {} | L10: 2626 req, live 14 p50 4439 ms, csv 14; L25: 2878 req, live 16 p50 10399 ms, csv 16 | deadlock graphs: (node:15798) | report.deadlock.victim logged: 0 | request.failed logged: 0
+run 3: exit 0, 2026-09-27T01:45:37.000Z .. 2026-09-27T01:47:56.000Z | expected409=0 unexpected=0 {} | L10: 2759 req, live 18 p50 3349 ms, csv 18; L25: 2759 req, live 19 p50 7776 ms, csv 19 | deadlock graphs: (node:16667) | report.deadlock.victim logged: 0 | request.failed logged: 0
+run 4: exit 0, 2026-09-27T01:47:57.000Z .. 2026-09-27T01:50:16.000Z | expected409=0 unexpected=0 {} | L10: 2788 req, live 16 p50 3584 ms, csv 16; L25: 2999 req, live 15 p50 10344 ms, csv 15 | deadlock graphs: (node:17511) | report.deadlock.victim logged: 3 | request.failed logged: 0
+run 5: exit 0, 2026-09-27T01:50:17.000Z .. 2026-09-27T01:52:41.000Z | expected409=0 unexpected=0 {} | L10: 2474 req, live 15 p50 3811 ms, csv 15; L25: 2817 req, live 15 p50 11359 ms, csv 15 | deadlock graphs: (node:17671) | report.deadlock.victim logged: 1 | request.failed logged: 0
+# series finished 2026-09-27T01:52:42Z; HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d; status: 0 changes
+series exit=0

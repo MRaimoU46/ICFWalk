@@ -1,0 +1,92 @@
+{
+  "startedAt": "2026-09-27T11:59:47.852Z",
+  "database": "icfwalk_p8upgmujrnlak",
+  "phase6": "158debca5da2c4f3a07f602689cd08af9db9bd6e",
+  "frozen": "68f9026d39ba0ff44d12d6398c5e933971dad2f4",
+  "port": 8891,
+  "steps": {
+    "phase6Start": {
+      "secondsToAnswer": 5.149,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "schema": "present"
+        },
+        "correlationId": "7fd5354f-c705-4a72-858d-e9fc48755a08",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "phase6Data": {
+      "tables": 24,
+      "walks": "5:-1741862571",
+      "responses": "365:-1867841314",
+      "mutations": "15:-1414114430",
+      "revisions": "4:-1925340886",
+      "audit": "29:552186783"
+    },
+    "upgrade": {
+      "applied": "007_report_release.sql",
+      "tablesAdded": [
+        "report_release",
+        "report_release_block",
+        "report_release_cell",
+        "report_release_walk"
+      ],
+      "existingTablesUnchanged": 24
+    },
+    "releaseStart": {
+      "secondsToAnswer": 5.54,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "a69b1be9-f4e1-4593-98fe-caeaa03fbb89",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "release": {
+      "listed": 4,
+      "reportWalks": 3,
+      "health": {
+        "database": "ok",
+        "longText": "ok",
+        "schema": "present"
+      },
+      "releaseCreated": 201,
+      "releaseId": "DC6518DE-22F6-4379-90F4-36EB72C88C90"
+    },
+    "rollbackStart": {
+      "secondsToAnswer": 6.073,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "schema": "present"
+        },
+        "correlationId": "5191daff-a60d-4f5c-91d1-6d7db8941194",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "rollback": {
+      "listed": 5,
+      "reportWalks": 4,
+      "health": {
+        "database": "ok",
+        "schema": "present"
+      },
+      "releaseRead": 200
+    }
+  },
+  "finishedAt": "2026-09-27T12:00:22.610Z",
+  "workDirectory": "/tmp/icfwalk-upgrade-Qc1CMu"
+}

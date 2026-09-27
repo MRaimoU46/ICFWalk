@@ -1,0 +1,1 @@
+0 deadlock graph(s) on icf.walk_response with a victim transaction started from 2026-09-27T01:36:00Z to 2026-09-27T01:38:50Z, in SQL Server's record of the session (../../sql-server-deadlock-record/)

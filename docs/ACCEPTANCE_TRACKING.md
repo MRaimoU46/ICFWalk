@@ -435,3 +435,35 @@ What changed in the status of the rows above:
   2016 (`sqlserver-2016.test.mjs`). SQL Server 2016 itself remains NOT TESTABLE HERE (checklist 2).
 - **WALK-04, RPT-01 to RPT-07:** P8-11 and P8-14 changed how fast, not what (the shared vectors and
   checksums prove the bytes); performance acceptance is not complete without criteria (D8).
+
+## Phase 8 correction A8 (submitted for independent re-audit)
+
+The independent audit of Phase 8 answered NOT READY TO FREEZE PHASE 8: A8-01 and A8-02 (MEDIUM) block
+acceptance, A8-03 (LOW) needed evidence follow-up; P8-01 to P8-14 were otherwise verified within their
+stated scope. The correction code commit `b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d` re-ran every
+acceptance ID on **both engines** from a clean tree on brand-new SQL Server 2022 databases (Lucee
+6.2.8.20: Node/HTTP/Playwright 299/299 and CFML 542/542; Adobe ColdFusion 2023 Update 25: 299/299 and
+542/542; 0 failed, skipped, todo or cancelled on either), and the operations were re-run on it. Detail:
+`docs/evidence/phase8-correction-a8/ACCEPTANCE.md`; start with that directory's `README.md`. Phase 8
+is submitted for independent re-audit and is not accepted or frozen. The Phase 8 section above and
+`docs/evidence/phase8/` keep the status recorded when Phase 8 was delivered.
+
+What changed in the status of the rows above:
+
+- **SEC-07:** PASS here on both engines, with the health endpoint as a fail-closed readiness probe
+  (A8-01): 200 only when the database answers, the schema is present and long text is whole, 503
+  otherwise. `HealthReadinessTest` covers the states, and `tests/ops/readiness-schema-missing.test.mjs`
+  proves it live in the production profile on both engines against a brand-new database without the
+  schema (503 `schema: missing`, then 200 after the migrations and a restart). IIS or Apache with the
+  connector remain NOT TESTABLE HERE.
+- **SEC-05:** PASS. The one new log event, `report.deadlock.victim`, holds the version id and the
+  attempt number only; the workload's new failure capture keeps no cookie, token, secret, note, name or
+  email.
+- **RPT-01 to RPT-07:** PASS, unchanged in what a report returns. A live report or CSV that SQL Server
+  ends as a deadlock victim is computed again within its three attempts instead of failing with 500
+  (A8-03, `ReportDeadlockVictimTest`); one that is the victim on all three still fails. The Phase 8
+  gap "now rare (D14)" rests on performance runs that counted a few hundred walks: over the full
+  synthetic population, while completed walks were edited, most live and CSV district reports answered
+  the expected 409 (by design; D14 open).
+- **Still open:** performance acceptance (D8), the owner decisions D1 to D12 and D14, and every NOT
+  TESTABLE HERE item of the Phase 8 section. This is not production certification.

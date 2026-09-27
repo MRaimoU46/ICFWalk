@@ -1,0 +1,19 @@
+TAP version 13
+# (node:23378) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+ok 1 - the production profile: fail-closed start, gateway-only identity, session and CSRF rules, safe errors, a database outage, and clean logs, on a least-privilege login
+  ---
+  duration_ms: 31388.534433
+  type: 'test'
+  ...
+# engine Lucee; session cookies: [{"name":"cfid","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"cftoken","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"cfid","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"cftoken","attributes":["Path=/","Secure","HttpOnly","SameSite=Lax"]},{"name":"JSESSIONID","attributes":["Path=/","HttpOnly","SameSite=Lax"]}]; without session authority: ["JSESSIONID"]
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 32341.748421

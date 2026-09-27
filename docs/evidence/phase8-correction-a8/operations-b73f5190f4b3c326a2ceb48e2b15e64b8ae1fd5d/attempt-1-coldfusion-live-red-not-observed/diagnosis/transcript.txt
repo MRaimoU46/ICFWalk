@@ -1,0 +1,16 @@
+== 2026-09-27T11:46:04Z  HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d, status entries 0
+63976171917ca6c85c5af9303135432a429ae4d3182de2f16d106af7eb3f1117  src/controllers/HealthController.cfc
+a32258e31cb072ddf725e033aa708607e7f68aa6598461d6ba2876d6c4987aa5  tools/runtime/acf-up.sh
+8f44d6708f523ff28fd82c99ad32dc8955ff8a0dae7c59439414e9dbe809cb1c  tests/ops/readiness-schema-missing.test.mjs
+containers before: icfwalk-mssql:Up About an hour 
+$ ICFWALK_READINESS_ENGINE=acf ICFWALK_ACF_IMAGE=<pinned> ICFWALK_REQUIRE_APP=1 ICFWALK_EVIDENCE_DIR=<out> node --test tests/ops/readiness-schema-missing.test.mjs   (in that tree)
+# Started icfwalk-acf-ready from adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e (sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e)
+# Administrator datasource 'a801readymujr5y42_ds' (Microsoft JDBC driver 12.10.2.jre11, Other): DSN_VERIFIED=YES 
+not ok 1 - the readiness probe on a reachable database without the ICFWalk schema: 503 until it is migrated, 200 after (A8-01)
+  error: 'Command failed: /tmp/icfwalk-red-VF6sAD/tools/runtime/acf-up.sh'
+# tests 1
+# pass 0
+# fail 1
+[exit 1]
+LIVE RED NOT OBSERVED
+containers after: icfwalk-mssql:Up About an hour 

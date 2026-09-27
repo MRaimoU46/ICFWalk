@@ -4441,3 +4441,78 @@ JSESSIONID lacks `Secure` behind a TLS-terminating gateway and is proven to carr
 
 This section is the current state for Phase 8. The sections above keep the status recorded when each
 was delivered.
+
+## Phase 8 correction A8 (submitted for independent re-audit)
+
+The independent audit of Phase 8 answered **NOT READY TO FREEZE PHASE 8**. It verified P8-01 to P8-14
+within their stated scope and found no new HIGH-severity defect; two MEDIUM findings blocked acceptance
+(A8-01, A8-02) and one LOW finding needed evidence follow-up (A8-03). This correction answers the
+three. Phase 8 is **submitted for independent re-audit**; it is not accepted, frozen,
+production-ready or production-certified. Evidence: `docs/evidence/phase8-correction-a8/` (start with
+its `README.md`).
+
+- **Branch and start.** `claude/icfwalk-phase-8-correction-cgsc7q`. It pointed at an ancestor of the
+  audited Phase 8 handoff tip, which was a stop condition; with the owner's approval it was
+  fast-forwarded to the tip `10f476ba9a69359f23a259be0e903afeed64b415`, and every pre-edit check then
+  passed (the tested Phase 8 code, the freeze tip and the frozen code its ancestors; the restricted
+  diff from `282a4ec` empty; a clean tree).
+- **Correction code commit:** `b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d` (tree
+  `d6458eeb5ae98e705a57a0dd6062de2a91443640`), whose only parent is the audited tip. The commit that
+  adds this section changes records only, and the delivered archive proves it (A8-02).
+- **A8-01 (MEDIUM), corrected.** `/api/health` answered 200 `ok` when the database answered without
+  the ICFWalk schema, although it is the load balancer's readiness probe. It now answers 200 only with
+  `database: ok`, `schema: present` and `longText: ok`, and 503 `degraded` otherwise; the response
+  shape, the correlation id, production information-hiding and the long-text probe are unchanged.
+  Red before green (`HealthReadinessTest`, "Expected [503] but got [200]"), and proven live on both
+  engines against a brand-new database before and after its migrations
+  (`tests/ops/readiness-schema-missing.test.mjs`), which fails on the audited tip's code. The runbook,
+  endpoint and setup documents state the fail-closed contract.
+- **A8-02 (MEDIUM), closed by the offline delivery.** The code commit was gated; the evidence is in a
+  later records-only commit; the archive is built from that commit and carries a generated
+  `DELIVERY-IDENTITY.md` (both commits and trees, the empty restricted diff, the full stat and
+  name-status, the clean status, the archive command, name and ZIP comment) and a SHA-256 manifest of
+  its payload, with its own SHA-256 in a sidecar. `tools/verify-delivery.sh` checks all of it offline
+  and rebuilds the source tree from the extracted files.
+- **A8-03 (LOW), reproduced, root-caused and corrected.** The workload now keeps, for every unexpected
+  answer, its operation, status, code, correlation id, elapsed time and matching redacted
+  `request.failed` event. Repeated as submitted, it reproduced seven 500s from district reports at 25
+  users, each traced to a SQL Server deadlock (error 1205) in which the report's aggregate scan was the
+  victim and an autosave the survivor. A report that is a deadlock victim is now computed again within
+  its three attempts (`ReportDeadlockVictimTest`, red before green); on the correction commit 8 runs on
+  both engines had no unexpected answer and 12 deadlocks were absorbed. Expected 409
+  `REPORT_POPULATION_CHANGED` refusals are kept apart from unexpected answers everywhere. **Remaining
+  limitation:** deadlocks still occur; a report that is the victim on all three attempts still answers
+  500; release creation is not retried. Removing the conflict needs row-versioned reads, a migration and
+  an owner decision, not taken here.
+- **The gate on `b73f519`**, GATE PASSED
+  (`docs/evidence/phase8-correction-a8/gate-b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d/`): clean tree,
+  `npm ci`, handoff validation, package tests, every script parsed, a brand-new SQL Server container,
+  migrations 001 to 007 on brand-new databases with 002 to 007 re-applied and 001 refused, then
+  Lucee 6.2.8.20: Node/HTTP/Playwright 299/299 and CFML 542/542; Adobe ColdFusion 2023 Update 25:
+  299/299 and 542/542; 0 failed, skipped, todo or cancelled on either. Every Node test of the Phase 8
+  gate passed on both engines; every CFML test function of the tested Phase 8 code exists, the 8 new
+  ones are counted by name, and all 542 passed by name on each engine.
+- **Operations on `b73f519`**
+  (`docs/evidence/phase8-correction-a8/operations-b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d/`):
+  OPERATIONS PASSED: restart during autosave (3/3 on each engine), the
+  production profile (both engines), the new readiness operation on a brand-new database without the
+  schema (both engines: 503, then 200 after the migrations and after a restart) and its live red on the
+  audited tip's code (both engines fail it, as required), upgrade from the Phase 6 release and rollback,
+  backup and restore, and the killed and refused migrations; afterwards both engines answered 200, no
+  temporary database or login was left, and HEAD, tree and status were unchanged. The first run is
+  kept: it ended OPERATIONS FAILED because the ColdFusion live red was not observed, a fault of the
+  harness (a directory ColdFusion could not read), fixed in the harness only before the complete rerun.
+- **Found while correcting.** The Phase 8 performance runs after P8-14 counted, in their live district
+  reports, only the few hundred walks the workload created, not the synthetic year's 24,000 (likely a
+  test fixture version left published in that database). The Phase 8 statement that live-report 409s
+  are "now rare" rests on them: over the full population, while completed walks were edited, most
+  district reports were refused, by design. D14 remains open; this is information for it.
+  `docs/OPERATIONS.md` 12 no longer states a rate; the Phase 8 records are unchanged.
+- **Unchanged:** no migration, dependency, lock file, configuration, instrument JSON or workbook,
+  authentication, authorization, report privacy, autosave, instrument behavior or k = 3 policy; no test
+  weakened, removed, renamed, skipped or filtered. Performance acceptance remains open (D8); D1 to D12
+  and D14 remain open; every NOT TESTABLE HERE item of the Phase 8 section remains; production
+  certification is outside this correction.
+
+This section is now the current state for Phase 8. The sections above keep the status recorded when
+each was delivered.

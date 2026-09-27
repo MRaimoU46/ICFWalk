@@ -1,0 +1,146 @@
+{
+  "finding": "A8-01",
+  "engine": "lucee",
+  "startedAt": "2026-09-27T11:43:33.177Z",
+  "database": {
+    "name": "icfwalk_a801readymujr2p88",
+    "databaseId": 8,
+    "createDate": "2026-09-27T11:43:33.283",
+    "collation": "SQL_Latin1_General_CP1_CI_AS",
+    "compatibilityLevel": 160,
+    "state": "ONLINE",
+    "serverVersion": "16.0.4295.3",
+    "serverEdition": "Developer Edition (64-bit)",
+    "tables": 0,
+    "icfSchemas": 0,
+    "instrumentTable": 0
+  },
+  "runtimeLogin": "<generated, db_datareader + db_datawriter only>",
+  "steps": {
+    "beforeMigrations": {
+      "secondsToAnswer": 4.862,
+      "status": 503,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "missing"
+        },
+        "correlationId": "350a404e-5f20-4a64-9f0b-04c7eb6d987e",
+        "status": "degraded"
+      },
+      "applicationSessionsOnTheDatabase": 1
+    },
+    "migrations": {
+      "command": "node scripts/db/apply-schema.mjs --database icfwalk_a801readymujr2p88",
+      "exit": 0,
+      "scripts": [
+        {
+          "script": "001_schema.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        },
+        {
+          "script": "002_alignment_patch.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        },
+        {
+          "script": "003_walk_mutation.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        },
+        {
+          "script": "004_mutation_fingerprint.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        },
+        {
+          "script": "005_org_unit_dimension_map.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        },
+        {
+          "script": "006_version_scoped_dimensions.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        },
+        {
+          "script": "007_report_release.sql",
+          "database": "icfwalk_a801readymujr2p88",
+          "ok": true
+        }
+      ]
+    },
+    "afterMigrationsWithoutRestart": {
+      "status": 200,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "d1f9c055-47cb-47aa-b8bb-c4c0119d1de3",
+        "status": "ok"
+      }
+    },
+    "afterRestart": {
+      "secondsToAnswer": 3.944,
+      "status": 200,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "7efabfbe-7af9-4cdd-854a-bf05defdbbb0",
+        "status": "ok"
+      }
+    }
+  },
+  "normalEnvironmentBefore": {
+    "url": "http://127.0.0.1:8888",
+    "status": 200
+  },
+  "directConnection": {
+    "asRuntimeLogin": true,
+    "databaseName": "icfwalk_a801readymujr2p88",
+    "db_datareader": true,
+    "db_datawriter": true,
+    "db_owner": false
+  },
+  "engineIdentity": {
+    "jar": "lucee-light.jar",
+    "sha256": "e004579cf48a6d0f4d527429ad19d7543070803d3454eacb5e8efe674419be80",
+    "port": 8894,
+    "applicationStarted": [
+      {
+        "engine": "Lucee 6.2.8.20",
+        "environment": "production"
+      },
+      {
+        "engine": "Lucee 6.2.8.20",
+        "environment": "production"
+      }
+    ]
+  },
+  "cleanup": {
+    "engineRemoved": true,
+    "databaseDropped": true,
+    "loginDropped": true,
+    "readinessDatabasesLeft": 0
+  },
+  "normalEnvironmentAfter": {
+    "url": "http://127.0.0.1:8888",
+    "status": 200,
+    "checks": {
+      "database": "ok",
+      "longText": "ok",
+      "schema": "present"
+    }
+  },
+  "finishedAt": "2026-09-27T11:43:45.035Z"
+}

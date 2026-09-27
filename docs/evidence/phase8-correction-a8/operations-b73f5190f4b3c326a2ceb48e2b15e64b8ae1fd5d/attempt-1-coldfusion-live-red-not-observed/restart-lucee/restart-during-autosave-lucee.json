@@ -1,0 +1,249 @@
+{
+  "startedAt": "2026-09-27T11:42:34.836Z",
+  "baseUrl": "http://127.0.0.1:8888",
+  "database": "icfwalk_dev",
+  "scenarios": {
+    "midTransaction": {
+      "before": {
+        "rowVersion": "145277",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554125962,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 2,
+        "revisions": 0,
+        "note": "saved before the crash"
+      },
+      "blocker": {
+        "sessionId": 52,
+        "lockOnWalkMutation": "S"
+      },
+      "blockedSave": {
+        "sessionId": 51,
+        "waitType": "LCK_M_IX",
+        "waitResource": "OBJECT: 5:254623950:0 ",
+        "command": "INSERT",
+        "program": "Microsoft JDBC Driver for SQL Server"
+      },
+      "blockedSaveLocks": [
+        {
+          "tableName": null,
+          "resourceType": "DATABASE",
+          "mode": "S",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "app_user",
+          "resourceType": "OBJECT",
+          "mode": "IS",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk",
+          "resourceType": "KEY",
+          "mode": "X",
+          "status": "GRANT",
+          "n": 3
+        },
+        {
+          "tableName": "walk",
+          "resourceType": "OBJECT",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk",
+          "resourceType": "PAGE",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 2
+        },
+        {
+          "tableName": "walk_mutation",
+          "resourceType": "OBJECT",
+          "mode": "IX",
+          "status": "WAIT",
+          "n": 1
+        },
+        {
+          "tableName": "walk_response",
+          "resourceType": "KEY",
+          "mode": "X",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk_response",
+          "resourceType": "OBJECT",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 1
+        },
+        {
+          "tableName": "walk_response",
+          "resourceType": "PAGE",
+          "mode": "IX",
+          "status": "GRANT",
+          "n": 1
+        }
+      ],
+      "uncommittedRead": {
+        "note": "typed while the server died",
+        "rowVersion": "145279"
+      },
+      "clientMutationId": "0EA87904-7D00-44DB-A6D8-1DFFEB36A271",
+      "crash": {
+        "how": "SIGKILL to the Lucee JVM (pid 5587)",
+        "at": 1790509360017
+      },
+      "connectionError": "ECONNRESET",
+      "secondsUntilSqlServerDroppedTheSession": 0,
+      "afterCrash": {
+        "rowVersion": "145277",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554125962,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 2,
+        "revisions": 0,
+        "note": "saved before the crash"
+      },
+      "pageStatusWhileDown": "Could not reach the server — your changes are kept on this page. Retry when you are back online.",
+      "restart": {
+        "secondsToHealthy": 7.1,
+        "health": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        }
+      },
+      "pageStatusAfterRetry": "All changes saved",
+      "saves": [
+        {
+          "outcome": "failed net::ERR_CONNECTION_REFUSED",
+          "clientMutationId": "0EA87904-7D00-44DB-A6D8-1DFFEB36A271",
+          "replayed": null
+        },
+        {
+          "outcome": "403 CSRF_TOKEN_INVALID",
+          "clientMutationId": "0EA87904-7D00-44DB-A6D8-1DFFEB36A271",
+          "replayed": null
+        },
+        {
+          "outcome": "200",
+          "clientMutationId": "0EA87904-7D00-44DB-A6D8-1DFFEB36A271",
+          "replayed": false
+        }
+      ],
+      "afterRetry": {
+        "rowVersion": "145282",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554125941,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 3,
+        "revisions": 0,
+        "note": "typed while the server died"
+      }
+    },
+    "afterCommit": {
+      "before": {
+        "rowVersion": "145361",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554400358,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 2,
+        "revisions": 0,
+        "note": "saved before the second crash"
+      },
+      "crash": {
+        "how": "SIGKILL to the Lucee JVM (pid 5778)",
+        "at": 1790509371160
+      },
+      "connectionError": "ECONNRESET",
+      "answerTheServerSent": {
+        "status": 200,
+        "rowVersion": "0x00000000000237D3",
+        "replayed": null
+      },
+      "clientMutationId": "8011BDC7-8B7A-4B4D-B87A-8FAECCAB5AF9",
+      "afterCrash": {
+        "rowVersion": "145363",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554400360,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 3,
+        "revisions": 0,
+        "note": "committed but never answered"
+      },
+      "restart": {
+        "secondsToHealthy": 7.1,
+        "health": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        }
+      },
+      "pageStatusAfterRetry": "All changes saved",
+      "saves": [
+        {
+          "outcome": "failed net::ERR_CONNECTION_RESET",
+          "clientMutationId": "8011BDC7-8B7A-4B4D-B87A-8FAECCAB5AF9",
+          "replayed": null
+        },
+        {
+          "outcome": "403 CSRF_TOKEN_INVALID",
+          "clientMutationId": "8011BDC7-8B7A-4B4D-B87A-8FAECCAB5AF9",
+          "replayed": null
+        },
+        {
+          "outcome": "200",
+          "clientMutationId": "8011BDC7-8B7A-4B4D-B87A-8FAECCAB5AF9",
+          "replayed": true
+        }
+      ],
+      "afterRetry": {
+        "rowVersion": "145363",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554400360,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 3,
+        "revisions": 0,
+        "note": "committed but never answered"
+      },
+      "afterNextEdit": {
+        "rowVersion": "145366",
+        "responses": 73,
+        "duplicateItems": 0,
+        "responseChecksum": -554400353,
+        "selections": 0,
+        "dimensions": 0,
+        "dimensionChecksum": null,
+        "mutations": 4,
+        "revisions": 0,
+        "note": "the next edit after the restart"
+      }
+    }
+  },
+  "engine": "Lucee 6.2.8.20",
+  "pageErrors": [],
+  "finishedAt": "2026-09-27T11:43:00.085Z"
+}

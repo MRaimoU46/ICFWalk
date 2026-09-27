@@ -1,0 +1,15 @@
+# A8-03 workload run: engine=lucee edits=any levels=1,10,25 duration=60s solo=5, 2026-09-27T10:30:41Z
+# workload harness: HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640; sha256 ab19da2caad88ae4605b08bc6664a42ee363a6355315bfe832dfa1b6cd5929e2 tests/perf/workload.mjs
+# status: <clean>
+# engine: perf Lucee pid 1520 serving /tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree
+# other engines answering: 8888=000 8889=200 8500=000
+$ ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=http://127.0.0.1:8889 PERF_LEVELS=1,10,25 PERF_DURATION=60 PERF_EDIT=any PERF_ENGINE_PID=1520 PERF_LOG_FILE=/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/lucee-server/lucee-server/context/logs/icfwalk.log ICFWALK_EVIDENCE_DIR=<out> node tests/perf/workload.mjs
+10:30:45 Lucee 6.2.8.20 on icfwalk_perf: 31023 walks, 2264679 responses; levels 1,10,25 for 60s
+10:31:03 solo: report live district (solo) p50=1177 max=6480 err=0; report CSV district (solo) p50=1231 max=1385 err=0
+10:32:03 level 1: 1314 requests in 60s; list mine p50=47 p95=76 max=231 err=0; open walk p50=25 p95=35 max=83 err=0; save walk p50=63 p95=82 max=162 err=0; summary p50=32 p95=44 max=63 err=0; create walk p50=133 p95=172 max=172 err=0; complete walk p50=50 p95=62 max=62 err=0
+10:33:08 level 10: 2443 requests in 64s; list mine p50=204 p95=415 max=989 err=0; open walk p50=91 p95=227 max=454 err=0; summary p50=119 p95=265 max=456 err=0; save walk p50=260 p95=528 max=824 err=0; list district (scope=all) p50=565 p95=1236 max=1236 err=0; create walk p50=553 p95=991 max=1570 err=0; complete walk p50=204 p95=403 max=503 err=0; report live district p50=6177 p95=6177 max=6177 err=7; report CSV district p50=1564 p95=2280 max=2280 err=6
+10:34:16 level 25: 3079 requests in 65s; list mine p50=332 p95=562 max=898 err=0; open walk p50=242 p95=469 max=832 err=0; save walk p50=519 p95=1073 max=4605 err=0; summary p50=337 p95=666 max=854 err=0; list district (scope=all) p50=1070 p95=1922 max=1922 err=0; create walk p50=1411 p95=5410 max=6665 err=0; complete walk p50=423 p95=906 max=999 err=0; report live district p50=22587 p95=23431 max=23431 err=8; report CSV district p50=1088 p95=2209 max=2209 err=5
+10:34:16 release: {"status":"created by an earlier run on this database","releaseId":"B8ED65E9-73E4-4258-821A-0E6D719B154A"}; release read {"status":200,"ms":169}
+10:34:16 failures: 26 expected (409 REPORT_POPULATION_CHANGED); 0 unexpected {}, 0 with their request.failed event (not read: no unexpected answer)
+10:34:17 written /tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/evidence/a8-03/series-lucee-any-fixed/run1/workload-Lucee-6.2.8.20.json
+[exit 0]

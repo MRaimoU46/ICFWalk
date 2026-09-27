@@ -1,0 +1,69 @@
+# A8-01 and A8-03 green on Adobe ColdFusion 2023: the new specs and the existing health and report specs against the corrected code (container started after every edit)
+# at 2026-09-27T01:33:31.091Z against http://127.0.0.1:8500
+# HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc branch claude/icfwalk-phase-8-correction-cgsc7q
+# git status --porcelain=v1 --untracked-files=all:
+#    M docs/ARCHITECTURE.md
+#    M docs/DATA_CONTRACT.md
+#    M docs/ENDPOINTS.md
+#    M docs/LOCAL_SETUP.md
+#    M docs/OPERATIONS.md
+#    M manifest.json
+#    M src/controllers/HealthController.cfc
+#    M src/reports/ReportRepository.cfc
+#    M src/reports/ReportService.cfc
+#    M tests/perf/workload.mjs
+#    M tools/runtime/acf-up.sh
+#   ?? tests/cfml/specs/HealthReadinessTest.cfc
+#   ?? tests/cfml/specs/ReportDeadlockVictimTest.cfc
+#   ?? tests/cfml/support/SchemaAbsentDb.cfc
+#   ?? tests/ops/readiness-schema-missing.test.mjs
+# sha256 8fe812c629569def4085450d8c598e6537b7a87acb18fb7a2229d04c0f754beb  src/controllers/HealthController.cfc  (at HEAD: 63976171917ca6c85c5af9303135432a429ae4d3182de2f16d106af7eb3f1117)
+# sha256 09155310ef72123fc59f3d158079281bfbb4248b83e3d8e54bbc98a4fb63e954  src/reports/ReportService.cfc  (at HEAD: b809c0d8fd4624cc991e1b8478d308db6f408fe82f3b8ee25c69132df231e78a)
+# sha256 f5b113a54d1010d8957bdea4356b110d509429e569e81a13738a0fa13065c020  tests/cfml/specs/HealthReadinessTest.cfc  (at HEAD: <absent at HEAD>)
+# sha256 0e584348e5bd7bb5a6921fbbf31df46138a0f71f3c197a88eea9991f8ff8ff0b  tests/cfml/specs/ReportDeadlockVictimTest.cfc  (at HEAD: <absent at HEAD>)
+# health 200 {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"9b6113cc-e241-4a80-b4e1-c83fe81f2b18","engine":"ColdFusion Server 2023,0,25,330977","environment":"development","status":"ok"}
+engine=ColdFusion Server 2023,0,25,330977 http=200 ok=true {"failed":0,"passed":6,"skipped":0} wall=0.3s
+HealthReadinessTest.testAnUnreachableDatabaseIsNotReady: passed
+HealthReadinessTest.testAReachableDatabaseWithoutTheSchemaIsNotReady: passed
+HealthReadinessTest.testProductionAnswersTheSameWithoutTheSchemaAndNamesNothing: passed
+HealthReadinessTest.testTheDatabaseWithItsSchemaAndWholeLongTextIsReady: passed
+HealthReadinessTest.testTruncatedLongTextIsNotReadyEvenWithTheSchema: passed
+HealthReadinessTest.testWithoutTheSchemaAndWithTruncatedLongTextItIsNotReady: passed
+engine=ColdFusion Server 2023,0,25,330977 http=200 ok=true {"failed":0,"passed":3,"skipped":0} wall=0.1s
+LongTextRetrievalTest.testTheDatasourceReturnsLongTextWhole: passed
+LongTextRetrievalTest.testTheHealthCheckRefusesADatasourceThatTruncatesLongText: passed
+LongTextRetrievalTest.testTheHealthCheckReportsWholeLongText: passed
+engine=ColdFusion Server 2023,0,25,330977 http=200 ok=true {"failed":0,"passed":2,"skipped":0} wall=13.9s
+ReportDeadlockVictimTest.testAReportChosenAsADeadlockVictimIsComputedAgain: passed
+ReportDeadlockVictimTest.testAReportChosenAsTheVictimOnEveryAttemptStillFails: passed
+engine=ColdFusion Server 2023,0,25,330977 http=200 ok=true {"failed":0,"passed":5,"skipped":0} wall=3.5s
+ReportCoherenceTest.testAReleaseFreezesEveryWalkInOneCommittedState: passed
+ReportCoherenceTest.testAReportThatNeverSeesAStableStateIsRefused: passed
+ReportCoherenceTest.testAReportThatStraddlesACommittedSaveIsRecomputedCoherently: passed
+ReportCoherenceTest.testAStablePopulationIsReportedOnTheFirstAttempt: passed
+ReportCoherenceTest.testAWalkVoidedMidReportLeavesThePopulationCleanly: passed
+engine=ColdFusion Server 2023,0,25,330977 http=200 ok=true {"failed":0,"passed":7,"skipped":0} wall=7.1s
+ReportIsolationTest.testALiveReportAndAReleaseAreIsolatedAtTheScopeBoundary: passed
+ReportIsolationTest.testAPopulationIsRefusedOutsideATransaction: passed
+ReportIsolationTest.testAPopulationRefusesToContinueOnAnotherConnection: passed
+ReportIsolationTest.testAReleaseAndALiveReportAreIsolatedAtTheScopeBoundary: passed
+ReportIsolationTest.testAReportLeavesNoPopulationTableBehindOnSuccessOrFailure: passed
+ReportIsolationTest.testPopulationTablesAreConnectionLocalAndUniquePerComputation: passed
+ReportIsolationTest.testTwoReportsOnDisjointScopesAreIsolatedAtTheScopeBoundary: passed
+engine=ColdFusion Server 2023,0,25,330977 http=200 ok=true {"failed":0,"passed":15,"skipped":0} wall=9.9s
+ReportServiceTest.testCsvExportIsRfc4180AndNeutralizesFormulas: passed
+ReportServiceTest.testInstrumentAdminAndRolelessUsersAreRefused: passed
+ReportServiceTest.testLiveFiguresOnlyForSomeoneWhoCanOpenEveryWalkCounted: passed
+ReportServiceTest.testRetainedAnswersOfAHiddenSectionAreCountedAsHidden: passed
+ReportServiceTest.testRpt01SchoolRoleReportsOnlyItsAssignedSchool: passed
+ReportServiceTest.testRpt02DistrictRoleAggregatesDescendantSchoolsOnly: passed
+ReportServiceTest.testRpt03ReportOnlyUsersReceiveNoIndividualWalkOrIdentifier: passed
+ReportServiceTest.testRpt04OnlyAnsweredScoresEnterTheAverage: passed
+ReportServiceTest.testRpt05SectionMeansArePooledFromItemLevelResponses: passed
+ReportServiceTest.testRpt06NarrativeEmailAndTeacherFieldsNeverLeave: passed
+ReportServiceTest.testRpt07EveryFilterNarrowsThePopulationWithinScope: passed
+ReportServiceTest.testTheCatalogIsDerivedFromTheVersionAndItsEngine: passed
+ReportServiceTest.testUnknownMalformedAndOutOfContractFiltersAreRefused: passed
+ReportServiceTest.testVoidedWalksNeverCountAndDraftsOnlyOnRequest: passed
+ReportServiceTest.testWalksOfAnotherVersionNeverJoinTheReport: passed
+# result: ALL PASSED

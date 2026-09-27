@@ -1,0 +1,29 @@
+1
+total 456
+drwx------ 12 root root   4096 Sep 27 11:46 .
+drwxr-xr-x  1 root root   4096 Sep 27 11:46 ..
+lrwxrwxrwx  1 root root     23 Sep 27 11:46 .env -> /home/user/ICFWalk/.env
+-rw-rw-r--  1 root root   4867 Sep 26 21:17 .env.example
+-rw-rw-r--  1 root root    265 Sep 26 21:17 .gitignore
+lrwxrwxrwx  1 root root     27 Sep 27 11:46 .runtime -> /home/user/ICFWalk/.runtime
+-rw-rw-r--  1 root root 342330 Sep 26 21:17 BUILD_STATUS.md
+-rw-rw-r--  1 root root  11182 Sep 26 21:17 CLAUDE_FABLE_MASTER_PROMPT.md
+-rw-rw-r--  1 root root   3903 Sep 26 21:17 README.md
+drwxrwxr-x  3 root root   4096 Sep 26 21:17 app
+drwxrwxr-x  2 root root   4096 Sep 26 21:17 config
+drwxrwxr-x  2 root root   4096 Sep 26 21:17 database
+drwxrwxr-x  3 root root   4096 Sep 26 21:17 docs
+-rw-rw-r--  1 root root   2738 Sep 26 21:17 manifest.json
+lrwxrwxrwx  1 root root     31 Sep 27 11:46 node_modules -> /home/user/ICFWalk/node_modules
+-rw-rw-r--  1 root root  36480 Sep 26 21:17 package-lock.json
+-rw-rw-r--  1 root root   2420 Sep 26 21:17 package.json
+drwxrwxr-x  2 root root   4096 Sep 26 21:17 reference
+drwxrwxr-x  4 root root   4096 Sep 26 21:17 scripts
+drwxrwxr-x  2 root root   4096 Sep 26 21:17 source
+drwxrwxr-x 13 root root   4096 Sep 26 21:17 src
+drwxrwxr-x  8 root root   4096 Sep 26 21:17 tests
+drwxrwxr-x  3 root root   4096 Sep 26 21:17 tools
+total 16
+drwx------ 2 cfuser cfuser 4096 Sep 27 11:46 .
+drwxr-xr-x 1 root   root   4096 Sep 27 11:46 ..
+-rw------- 1 cfuser cfuser  828 Sep 27 11:46 app.env

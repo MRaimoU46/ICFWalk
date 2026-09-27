@@ -1,0 +1,4 @@
+# A8-03 series: 1 run(s), engine=acf edits=drafts levels=10,25, HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640, clean, 2026-09-27T10:35:53Z
+run 1: exit 0, 2026-09-27T10:35:53.000Z .. 2026-09-27T10:38:21.000Z | expected409=0 unexpected=0 {} | L10: 918 req, live 20 p50 2491 ms, csv 20; L25: 925 req, live 29 p50 3948 ms, csv 29 | deadlock graphs: (node:6052) | report.deadlock.victim logged: 0 | request.failed logged: 0
+# series finished 2026-09-27T10:38:22Z; HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d; status: 0 changes
+series exit=0

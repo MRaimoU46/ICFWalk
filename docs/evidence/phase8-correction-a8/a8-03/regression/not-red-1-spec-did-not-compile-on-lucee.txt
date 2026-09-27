@@ -1,0 +1,427 @@
+# A8-03 red: ReportDeadlockVictimTest against the unchanged ReportService (Lucee)
+# at 2026-09-27T01:25:25.970Z against http://127.0.0.1:8888
+# HEAD 10f476ba9a69359f23a259be0e903afeed64b415 tree 94cbd1a3442d18626af4bec3d3ef9aaa48d078dc branch claude/icfwalk-phase-8-correction-cgsc7q
+# git status --porcelain=v1 --untracked-files=all:
+#    M src/controllers/HealthController.cfc
+#    M tests/perf/workload.mjs
+#    M tools/runtime/acf-up.sh
+#   ?? tests/cfml/specs/HealthReadinessTest.cfc
+#   ?? tests/cfml/specs/ReportDeadlockVictimTest.cfc
+#   ?? tests/cfml/support/SchemaAbsentDb.cfc
+#   ?? tests/ops/readiness-schema-missing.test.mjs
+# sha256 b809c0d8fd4624cc991e1b8478d308db6f408fe82f3b8ee25c69132df231e78a  src/reports/ReportService.cfc  (at HEAD: b809c0d8fd4624cc991e1b8478d308db6f408fe82f3b8ee25c69132df231e78a, unchanged)
+# sha256 80fe0a01a05ceab791b9e7ed92efa0aa80253a592484643a679343883eb59e3f  tests/cfml/specs/ReportDeadlockVictimTest.cfc  (at HEAD: <absent at HEAD>)
+# health 200 {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"a3b2cf57-78ce-4de0-8a15-b8d58a4d52e0","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+engine=Lucee 6.2.8.20 http=200 ok=false {"failed":1,"passed":0,"skipped":0} wall=0.5s
+ReportDeadlockVictimTest.(construct): failed - Bad local variable type
+Exception Details:
+  Location:
+    specs/reportdeadlockvictimtest_cfc$cf.udfCall1(Llucee/runtime/PageContext;Llucee/runtime/type/UDF;I)Ljava/lang/Object; @3042: aload
+  Reason:
+    Type top (current frame, locals[25]) is not assignable to reference type
+  Current Frame:
+    bci: @3042
+    flags: { }
+    locals: { 'specs/reportdeadlockvictimtest_cfc$cf', 'lucee/runtime/PageContext', 'lucee/runtime/type/UDF', integer, top, top, top, top, top, top, top, top, 'lucee/runtime/type/ref/Reference', 'lucee/runtime/exp/PageException' }
+    stack: { }
+  Bytecode:
+    0000000: 1dab 0000 0000 131e 0000 000a 0000 0000
+    0000010: 0000 005b 0000 0001 0000 00b9 0000 0002
+    0000020: 0000 0259 0000 0003 0000 0276 0000 0004
+    0000030: 0000 0885 0000 0005 0000 08aa 0000 0006
+    0000040: 0000 0da2 0000 0007 0000 0e0a 0000 0008
+    0000050: 0000 10ab 0000 0009 0000 11da 2b2b b600
+    0000060: 34b2 008a 100d 32b2 00b0 b600 b4b8 00b8
+    0000070: 9900 0703 a700 0404 9900 0912 bab0 0000
+    0000080: bf2b 2b2b 2bb6 00be b200 c1b9 00c5 0200
+    0000090: b200 8a10 0e32 b600 c9b2 008a 100f 32b2
+    00000a0: 00b0 b600 b4b8 00cd b800 d399 0009 12d5
+    00000b0: b000 00bf 1262 b000 00bf 2bc0 0094 b200
+    00000c0: 8a10 1032 2b2b 12d7 12d9 b800 deb2 00e1
+    00000d0: 05bd 0054 5903 2bc0 0094 b200 c1b6 00e3
+    00000e0: 5359 0412 e52b 2b2b 2bb8 00ea 12ec 1262
+    00000f0: 12ee b800 f32b b800 f9b8 00fe b801 03b6
+    0000100: 0109 53b6 00b4 b600 9957 2bc0 0094 b200
+    0000110: 8a10 1132 2b2b b600 34b2 008a 1010 32b9
+    0000120: 010b 0200 b200 8a10 1232 05bd 0054 5903
+    0000130: 1301 0d53 5904 1301 0f53 b600 b4b6 0099
+    0000140: 572b c000 94b2 008a 1013 322b 2bb6 0034
+    0000150: b200 8a10 1032 b901 0b02 00b2 0112 04bd
+    0000160: 0054 5903 1301 1453 b600 b4b6 0099 572b
+    0000170: 2bb6 0034 b200 8a10 1032 b901 0b02 00b2
+    0000180: 008a 1014 3207 bd00 5459 032b c000 94b2
+    0000190: 008a 1013 32b2 008a 1015 32b6 0117 5359
+    00001a0: 0413 0119 5359 052b c000 94b2 008a 1011
+    00001b0: 32b6 011b 5359 06b2 011e 53b6 00b4 572b
+    00001c0: c000 94b2 008a 1016 322b 2b2b b600 34b2
+    00001d0: 008a 1010 32b9 010b 0200 b201 1204 bd00
+    00001e0: 5459 0313 0120 53b6 00b4 b200 8a10 1532
+    00001f0: b601 22b6 0099 572b c000 94b2 008a 1017
+    0000200: 322b 2b2b b600 34b2 008a 1010 32b9 010b
+    0000210: 0200 b201 1204 bd00 5459 0313 0124 53b6
+    0000220: 00b4 b200 8a10 1532 b601 22b6 0099 572b
+    0000230: c000 94b2 008a 1018 322b b801 27b6 0099
+    0000240: 572b c000 94b2 008a 1019 322b 03bd 0054
+    0000250: b801 2cb6 0099 57a7 10c8 2b2b b600 34b2
+    0000260: 008a 1010 32b9 010b 0200 b201 2fb2 00b0
+    0000270: b600 b457 a710 ab2b b601 33b2 008a 101a
+    0000280: 322b 2bb6 0034 b200 8a10 0b32 b200 b0b6
+    0000290: 00b4 b901 3803 0057 2bb6 0133 b200 8a10
+    00002a0: 1b32 2b2b 12d7 1301 3ab8 00de b200 e105
+    00002b0: bd00 5459 032b c000 94b2 00c1 b200 8a10
+    00002c0: 1b32 b601 3c53 5904 2bc0 0094 b200 c1b2
+    00002d0: 008a 101c 32b6 013c 53b6 00b4 b901 3803
+    00002e0: 0057 2bb6 0133 b200 8a10 1d32 2b2b b600
+    00002f0: 34b2 008a 100a 3205 bd00 5459 032b c000
+    0000300: 94b2 008a 101a 32b6 011b 5359 042b c000
+    0000310: 94b2 008a 101b 32b6 011b 53b6 00b4 b901
+    0000320: 3803 0057 2bb6 0133 b200 8a10 1e32 2b2b
+    0000330: b600 34b2 008a 1008 32b2 00b0 b600 b4b9
+    0000340: 0138 0300 572b 2bb6 0034 b200 8a10 1a32
+    0000350: b901 0b02 00b2 008a 101f 3205 bd00 5459
+    0000360: 0313 013e 5359 04bb 0140 59bb 0142 592a
+    0000370: 2ab6 0148 1041 1041 03bd 014a 0713 014c
+    0000380: 0301 0404 b701 4fb7 0152 53b6 00b4 572b
+    0000390: b601 33b2 0155 1262 b901 3803 0057 2bb6
+    00003a0: 0133 b200 8a10 2032 1262 b901 3803 0057
+    00003b0: 013a 042b b601 593a 052b c000 94b2 0155
+    00003c0: 2b2b b600 34b2 008a 101d 32b9 010b 0200
+    00003d0: b200 8a10 2132 05bd 0054 5903 2b2b b600
+    00003e0: 34b2 008a 1010 32b9 010b 0200 b200 8a10
+    00003f0: 2232 04bd 0054 5903 2bc0 0094 b200 8a10
+    0000400: 1332 b200 8a10 1532 b601 1753 b600 b453
+    0000410: 5904 2b04 bd00 5459 03b2 008a 1023 322b
+    0000420: c000 94b2 008a 1011 32b6 011b b801 5e53
+    0000430: b801 2c53 b600 b4b6 0160 57a7 00c6 3a06
+    0000440: 1906 b801 6699 0006 1906 bf19 06b8 004c
+    0000450: 3a07 2b19 0704 04b6 016a 2b2b c000 94b6
+    0000460: 016e b201 71b6 0175 3a04 1904 2b19 072b
+    0000470: b601 79b9 017e 0300 572b c000 94b2 008a
+    0000480: 1020 322b c000 94b2 0171 b201 81b6 0117
+    0000490: b801 8513 0187 b601 092b 2bb6 0034 b200
+    00004a0: 8a10 2432 04bd 0054 5903 2bc0 0094 b201
+    00004b0: 71b6 011b 53b6 00b4 b801 85b6 0109 b601
+    00004c0: 6057 a700 3f3a 082b 1905 b601 8a19 04c6
+    00004d0: 000c 1904 2bb9 018d 0200 572b 2bb6 0034
+    00004e0: b200 8a10 0732 04bd 0054 5903 2bc0 0094
+    00004f0: b200 8a10 1e32 b601 1b53 b600 b457 1908
+    0000500: bf2b 1905 b601 8a19 04c6 000c 1904 2bb9
+    0000510: 018d 0200 572b 2bb6 0034 b200 8a10 0732
+    0000520: 04bd 0054 5903 2bc0 0094 b200 8a10 1e32
+    0000530: b601 1b53 b600 b457 2b2b b600 34b2 008a
+    0000540: 1025 3205 bd00 5459 032b 2b2b b600 34b2
+    0000550: 008a 101e 32b9 010b 0200 b200 8a10 2632
+    0000560: b600 c9b2 008a 1027 3205 bd00 5459 0313
+    0000570: 018f 5359 0413 0191 53b6 00b4 5359 0413
+    0000580: 0193 53b6 00b4 572b 2bb6 0034 b200 8a10
+    0000590: 2532 05bd 0054 5903 2b2b 2bb6 0034 b200
+    00005a0: 8a10 1e32 b901 0b02 00b2 008a 1026 32b6
+    00005b0: 00c9 b200 8a10 2832 04bd 0054 5903 1301
+    00005c0: 9553 b600 b453 5904 1301 9753 b600 b457
+    00005d0: 2b2b b600 34b2 019a 06bd 0054 5903 2b14
+    00005e0: 019b b801 a053 5904 2bc0 0094 b200 8a10
+    00005f0: 1e32 b200 8a10 2932 b601 1753 5905 1301
+    0000600: a22b c000 94b2 008a 101e 32b2 008a 102a
+    0000610: 32b6 0117 b801 85b6 0109 53b6 00b4 572b
+    0000620: 2bb6 0034 b200 8a10 2b32 06bd 0054 5903
+    0000630: 1301 a453 5904 2bc0 0094 b200 8a10 1e32
+    0000640: b200 8a10 2c32 b601 1753 5905 1301 a653
+    0000650: b600 b457 2b2b b600 34b2 008a 102b 3206
+    0000660: bd00 5459 0312 6253 5904 2bc0 0094 b200
+    0000670: 8a10 2032 b601 1b53 5905 1301 a853 b600
+    0000680: b457 2b2b b600 34b2 019a 06bd 0054 5903
+    0000690: 2bb8 01ab 5359 042b 2bb6 0034 b200 8a10
+    00006a0: 1a32 b901 0b02 00b2 008a 102d 3204 bd00
+    00006b0: 5459 0313 013e 53b6 00b4 5359 0513 01ad
+    00006c0: 53b6 00b4 572b 2bb6 0034 b201 9a06 bd00
+    00006d0: 5459 032b b801 b053 5904 2b2b b600 34b2
+    00006e0: 008a 101a 32b9 010b 0200 b200 8a10 2e32
+    00006f0: 04bd 0054 5903 1301 b253 b600 b453 5905
+    0000700: 1301 b453 b600 b457 2b2b b600 34b2 019a
+    0000710: 06bd 0054 5903 2bb8 01b0 5359 042b c000
+    0000720: 94b2 0155 b200 8a10 2f32 b601 1753 5905
+    0000730: 1301 b653 b600 b457 2b2b b600 34b2 019a
+    0000740: 06bd 0054 5903 2bb8 0127 5359 042b c000
+    0000750: 94b2 0155 b200 8a10 3032 b200 8a10 3132
+    0000760: b601 b953 5905 1301 bb53 b600 b457 2bb6
+    0000770: 0133 b200 8a10 3232 2bb8 0127 b901 3803
+    0000780: 0057 2b2b b600 34b2 008a 101b 32b9 010b
+    0000790: 0200 b200 8a10 3332 b200 b0b6 00b4 b801
+    00007a0: c13a 092b 2bb6 0133 b201 c4b6 0175 3a0a
+    00007b0: 1909 b901 c901 0099 0067 190a 2b19 09b9
+    00007c0: 01cd 0100 b901 7e03 0057 2b13 01cf 2bc0
+    00007d0: 0094 b201 c4b6 011b b801 85b8 01d4 b800
+    00007e0: b899 0021 2b13 01d6 2bc0 0094 b201 c4b6
+    00007f0: 011b b801 85b8 01d4 b800 b899 0007 04a7
+    0000800: 0004 0399 0018 2bb2 008a 1032 322b b801
+    0000810: abb8 01dc b801 e058 a700 03a7 ff95 a700
+    0000820: 0d3a 0b19 09b8 01e4 190b bf19 09b8 01e4
+    0000830: 2b2b b600 34b2 019a 06bd 0054 5903 2bb8
+    0000840: 01ab 5359 042b c000 94b2 008a 1032 32b6
+    0000850: 011b 5359 0513 01e6 2b2b 2bb6 0034 b200
+    0000860: 8a10 1b32 b901 0b02 00b2 008a 1034 32b2
+    0000870: 00b0 b600 b4b8 01ea b801 efb6 0109 53b6
+    0000880: 00b4 57a7 0a9c 2b2b b600 34b2 008a 0832
+    0000890: 04bd 0054 5903 2bc0 0094 b200 8a10 1e32
+    00008a0: b601 1b53 b600 b457 a70a 772b b601 33b2
+    00008b0: 008a 101a 322b 2bb6 0034 b200 8a10 0b32
+    00008c0: b200 b0b6 00b4 b901 3803 0057 2bb6 0133
+    00008d0: b200 8a10 1d32 2b2b b600 34b2 008a 100a
+    00008e0: 3205 bd00 5459 032b c000 94b2 008a 101a
+    00008f0: 32b6 011b 5359 042b c000 94b2 00c1 b200
+    0000900: 8a10 1b32 b601 3c53 b600 b4b9 0138 0300
+    0000910: 572b b601 33b2 008a 1035 322b 03bd 0054
+    0000920: b801 f4b9 0138 0300 572b 2bb6 0034 b200
+    0000930: 8a10 1a32 b901 0b02 00b2 008a 1036 3205
+    0000940: bd00 5459 0313 013e 5359 04bb 0140 59bb
+    0000950: 0142 592a 2ab6 0148 1067 106b 03bd 014a
+    0000960: 1006 1301 f603 0104 04b7 014f b701 5253
+    0000970: b600 b457 2bb6 0133 b200 8a10 2032 1262
+    0000980: b901 3803 0057 2bb6 0133 b200 8a10 3732
+    0000990: 1262 b901 3803 0057 013a 0c2b b601 593a
+    00009a0: 0d2b 2bb6 0034 b200 8a10 1d32 b901 0b02
+    00009b0: 00b2 008a 1021 3205 bd00 5459 032b 2bb6
+    00009c0: 0034 b200 8a10 1032 b901 0b02 00b2 008a
+    00009d0: 1022 3204 bd00 5459 032b c000 94b2 008a
+    00009e0: 1013 32b2 008a 1015 32b6 0117 53b6 00b4
+    00009f0: 5359 042b 04bd 0054 5903 b200 8a10 2332
+    0000a00: 2bc0 0094 b200 8a10 1132 b601 1bb8 015e
+    0000a10: 53b8 012c 53b6 00b4 57a7 0193 3a0e 190e
+    0000a20: b801 6699 0006 190e bf19 0eb8 004c 3a0f
+    0000a30: 2b19 0f04 04b6 016a 2b2b c000 94b6 016e
+    0000a40: b201 71b6 0175 3a0c 190c 2b19 0f2b b601
+    0000a50: 79b9 017e 0300 572b c000 94b2 008a 1020
+    0000a60: 322b 2bb6 0034 b200 8a10 2432 04bd 0054
+    0000a70: 5903 2bc0 0094 b201 71b6 011b 53b6 00b4
+    0000a80: b601 6057 013a 102b b601 593a 112b c000
+    0000a90: 94b2 008a 1037 322b c000 94b2 0171 b200
+    0000aa0: 8a10 3832 b601 17b6 0160 57a7 005d 3a12
+    0000ab0: 1912 b801 6699 0006 1912 bf19 12b8 004c
+    0000ac0: 3a13 2b19 1304 04b6 016a 2b2b c000 94b6
+    0000ad0: 016e b200 8a10 3932 b601 753a 1019 102b
+    0000ae0: 1913 2bb6 0179 b901 7e03 0057 a700 1c3a
+    0000af0: 142b 1911 b601 8a19 10c6 000c 1910 2bb9
+    0000b00: 018d 0200 5719 14bf 2b19 11b6 018a 1910
+    0000b10: c600 0c19 102b b901 8d02 0057 a700 903a
+    0000b20: 152b 190d b601 8a19 0cc6 000c 190c 2bb9
+    0000b30: 018d 0200 572b c000 94b2 008a 1035 32b6
+    0000b40: 011b b801 c13a 162b 2bb6 0133 b200 8a10
+    0000b50: 3a32 b601 753a 1719 16b9 01c9 0100 9900
+    0000b60: c419 172b 1916 b901 cd01 00b9 017e 0300
+    0000b70: 572b 2bb6 0034 b200 8a10 0732 04bd 0054
+    0000b80: 5903 2bc0 0094 b200 8a10 3a32 b601 1b53
+    0000b90: b600 b457 a7ff c300 00bf 3a18 1916 b801
+    0000ba0: e419 18bf 0000 0000 bf00 00bf 2b19 0db6
+    0000bb0: 018a 190c c600 0c19 0c2b b901 8d02 0057
+    0000bc0: 2bc0 0094 b200 8a10 3532 b601 1bb8 01c1
+    0000bd0: 3a19 2b2b b601 33b2 008a 103a 32b6 0175
+    0000be0: 3a1a 1919 b901 c901 0099 ffae 191a 2b19
+    0000bf0: 19b9 01cd 0100 b901 7e03 0057 2b2b b600
+    0000c00: 34b2 008a 1007 3204 bd00 5459 032b c000
+    0000c10: 94b2 008a 103a 32b6 011b 53b6 00b4 57a7
+    0000c20: ffc3 a700 0d3a 1b19 19b8 01e4 191b bf19
+    0000c30: 19b8 01e4 2b2b b600 34b2 019a 06bd 0054
+    0000c40: 5903 2bb8 01f9 5359 042b 2bb6 0034 b200
+    0000c50: 8a10 1a32 b901 0b02 00b2 008a 102d 3204
+    0000c60: bd00 5459 0313 013e 53b6 00b4 5359 0513
+    0000c70: 01fb 53b6 00b4 572b c000 94b2 008a 1035
+    0000c80: 32b6 011b b801 c13a 1c2b 2bb6 0133 b200
+    0000c90: 8a10 3a32 b601 753a 1d19 1cb9 01c9 0100
+    0000ca0: 9900 6519 1d2b 191c b901 cd01 00b9 017e
+    0000cb0: 0300 572b 2bb6 0034 b201 9a06 bd00 5459
+    0000cc0: 032b 1401 9bb8 01a0 5359 042b c000 94b2
+    0000cd0: 008a 103a 32b2 008a 1029 32b6 0117 5359
+    0000ce0: 0513 01fd 2bc0 0094 b200 8a10 3a32 b200
+    0000cf0: 8a10 2a32 b601 17b8 0185 b601 0953 b600
+    0000d00: b457 a7ff 97a7 000d 3a1e 191c b801 e419
+    0000d10: 1ebf 191c b801 e42b 2bb6 0034 b200 8a10
+    0000d20: 2532 05bd 0054 5903 2b2b 1301 ff2b c000
+    0000d30: 94b2 008a 1020 32b6 011b b801 85b8 0202
+    0000d40: 2bb8 0127 b802 0603 a300 0703 a700 0404
+    0000d50: b802 0a53 5904 1302 0c2b c000 94b2 008a
+    0000d60: 1020 32b6 011b b801 85b6 0109 53b6 00b4
+    0000d70: 572b 2bb6 0034 b200 8a10 3b32 06bd 0054
+    0000d80: 5903 1302 0e53 5904 2bc0 0094 b200 8a10
+    0000d90: 3732 b601 1b53 5905 1302 1053 b600 b457
+    0000da0: a705 7f2b b601 33b2 008a 101e 322b 2bb6
+    0000db0: 0034 b200 8a10 0832 b200 b0b6 00b4 b901
+    0000dc0: 3803 0057 2b2b c000 94b2 008a 1035 32b6
+    0000dd0: 011b b801 ea2b c000 94b2 008a 101e 32b6
+    0000de0: 011b b802 1557 2b2b b600 34b2 008a 0832
+    0000df0: 04bd 0054 5903 2bc0 0094 b200 8a10 1e32
+    0000e00: b601 1b53 b600 b457 a705 172b b601 33b2
+    0000e10: 0218 2bc0 0094 b200 c1b2 0218 b601 3cb9
+    0000e20: 0138 0300 572b 2bb6 0034 b202 18b9 010b
+    0000e30: 0200 b200 8a10 3c32 05bd 0054 5903 2bc0
+    0000e40: 0094 b200 8a10 0c32 b600 e353 5904 2b04
+    0000e50: bd00 5459 03b2 021b 2b2b b600 34b2 0218
+    0000e60: b901 0b02 00b2 021e 04bd 0054 5903 2bc0
+    0000e70: 0094 b200 8a10 1632 b600 e353 b600 b4b8
+    0000e80: 015e 53b8 012c 53b6 00b4 572b 2b2b b602
+    0000e90: 22b2 008a 101e 32b9 0225 0200 b200 8a10
+    0000ea0: 2632 b600 c9b2 008a 103d 3204 bd00 5459
+    0000eb0: 0313 018f 53b6 00b4 572b 2bb6 0034 b200
+    0000ec0: 8a10 0632 04bd 0054 5903 2bb6 0222 b200
+    0000ed0: 8a10 1e32 b902 2502 0053 b600 b457 2b2b
+    0000ee0: b600 34b2 008a 1025 3205 bd00 5459 032b
+    0000ef0: 2b2b b602 22b2 008a 101e 32b9 0225 0200
+    0000f00: b200 8a10 2632 b600 c9b2 008a 103e 3205
+    0000f10: bd00 5459 0313 0195 5359 042b 1402 26b8
+    0000f20: 01a0 53b6 00b4 5359 0413 0229 53b6 00b4
+    0000f30: 5701 3a1f 2bb6 0159 3a20 2b2b b600 34b2
+    0000f40: 0218 b901 0b02 00b2 008a 103c 3205 bd00
+    0000f50: 5459 032b c000 94b2 008a 100c 32b6 00e3
+    0000f60: 5359 042b 04bd 0054 5903 b202 1b2b 2bb6
+    0000f70: 0034 b202 18b9 010b 0200 b202 1e04 bd00
+    0000f80: 5459 032b c000 94b2 008a 1017 32b6 00e3
+    0000f90: 53b6 00b4 b801 5e53 b801 2c53 b600 b457
+    0000fa0: a700 dc3a 2119 21b8 0166 9900 0619 21bf
+    0000fb0: 1921 b800 4c3a 222b 1922 0404 b601 6a2b
+    0000fc0: 2bc0 0094 b601 6eb2 0171 b601 753a 1f19
+    0000fd0: 1f2b 1922 2bb6 0179 b901 7e03 0057 2b2b
+    0000fe0: 2bb6 0222 b200 8a10 1e32 b602 2cb2 008a
+    0000ff0: 1029 322b 2bb6 0034 b200 8a10 0932 04bd
+    0001000: 0054 5903 2bc0 0094 b201 71b6 011b 53b6
+    0001010: 00b4 b602 2f57 2b2b 2bb6 0222 b200 8a10
+    0001020: 1e32 b602 2cb2 008a 102a 322b 2b2b b600
+    0001030: 34b2 008a 1024 3204 bd00 5459 032b c000
+    0001040: 94b2 0171 b601 1b53 b600 b4b8 0185 2b14
+    0001050: 0230 b801 a0b8 00fe b602 2f57 2bb6 0234
+    0001060: a700 1c3a 232b 1920 b601 8a19 1fc6 000c
+    0001070: 191f 2bb9 018d 0200 5719 23bf 2b19 20b6
+    0001080: 018a 191f c600 0c19 1f2b b901 8d02 0057
+    0001090: 2b2b b600 34b2 008a 103f 3204 bd00 5459
+    00010a0: 0313 0236 53b6 00b4 57a7 0276 2bc0 0094
+    00010b0: b200 8a10 1932 2b2b b602 22b2 008a 101e
+    00010c0: 32b9 0225 0200 b202 39b6 0122 b801 85b8
+    00010d0: 023f 2bb6 0222 b200 8a10 1e32 b902 2502
+    00010e0: 00b6 0242 572b c000 9413 0244 1302 4607
+    00010f0: 1302 48b6 024c c002 4e3a 2419 2404 b602
+    0001100: 5219 2413 0254 b602 5819 2413 025a b602
+    0001110: 5d19 2403 b602 6019 242b 2bb6 0222 b200
+    0001120: 8a10 1e32 b902 2502 00b2 0239 b601 22b8
+    0001130: 0185 b602 6319 2401 b200 8a10 4032 2b2b
+    0001140: b602 22b2 008a 101e 32b9 0225 0200 b202
+    0001150: 39b6 0122 b602 6719 2401 b200 8a10 4132
+    0001160: 2bc0 0094 b200 8a10 1732 b600 e3b6 0267
+    0001170: 1924 01b2 008a 1042 322b c000 94b2 008a
+    0001180: 1016 32b6 00e3 b602 6719 24b6 026a 3625
+    0001190: 1525 039f 0030 2b19 2415 25b6 026e 1924
+    00011a0: b602 7105 9fff faa7 0012 3a26 1525 049f
+    00011b0: 0007 2bb8 0277 1926 bf15 2504 9f00 072b
+    00011c0: b802 7719 24b6 027a 08a0 0008 03b8 027d
+    00011d0: bf19 242a 03b6 0281 a701 472b 2bc0 0094
+    00011e0: b200 8a10 1932 b600 e3b8 00cd 2b2b b602
+    00011f0: 22b2 008a 101e 32b9 0225 0200 b202 39b6
+    0001200: 0122 b801 85b8 0286 9900 0703 a700 0404
+    0001210: 9900 0801 b000 00bf 2b10 06bd 0054 5903
+    0001220: b202 8913 028b b801 5e53 5904 b202 8e13
+    0001230: 0290 b801 5e53 5905 b202 93b2 005e b801
+    0001240: 5e53 5906 b202 9613 0298 b801 5e53 5907
+    0001250: 2b2b b602 22b2 008a 101e 32b9 0225 0200
+    0001260: b202 39b6 0122 5359 082b 1402 26b8 01a0
+    0001270: 53b8 029d 572b b601 33b2 02a0 2bc0 0094
+    0001280: b200 8a10 4332 2b2b b602 22b2 008a 101e
+    0001290: 32b9 0225 0200 b202 39b6 0122 b801 85b8
+    00012a0: 023f b601 17b9 0138 0300 572b 2b2b b602
+    00012b0: 22b2 008a 101e 32b6 022c b200 8a10 4432
+    00012c0: 2bc0 0094 b202 a0b2 02a3 b601 17b6 022f
+    00012d0: 572b 2b2b b602 22b2 008a 101e 32b6 022c
+    00012e0: b200 8a10 2c32 2b2b c000 94b2 02a0 b601
+    00012f0: 1bb8 00cd b200 8a10 4532 c002 a5b8 02a8
+    0001300: 9900 162b c000 94b2 02a0 b200 8a10 4632
+    0001310: b601 17a7 0005 1262 b602 2f57 a700 0301
+    0001320: b0                                     
+  Exception Handler Table:
+    bci [953, 1083] => handler: 1086
+    bci [953, 1218] => handler: 1221
+    bci [1955, 2081] => handler: 2081
+    bci [2465, 2585] => handler: 2588
+    bci [2701, 2731] => handler: 2734
+    bci [2701, 2796] => handler: 2799
+    bci [2887, 2967] => handler: 2970
+    bci [3026, 3109] => handler: 3109
+    bci [2465, 2844] => handler: 2847
+    bci [3209, 3336] => handler: 3336
+    bci [3898, 4000] => handler: 4003
+    bci [3898, 4192] => handler: 4195
+    bci [4510, 4522] => handler: 4522
+  Stackmap Table:
+    same_frame_extended(@92)
+    same_frame(@119)
+    same_locals_1_stack_item_frame(@120,Integer)
+    full_frame(@126,{},{Object[#66]})
+    full_frame(@129,{Object[#2],Object[#48],Object[#170],Integer},{})
+    full_frame(@177,{},{Object[#66]})
+    full_frame(@180,{Object[#2],Object[#48],Object[#170],Integer},{})
+    full_frame(@183,{},{Object[#66]})
+    full_frame(@186,{Object[#2],Object[#48],Object[#170],Integer},{})
+    same_frame_extended(@602)
+    same_frame(@631)
+    full_frame(@1086,{Object[#2],Object[#48],Object[#170],Integer,Null,Object[#40]},{Object[#66]})
+    append_frame(@1099,Object[#66])
+    full_frame(@1221,{Object[#2],Object[#48],Object[#170],Integer,Object[#379],Object[#40]},{Object[#66]})
+    append_frame(@1243,Top,Top,Object[#66])
+    chop_frame(@1281,3)
+    same_frame(@1301)
+    full_frame(@1968,{Object[#2],Object[#48],Object[#170],Integer,Object[#379],Object[#40],Top,Top,Top,Object[#454],Object[#379]},{})
+    same_frame_extended(@2050)
+    same_locals_1_stack_item_frame(@2051,Integer)
+    same_frame(@2075)
+    same_frame(@2078)
+    full_frame(@2081,{Object[#2],Object[#48],Object[#170],Integer,Object[#379],Object[#40],Top,Top,Top,Object[#454]},{Object[#66]})
+    append_frame(@2091,Object[#379])
+    full_frame(@2182,{Object[#2],Object[#48],Object[#170],Integer},{})
+    same_frame(@2219)
+    full_frame(@2588,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Null,Object[#40]},{Object[#66]})
+    append_frame(@2601,Object[#66])
+    full_frame(@2734,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Object[#66],Object[#40],Null,Object[#40]},{Object[#66]})
+    append_frame(@2747,Object[#66])
+    full_frame(@2799,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Object[#66],Object[#40],Object[#379],Object[#40]},{Object[#66]})
+    append_frame(@2821,Top,Top,Object[#66])
+    chop_frame(@2824,3)
+    same_frame(@2844)
+    full_frame(@2847,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40]},{Object[#66]})
+    full_frame(@2869,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Top,Top,Top,Top,Top,Top,Top,Object[#66]},{})
+    append_frame(@2903,Object[#454],Object[#379])
+    full_frame(@2967,{},{Object[#66]})
+    full_frame(@2970,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Top,Top,Top,Top,Top,Top,Top,Object[#66],Object[#454]},{Object[#66]})
+    full_frame(@2980,{},{Object[#66]})
+    same_locals_1_stack_item_frame(@2985,Object[#66])
+    full_frame(@2988,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40]},{})
+    same_frame(@3008)
+    same_frame(@3042)
+    same_frame(@3106)
+    same_locals_1_stack_item_frame(@3109,Object[#66])
+    same_frame(@3119)
+    full_frame(@3225,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Object[#454],Object[#379]},{})
+    same_frame_extended(@3333)
+    full_frame(@3336,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Object[#454]},{Object[#66]})
+    append_frame(@3346,Object[#379])
+    full_frame(@3407,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Object[#454],Object[#379]},{Object[#48],Object[#54],Object[#677],Object[#681],Object[#681],Integer})
+    full_frame(@3408,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40],Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Object[#454],Object[#379]},{Object[#48],Object[#54],Object[#677],Object[#681],Object[#681],Integer,Integer})
+    full_frame(@3491,{Object[#2],Object[#48],Object[#170],Integer},{})
+    same_frame_extended(@3595)
+    full_frame(@4003,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Null,Object[#40]},{Object[#66]})
+    append_frame(@4016,Object[#66])
+    full_frame(@4195,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Object[#379],Object[#40]},{Object[#66]})
+    append_frame(@4217,Top,Top,Object[#66])
+    chop_frame(@4220,3)
+    same_frame(@4240)
+    full_frame(@4268,{Object[#2],Object[#48],Object[#170],Integer},{})
+    full_frame(@4510,{Object[#2],Object[#48],Object[#170],Integer,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Top,Object[#590],Integer},{})
+    same_locals_1_stack_item_frame(@4522,Object[#66])
+    append_frame(@4534,Object[#66])
+    chop_frame(@4537,1)
+    same_frame(@4547)
+    same_frame(@4561)
+    full_frame(@4571,{Object[#2],Object[#48],Object[#170],Integer},{})
+    same_frame(@4623)
+    same_locals_1_stack_item_frame(@4624,Integer)
+    full_frame(@4629,{},{Object[#66]})
+    full_frame(@4632,{Object[#2],Object[#48],Object[#170],Integer},{})
+    full_frame(@4886,{Object[#2],Object[#48],Object[#170],Integer},{Object[#48],Object[#84],Object[#677]})
+    full_frame(@4888,{Object[#2],Object[#48],Object[#170],Integer},{Object[#48],Object[#84],Object[#677],Object[#84]})
+    same_frame(@4895)
+ @ src/controllers/MaintenanceController.cfc:407
+# result: NOT ALL PASSED

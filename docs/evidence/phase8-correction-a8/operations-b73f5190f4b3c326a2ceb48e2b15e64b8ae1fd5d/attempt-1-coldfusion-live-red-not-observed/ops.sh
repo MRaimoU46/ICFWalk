@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# Phase 8 correction A8: the operations scenarios, run on the exact correction code commit after its gate
+# (as docs/evidence/phase8/operations/on-the-code-commit/ops-final.sh ran them on the Phase 8 code commit),
+# plus the new live readiness operation of A8-01 on both engines:
+#
+#   restart during autosave (ColdFusion, Lucee), the production profile (ColdFusion, Lucee), the readiness
+#   probe on a brand-new database without the schema (ColdFusion, Lucee), upgrade and rollback, and the
+#   database operations (backup and restore, the killed and the refused migration).
+#
+# Live red: the same committed readiness operation is also run against the UNCORRECTED code of the audited
+# Phase 8 tip (git archive of 10f476ba, with only the operation file taken from HEAD), on each engine. It
+# must fail, and fail because health answered 200 before the schema existed; anything else fails this
+# script. The extracted tree is outside the repository and removed afterwards.
+#
+# At the end the normal verification environment is put back and checked: Lucee on the gate's database
+# (8888) and ColdFusion on the gate's ColdFusion database (8500) both answer 200, and no temporary database
+# of these operations is left. Each scenario writes its TAP and its JSON record into OUT.
+#
+# usage: ops.sh <code commit> <output directory outside the repository>
+set -uo pipefail
+REPO=/home/user/ICFWalk
+EXPECTED="$1"; OUT="$2"
+AUDITED_TIP=10f476ba9a69359f23a259be0e903afeed64b415
+ACF_IMAGE=adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e
+ACF_DB=icfwalk_acf_gate
+cd "$REPO"
+step() { echo; echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ)  $*"; }
+echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ)  the script"; cat "$0"
+[ "$(git rev-parse HEAD)" = "$EXPECTED" ] || { echo "HEAD is not $EXPECTED"; exit 1; }
+[ -z "$(git status --porcelain=v1 --untracked-files=all)" ] || { echo "the tree is not clean"; exit 1; }
+mkdir -p "$OUT"
+step "identity before"
+echo "HEAD $(git rev-parse HEAD) tree $(git rev-parse 'HEAD^{tree}'), clean"
+RESULT=0
+run() { # run <label> <env...> -- <test file>
+  local label="$1"; shift
+  local envs=(); while [ "$1" != "--" ]; do envs+=("$1"); shift; done; shift
+  step "$label"
+  mkdir -p "$OUT/$label"
+  echo "\$ ${envs[*]} ICFWALK_REQUIRE_APP=1 ICFWALK_EVIDENCE_DIR=<out> node --test $*"
+  env "${envs[@]}" ICFWALK_REQUIRE_APP=1 ICFWALK_EVIDENCE_DIR="$OUT/$label" node --test "$@" > "$OUT/$label/$label.tap" 2>&1
+  local rc=$?
+  grep -E "^(ok|not ok) |^# (tests|pass|fail|skipped|todo|cancelled) |^# engine " "$OUT/$label/$label.tap"
+  echo "[exit $rc]"; [ $rc = 0 ] || RESULT=1
+}
+red() { # red <label> <engine>: the committed readiness operation on the uncorrected code must fail, for that reason
+  local label="$1" engine="$2"
+  step "$label"
+  mkdir -p "$OUT/$label"
+  local tree; tree=$(mktemp -d /tmp/icfwalk-red-XXXXXX)
+  git archive "$AUDITED_TIP" | tar -x -C "$tree"
+  git show HEAD:tests/ops/readiness-schema-missing.test.mjs > "$tree/tests/ops/readiness-schema-missing.test.mjs"
+  ln -s "$REPO/node_modules" "$tree/node_modules"; ln -s "$REPO/.runtime" "$tree/.runtime"; ln -s "$REPO/.env" "$tree/.env"
+  echo "tree: git archive $AUDITED_TIP | tar -x, with tests/ops/readiness-schema-missing.test.mjs from HEAD"
+  (cd "$tree" && sha256sum src/controllers/HealthController.cfc tools/runtime/acf-up.sh tests/ops/readiness-schema-missing.test.mjs)
+  echo "uncorrected line: $(grep -n 'var healthy' "$tree/src/controllers/HealthController.cfc" | sed 's/^[[:space:]]*//')"
+  echo "\$ ICFWALK_READINESS_ENGINE=$engine ICFWALK_ACF_IMAGE=<pinned> ICFWALK_REQUIRE_APP=1 ICFWALK_EVIDENCE_DIR=<out> node --test tests/ops/readiness-schema-missing.test.mjs   (in that tree)"
+  (cd "$tree" && env ICFWALK_READINESS_ENGINE="$engine" ICFWALK_ACF_IMAGE="$ACF_IMAGE" ICFWALK_REQUIRE_APP=1 ICFWALK_EVIDENCE_DIR="$OUT/$label" node --test tests/ops/readiness-schema-missing.test.mjs > "$OUT/$label/$label.tap" 2>&1)
+  local rc=$?
+  grep -E "^(ok|not ok) |^# (tests|pass|fail) |^  error: " "$OUT/$label/$label.tap"
+  echo "[exit $rc]"
+  if [ "$rc" != 0 ] && grep -q "health answered 200 before the ICFWalk schema exists" "$OUT/$label/$label.tap"; then
+    echo "LIVE RED as required: on the uncorrected code the operation fails because health answered 200 before the schema existed"
+  else
+    echo "LIVE RED NOT OBSERVED"; RESULT=1
+  fi
+  rm -rf "$tree"
+}
+
+# 1. ColdFusion is up from the gate on its own database: restart during autosave there.
+step "ColdFusion from the gate"
+curl -sS http://127.0.0.1:8500/index.cfm/api/health; echo
+run restart-coldfusion ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_DB_NAME=$ACF_DB -- tests/ops/restart-during-autosave.test.mjs
+# 2. The production profile and the readiness probe on ColdFusion need port 8500: the gate's container goes.
+tools/runtime/acf-down.sh
+run production-profile-coldfusion ICFWALK_PROD_PROFILE_ENGINE=acf ICFWALK_ACF_IMAGE=$ACF_IMAGE -- tests/ops/production-profile.test.mjs
+run readiness-coldfusion ICFWALK_READINESS_ENGINE=acf ICFWALK_ACF_IMAGE=$ACF_IMAGE -- tests/ops/readiness-schema-missing.test.mjs
+red readiness-coldfusion-live-red-on-10f476ba acf
+# 3. Lucee on the gate's database: restart during autosave, its own production profile, the readiness probe.
+step "Lucee on the gate's database"
+tools/runtime/lucee-up.sh > "$OUT/lucee-up.txt" 2>&1; tail -1 "$OUT/lucee-up.txt"
+run restart-lucee ICFWALK_BASE_URL=http://127.0.0.1:8888 -- tests/ops/restart-during-autosave.test.mjs
+run production-profile-lucee ICFWALK_PROD_PROFILE_ENGINE=lucee -- tests/ops/production-profile.test.mjs
+run readiness-lucee ICFWALK_READINESS_ENGINE=lucee -- tests/ops/readiness-schema-missing.test.mjs
+red readiness-lucee-live-red-on-10f476ba lucee
+# 4. Upgrade from the Phase 6 release through 007, this release, and rollback to the frozen one.
+run upgrade-and-rollback ICFWALK_DB_NAME=icfwalk_dev -- tests/ops/upgrade-and-rollback.test.mjs
+# 5. Backup and restore of the gate's Lucee database, and the killed and refused migrations.
+tools/runtime/lucee-down.sh
+run database-operations ICFWALK_DB_NAME=icfwalk_dev -- tests/ops/database-operations.test.mjs
+
+# 6. The normal verification environment, put back and checked.
+step "the normal verification environment"
+tools/runtime/lucee-up.sh > "$OUT/lucee-up-after.txt" 2>&1; tail -1 "$OUT/lucee-up-after.txt"
+ICFWALK_DB_NAME=$ACF_DB ICFWALK_ACF_IMAGE=$ACF_IMAGE tools/runtime/acf-up.sh > "$OUT/acf-up-after.txt" 2>&1; tail -1 "$OUT/acf-up-after.txt"
+L=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:8888/index.cfm/api/health); A=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:8500/index.cfm/api/health)
+echo "health: Lucee (8888, icfwalk_dev) $L; ColdFusion (8500, $ACF_DB) $A"
+[ "$L" = 200 ] && [ "$A" = 200 ] || RESULT=1
+source .runtime/mssql.env
+LEFT=$(docker exec icfwalk-mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -h -1 -W -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE name LIKE N'icfwalk[_]a801ready%' OR name LIKE N'icfwalk[_]p8prod%' ORDER BY name; SELECT name FROM sys.server_principals WHERE name LIKE N'a801ready%' OR name LIKE N'p8prod%' ORDER BY name;")
+echo "temporary databases and logins left by the operations: ${LEFT:-<none>}"
+[ -z "$LEFT" ] || RESULT=1
+docker exec icfwalk-mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b -h -1 -W -Q "SET NOCOUNT ON; SELECT name FROM sys.databases ORDER BY name;"
+
+step "identity after"
+git rev-parse HEAD 'HEAD^{tree}'; S=$(git status --porcelain=v1 --untracked-files=all); echo "status: ${S:-<clean>}"
+[ -z "$S" ] || RESULT=1
+[ "$(git rev-parse HEAD)" = "$EXPECTED" ] || RESULT=1
+echo; [ $RESULT = 0 ] && echo "OPERATIONS PASSED on $EXPECTED" || echo "OPERATIONS FAILED on $EXPECTED"
+exit $RESULT

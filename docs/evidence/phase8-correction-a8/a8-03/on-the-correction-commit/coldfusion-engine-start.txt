@@ -1,0 +1,6 @@
+# ColdFusion performance engine for A8-03: 2026-09-27T10:34:36Z, HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d, status: 0 changes
+$ ICFWALK_ACF_CONTAINER=icfwalk-acf-perf ICFWALK_DB_NAME=icfwalk_perf ICFWALK_ACF_IMAGE=<pinned> tools/runtime/acf-up.sh
+Started icfwalk-acf-perf from adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e (sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e)
+Administrator datasource 'icfwalk' (Microsoft JDBC driver 12.10.2.jre11, Other): DSN_VERIFIED=YES 
+Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"a8790b1f-8fd3-4268-b0e0-2e50e752789d","engine":"ColdFusion Server 2023,0,25,330977","environment":"development","status":"ok"}
+[exit 0]

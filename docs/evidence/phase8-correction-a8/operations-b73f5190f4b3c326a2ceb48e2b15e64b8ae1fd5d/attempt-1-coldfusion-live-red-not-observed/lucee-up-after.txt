@@ -1,0 +1,4 @@
+Starting Lucee/Jetty on port 8888 (pid 6825, log /home/user/ICFWalk/.runtime/lucee.log)
+curl: (7) Failed to connect to 127.0.0.1 port 8888 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 8888 after 0 ms: Couldn't connect to server
+Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"2f530687-333e-4809-8416-bb43a5c42dbf","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}

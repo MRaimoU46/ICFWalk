@@ -1,0 +1,470 @@
+{
+  "graphs": 7,
+  "deadlocks": [
+    {
+      "file": "deadlock-01.xml",
+      "processes": [
+        {
+          "id": "processfa00a7468",
+          "role": "victim",
+          "spid": 61,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158351",
+          "waitMs": 2627,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf95e13088",
+          "role": "survivor",
+          "spid": 70,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158138",
+          "waitMs": 2357,
+          "logUsed": 62228,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158351",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158138",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-02.xml",
+      "processes": [
+        {
+          "id": "process100280c4e8",
+          "role": "victim",
+          "spid": 63,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1352,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00c5c28",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1324,
+          "logUsed": 52172,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-03.xml",
+      "processes": [
+        {
+          "id": "processf8367dc28",
+          "role": "victim",
+          "spid": 76,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1590,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00a7468",
+          "role": "survivor",
+          "spid": 76,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:128189",
+          "waitMs": 1590,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:128189",
+          "waitMs": 1562,
+          "logUsed": 6988,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        },
+        {
+          "id": "processf80059468",
+          "role": "survivor",
+          "spid": 74,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1582,
+          "logUsed": 9672,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "128189",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "survivor S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "128189",
+          "mode": "IX",
+          "owners": [
+            "survivor S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-04.xml",
+      "processes": [
+        {
+          "id": "processf8367d468",
+          "role": "victim",
+          "spid": 81,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158444",
+          "waitMs": 91,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": ""
+        },
+        {
+          "id": "processf80059088",
+          "role": "survivor",
+          "spid": 63,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158447",
+          "waitMs": 22,
+          "logUsed": 66944,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158444",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158447",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-05.xml",
+      "processes": [
+        {
+          "id": "processfa00a7468",
+          "role": "victim",
+          "spid": 74,
+          "ecid": 4,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1329,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processfa00c5c28",
+          "role": "survivor",
+          "spid": 63,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1239,
+          "logUsed": 9672,
+          "trancount": 2,
+          "statement": "UPDATE [icf].[walk_response] SET response_state = @P0 , selected_option_id = @P1 , text_value = @P2 , number_value = NULL, date_value = NULL, boolean_value = NULL, updated_at = SYSUTCDATETIME() WHERE walk_id = @P3 AND item_id = @P4"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-06.xml",
+      "processes": [
+        {
+          "id": "processfa00a6108",
+          "role": "victim",
+          "spid": 62,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158348",
+          "waitMs": 1188,
+          "logUsed": 0,
+          "trancount": 1,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 61,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158441",
+          "waitMs": 1207,
+          "logUsed": 54044,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158348",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158441",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "deadlock-07.xml",
+      "processes": [
+        {
+          "id": "processfa00c5c28",
+          "role": "victim",
+          "spid": 65,
+          "ecid": 3,
+          "isolation": "read committed (2)",
+          "lockMode": "S",
+          "waitResource": "PAGE: 7:1:158569",
+          "waitMs": 126,
+          "logUsed": 0,
+          "trancount": 0,
+          "statement": ""
+        },
+        {
+          "id": "processf8367d468",
+          "role": "survivor",
+          "spid": 63,
+          "ecid": 0,
+          "isolation": "read committed (2)",
+          "lockMode": "IX",
+          "waitResource": "PAGE: 7:1:158573",
+          "waitMs": 48,
+          "logUsed": 77224,
+          "trancount": 2,
+          "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )"
+        }
+      ],
+      "resources": [
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158569",
+          "mode": "IX",
+          "owners": [
+            "survivor IX"
+          ],
+          "waiters": [
+            "victim S"
+          ]
+        },
+        {
+          "kind": "pagelock",
+          "object": "icfwalk_perf.icf.walk_response",
+          "index": null,
+          "page": "158573",
+          "mode": "S",
+          "owners": [
+            "victim S"
+          ],
+          "waiters": [
+            "survivor IX"
+          ]
+        }
+      ]
+    }
+  ]
+}

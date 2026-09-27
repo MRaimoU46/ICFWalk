@@ -1,0 +1,4 @@
+# A8-03 series: 1 run(s), engine=lucee edits=any levels=1,10,25, HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640, clean, 2026-09-27T10:30:41Z
+run 1: exit 0, 2026-09-27T10:30:41.000Z .. 2026-09-27T10:34:17.000Z | expected409=26 unexpected=0 {} | L1: 1314 req, live 0 p50 - ms, csv 0; L10: 2443 req, live 8 p50 6177 ms, csv 8; L25: 3079 req, live 10 p50 22587 ms, csv 10 | deadlock graphs: (node:1789) | report.deadlock.victim logged: 7 | request.failed logged: 0
+# series finished 2026-09-27T10:34:17Z; HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d; status: 0 changes
+series exit=0

@@ -1,0 +1,190 @@
+31 deadlock graph(s) from 2026-09-27T00:00:00Z to (now)
+--- 01 at 2026-09-27T01:15:50.1880000 victim processfa00a7468
+  VICTIM   spid 61 iso read committed (2) lockMode S waitresource PAGE: 7:1:158351  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 70 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158138  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 02 at 2026-09-27T01:15:55.2030000 victim process100280c4e8
+  VICTIM   spid 63 iso read committed (2) lockMode S waitresource PAGE: 7:1:158348  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 61 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158441  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 03 at 2026-09-27T01:15:57.7340000 victim processf8367dc28
+  VICTIM   spid 76 iso read committed (2) lockMode S waitresource PAGE: 7:1:158348  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 76 iso read committed (2) lockMode S waitresource PAGE: 7:1:128189  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 61 iso read committed (2) lockMode IX waitresource PAGE: 7:1:128189  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 74 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158441  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 04 at 2026-09-27T01:16:00.8830000 victim processf8367d468
+  VICTIM   spid 81 iso read committed (2) lockMode S waitresource PAGE: 7:1:158444  trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 63 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158447  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 05 at 2026-09-27T01:16:03.3960000 victim processfa00a7468
+  VICTIM   spid 74 iso read committed (2) lockMode S waitresource PAGE: 7:1:158348  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 63 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158441  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 06 at 2026-09-27T01:16:04.6600000 victim processfa00a6108
+  VICTIM   spid 62 iso read committed (2) lockMode S waitresource PAGE: 7:1:158348  trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 61 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158441  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 07 at 2026-09-27T01:16:07.5550000 victim processfa00c5c28
+  VICTIM   spid 65 iso read committed (2) lockMode S waitresource PAGE: 7:1:158569  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 63 iso read committed (2) lockMode IX waitresource PAGE: 7:1:158573  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 08 at 2026-09-27T01:26:49.8990000 victim process1001c7d088
+  VICTIM   spid 90 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (8aa1a0fca776) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 91 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (5cca42dc2e7f) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 09 at 2026-09-27T01:26:54.9100000 victim processf95cd28c8
+  VICTIM   spid 90 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (8aa1a0fca776) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 91 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (5cca42dc2e7f) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 10 at 2026-09-27T01:27:21.1700000 victim process1001c7c108
+  VICTIM   spid 53 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (9fdc6a900ff6) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 54 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (dccf5683dcd8) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 11 at 2026-09-27T01:27:26.1800000 victim processfa00c5848
+  VICTIM   spid 53 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (9fdc6a900ff6) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 54 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (dccf5683dcd8) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 12 at 2026-09-27T01:28:22.4440000 victim processf917c7c28
+  VICTIM   spid 53 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (c4dedcc240a2) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 54 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (d5a29473d3d0) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 13 at 2026-09-27T01:28:27.4500000 victim processf917c7c28
+  VICTIM   spid 53 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (c4dedcc240a2) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 54 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (d5a29473d3d0) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 14 at 2026-09-27T01:28:29.9590000 victim processf8367d848
+  VICTIM   spid 54 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (c4dedcc240a2) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 53 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (d5a29473d3d0) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 15 at 2026-09-27T01:28:31.2160000 victim processf8367d848
+  VICTIM   spid 53 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (c4dedcc240a2) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 54 iso read committed (2) lockMode U waitresource KEY: 5:72057594045857792 (d5a29473d3d0) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_dev.icf.app_user index PK_app_user held-mode U
+--- 16 at 2026-09-27T01:33:36.5510000 victim processfa00a6108
+  VICTIM   spid 57 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (a455cc3c0f92) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 58 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (e369307cdee1) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+--- 17 at 2026-09-27T01:33:41.5580000 victim processfa00a6108
+  VICTIM   spid 57 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (a455cc3c0f92) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 58 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (e369307cdee1) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+--- 18 at 2026-09-27T01:33:44.0660000 victim processfa00c5848
+  VICTIM   spid 57 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (a455cc3c0f92) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 58 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (e369307cdee1) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+--- 19 at 2026-09-27T01:33:45.3230000 victim processfa00a6108
+  VICTIM   spid 57 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (a455cc3c0f92) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 58 iso read committed (2) lockMode U waitresource KEY: 8:72057594045857792 (e369307cdee1) trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+  resource keylock icfwalk_acf_dev.icf.app_user index PK_app_user held-mode U
+--- 20 at 2026-09-27T01:43:02.5410000 victim process1001c7c4e8
+  VICTIM   spid 77 iso read committed (2) lockMode S waitresource PAGE: 7:1:161719  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 61 iso read committed (2) lockMode IX waitresource PAGE: 7:1:161833  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 21 at 2026-09-27T01:48:41.8310000 victim processfa00c48c8
+  VICTIM   spid 70 iso read committed (2) lockMode S waitresource PAGE: 7:1:164720  trancount 1 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 66 iso read committed (2) lockMode IX waitresource PAGE: 7:1:164722  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 22 at 2026-09-27T01:49:19.4620000 victim processf917c6108
+  VICTIM   spid 53 iso read committed (2) lockMode S waitresource PAGE: 7:1:165002  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 53 iso read committed (2) lockMode S waitresource PAGE: 7:1:164942  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 58 iso read committed (2) lockMode IX waitresource PAGE: 7:1:164942  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 77 iso read committed (2) lockMode IX waitresource PAGE: 7:1:165007  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 72 iso read committed (2) lockMode IX waitresource PAGE: 7:1:165007  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 23 at 2026-09-27T01:50:02.2110000 victim processf95e128c8
+  VICTIM   spid 65 iso read committed (2) lockMode S waitresource PAGE: 7:1:165556  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 60 iso read committed (2) lockMode IX waitresource PAGE: 7:1:165584  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 24 at 2026-09-27T01:52:05.4530000 victim processf87e4b848
+  VICTIM   spid 54 iso read committed (2) lockMode S waitresource PAGE: 7:1:166597  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 69 iso read committed (2) lockMode IX waitresource PAGE: 7:1:166499  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFF940536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFF9405313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 25 at 2026-09-27T10:33:57.3580000 victim processebeab7088
+  VICTIM   spid 74 iso read committed (2) lockMode S waitresource PAGE: 7:1:169269  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 84 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169394  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 26 at 2026-09-27T10:34:02.4160000 victim processf0b6868c8
+  VICTIM   spid 87 iso read committed (2) lockMode S waitresource PAGE: 7:1:169269  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 70 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169394  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 27 at 2026-09-27T10:34:04.9570000 victim processf29e18108
+  VICTIM   spid 86 iso read committed (2) lockMode S waitresource PAGE: 7:1:169489  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 79 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169490  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 28 at 2026-09-27T10:34:06.2620000 victim processebeabbc28
+  VICTIM   spid 87 iso read committed (2) lockMode S waitresource PAGE: 7:1:169269  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 73 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169394  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 29 at 2026-09-27T10:34:06.9200000 victim processebeab7468
+  VICTIM   spid 84 iso read committed (2) lockMode S waitresource PAGE: 7:1:169268  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 71 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169393  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 30 at 2026-09-27T10:34:09.6190000 victim processebeab7088
+  VICTIM   spid 69 iso read committed (2) lockMode S waitresource PAGE: 7:1:169268  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 79 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169393  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+--- 31 at 2026-09-27T10:34:12.1400000 victim processebeabb088
+  VICTIM   spid 85 iso read committed (2) lockMode S waitresource PAGE: 7:1:169269  trancount 0 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq
+  survivor spid 79 iso read committed (2) lockMode IX waitresource PAGE: 7:1:169394  trancount 2 tran implicit_transaction
+           <frame id="01" address="0x3FFFBF8536AF" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sqlpal" rva="0x2536AF"/><frame id="02" address="0x3FFFBF85313F" pdb="sqlpal.pdb" age="1" guid="534F8B59-7444-2BAF-3901-1BBCA5B8828E" module="sq

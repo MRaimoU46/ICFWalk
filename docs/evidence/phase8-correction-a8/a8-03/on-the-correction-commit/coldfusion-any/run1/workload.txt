@@ -1,0 +1,15 @@
+# A8-03 workload run: engine=acf edits=any levels=1,10,25 duration=60s solo=5, 2026-09-27T10:38:22Z
+# workload harness: HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640; sha256 ab19da2caad88ae4605b08bc6664a42ee363a6355315bfe832dfa1b6cd5929e2 tests/perf/workload.mjs
+# status: <clean>
+# engine: ColdFusion container icfwalk-acf-perf
+# other engines answering: 8888=000 8889=000 8500=200
+$ ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=http://127.0.0.1:8500 PERF_LEVELS=1,10,25 PERF_DURATION=60 PERF_EDIT=any PERF_ENGINE_CONTAINER=icfwalk-acf-perf ICFWALK_EVIDENCE_DIR=<out> node tests/perf/workload.mjs
+10:38:23 ColdFusion Server 2023,0,25,330977 on icfwalk_perf: 31185 walks, 2276505 responses; levels 1,10,25 for 60s
+10:38:38 solo: report live district (solo) p50=1477 max=1602 err=0; report CSV district (solo) p50=1522 max=1649 err=0
+10:39:40 level 1: 770 requests in 60s; list mine p50=99 p95=148 max=194 err=0; open walk p50=42 p95=55 max=66 err=0; save walk p50=85 p95=110 max=118 err=0; summary p50=48 p95=64 max=65 err=0; create walk p50=165 p95=297 max=297 err=0; complete walk p50=74 p95=90 max=90 err=0
+10:40:47 level 10: 868 requests in 64s; list mine p50=585 p95=1115 max=1736 err=0; open walk p50=439 p95=1027 max=1413 err=0; save walk p50=591 p95=1203 max=1752 err=0; list district (scope=all) p50=727 p95=1220 max=1220 err=0; summary p50=391 p95=1030 max=1065 err=0; create walk p50=821 p95=1179 max=1179 err=0; complete walk p50=535 p95=935 max=935 err=0; report live district p50=5866 p95=5866 max=5866 err=6; report CSV district p50=1146 p95=1146 max=1146 err=6
+10:41:54 level 25: 931 requests in 56s; list mine p50=1161 p95=2843 max=3945 err=0; open walk p50=1074 p95=3065 max=3736 err=0; save walk p50=1262 p95=3392 max=4154 err=0; list district (scope=all) p50=962 p95=2377 max=2377 err=0; summary p50=909 p95=2247 max=3576 err=0; create walk p50=1892 p95=4094 max=4094 err=0; complete walk p50=1394 p95=3902 max=3902 err=0; report live district p50=null p95=null max=null err=15; report CSV district p50=2207 p95=6224 max=6224 err=13
+10:41:55 release: {"status":"created by an earlier run on this database","releaseId":"B8ED65E9-73E4-4258-821A-0E6D719B154A"}; release read {"status":200,"ms":262}
+10:41:55 failures: 40 expected (409 REPORT_POPULATION_CHANGED); 0 unexpected {}, 0 with their request.failed event (not read: no unexpected answer)
+10:41:56 written /tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/evidence/a8-03/series-acf-any-fixed/run1/workload-ColdFusion-Server-2023-0-25-330977.json
+[exit 0]

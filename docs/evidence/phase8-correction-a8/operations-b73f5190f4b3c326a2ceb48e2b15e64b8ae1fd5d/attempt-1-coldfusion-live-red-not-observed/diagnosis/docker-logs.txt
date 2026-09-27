@@ -1,0 +1,39 @@
+Start Time: 11:46:05
+Updating webroot to /app
+Configuring virtual directories
+Updating password
+Skipping language updation
+Serial Key: Not Provided
+Previous Serial Key: Not Provided
+Starting ColdFusion
+Starting ColdFusion 2023 server ...
+======================================================================
+ColdFusion 2023 server has been started.
+ColdFusion 2023 will write logs to /opt/coldfusion/cfusion/bin/../logs/coldfusion-out.log
+======================================================================
+[] Checking server startup status...
+No Modules to be installed !
+No Settings to be imported !
+No Modules to be imported !
+Importing of car not enabled!
+External Addons: Disabled
+External Session Storage: Disabled
+Skipping setup script invocation
+Secure Profile: Disabled
+Deployment Type not set , set to default(Development)
+Profile not set , set to default(Development Profile)
+Cleaning up setup directories
+restart required:
+0
+End Time: 11:46:25
+Sep 27, 2026 11:46:23 AM Information [main] - gcpstorage package will not be deployed as it is not installed.
+Sep 27, 2026 11:46:23 AM Information [main] - report package will not be deployed as it is not installed.
+Sep 27, 2026 11:46:23 AM Information [main] - exchange package will not be deployed as it is not installed.
+Sep 27, 2026 11:46:23 AM Information [main] - sharepoint package will not be deployed as it is not installed.
+Sep 27, 2026 11:46:23 AM Information [main] - graphqlclient package will not be deployed as it is not installed.
+Sep 27, 2026 11:46:23 AM Information [main] - ColdFusion started
+Sep 27, 2026 11:46:23 AM Information [main] - ColdFusion: application services are now available
+Sep 27, 2026 11:46:24 AM Warning [http-nio-8500-exec-3] - No paths found for key 'bytecodeexecutionpaths' in pathfilter.json
+Sep 27, 2026 11:46:24 AM Error [http-nio-8500-exec-2] - File not found: /index.cfm The specific sequence of files included or processed is: /app/index.cfm''
+Sep 27, 2026 11:46:24 AM Information [http-nio-8500-exec-3] - Initialize client.properties file
+Sep 27, 2026 11:46:28 AM Information [Thread-9] - ColdFusion stopped

@@ -1,0 +1,1271 @@
+{
+  "startedAt": "2026-09-27T01:13:53.099Z",
+  "database": "icfwalk_perf",
+  "baseUrl": "http://127.0.0.1:8889",
+  "engine": "Lucee 6.2.8.20",
+  "server": {
+    "version": "16.0.4295.3",
+    "edition": "Developer Edition (64-bit)",
+    "cpus": 4,
+    "memoryMb": "12876"
+  },
+  "data": {
+    "walks": 30096,
+    "responses": 2197008
+  },
+  "method": {
+    "durationSeconds": 60,
+    "levels": [
+      10,
+      25
+    ],
+    "edits": "drafts",
+    "soloReports": 5,
+    "thinkTimeMs": 0,
+    "mix": "closed loop, no think time: 4 of 5 virtual users are school walkers (list mine, open, save 50 %, summary 10 %, create+save+complete 5 %); 1 of 5 is the district walker (list scope=all, live district report, district CSV)",
+    "requestTimeoutMs": 60000,
+    "failures": "every non-success answer kept with operation, status, error code, correlation id (sent by the harness as X-Correlation-Id), elapsed ms and time sent; 409 REPORT_POPULATION_CHANGED is the one expected refusal, everything else is unexpected and is matched to the application log"
+  },
+  "levels": [
+    {
+      "concurrency": 10,
+      "seconds": 60.898,
+      "requests": 2948,
+      "operations": {
+        "list mine": {
+          "count": 1251,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 20.5,
+          "p50": 151,
+          "p95": 288,
+          "p99": 358,
+          "max": 552,
+          "meanBytes": 99599
+        },
+        "open walk": {
+          "count": 1265,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 20.8,
+          "p50": 109,
+          "p95": 239,
+          "p99": 317,
+          "max": 454,
+          "meanBytes": 5791
+        },
+        "summary": {
+          "count": 118,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 1.9,
+          "p50": 180,
+          "p95": 334,
+          "p99": 412,
+          "max": 491,
+          "meanBytes": 4731
+        },
+        "save walk": {
+          "count": 160,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 2.6,
+          "p50": 337,
+          "p95": 567,
+          "p99": 664,
+          "max": 764,
+          "meanBytes": 5845
+        },
+        "list district (scope=all)": {
+          "count": 14,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 0.2,
+          "p50": 646,
+          "p95": 1106,
+          "p99": 1106,
+          "max": 1106,
+          "meanBytes": 512557
+        },
+        "create walk": {
+          "count": 56,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 0.9,
+          "p50": 639,
+          "p95": 1093,
+          "p99": 1532,
+          "max": 1532,
+          "meanBytes": 5231
+        },
+        "complete walk": {
+          "count": 56,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 0.9,
+          "p50": 258,
+          "p95": 510,
+          "p99": 542,
+          "max": 542,
+          "meanBytes": 5540
+        },
+        "report live district": {
+          "count": 14,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 0.2,
+          "p50": 3912,
+          "p95": 4869,
+          "p99": 4869,
+          "max": 4869,
+          "meanBytes": 56140
+        },
+        "report CSV district": {
+          "count": 14,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 0.2,
+          "p50": 3922,
+          "p95": 4796,
+          "p99": 4796,
+          "max": 4796,
+          "meanBytes": 35260
+        }
+      },
+      "failures": [],
+      "blocking": {
+        "samples": 61,
+        "blockedMax": 1,
+        "longestWaitMs": 271
+      },
+      "topWaits": [
+        {
+          "wait": "SOS_SCHEDULER_YIELD",
+          "ms": 88295,
+          "count": 32968
+        },
+        {
+          "wait": "CXCONSUMER",
+          "ms": 56808,
+          "count": 53
+        },
+        {
+          "wait": "LCK_M_S",
+          "ms": 27795,
+          "count": 216
+        },
+        {
+          "wait": "LATCH_EX",
+          "ms": 10427,
+          "count": 1943
+        },
+        {
+          "wait": "RESERVED_MEMORY_ALLOCATION_EXT",
+          "ms": 6188,
+          "count": 1046561
+        },
+        {
+          "wait": "PREEMPTIVE_OS_FLUSHFILEBUFFERS",
+          "ms": 4002,
+          "count": 656
+        },
+        {
+          "wait": "WRITELOG",
+          "ms": 3732,
+          "count": 682
+        },
+        {
+          "wait": "HTDELETE",
+          "ms": 3446,
+          "count": 432
+        }
+      ],
+      "resourcesBefore": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 1.8125,
+          "internalMb": 0.5,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 0,
+        "sessionsWithOpenTransactions": 0,
+        "engine": {
+          "rssMb": 918,
+          "threads": 58
+        }
+      },
+      "resourcesAfter": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 1.8125,
+          "internalMb": 0.5,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 0,
+        "sessionsWithOpenTransactions": 0,
+        "engine": {
+          "rssMb": 919,
+          "threads": 57
+        }
+      }
+    },
+    {
+      "concurrency": 25,
+      "seconds": 64.863,
+      "requests": 3345,
+      "operations": {
+        "list mine": {
+          "count": 1424,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 22,
+          "p50": 342,
+          "p95": 579,
+          "p99": 755,
+          "max": 1230,
+          "meanBytes": 107945
+        },
+        "open walk": {
+          "count": 1439,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 22.2,
+          "p50": 258,
+          "p95": 508,
+          "p99": 683,
+          "max": 819,
+          "meanBytes": 5827
+        },
+        "save walk": {
+          "count": 175,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 2.7,
+          "p50": 479,
+          "p95": 1256,
+          "p99": 2089,
+          "max": 2297,
+          "meanBytes": 5832
+        },
+        "list district (scope=all)": {
+          "count": 16,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 0.2,
+          "p50": 1322,
+          "p95": 3379,
+          "p99": 3379,
+          "max": 3379,
+          "meanBytes": 501398
+        },
+        "create walk": {
+          "count": 63,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 1,
+          "p50": 1366,
+          "p95": 4475,
+          "p99": 6205,
+          "max": 6205,
+          "meanBytes": 5228
+        },
+        "complete walk": {
+          "count": 63,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 1,
+          "p50": 385,
+          "p95": 1005,
+          "p99": 1234,
+          "max": 1234,
+          "meanBytes": 5536
+        },
+        "summary": {
+          "count": 133,
+          "errors": 0,
+          "errorKinds": [],
+          "errorCounts": {},
+          "expectedRefusals": 0,
+          "unexpected": 0,
+          "perSecond": 2.1,
+          "p50": 358,
+          "p95": 720,
+          "p99": 829,
+          "max": 895,
+          "meanBytes": 4757
+        },
+        "report live district": {
+          "count": 16,
+          "errors": 3,
+          "errorKinds": [
+            "500 INTERNAL_ERROR"
+          ],
+          "errorCounts": {
+            "500 INTERNAL_ERROR": 3
+          },
+          "expectedRefusals": 0,
+          "unexpected": 3,
+          "perSecond": 0.2,
+          "p50": 12150,
+          "p95": 21164,
+          "p99": 21164,
+          "max": 21164,
+          "meanBytes": 45695
+        },
+        "report CSV district": {
+          "count": 16,
+          "errors": 4,
+          "errorKinds": [
+            "500 INTERNAL_ERROR"
+          ],
+          "errorCounts": {
+            "500 INTERNAL_ERROR": 4
+          },
+          "expectedRefusals": 0,
+          "unexpected": 4,
+          "perSecond": 0.2,
+          "p50": 8221,
+          "p95": 18085,
+          "p99": 18085,
+          "max": 18085,
+          "meanBytes": 26552
+        }
+      },
+      "failures": [
+        {
+          "phase": "level 25",
+          "op": "report live district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-b00c5fcf-0aea-4d18-9775-a91f64e88be8",
+          "ms": 8858,
+          "sentAt": "2026-09-27T01:15:41.523Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 61) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:15:50.378Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-b00c5fcf-0aea-4d18-9775-a91f64e88be8",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 61) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        },
+        {
+          "phase": "level 25",
+          "op": "report CSV district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-da50dd92-3198-44a0-b412-660f7ff701d2",
+          "ms": 4868,
+          "sentAt": "2026-09-27T01:15:50.381Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 63) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:15:55.248Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-da50dd92-3198-44a0-b412-660f7ff701d2",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate.csv",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 63) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        },
+        {
+          "phase": "level 25",
+          "op": "report CSV district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-c98d8561-7112-4e21-b56b-945a26d269ac",
+          "ms": 6460,
+          "sentAt": "2026-09-27T01:15:51.451Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 76) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:15:57.876Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-c98d8561-7112-4e21-b56b-945a26d269ac",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate.csv",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 76) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        },
+        {
+          "phase": "level 25",
+          "op": "report CSV district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-ebc76400-c923-4e0d-8074-669a81e37971",
+          "ms": 5171,
+          "sentAt": "2026-09-27T01:15:55.749Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 81) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:16:00.918Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-ebc76400-c923-4e0d-8074-669a81e37971",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate.csv",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 81) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        },
+        {
+          "phase": "level 25",
+          "op": "report live district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-d0e6a4ce-893a-4965-8089-3bdb3c4680f0",
+          "ms": 6068,
+          "sentAt": "2026-09-27T01:15:58.630Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 62) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:16:04.697Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-d0e6a4ce-893a-4965-8089-3bdb3c4680f0",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 62) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        },
+        {
+          "phase": "level 25",
+          "op": "report live district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-153006c7-0eb3-42ae-8ae0-5910220fe7ab",
+          "ms": 4240,
+          "sentAt": "2026-09-27T01:15:59.230Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 74) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:16:03.464Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-153006c7-0eb3-42ae-8ae0-5910220fe7ab",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 74) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        },
+        {
+          "phase": "level 25",
+          "op": "report CSV district",
+          "status": 500,
+          "kind": "500 INTERNAL_ERROR",
+          "code": "INTERNAL_ERROR",
+          "expected": false,
+          "correlationId": "perf-04b915d8-ca9e-4f60-942b-38758cef66ff",
+          "ms": 4112,
+          "sentAt": "2026-09-27T01:16:03.470Z",
+          "response": {
+            "code": "INTERNAL_ERROR",
+            "message": "An unexpected error occurred.",
+            "exceptionType": "database",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 65) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+            "detailKeys": []
+          },
+          "logEvents": [
+            {
+              "ts": "2026-09-27T01:16:07.580Z",
+              "level": "ERROR",
+              "event": "request.failed",
+              "correlationId": "perf-04b915d8-ca9e-4f60-942b-38758cef66ff",
+              "fields": {
+                "type": "database",
+                "code": "INTERNAL_ERROR",
+                "status": 500,
+                "path": "/api/reports/aggregate.csv",
+                "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+                "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 65) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+              }
+            }
+          ]
+        }
+      ],
+      "blocking": {
+        "samples": 66,
+        "blockedMax": 8,
+        "longestWaitMs": 2003
+      },
+      "topWaits": [
+        {
+          "wait": "SOS_SCHEDULER_YIELD",
+          "ms": 325424,
+          "count": 30364
+        },
+        {
+          "wait": "LCK_M_S",
+          "ms": 221833,
+          "count": 422
+        },
+        {
+          "wait": "CXCONSUMER",
+          "ms": 133595,
+          "count": 45
+        },
+        {
+          "wait": "LCK_M_IX",
+          "ms": 33419,
+          "count": 51
+        },
+        {
+          "wait": "LATCH_EX",
+          "ms": 23509,
+          "count": 2732
+        },
+        {
+          "wait": "RESERVED_MEMORY_ALLOCATION_EXT",
+          "ms": 16079,
+          "count": 871292
+        },
+        {
+          "wait": "HTBUILD",
+          "ms": 12762,
+          "count": 354
+        },
+        {
+          "wait": "PREEMPTIVE_OS_FLUSHFILEBUFFERS",
+          "ms": 6752,
+          "count": 747
+        }
+      ],
+      "resourcesBefore": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 1.8125,
+          "internalMb": 0.5,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 0,
+        "sessionsWithOpenTransactions": 0,
+        "engine": {
+          "rssMb": 919,
+          "threads": 57
+        }
+      },
+      "resourcesAfter": {
+        "sqlServerMb": 4178,
+        "tempdb": {
+          "userMb": 1.875,
+          "internalMb": 0.5,
+          "versionStoreMb": 0
+        },
+        "tempTablesInTempdb": 0,
+        "sessionsWithOpenTransactions": 0,
+        "engine": {
+          "rssMb": 930,
+          "threads": 62
+        }
+      }
+    }
+  ],
+  "solo": {
+    "report live district (solo)": {
+      "count": 5,
+      "errors": 0,
+      "errorKinds": [],
+      "errorCounts": {},
+      "expectedRefusals": 0,
+      "unexpected": 0,
+      "perSecond": 5,
+      "p50": 1381,
+      "p95": 1411,
+      "p99": 1411,
+      "max": 1411,
+      "meanBytes": 56133
+    },
+    "report CSV district (solo)": {
+      "count": 5,
+      "errors": 0,
+      "errorKinds": [],
+      "errorCounts": {},
+      "expectedRefusals": 0,
+      "unexpected": 0,
+      "perSecond": 5,
+      "p50": 1396,
+      "p95": 1446,
+      "p99": 1446,
+      "max": 1446,
+      "meanBytes": 35252
+    }
+  },
+  "soloFailures": [],
+  "release": {
+    "status": "created by an earlier run on this database",
+    "releaseId": "B8ED65E9-73E4-4258-821A-0E6D719B154A"
+  },
+  "releaseRead": {
+    "status": 200,
+    "ms": 173
+  },
+  "releaseFailures": [],
+  "failureTotals": {
+    "expectedRefusals": 0,
+    "unexpected": 7,
+    "byKind": {
+      "500 INTERNAL_ERROR": 7
+    },
+    "unexpectedByKind": {
+      "500 INTERNAL_ERROR": 7
+    },
+    "unexpectedWithRequestFailedEvent": 7,
+    "logSource": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/lucee-server/lucee-server/context/logs/icfwalk.log (icfwalk.log)"
+  },
+  "unexpectedFailures": [
+    {
+      "phase": "level 25",
+      "op": "report live district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-b00c5fcf-0aea-4d18-9775-a91f64e88be8",
+      "ms": 8858,
+      "sentAt": "2026-09-27T01:15:41.523Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 61) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:15:50.378Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-b00c5fcf-0aea-4d18-9775-a91f64e88be8",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 61) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "level 25",
+      "op": "report CSV district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-da50dd92-3198-44a0-b412-660f7ff701d2",
+      "ms": 4868,
+      "sentAt": "2026-09-27T01:15:50.381Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 63) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:15:55.248Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-da50dd92-3198-44a0-b412-660f7ff701d2",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate.csv",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 63) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "level 25",
+      "op": "report CSV district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-c98d8561-7112-4e21-b56b-945a26d269ac",
+      "ms": 6460,
+      "sentAt": "2026-09-27T01:15:51.451Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 76) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:15:57.876Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-c98d8561-7112-4e21-b56b-945a26d269ac",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate.csv",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 76) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "level 25",
+      "op": "report CSV district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-ebc76400-c923-4e0d-8074-669a81e37971",
+      "ms": 5171,
+      "sentAt": "2026-09-27T01:15:55.749Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 81) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:16:00.918Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-ebc76400-c923-4e0d-8074-669a81e37971",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate.csv",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 81) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "level 25",
+      "op": "report live district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-d0e6a4ce-893a-4965-8089-3bdb3c4680f0",
+      "ms": 6068,
+      "sentAt": "2026-09-27T01:15:58.630Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 62) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:16:04.697Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-d0e6a4ce-893a-4965-8089-3bdb3c4680f0",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 62) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "level 25",
+      "op": "report live district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-153006c7-0eb3-42ae-8ae0-5910220fe7ab",
+      "ms": 4240,
+      "sentAt": "2026-09-27T01:15:59.230Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 74) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:16:03.464Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-153006c7-0eb3-42ae-8ae0-5910220fe7ab",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 74) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "level 25",
+      "op": "report CSV district",
+      "status": 500,
+      "kind": "500 INTERNAL_ERROR",
+      "code": "INTERNAL_ERROR",
+      "expected": false,
+      "correlationId": "perf-04b915d8-ca9e-4f60-942b-38758cef66ff",
+      "ms": 4112,
+      "sentAt": "2026-09-27T01:16:03.470Z",
+      "response": {
+        "code": "INTERNAL_ERROR",
+        "message": "An unexpected error occurred.",
+        "exceptionType": "database",
+        "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 65) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.",
+        "detailKeys": []
+      },
+      "logEvents": [
+        {
+          "ts": "2026-09-27T01:16:07.580Z",
+          "level": "ERROR",
+          "event": "request.failed",
+          "correlationId": "perf-04b915d8-ca9e-4f60-942b-38758cef66ff",
+          "fields": {
+            "type": "database",
+            "code": "INTERNAL_ERROR",
+            "status": 500,
+            "path": "/api/reports/aggregate.csv",
+            "at": "/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree/src/core/Db.cfc:19",
+            "exceptionMessage": "An error occurred during the current command (Done status 0). Transaction (Process ID 65) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the tr...[truncated]"
+          }
+        }
+      ]
+    }
+  ],
+  "topStatements": [
+    {
+      "rank": 1,
+      "executions": 8687,
+      "totalMs": 31142,
+      "avgMs": 3.6,
+      "avgCpuMs": 0.2,
+      "avgLogicalReads": 25,
+      "avgRows": 1,
+      "maxMs": 2729,
+      "scans": [],
+      "statement": "INSERT INTO [icf].[walk_response] (walk_id, version_id, item_id, response_state, selected_option_id, text_value) VALUES ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 )",
+      "plan": "plans/statement-01.sqlplan"
+    },
+    {
+      "rank": 2,
+      "executions": 4616,
+      "totalMs": 26539,
+      "avgMs": 5.7,
+      "avgCpuMs": 2.8,
+      "avgLogicalReads": 222,
+      "avgRows": 1,
+      "maxMs": 162,
+      "scans": [],
+      "statement": "SELECT v.version_id, v.instrument_id, i.code AS instrument_code, v.version_label, v.status, v.checksum_sha256, v.compiled_snapshot_json, v.published_by_user_id, v.published_at, v.effective_start, v.updated_at, v.row_version FROM [icf].[instrument_version] v JOIN [icf].[instrument] i ON i.instrument_id = v.instrument_id WHERE v.version_id = @P0",
+      "plan": "plans/statement-02.sqlplan"
+    },
+    {
+      "rank": 3,
+      "executions": 1,
+      "totalMs": 14551,
+      "avgMs": 14551,
+      "avgCpuMs": 8504.3,
+      "avgLogicalReads": 27235,
+      "avgRows": 82,
+      "maxMs": 14551,
+      "scans": [
+        "Clustered Index Scan #icf_rp_A70A812176B042068F931B27C59071AD"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_A70A812176B042068F931B27C59071AD p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-03.sqlplan"
+    },
+    {
+      "rank": 4,
+      "executions": 1,
+      "totalMs": 14409,
+      "avgMs": 14409.4,
+      "avgCpuMs": 8327.5,
+      "avgLogicalReads": 27218,
+      "avgRows": 82,
+      "maxMs": 14409,
+      "scans": [
+        "Clustered Index Scan #icf_rp_5951C1A211A94802ABA06C15B07B7004"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_5951C1A211A94802ABA06C15B07B7004 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-04.sqlplan"
+    },
+    {
+      "rank": 5,
+      "executions": 1,
+      "totalMs": 14182,
+      "avgMs": 14182.3,
+      "avgCpuMs": 8076.8,
+      "avgLogicalReads": 27215,
+      "avgRows": 82,
+      "maxMs": 14182,
+      "scans": [
+        "Clustered Index Scan #icf_rp_8BEAC347A8694C3084257AC1F02740C9"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_8BEAC347A8694C3084257AC1F02740C9 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-05.sqlplan"
+    },
+    {
+      "rank": 6,
+      "executions": 1,
+      "totalMs": 12804,
+      "avgMs": 12804.1,
+      "avgCpuMs": 9954.1,
+      "avgLogicalReads": 27205,
+      "avgRows": 82,
+      "maxMs": 12804,
+      "scans": [
+        "Clustered Index Scan #icf_rp_A45C99BC604A4938B35E4EE92771E3DC"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_A45C99BC604A4938B35E4EE92771E3DC p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-06.sqlplan"
+    },
+    {
+      "rank": 7,
+      "executions": 1,
+      "totalMs": 12777,
+      "avgMs": 12776.9,
+      "avgCpuMs": 9967.5,
+      "avgLogicalReads": 27202,
+      "avgRows": 82,
+      "maxMs": 12777,
+      "scans": [
+        "Clustered Index Scan #icf_rp_AD098C059B5C45B6AE7214A596762D40"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_AD098C059B5C45B6AE7214A596762D40 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-07.sqlplan"
+    },
+    {
+      "rank": 8,
+      "executions": 2675,
+      "totalMs": 10193,
+      "avgMs": 3.8,
+      "avgCpuMs": 2.2,
+      "avgLogicalReads": 510,
+      "avgRows": 99,
+      "maxMs": 163,
+      "scans": [],
+      "statement": "SELECT TOP 500 w.walk_id, w.version_id, w.org_unit_id, w.owner_user_id, w.status, w.observed_at, w.created_at, w.updated_at, w.completed_at, w.voided_at, w.void_reason, CONVERT(varchar(18), CAST(w.row_version AS binary(8)), 1) AS row_version_hex, o.name AS org_unit_name, o.org_unit_code, o.org_unit_type, u.display_name AS owner_display_name, v.version_label FROM [icf].[walk] w JOIN [icf].[org_unit",
+      "plan": "plans/statement-08.sqlplan"
+    },
+    {
+      "rank": 9,
+      "executions": 1,
+      "totalMs": 8969,
+      "avgMs": 8968.8,
+      "avgCpuMs": 1011.7,
+      "avgLogicalReads": 25136,
+      "avgRows": 82,
+      "maxMs": 8969,
+      "scans": [
+        "Clustered Index Scan #icf_rp_C6BB74495188487080A82EF4604D7DEF"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_C6BB74495188487080A82EF4604D7DEF p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-09.sqlplan"
+    },
+    {
+      "rank": 10,
+      "executions": 30,
+      "totalMs": 8325,
+      "avgMs": 277.5,
+      "avgCpuMs": 63.2,
+      "avgLogicalReads": 3801,
+      "avgRows": 500,
+      "maxMs": 5777,
+      "scans": [
+        "Clustered Index Scan walk"
+      ],
+      "statement": "SELECT TOP 500 w.walk_id, w.version_id, w.org_unit_id, w.owner_user_id, w.status, w.observed_at, w.created_at, w.updated_at, w.completed_at, w.voided_at, w.void_reason, CONVERT(varchar(18), CAST(w.row_version AS binary(8)), 1) AS row_version_hex, o.name AS org_unit_name, o.org_unit_code, o.org_unit_type, u.display_name AS owner_display_name, v.version_label FROM [icf].[walk] w JOIN [icf].[org_unit",
+      "plan": "plans/statement-10.sqlplan"
+    },
+    {
+      "rank": 11,
+      "executions": 158,
+      "totalMs": 7978,
+      "avgMs": 50.5,
+      "avgCpuMs": 10.7,
+      "avgLogicalReads": 1883,
+      "avgRows": 718,
+      "maxMs": 411,
+      "scans": [
+        "Index Scan dimension_value"
+      ],
+      "statement": "SELECT x.walk_id, d.code, d.data_type, dv.value_code, x.text_value, x.number_value, x.date_value, x.boolean_value FROM [icf].[walk_dimension_value] x JOIN [icf].[dimension_definition] d ON d.dimension_id = x.dimension_id LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = x.selected_value_id WHERE x.walk_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P1",
+      "plan": "plans/statement-11.sqlplan"
+    },
+    {
+      "rank": 12,
+      "executions": 1,
+      "totalMs": 7139,
+      "avgMs": 7139.3,
+      "avgCpuMs": 6592.8,
+      "avgLogicalReads": 27253,
+      "avgRows": 82,
+      "maxMs": 7139,
+      "scans": [
+        "Clustered Index Scan #icf_rp_55B67AEB7E1F4163B1D766B636F7A632"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_55B67AEB7E1F4163B1D766B636F7A632 p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-12.sqlplan"
+    },
+    {
+      "rank": 13,
+      "executions": 1,
+      "totalMs": 7070,
+      "avgMs": 7070,
+      "avgCpuMs": 6257.4,
+      "avgLogicalReads": 27237,
+      "avgRows": 82,
+      "maxMs": 7070,
+      "scans": [
+        "Clustered Index Scan #icf_rp_9FCFBBDFEEA14FD7BCEBB44978DECDCD"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_9FCFBBDFEEA14FD7BCEBB44978DECDCD p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-13.sqlplan"
+    },
+    {
+      "rank": 14,
+      "executions": 1,
+      "totalMs": 6912,
+      "avgMs": 6912,
+      "avgCpuMs": 988.3,
+      "avgLogicalReads": 25158,
+      "avgRows": 82,
+      "maxMs": 6912,
+      "scans": [
+        "Clustered Index Scan #icf_rp_718A204B23A647A7A4A4E768BAA2ED2F"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_718A204B23A647A7A4A4E768BAA2ED2F p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-14.sqlplan"
+    },
+    {
+      "rank": 15,
+      "executions": 1,
+      "totalMs": 6898,
+      "avgMs": 6897.8,
+      "avgCpuMs": 6702.7,
+      "avgLogicalReads": 27239,
+      "avgRows": 82,
+      "maxMs": 6898,
+      "scans": [
+        "Clustered Index Scan #icf_rp_31D583EAD2214E9EB0B7DF51FAD4348D"
+      ],
+      "statement": "SELECT r.item_id, r.response_state, r.selected_option_id, COUNT(*) AS n FROM #icf_rp_31D583EAD2214E9EB0B7DF51FAD4348D p JOIN [icf].[walk_response] r ON r.walk_id = p.walk_id WHERE r.item_id IN ( @P0 , @P1 , @P2 , @P3 , @P4 , @P5 , @P6 , @P7 , @P8 , @P9 , @P10 , @P11 , @P12 , @P13 , @P14 , @P15 , @P16 , @P17 , @P18 , @P19 , @P20 , @P21 , @P22 , @P23 , @P24 , @P25 , @P26 , @P27 , @P28 , @P29 , @P30 ",
+      "plan": "plans/statement-15.sqlplan"
+    }
+  ],
+  "missingIndexes": [
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[org_unit_id], [owner_user_id]",
+      "inequality": "[status]",
+      "included": "[version_id], [observed_at], [created_at], [updated_at], [completed_at], [voided_at], [void_reason], [row_version]",
+      "seeks": "4976",
+      "scans": "0",
+      "benefit": 15321
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[version_id], [org_unit_id], [status]",
+      "inequality": null,
+      "included": "[row_version]",
+      "seeks": "140",
+      "scans": "0",
+      "benefit": 11842
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[version_id], [status]",
+      "inequality": null,
+      "included": "[org_unit_id], [row_version]",
+      "seeks": "140",
+      "scans": "0",
+      "benefit": 7819
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[status]",
+      "inequality": "[observed_at]",
+      "included": "[version_id]",
+      "seeks": "1",
+      "scans": "0",
+      "benefit": 58
+    },
+    {
+      "tableName": "[icfwalk_perf].[icf].[walk]",
+      "equality": "[version_id], [status]",
+      "inequality": "[observed_at]",
+      "included": "[org_unit_id], [row_version]",
+      "seeks": "1",
+      "scans": "0",
+      "benefit": 57
+    }
+  ],
+  "finishedAt": "2026-09-27T01:16:16.139Z",
+  "leftovers": {
+    "sqlServerMb": 4178,
+    "tempdb": {
+      "userMb": 1.875,
+      "internalMb": 0.5,
+      "versionStoreMb": 0
+    },
+    "tempTablesInTempdb": 0,
+    "sessionsWithOpenTransactions": 0,
+    "engine": {
+      "rssMb": 930,
+      "threads": 62
+    }
+  }
+}

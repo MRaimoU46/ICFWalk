@@ -1,0 +1,26 @@
+11:46:14 container icfwalk-acf-ready is running
+11:46:14 health: curl: (28) Operation timed out after 10001 milliseconds with 0 bytes received
+404 in 10.001241s
+11:46:34 health: curl: (7) Failed to connect to 127.0.0.1 port 8500 after 0 ms: Couldn't connect to server
+000 in 0.000174s
+11:46:44 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002254s
+11:47:04 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002707s
+11:47:24 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002172s
+11:47:44 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002513s
+11:48:04 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002894s
+11:48:24 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002078s
+11:48:44 health: curl: (28) Operation timed out after 10001 milliseconds with 0 bytes received
+000 in 10.001873s
+11:49:04 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002113s
+11:49:04 no answer for three minutes: recording the container's state
+11:49:28 health: curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+000 in 10.002477s
+11:49:48 health: curl: (56) Recv failure: Connection reset by peer
+000 in 2.407859s

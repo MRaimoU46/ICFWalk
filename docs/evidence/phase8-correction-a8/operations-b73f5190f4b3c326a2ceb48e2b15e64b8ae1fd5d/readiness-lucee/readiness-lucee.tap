@@ -1,0 +1,21 @@
+TAP version 13
+# (node:23747) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# (node:23851) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: the readiness probe on a reachable database without the ICFWalk schema: 503 until it is migrated, 200 after (A8-01)
+ok 1 - the readiness probe on a reachable database without the ICFWalk schema: 503 until it is migrated, 200 after (A8-01)
+  ---
+  duration_ms: 12113.467341
+  type: 'test'
+  ...
+# engine Lucee: before migrations 503 {"database":"ok","longText":"ok","schema":"missing"}; after, no restart 200; after a restart 200
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12489.482257

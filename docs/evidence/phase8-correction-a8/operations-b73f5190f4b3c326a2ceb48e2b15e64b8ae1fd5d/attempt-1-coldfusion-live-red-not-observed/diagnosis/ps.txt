@@ -1,0 +1,9 @@
+    PID     ELAPSED COMMAND
+      1       03:09 sh /opt/startup/start-coldfusion.sh start
+    464       02:49 tail -f /opt/coldfusion/cfusion/logs/coldfusion-out.log
+    724       02:35 ../../jre/bin/java -classpath /opt/coldfusion/cfusion/bin/../runtime/bin/tomcat-juli.jar:/opt/coldfusion/cfusion/bin/../bin/cf-bootstrap.jar: -server --add-exports=java.desktop/sun
+    753       02:09 curl -f http://localhost:8500/
+    760       00:59 curl -f http://localhost:8500/
+    761       00:00 sh -c ps -eo pid,etime,args | cut -c1-200
+    767       00:00 ps -eo pid,etime,args
+    768       00:00 cut -c1-200

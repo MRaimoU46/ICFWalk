@@ -1,0 +1,14 @@
+# A8-03 workload run: engine=lucee edits=drafts levels=10,25 duration=60s solo=5, 2026-09-27T01:45:37Z
+# workload harness: HEAD b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d tree d6458eeb5ae98e705a57a0dd6062de2a91443640; sha256 ab19da2caad88ae4605b08bc6664a42ee363a6355315bfe832dfa1b6cd5929e2 tests/perf/workload.mjs
+# status: <clean>
+# engine: perf Lucee pid 14858 serving /tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/tree
+# other engines answering: 8888=000 8889=200 8500=000
+$ ICFWALK_DB_NAME=icfwalk_perf ICFWALK_BASE_URL=http://127.0.0.1:8889 PERF_LEVELS=10,25 PERF_DURATION=60 PERF_EDIT=drafts PERF_ENGINE_PID=14858 PERF_LOG_FILE=/tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/perf/lucee/lucee-server/lucee-server/context/logs/icfwalk.log ICFWALK_EVIDENCE_DIR=<out> node tests/perf/workload.mjs
+01:45:37 Lucee 6.2.8.20 on icfwalk_perf: 30664 walks, 2238472 responses; levels 10,25 for 60s
+01:45:48 solo: report live district (solo) p50=1037 max=1153 err=0; report CSV district (solo) p50=1014 max=1052 err=0
+01:46:51 level 10: 2759 requests in 63s; list mine p50=201 p95=343 max=625 err=0; open walk p50=90 p95=238 max=412 err=0; list district (scope=all) p50=679 p95=907 max=907 err=0; summary p50=141 p95=325 max=615 err=0; save walk p50=259 p95=653 max=939 err=0; create walk p50=519 p95=1286 max=1685 err=0; complete walk p50=198 p95=489 max=604 err=0; report live district p50=3349 p95=5855 max=5855 err=0; report CSV district p50=2749 p95=5428 max=5428 err=0
+01:47:55 level 25: 2759 requests in 62s; list mine p50=446 p95=757 max=1238 err=0; open walk p50=308 p95=535 max=811 err=0; summary p50=409 p95=723 max=849 err=0; save walk p50=709 p95=1283 max=1507 err=0; list district (scope=all) p50=1554 p95=2820 max=2820 err=0; create walk p50=1733 p95=3535 max=4542 err=0; complete walk p50=564 p95=1262 max=1568 err=0; report live district p50=7776 p95=12139 max=12139 err=0; report CSV district p50=7210 p95=12411 max=12411 err=0
+01:47:55 release: {"status":"created by an earlier run on this database","releaseId":"B8ED65E9-73E4-4258-821A-0E6D719B154A"}; release read {"status":200,"ms":170}
+01:47:55 failures: 0 expected (409 REPORT_POPULATION_CHANGED); 0 unexpected {}, 0 with their request.failed event (not read: no unexpected answer)
+01:47:56 written /tmp/claude-0/-home-user-ICFWalk/a404c4d2-07c0-5fa4-b380-b1493028718c/scratchpad/evidence/a8-03/series-lucee-fixed/run3/workload-Lucee-6.2.8.20.json
+[exit 0]
