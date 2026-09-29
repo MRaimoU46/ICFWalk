@@ -10,17 +10,17 @@ Docker. Every CFML-backed PASS below must be re-run on Adobe ColdFusion 2023 bef
 commands are identical (`npm test`). Items whose behavior depends on Adobe-specific semantics are
 marked explicitly.
 
-**Current status (branch `claude/icfwalk-phase-6-7-integration`):** Phase 7 and the integrated
-Phase 0-7 baseline are **accepted and frozen at code commit `68f9026d39ba0ff44d12d6398c5e933971dad2f4`**, for
-the verified scope. The project owner reports that the independent Phase 7 / focused integration
-audit passed. That was communicated by the owner only: no audit report or identifier is in the
-repository. The exact-commit gate of `68f9026`: Node/HTTP/Playwright 245/245, CFML 517/517,
-`test:package` 20/20, `validate:handoff` 51 checks; 0 failed, 0 skipped. Phase 6 had been accepted and
-frozen at `158debca5da2c4f3a07f602689cd08af9db9bd6e` (`docs/evidence/phase6-freeze.md`). **Not
-production certification**: Adobe ColdFusion 2023, SQL Server 2016, IIS/Apache or connector-level
-limits, Microsoft Excel and a real screen reader were not exercised, and they carry into Phase 8.
-See "Phase 7 and the integrated Phase 0-7 baseline: accepted and frozen" at the end and
-`docs/evidence/phase6-7-freeze.md`.
+**Current status (branch `claude/icfwalk-phase-8-correction-cgsc7q`):** Phase 8 is **accepted and
+frozen**, for the verified scope, at gated code anchor `b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d` with
+records and delivery tip `bbb4d1592d09d35d707741af462849622000091a`. The independent final freeze audit,
+which the project owner supplied on 2026-09-29, answered READY TO FREEZE PHASE 8
+(`docs/evidence/phase8-freeze/`). The exact-commit gate of `b73f519` ran every acceptance ID on Lucee
+6.2.8.20 and on Adobe ColdFusion 2023 Update 25: Node/HTTP/Playwright 299/299 and CFML 542/542 on each,
+0 failed, skipped, todo or cancelled. **Not production certification**: ColdFusion's own SQL Server
+driver behind IIS or Apache with the connector, SQL Server 2016, connector-level limits, Microsoft
+Excel, a real screen reader and the SSO gateway with TLS remain NOT TESTABLE HERE, and performance
+acceptance waits on criteria (D8). See "Phase 8: accepted and frozen" at the end and
+`docs/evidence/phase8-freeze.md`.
 Sections below that describe earlier rounds keep the status they had when they were written.
 
 ## Package and configuration
@@ -467,3 +467,17 @@ What changed in the status of the rows above:
   the expected 409 (by design; D14 open).
 - **Still open:** performance acceptance (D8), the owner decisions D1 to D12 and D14, and every NOT
   TESTABLE HERE item of the Phase 8 section. This is not production certification.
+
+## Phase 8: accepted and frozen
+
+On 2026-09-29 the project owner supplied the independent final freeze audit of Phase 8: **READY TO
+FREEZE PHASE 8**, with A8-01, A8-02 and A8-03 closed. **Phase 8 is accepted and frozen, for the verified
+scope, at gated code `b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d`, with records and delivery tip
+`bbb4d1592d09d35d707741af462849622000091a`.** The texts of that audit and of the correction re-audit are
+in `docs/evidence/phase8-freeze/`, and the freeze record is `docs/evidence/phase8-freeze.md`.
+
+Every row keeps the status the Phase 8 sections above give it, now accepted: PASS on both engines for
+what this repository can test, and NOT TESTABLE HERE, with its checklist, for what it cannot
+(`docs/evidence/phase8/ACCEPTANCE_LEDGER.md`, `docs/evidence/phase8-correction-a8/ACCEPTANCE.md`).
+Still open: performance acceptance (D8) and the owner decisions D1 to D12 and D14. This is not
+production certification.

@@ -1,0 +1,92 @@
+ICFWalk Phase 8 Final Freeze Audit
+Audit date: 2026-09-29
+Audit type: Independent final correction and delivery verification
+Primary archive: ICFWalk-phase8-correction-a8-bbb4d1592d09.zip
+Checksum sidecar: ICFWalk-phase8-correction-a8-bbb4d1592d09.zip.sha256
+Verdict
+READY TO FREEZE PHASE 8
+The purpose-built correction archive and its checksum sidecar satisfy the outstanding A8-02 delivery requirement. The delivered payload is now bound to the final records-only commit, its reconstructed source tree, and the previously gated correction code commit.
+All findings from the Phase 8 independent audit are closed in their original scope.
+Finding	Severity	Final disposition
+A8-01, readiness succeeds without the schema	Medium	VERIFIED AND CLOSED
+A8-02, delivery not bound to the gated tree	Medium	VERIFIED AND CLOSED
+A8-03, unexplained Lucee report 500s	Low	VERIFIED AND CLOSED in the original scope
+
+
+No remaining Phase 8 freeze blocker was found.
+Audited identity
+Item	Verified value
+Final records-only commit and archive source	bbb4d1592d09d35d707741af462849622000091a
+Final records-only source tree	4e0afcd710987847081594e4d42d8a15b604aa87
+Records-only commit's sole parent	b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d
+Gated correction code commit	b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d
+Gated correction code tree	d6458eeb5ae98e705a57a0dd6062de2a91443640
+Correction code parent, the audited Phase 8 handoff tip	10f476ba9a69359f23a259be0e903afeed64b415
+Archive SHA-256	65fdd70c9fc8162ee5276fea84d7b2ffc267adbb77ca2d9323bbdcc41b61dd9d
+Archive size	9,378,493 bytes
+ZIP comment	bbb4d1592d09d35d707741af462849622000091a
+
+
+The Phase 8 freeze should identify bbb4d1592d09d35d707741af462849622000091a as the final records and delivery tip and b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d as its gated code anchor.
+A8-02 final verification
+The exact uploaded ZIP and sidecar were verified offline without GitHub or another repository connection.
+Archive bytes and container
+- sha256sum -c passes against the supplied sidecar.
+- unzip -t reports no compressed-data error.
+- The archive contains 943 entries: 798 files and 145 directories under one top-level folder.
+- No absolute path, path traversal, backslash path, drive-letter path, duplicate entry, case-fold collision, symbolic link, encryption, or embedded .git metadata was found.
+- The ZIP comment exactly matches the source commit named by the delivery identity record.
+Delivery identity and complete payload
+- Top-level DELIVERY-IDENTITY.md is present and names the archive, source commit, source tree, correction code commit, correction code tree, and ancestry.
+- Top-level PAYLOAD-SHA256SUMS is present.
+- All 797 files covered by PAYLOAD-SHA256SUMS pass, with zero failures.
+- The manifest lists every file except itself and lists nothing absent from the archive.
+- After setting aside the two generated delivery files, git write-tree over the extracted source reproduces 4e0afcd710987847081594e4d42d8a15b604aa87 exactly.
+- The included offline verifier exits 0 with DELIVERY VERIFIED.
+Records-only chain
+The identity record names b73f5190... as the sole parent of the final records commit and records an empty restricted diff across:
+src, app, tests, scripts, tools, database, config, package.json, package-lock.json, manifest.json, and .env.example.
+The complete records-only inventory contains only:
+- BUILD_STATUS.md;
+- docs/ACCEPTANCE_TRACKING.md; and
+- 253 files under docs/evidence/phase8-correction-a8/.
+No product code, tests, tools, migrations, configuration, dependency, or manifest file changed after the gated correction commit.
+The source portion of this final package is byte-for-byte identical to the correction ZIP independently reviewed immediately before this delivery, apart from the required generated DELIVERY-IDENTITY.md and PAYLOAD-SHA256SUMS files.
+Evidence integrity
+- Original Phase 8 evidence: 200 of 200 checksums pass.
+- Phase 8 correction evidence: 252 of 252 checksums pass.
+- The original Phase 8 evidence remains unchanged from the audited handoff tip, as recorded in the delivery identity.
+A8-02 is therefore closed.
+Prior correction findings
+A8-01
+The health endpoint now returns HTTP 200 only when the database responds, the ICFWalk schema is present, and long text is returned intact. Missing schema, unavailable database, or truncated long text returns HTTP 503. The correction has focused red-before-green evidence and live pre-migration and post-migration operations on both Lucee and Adobe ColdFusion.
+A8-01 remains verified and closed.
+A8-03
+The previously unexplained Lucee report failures were reproduced and traced to SQL Server deadlock-victim error 1205. Live and CSV report computation now retries a victimized transaction within the existing three-attempt bound. The correction includes a real-deadlock regression on both engines and eight correction-commit workload runs with zero unexpected responses. Twelve observed deadlocks were absorbed and correlated to retry events.
+A8-03 remains verified and closed in its original scope.
+Documented residuals remain non-blocking:
+- deadlocks can still occur and consume retry attempts;
+- a report victimized on all three attempts still fails with a database error;
+- release creation does not receive the same retry; and
+- the separate performance target remains open.
+These limitations were disclosed, tested where applicable, and were not introduced by the delivery package.
+Verification scope
+This final pass was intentionally limited to the previously open A8-02 delivery assurance finding. The complete implementation audit was not repeated because:
+1. A8-01 and A8-03 were already independently reviewed and accepted;
+2. the source in this final package is byte-for-byte identical to that reviewed correction payload;
+3. the final commit changes records only; and
+4. the full gate and operations evidence remains checksum-valid.
+The accepted gate remains:
+Engine	Node, HTTP, and browser	CFML
+Lucee 6.2.8.20	299/299	542/542
+Adobe ColdFusion 2023 Update 25	299/299	542/542
+
+
+Both engine records report zero failed, skipped, todo, or cancelled tests. The operations evidence remains passing for readiness, restart during autosave, production profile, upgrade and rollback, and database operations.
+Final decision
+Phase 8 has earned its freeze.
+- Freeze records and delivery tip: bbb4d1592d09d35d707741af462849622000091a
+- Preserve gated code anchor: b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d
+- Preserve archive checksum: 65fdd70c9fc8162ee5276fea84d7b2ffc267adbb77ca2d9323bbdcc41b61dd9d
+- Preserve the archive, sidecar, and this audit together as the Phase 8 acceptance set.
+Final disposition: READY TO FREEZE PHASE 8

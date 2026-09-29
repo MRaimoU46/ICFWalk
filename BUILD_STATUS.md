@@ -6,39 +6,42 @@ visual shell), Phase 4 (walk persistence, autosave, completion, concurrency, aud
 (summary export and teacher email draft), all of Phase 6 (the publish foundation, ADM-03/04/05;
 preview, clone and compare, retirement, the placeholder queue and the administration UI, ADM-01 to
 ADM-08; the Excel round-trip the owner requested, which has no acceptance ID; and the audit and
-re-audit corrections P6A-01 to P6A-04 and P6A-R01), and Phase 7 (aggregate reporting,
-RPT-01..07, with the corrections for its audit findings P7-01, P7-02 and P7C-01 to P7C-04)** from
-`docs/IMPLEMENTATION_PLAN.md`.
+re-audit corrections P6A-01 to P6A-04 and P6A-R01), Phase 7 (aggregate reporting,
+RPT-01..07, with the corrections for its audit findings P7-01, P7-02 and P7C-01 to P7C-04), and
+Phase 8 (hardening and handoff, with its defects P8-01 to P8-14 and the audit correction A8-01 to
+A8-03)** from `docs/IMPLEMENTATION_PLAN.md`.
 
 Target platform: Adobe ColdFusion 2023 + Microsoft SQL Server 2016+.
 
-**Current state (branch `claude/icfwalk-phase-6-7-integration`): Phase 7 and the integrated Phase
-0-7 baseline are accepted and frozen at code commit `68f9026d39ba0ff44d12d6398c5e933971dad2f4`, for the
-verified scope.** The project owner reports that the independent Phase 7 / focused integration
-audit passed. That was communicated by the owner only: no audit report, identifier or path was
-provided or is in the repository. `68f9026` stays the frozen code hash. The records-only commit that
-records the acceptance is the records tip and the starting point for Phase 8. See "Phase 7 and the
-integrated Phase 0-7 baseline accepted" at the end and `docs/evidence/phase6-7-freeze.md`.
+**Current state (branch `claude/icfwalk-phase-8-correction-cgsc7q`): Phase 8 is accepted and frozen,
+for the verified scope, with records and delivery tip `bbb4d1592d09d35d707741af462849622000091a` and
+gated code anchor `b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d`.** The independent final freeze audit, which
+the project owner supplied on 2026-09-29, answered READY TO FREEZE PHASE 8 with A8-01, A8-02 and A8-03
+closed. Its text is in `docs/evidence/phase8-freeze/`. The acceptance set is the archive
+`ICFWalk-phase8-correction-a8-bbb4d1592d09.zip` (SHA-256
+`65fdd70c9fc8162ee5276fea84d7b2ffc267adbb77ca2d9323bbdcc41b61dd9d`), its sidecar and that audit. The
+records-only commit that records the freeze follows `bbb4d15` and is the starting point for any later
+work. See "Phase 8 accepted and frozen" at the end and `docs/evidence/phase8-freeze.md`.
 
-- `68f9026` merges **Phase 6**, accepted and frozen earlier at
-  `158debca5da2c4f3a07f602689cd08af9db9bd6e` (records tip `64507deb075e267761179d78be966b7a4d3972cc`
-  on `claude/icfwalk-phase-6-admin-audit-corrections`), with **the Phase 7 corrections** at
-  `e0342143074f727475ae2d4cb6933fa279902f85` on `claude/icfwalk-phase-7-correction-n62s25` (gated code
-  `98321a16df64005f9b55fcd9bc3b9b4d4a071e4e`). Both source branches are unchanged.
-- The exact-commit gate of `68f9026`: Node/HTTP/Playwright 245/245, CFML 517/517, `test:package`
-  20/20, `validate:handoff` ok (51 checks); 0 failed, 0 skipped.
+- `b73f519` corrects the audited Phase 8 handoff `10f476b` (tested code `282a4ec`), which started from
+  the Phase 0-7 freeze tip `133f021` (frozen code `68f9026`).
+- The exact-commit gate of `b73f519`: Node/HTTP/Playwright 299/299 and CFML 542/542 on Lucee 6.2.8.20
+  and on Adobe ColdFusion 2023 Update 25, with 0 failed, skipped, todo or cancelled, `test:package`
+  20/20 and `validate:handoff` 51 checks. OPERATIONS PASSED on the same commit.
 
-This is **not production certification**. Adobe ColdFusion 2023, SQL Server 2016, IIS/Apache or
-connector-level limits, Microsoft Excel and a real screen reader were not exercised in the recorded
-environment, and they carry into Phase 8.
+This is **not production certification**. ColdFusion's own SQL Server driver behind IIS or Apache with
+the connector, SQL Server 2016, connector-level limits, Microsoft Excel, a real screen reader and the
+district SSO gateway with TLS were not exercised, performance acceptance waits on criteria (D8), and
+owner decisions D1 to D12 and D14 are open.
 
 Read this file from the end. Sections appear in the order they were delivered: Phase 0-4, five
 Phase 0-4 correction sessions, the Phase 5 sections and their corrections, the Phase 6 foundation,
 the Phase 6 publish-foundation correction, its second, third, fourth and fifth corrections, Phase 7,
 the Phase 7 correction and its second and third rounds, Phase 6 administration, the Excel
 round-trip, the audit corrections, the re-audit correction P6A-R01, **Phase 6 frozen**, **Phase 6
-accepted**, **Phase 6 and Phase 7 integration**, and finally **Phase 7 and the integrated Phase 0-7
-baseline accepted**, which is the current state of this branch. The Phase 7 correction sections and
+accepted**, **Phase 6 and Phase 7 integration**, **Phase 7 and the integrated Phase 0-7 baseline
+accepted**, **Phase 8: hardening and handoff**, **Phase 8 correction A8**, and finally **Phase 8
+accepted and frozen**, which is the current state of this branch. The Phase 7 correction sections and
 the Phase 6 administration sections were written on two
 branches from the same commit, `0c6fa10`, and appear in the order they were delivered (Phase 7's on
 2026-09-23, Phase 6's from 2026-09-24), each block exactly as its branch delivered it.
@@ -4516,3 +4519,40 @@ its `README.md`).
 
 This section is now the current state for Phase 8. The sections above keep the status recorded when
 each was delivered.
+
+## Phase 8 accepted and frozen
+
+On 2026-09-29 the project owner supplied the independent final freeze audit of Phase 8. Its verdict is
+**READY TO FREEZE PHASE 8**. **Phase 8 is accepted and frozen, for the verified scope, with records and
+delivery tip `bbb4d1592d09d35d707741af462849622000091a` and gated code anchor
+`b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d`**. The verified scope is Lucee 6.2.8.20 and Adobe ColdFusion
+2023 Update 25, SQL Server 2022 (16.0.4295.3) and Chromium 141.
+
+- **The audits.** The final freeze audit closed A8-01, A8-02 and A8-03 and found no remaining freeze
+  blocker. The correction re-audit before it closed A8-01 and A8-03 and held the freeze on A8-02 until
+  the archive built by `package.sh` and its sidecar were supplied, which they then were. Both texts,
+  exactly as supplied, are in `docs/evidence/phase8-freeze/`. The first audit of the Phase 8 handoff and
+  a re-audit of a duplicate upload were not supplied to this session and are not in the repository.
+- **The acceptance set.** The archive `ICFWalk-phase8-correction-a8-bbb4d1592d09.zip` (9,378,493 bytes,
+  SHA-256 `65fdd70c9fc8162ee5276fea84d7b2ffc267adbb77ca2d9323bbdcc41b61dd9d`, ZIP comment `bbb4d15`),
+  built by `package.sh` from `bbb4d15` and verified offline by the auditor, with its sidecar and the
+  audit. The sidecar and the archive's `DELIVERY-IDENTITY.md` are in the repository byte for byte. The
+  archive is not, for the reasons in the freeze record, and the owner's copy is the one to keep.
+- **Records only.** The commit that adds this section changes `BUILD_STATUS.md`,
+  `docs/ACCEPTANCE_TRACKING.md`, the new `docs/evidence/phase8-freeze.md` and the new
+  `docs/evidence/phase8-freeze/`. Its restricted diff from `b73f519` is empty, and neither Phase 8
+  evidence directory changes. `b73f519` stays the frozen code and `bbb4d15` the records and delivery
+  tip. This commit is not part of the accepted delivery.
+- **What was run.** The full gate and the operations ran on `b73f519`. On the records-only commit only
+  `test:package`, `validate:handoff`, the evidence checksums and the restricted diff were checked.
+- **Other branches unchanged.** `claude/icfwalk-phase-8-hardening-handoff` stays at `10f476b` and
+  `claude/icfwalk-phase-6-7-integration` at `133f021`.
+- **No tag** was created. One is created only if separately requested.
+- **Not production certification.** The NOT TESTABLE HERE items of the Phase 8 section remain
+  (checklists 1 to 7 of `docs/VERIFICATION_CHECKLISTS.md`), performance acceptance waits on criteria
+  (D8), owner decisions D1 to D12 and D14 are open, and the A8-03 residuals and the other known
+  limitations are listed in `docs/evidence/phase8-freeze.md`.
+
+This section supersedes, as the current state, the candidate statements of "Phase 8: hardening and
+handoff" (submitted for independent final audit) and "Phase 8 correction A8" (submitted for independent
+re-audit). Those sections are kept as delivered.

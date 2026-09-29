@@ -1,0 +1,140 @@
+ICFWalk Phase 8 Correction Independent Re-audit
+Audit date: 2026-09-29 UTC
+Audit type: Independent correction re-audit
+Submitted artifact: ICFWalk-claude-icfwalk-phase-8-correction-cgsc7q.zip
+Executive verdict
+NOT READY TO FREEZE PHASE 8
+The new ZIP contains real, substantive corrections. A8-01 and A8-03 are verified and may be closed in their original scope. No new source-code blocker was found in the correction delta.
+The freeze remains blocked by A8-02. The uploaded ZIP is not the offline-verifiable delivery package described by its own correction evidence. It omits the generated delivery identity record, the full-payload checksum manifest, and the adjacent archive checksum sidecar. The included verify-delivery.sh therefore returns exit 1 and DELIVERY NOT VERIFIED when run against the exact uploaded bytes.
+Finding	Severity	Re-audit result	Freeze effect
+A8-01, readiness succeeds without the schema	Medium	VERIFIED AND CLOSED	None
+A8-02, delivery not bound to the gated tree	Medium	OPEN	Blocks Phase 8 freeze
+A8-03, unexplained Lucee report 500s	Low	VERIFIED AND CLOSED in the original scope; bounded residuals retained	None
+
+
+Implementation disposition: ACCEPTABLE
+Delivery disposition: REJECTED PENDING CORRECT PACKAGE
+Overall disposition: HOLD THE FREEZE
+This report supersedes the earlier re-audit of the duplicate upload. This ZIP is a genuine correction payload and is materially different from the original Phase 8 handoff.
+1. Artifact identification and container checks
+Property	Independently observed value
+Filename	ICFWalk-claude-icfwalk-phase-8-correction-cgsc7q.zip
+SHA-256	2c8e2de44ebd3aeafa822331fb2e4c630be0a9319a6e9e4cab01ae68a4841f62
+Size	9,347,708 bytes
+ZIP comment	bbb4d1592d09d35d707741af462849622000091a
+Entries	941 total: 796 files and 145 directories
+Reconstructed tree from extracted payload	4e0afcd710987847081594e4d42d8a15b604aa87
+
+
+The archive passes unzip -t. All 941 entries are recorded as not encrypted. No absolute paths, path traversal, backslash paths, drive-letter paths, duplicate entries, case-fold collisions, symbolic links, or embedded .git metadata were found. The archive has one top-level directory.
+The correction evidence manifest passes 252 of 252 checks. The original Phase 8 evidence manifest passes 200 of 200 checks, and the original docs/evidence/phase8 directory is byte-for-byte unchanged from the previously audited archive.
+These checks establish container safety and internal evidence integrity. They do not cure A8-02 because they do not bind the complete delivered payload to the commit and tree asserted as tested.
+2. Scope of the correction delta
+Outside the newly added correction evidence, the product-relevant delta is narrow and consistent with the three audit findings:
+- src/controllers/HealthController.cfc changes readiness evaluation.
+- src/reports/ReportService.cfc adds bounded deadlock-victim retry handling.
+- src/reports/ReportRepository.cfc changes explanatory comments only.
+- New readiness and deadlock regression tests are added.
+- tests/perf/workload.mjs adds failure correlation and diagnostic capture.
+- tools/runtime/acf-up.sh gains the expected-health control needed for the pre-migration readiness operation.
+- Architecture, endpoint, data-contract, local-setup, operations, acceptance, and build-status records are updated.
+- manifest.json changes only the size and SHA-256 entry for the revised docs/DATA_CONTRACT.md.
+No migration, dependency, package-lock, instrument configuration, application client, authentication, privacy, or autosave behavior was changed. The correction stays within the submitted scope.
+3. A8-01 readiness correction
+Result: VERIFIED AND CLOSED
+The old health decision was:
+database == "ok" && longText != "truncated"
+The corrected decision is:
+database == "ok" && schema == "present" && longText == "ok"
+This is the required fail-closed readiness contract. A reachable database without the ICFWalk schema now produces HTTP 503 with status: degraded; a node is ready only when the database responds, the schema is present, and the long-text probe is intact.
+Evidence independently inspected:
+- Six focused CFML cases cover healthy, schema absent, production-safe schema absence, truncated long text, unavailable database, and simultaneous missing-schema/truncation conditions.
+- The focused red record on the old code shows the expected failure: HTTP 200 was returned where 503 was required.
+- Targeted green records pass on Lucee and Adobe ColdFusion.
+- The live operation uses a newly created, reachable SQL Server database with zero ICFWalk tables. On both engines it records 503 before migrations, 200 immediately after migrations without an application restart, and 200 after restart.
+- The same live operation run against the audited old code fails on both engines because the old endpoint answers 200 before the schema exists.
+- Production responses are checked for the safe, reduced response shape and correlation-id behavior.
+- Operations and endpoint documentation now agree with the code.
+The raw operation TAP files record 1 of 1 passing on the corrected code for each engine. Each old-code live-red TAP records the intended 0 of 1 result, with the specific HTTP 200 versus 503 failure. This is a proper red-before-green chain.
+4. A8-03 report failure correction
+Result: VERIFIED AND CLOSED IN THE ORIGINAL SCOPE
+The correction identifies the previously unexplained Lucee 500 responses as SQL Server deadlock-victim failures in live district reports and their CSV form. The implementation now catches native error 1205 or SQLSTATE 40001, discards the rolled-back attempt, logs a bounded diagnostic event, and recomputes within the existing maximum of three attempts. A non-deadlock error or a deadlock on the third attempt is rethrown. The existing REPORT_POPULATION_CHANGED semantics are not misused.
+The new regression test forms a real SQL Server deadlock rather than imitating an exception. It gives the competing session higher deadlock priority, proves that the report transaction receives error 1205, verifies that the first victimized attempt is retried successfully, and verifies that three consecutive victimizations still fail as a database error instead of returning a false population-change response. The submitted targeted records pass on both engines together with the pre-existing report specifications.
+The raw workload records support the diagnosis and correction:
+- Three pre-correction full-population Lucee drafts-only attempts contain 7 unexpected failures in total, all in the second attempt.
+- All 7 are HTTP 500 INTERNAL_ERROR responses from live or CSV district reports at the 25-user level.
+- All 7 carry a matching request.failed event with a SQL Server deadlock-victim message and a matching SQL Server deadlock graph.
+- Eight correction-commit workload runs, five Lucee drafts-only, one Lucee mixed-population, one ColdFusion drafts-only, and one ColdFusion mixed-population, contain zero unexpected responses.
+- Twelve deadlocks in the corrected Lucee runs are matched to twelve report.deadlock.victim events across ten requests. Seven requests succeed and three finish with the already-expected 409 population-change refusal. None returns an unexpected error.
+- The two mixed-population runs retain 26 expected 409 responses on Lucee and 40 on ColdFusion. These are separated from unexpected failures and are not represented as successes.
+The correction therefore explains the original symptom, provides correlation evidence, reproduces the cause, adds a deterministic regression, and demonstrates the retry under workload.
+Residuals remain documented and are not new freeze blockers for this low-severity finding:
+- Deadlocks still occur and can consume one or more retry attempts.
+- Three consecutive deadlock-victim outcomes still return a database error.
+- Release creation uses a related read path and does not receive this retry; no such failure was observed.
+- Eliminating the underlying lock conflict would require an owner decision and a database isolation change.
+- The separate Phase 8 performance target remains open.
+5. Gate and operations evidence
+The submitted raw records, not only their README summary, were inspected.
+Evidence	Lucee	Adobe ColdFusion 2023 Update 25
+Node, HTTP, and browser TAP	299/299 pass	299/299 pass
+CFML functions	542/542 pass	542/542 pass
+Failed, skipped, todo, cancelled	0	0
+Restart-during-autosave operation	3/3 pass	3/3 pass
+Production-profile operation	1/1 pass	1/1 pass
+Schema-missing readiness operation	1/1 pass	1/1 pass
+
+
+The gate transcript records correction commit b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d, tree d6458eeb5ae98e705a57a0dd6062de2a91443640, a clean working tree before and after, and gate exit 0. The Node passing-name files each contain the same 299 unique baseline names. The CFML name check accounts for all 534 prior functions plus the 8 new functions, with no missing, extra, or duplicate result.
+The second operations transcript records a clean tree at the same correction commit and ends with OPERATIONS PASSED. It also records 1 of 1 upgrade and rollback and 3 of 3 database operations. The retained first operations attempt is clearly marked failed because its ColdFusion old-tree live-red harness could not access a directory created with mode 0700. The harness fault is diagnosed and the entire operation set is rerun, rather than editing the first result into a pass.
+Locally executable checks on the delivered files also passed:
+- npm run validate:handoff: 51 checks, 0 errors.
+- npm run test:package: 20 of 20 pass, with no skip or failure.
+- JavaScript and MJS syntax: 70 files checked, 0 failures.
+- Correction evidence checksums: 252 of 252 pass.
+- Original Phase 8 evidence checksums: 200 of 200 pass.
+The live CFML, SQL Server, and browser gate was not independently re-executed in this audit environment. The assessment of those runs is based on the supplied raw TAP, JSON, transcripts, deadlock graphs, passing-name lists, and checksum-protected evidence. This limitation does not alter the A8-02 result.
+6. A8-02 delivery blocker
+Result: OPEN, MEDIUM, FREEZE-BLOCKING
+The correction evidence defines a specific offline-verifiable final package produced by docs/evidence/phase8-correction-a8/tools/package.sh. The uploaded ZIP is not that output.
+Required by the submitted correction	Expected	Uploaded ZIP
+Archive name	ICFWalk-phase8-correction-a8-<12hex>.zip	Branch-style filename
+External archive checksum	Adjacent <archive>.sha256	Missing
+Top-level DELIVERY-IDENTITY.md	Present	Missing
+Top-level PAYLOAD-SHA256SUMS	Present	Missing
+ZIP comment matched to named source commit	Verifiable from identity record	Comment exists, but no identity record names it
+Source tree reconstructed and matched to named tree	Verifiable offline	A tree can be reconstructed, but no record names the expected tree
+Records-only parent and restricted-diff proof	Included in identity record	Missing
+Included verifier result	DELIVERY VERIFIED, exit 0	DELIVERY NOT VERIFIED, exit 1
+
+
+Running the shipped verifier against the exact uploaded archive produces these material failures:
+- no adjacent .sha256 sidecar;
+- no top-level DELIVERY-IDENTITY.md;
+- no identity with which to compare ZIP comment bbb4d1592d09d35d707741af462849622000091a;
+- no top-level PAYLOAD-SHA256SUMS covering every delivered file.
+The ZIP comment and the independently reconstructed payload tree are not referenced anywhere inside the payload. Consequently, an offline recipient cannot establish that:
+1. the archive comment is the final records-only commit;
+2. that commit has correction code commit b73f5190... as its only parent;
+3. the restricted product diff from the gated code commit is empty;
+4. the complete payload reproduces the tree belonging to the named source commit; or
+5. the archive bytes are the bytes for which the sender issued the external checksum.
+The gate evidence may accurately describe the correction commit, and the delivered source may in fact be correct. A8-02 is an assurance finding: the required proof is absent from this delivery, so the exact tested-code-to-delivered-bytes chain remains unverified.
+7. Required correction and re-audit scope
+No further source-code change or full test rerun is required to clear this report, provided the final records-only commit has the already-gated correction commit as its sole parent and changes no restricted product path.
+The required action is to run the included packaging process from the final records-only commit and submit both outputs together:
+1. ICFWalk-phase8-correction-a8-<12hex>.zip
+2. ICFWalk-phase8-correction-a8-<12hex>.zip.sha256
+The ZIP must retain the generated top-level DELIVERY-IDENTITY.md and PAYLOAD-SHA256SUMS. Do not substitute another branch export or rename the package after generation, because the identity record names the archive.
+The next re-audit can be limited to:
+- validating the sidecar against the archive bytes;
+- running verify-delivery.sh to exit 0;
+- confirming the comment, source commit, source tree, parent, and restricted diff recorded in DELIVERY-IDENTITY.md;
+- confirming the payload tree reconstructs to the named source tree; and
+- confirming both evidence manifests still pass.
+Once those checks pass, A8-02 can be closed and Phase 8 can be frozen without repeating the implementation audit.
+Final decision
+A8-01: closed.
+A8-03: closed in its original scope, with documented residual follow-ups.
+A8-02: open and blocking.
+The Phase 8 implementation corrections are acceptable. The submitted delivery package is not yet acceptable. Hold the freeze until the purpose-built archive and its checksum sidecar are supplied and pass the included offline verifier.
