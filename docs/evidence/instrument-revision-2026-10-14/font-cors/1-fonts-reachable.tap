@@ -1,0 +1,204 @@
+TAP version 13
+# Subtest: SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 1 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+  ---
+  duration_ms: 9201.987585
+  type: 'test'
+  ...
+# Subtest: SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 2 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+  ---
+  duration_ms: 4736.875176
+  type: 'test'
+  ...
+# Subtest: SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+ok 3 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+  ---
+  duration_ms: 4616.004622
+  type: 'test'
+  ...
+# Subtest: SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+not ok 4 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+  ---
+  duration_ms: 6158.178106
+  type: 'test'
+  location: '/tmp/claude-0/-home-user-ICFWalk/ab6cbcec-e900-5558-afe8-45a51510a4be/scratchpad/frozen/tests/node/browser-email.test.mjs:264:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    1: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    2: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    3: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    4: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    5: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    6: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    7: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/claude-0/-home-user-ICFWalk/ab6cbcec-e900-5558-afe8-45a51510a4be/scratchpad/frozen/tests/node/browser-email.test.mjs:278:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 5 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+  ---
+  duration_ms: 2994.124426
+  type: 'test'
+  ...
+# Subtest: exporting follows the read decision: a reader may, a report-only role may not
+ok 6 - exporting follows the read decision: a reader may, a report-only role may not
+  ---
+  duration_ms: 2791.668399
+  type: 'test'
+  ...
+# Subtest: SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 7 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+  ---
+  duration_ms: 7785.595712
+  type: 'test'
+  ...
+# Subtest: SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 8 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+  ---
+  duration_ms: 6788.78383
+  type: 'test'
+  ...
+# Subtest: SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 9 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+  ---
+  duration_ms: 7527.417389
+  type: 'test'
+  ...
+# Subtest: SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 10 - SUM-09: Clear empties the generated text and leaves every other answer alone
+  ---
+  duration_ms: 12669.349831
+  type: 'test'
+  ...
+# Subtest: read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 11 - read-only: the server refuses a reader's save, and every composer control is one the editor disables
+  ---
+  duration_ms: 5716.661631
+  type: 'test'
+  ...
+# Subtest: A11Y-01: the composer is fully operable from the keyboard
+ok 12 - A11Y-01: the composer is fully operable from the keyboard
+  ---
+  duration_ms: 5078.13905
+  type: 'test'
+  ...
+# Subtest: A11Y-03: axe-core finds no serious or critical violation in either composer state
+not ok 13 - A11Y-03: axe-core finds no serious or critical violation in either composer state
+  ---
+  duration_ms: 4979.43206
+  type: 'test'
+  location: '/tmp/claude-0/-home-user-ICFWalk/ab6cbcec-e900-5558-afe8-45a51510a4be/scratchpad/frozen/tests/node/browser-email.test.mjs:606:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    no page errors in any composer state
+    + actual - expected
+    
+    + [
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.",
+    +   `Refused to apply inline style because it violates the following Content Security Policy directive: "style-src 'self' https://fonts.googleapis.com". Either the 'unsafe-inline' keyword, a hash ('sha256-2fJvCEL9TJQpgMhEhG9Z8O8J9puQqemxPEcbaNa0MkU='), or a nonce ('nonce-...') is required to enable inline execution.\n`,
+    +   `Refused to apply inline style because it violates the following Content Security Policy directive: "style-src 'self' https://fonts.googleapis.com". Either the 'unsafe-inline' keyword, a hash ('sha256-2fJvCEL9TJQpgMhEhG9Z8O8J9puQqemxPEcbaNa0MkU='), or a nonce ('nonce-...') is required to enable inline execution.\n`,
+    +   `Refused to apply inline style because it violates the following Content Security Policy directive: "style-src 'self' https://fonts.googleapis.com". Either the 'unsafe-inline' keyword, a hash ('sha256-2fJvCEL9TJQpgMhEhG9Z8O8J9puQqemxPEcbaNa0MkU='), or a nonce ('nonce-...') is required to enable inline execution.\n`
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    1: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    2: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    3: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    4: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    5: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    6: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    7: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    8: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    9: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    10: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    11: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    12: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    13: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    14: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    15: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    16: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    17: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    18: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    19: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    20: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    21: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    22: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    23: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    24: "Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response."
+    25: |-
+      Refused to apply inline style because it violates the following Content Security Policy directive: "style-src 'self' https://fonts.googleapis.com". Either the 'unsafe-inline' keyword, a hash ('sha256-2fJvCEL9TJQpgMhEhG9Z8O8J9puQqemxPEcbaNa0MkU='), or a nonce ('nonce-...') is required to enable inline execution.
+      
+    26: |-
+      Refused to apply inline style because it violates the following Content Security Policy directive: "style-src 'self' https://fonts.googleapis.com". Either the 'unsafe-inline' keyword, a hash ('sha256-2fJvCEL9TJQpgMhEhG9Z8O8J9puQqemxPEcbaNa0MkU='), or a nonce ('nonce-...') is required to enable inline execution.
+      
+    27: |-
+      Refused to apply inline style because it violates the following Content Security Policy directive: "style-src 'self' https://fonts.googleapis.com". Either the 'unsafe-inline' keyword, a hash ('sha256-2fJvCEL9TJQpgMhEhG9Z8O8J9puQqemxPEcbaNa0MkU='), or a nonce ('nonce-...') is required to enable inline execution.
+      
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/claude-0/-home-user-ICFWalk/ab6cbcec-e900-5558-afe8-45a51510a4be/scratchpad/frozen/tests/node/browser-email.test.mjs:638:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 11
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 81957.912479

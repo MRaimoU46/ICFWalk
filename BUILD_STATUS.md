@@ -21,13 +21,19 @@ closed. Its text is in `docs/evidence/phase8-freeze/`. The acceptance set is the
 `ICFWalk-phase8-correction-a8-bbb4d1592d09.zip` (SHA-256
 `65fdd70c9fc8162ee5276fea84d7b2ffc267adbb77ca2d9323bbdcc41b61dd9d`), its sidecar and that audit. The
 records-only commit that records the freeze follows `bbb4d15` and is the starting point for any later
-work. See "Phase 8 accepted and frozen" at the end and `docs/evidence/phase8-freeze.md`.
+work. See "Phase 8 accepted and frozen" near the end and `docs/evidence/phase8-freeze.md`.
 
 - `b73f519` corrects the audited Phase 8 handoff `10f476b` (tested code `282a4ec`), which started from
   the Phase 0-7 freeze tip `133f021` (frozen code `68f9026`).
 - The exact-commit gate of `b73f519`: Node/HTTP/Playwright 299/299 and CFML 542/542 on Lucee 6.2.8.20
   and on Adobe ColdFusion 2023 Update 25, with 0 failed, skipped, todo or cancelled, `test:package`
   20/20 and `validate:handoff` 51 checks. OPERATIONS PASSED on the same commit.
+
+**On top of the frozen state, this branch carries the instrument revision 2026-10-14, step 1** (code
+commit `36f9db09f595294bdc5f8e151706dbb8dc7b758b`, gated on both engines): a new DRAFT version of the
+instrument from the product owner's 2026-10-14 prototype, with the visit fields' checkboxes left to step
+2. It is not audited, not frozen and not in service until an administrator publishes it, and it changes
+nothing Phase 8 froze. See "Instrument revision 2026-10-14 (step 1)", the last section.
 
 This is **not production certification**. ColdFusion's own SQL Server driver behind IIS or Apache with
 the connector, SQL Server 2016, connector-level limits, Microsoft Excel, a real screen reader and the
@@ -40,8 +46,9 @@ the Phase 6 publish-foundation correction, its second, third, fourth and fifth c
 the Phase 7 correction and its second and third rounds, Phase 6 administration, the Excel
 round-trip, the audit corrections, the re-audit correction P6A-R01, **Phase 6 frozen**, **Phase 6
 accepted**, **Phase 6 and Phase 7 integration**, **Phase 7 and the integrated Phase 0-7 baseline
-accepted**, **Phase 8: hardening and handoff**, **Phase 8 correction A8**, and finally **Phase 8
-accepted and frozen**, which is the current state of this branch. The Phase 7 correction sections and
+accepted**, **Phase 8: hardening and handoff**, **Phase 8 correction A8**, **Phase 8 accepted and
+frozen**, which is the frozen state of this branch, and finally **Instrument revision 2026-10-14 (step
+1)**, a change on top of it that is not audited or frozen. The Phase 7 correction sections and
 the Phase 6 administration sections were written on two
 branches from the same commit, `0c6fa10`, and appear in the order they were delivered (Phase 7's on
 2026-09-23, Phase 6's from 2026-09-24), each block exactly as its branch delivered it.
@@ -4556,3 +4563,84 @@ delivery tip `bbb4d1592d09d35d707741af462849622000091a` and gated code anchor
 This section supersedes, as the current state, the candidate statements of "Phase 8: hardening and
 handoff" (submitted for independent final audit) and "Phase 8 correction A8" (submitted for independent
 re-audit). Those sections are kept as delivered.
+
+## Instrument revision 2026-10-14 (step 1)
+
+On 2026-10-14 the product owner supplied a new prototype ("the most up-to-date document that shows the
+new launch page with the check boxes") and asked for it in two steps: first everything except the
+checkboxes, as a new version of the instrument; then Grade level, Content / Subject Area, Program and
+Visit timing as multi-select checkboxes. This section is step 1. It starts from the Phase 8 freeze records
+commit `452bd26`, the point the freeze names for later work, and changes nothing Phase 8 froze.
+
+**Code commit `36f9db09f595294bdc5f8e151706dbb8dc7b758b`** (tree `c4fd7fe6d5d1328c6778db9c7cc4477ec2380bd3`,
+only parent `452bd26`); the records commit that adds this section follows it. **Not audited, not frozen,
+and not in service**: the new version is a DRAFT document until an administrator imports and publishes it.
+
+- **The new version.** `config/instrument-config-2026-10-14.json`, a DRAFT of `ICFWALK` labelled
+  `2026-10-14 prototype revision`, derived by `scripts/derive-instrument-revision.mjs` from the supplied
+  document and `source/prototype-2026-10-14.html` (every prototype string read from the prototype, nothing
+  retyped). It has the 4-point scale with level names and new definitions on all 25 rated items, Academic
+  Teaming's third question, the prototype's look-for lists, Target/Task Alignment before Adopted
+  Curriculum, "Pacing NOT evident", the Content / Subject Area and Program lists, the content-area card on
+  Performing Arts, Visual Arts or CTE, and no tag field. What changed, the decisions, and how to put it into
+  service: `docs/INSTRUMENT_REVISION_2026-10-14.md`.
+- **The 2026-09-17 version is untouched**: its document, its prototype, their hashes, the default seed and
+  every baseline. Walks taken on it keep its 1-5 scale. Reports never pool versions.
+- **Code.** The renderer shows a version's level names in scored items' definitions ("1 · Not evident:"),
+  from `behavior.ratings.levelNames`; a version without them renders as before. The header is the new
+  prototype's, for every version.
+- **A defect found and corrected.** My walks titled every walk from the current version's values, so a walk
+  on another version lost a value the current one does not offer (a 2026-09-17 "Music" walk would have
+  listed as its grade alone once the 2026-10-14 version is published). `renderList` now titles each walk
+  from its own version's model.
+- **Owner decision recorded for step 2** (`docs/OPEN_DECISIONS.md`): a walk tagged with more than one value
+  counts under each, a filter on one value includes it, and breakdown totals are labelled as able to exceed
+  the number of walks. **Default recorded for the owner to confirm**: Performing Arts and Visual Arts are new
+  reporting values, not Music and Art renamed; reversible until the version is published.
+- **Source provenance.** The 2026-10-14 prototype in `source/` was rebuilt from the owner's paste (SHA-256
+  `25cd1be1...`). Its content is the paste's; its bytes may differ from the owner's own copy. The owner's
+  file should replace it before publication if they differ (the document's "Source fingerprint and
+  provenance").
+- **Unchanged:** no migration, dependency, lock file or `.env.example`; neither supplied baseline document
+  (`source/current-prototype.html`, `config/instrument-config.json`) nor the workbook; no earlier evidence;
+  no existing test file (the change adds three). The gate checks each of these from the diff, and that
+  every earlier test still exists and passes.
+
+### Verification
+
+The exact-commit gate of `36f9db0` (`docs/evidence/instrument-revision-2026-10-14/gate/`), from a clean
+tree on brand-new SQL Server 2022 databases: Node/HTTP/Playwright 316/316 and CFML 548/548 on Lucee
+6.2.8.20 and on Adobe ColdFusion 2023 Update 25, with 0 failed, skipped, todo or cancelled; `test:package`
+31/31, `validate:handoff` 51 checks, and the revision document current (`npm run revision:check`). All 299
+Node tests the A8 gate passed pass on both engines, and the CFML suites ran the frozen code's 542 test
+functions, every one still present, plus the 6 new ones. The gate ran with Google Fonts out of the
+browser's reach (see "Open" below).
+
+Red before green (`docs/evidence/instrument-revision-2026-10-14/red/`), each production file reverted to
+`452bd26` with the tests unchanged: with the old `app.js`, REV-E5 cannot find "Open 7 · Visual Arts" in My
+walks; with the old `renderer.js`, the definitions read "1:" where "1 · Not evident:" is due. Both pass
+with nothing reverted.
+
+New tests: `tests/node/instrument-revision.test.mjs` (REV-01 to REV-11, also in `test:package`),
+`tests/node/browser-revision.test.mjs` (REV-E1 to REV-E6, also in `test:browser`) and
+`tests/cfml/specs/InstrumentRevisionTest.cfc` (6). REV-E6 runs the 2026-10-14 prototype's own
+`buildSummaryText()` and `generateEmailDraftFor()` against the server's export of a full walk: every line
+is identical apart from the recorded deviations 14.3 and 14.5, and every email draft is identical.
+
+On the records commit only `test:package`, `validate:handoff`, the evidence checksums and the restricted
+diff (records only) were checked.
+
+### Open
+
+- **Step 2**, the checkboxes: a schema change (several values per walk and field), the save path,
+  the rules engines on both sides, reports with the owner's counting rule, the export, the workbook.
+- **A test-harness defect, pre-existing, not changed here.** Where the browser can reach Google Fonts,
+  36 frozen Playwright tests fail on a console message: Playwright's `extraHTTPHeaders` sends the
+  development identity header to `fonts.gstatic.com`, which refuses the CORS preflight. The frozen code
+  fails the same way (`docs/evidence/instrument-revision-2026-10-14/font-cors/`). This gate ran with
+  Google Fonts out of the browser's reach, as the earlier gates' passing console checks show theirs did.
+  Proposed correction: abort requests to the two Google Fonts hosts in every Playwright context.
+- Publication of the 2026-10-14 version, by an administrator, after the source file is confirmed.
+
+This section adds to "Phase 8 accepted and frozen" and supersedes nothing in it: Phase 8 stays frozen at
+`b73f519` with records and delivery tip `bbb4d15`.

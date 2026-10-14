@@ -1,0 +1,43 @@
+== worktree 452bd2690f6b29f24cbd0555147f4a2d75e614ba tree 6f648e239f51e0604b28eb707e532baa248bc1f1
+worktree clean (node_modules link and .env aside, both git-ignored in the repository)
+Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"3d0fd187-7171-44a4-906d-3d207ac0f91d","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+== 1. fonts reachable (proxy variables kept)
+ok 1 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 2 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 3 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+not ok 4 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+ok 5 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 6 - exporting follows the read decision: a reader may, a report-only role may not
+ok 7 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 8 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 9 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 10 - SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 11 - read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 12 - A11Y-01: the composer is fully operable from the keyboard
+not ok 13 - A11Y-03: axe-core finds no serious or critical violation in either composer state
+# tests 13
+# pass 11
+# fail 2
+[exit 1]
+distinct page errors reported:
+     66 Access to font at 'https://fonts.gstatic.com/s/worksans/v24/QGYsz_wNahGAdqQ43Rh_fKDp.woff2' from origin 'http://127.0.0.1:8899' has been blocked by CORS policy: Request header field x-icfwalk-dev-subject is not allowed by Access-Control-Allow-Headers in preflight response.
+page errors other than the font CORS refusal: 0
+== 2. fonts out of reach (proxy variables removed, as the gate runs)
+ok 1 - SUM-01: the exported file is the server's text, byte for byte, with the derived file name
+ok 2 - SUM-01: pending edits are flushed before the download, so the file carries what is on screen
+ok 3 - SUM-01: when the flush cannot reach the server, the export falls back to the text on screen and says so
+ok 4 - SEC-02: notes containing markup appear verbatim in the downloaded text and break nothing
+ok 5 - SUM-02/05: a walk with blanks and punctuation exports honestly and with a safe file name
+ok 6 - exporting follows the read decision: a reader may, a report-only role may not
+ok 7 - SUM-06: checking parts and drafting produces exactly the shared formatter's subject and body
+ok 8 - SUM-07: an edited draft is autosaved, survives a reload, and raises no conflict
+ok 9 - SUM-08: Copy puts the draft on the clipboard and Open in email app only navigates to mailto:
+ok 10 - SUM-09: Clear empties the generated text and leaves every other answer alone
+ok 11 - read-only: the server refuses a reader's save, and every composer control is one the editor disables
+ok 12 - A11Y-01: the composer is fully operable from the keyboard
+ok 13 - A11Y-03: axe-core finds no serious or critical violation in either composer state
+# tests 13
+# pass 13
+# fail 0
+[exit 0]
+REPRODUCED: the frozen code fails only on the font CORS refusal with Google Fonts reachable, and passes without

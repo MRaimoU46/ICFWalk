@@ -1,0 +1,82 @@
+TAP version 13
+# (node:14448) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: REV-E1 the 2026-10-14 document imports through Instrument admin with the recorded checksum, and publishes
+ok 1 - REV-E1 the 2026-10-14 document imports through Instrument admin with the recorded checksum, and publishes
+  ---
+  duration_ms: 1913.920169
+  type: 'test'
+  ...
+# Subtest: REV-E2 a walk on the new version is served that version's model
+ok 2 - REV-E2 a walk on the new version is served that version's model
+  ---
+  duration_ms: 66.242344
+  type: 'test'
+  ...
+# Subtest: REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this version does not offer, and the tag field
+ok 3 - REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this version does not offer, and the tag field
+  ---
+  duration_ms: 343.514167
+  type: 'test'
+  ...
+# Subtest: REV-E4 the server summary equals the browser formatter's and reads as the new prototype does
+ok 4 - REV-E4 the server summary equals the browser formatter's and reads as the new prototype does
+  ---
+  duration_ms: 124.984204
+  type: 'test'
+  ...
+# Subtest: REV-E5 the editor renders the new version: level names, the third Teaming question, Part 1 order, the visit fields and the header
+not ok 5 - REV-E5 the editor renders the new version: level names, the third Teaming question, Part 1 order, the visit fields and the header
+  ---
+  duration_ms: 1114.337997
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-revision.test.mjs:308:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    scored definitions lead with the level name
+    + actual - expected
+    
+      [
+    +   '1: There is no evidence students know what they are learning or what success looks like — no target or success criteria are communicated.',
+    +   '2: A target is posted or stated, but students show little sign of understanding it, and success criteria are absent, unclear, or used only by the teacher.',
+    +   '3: Students can generally explain what they are learning, and success criteria are communicated clearly and referenced during the lesson.',
+    +   '4: Students can articulate what they are learning and what high-quality work looks like, and actively use the success criteria to judge their own progress.'
+    -   '1 · Not evident: There is no evidence students know what they are learning or what success looks like — no target or success criteria are communicated.',
+    -   '2 · Inconsistent: A target is posted or stated, but students show little sign of understanding it, and success criteria are absent, unclear, or used only by the teacher.',
+    -   '3 · Evident: Students can generally explain what they are learning, and success criteria are communicated clearly and referenced during the lesson.',
+    -   '4 · Evident and student-owned: Students can articulate what they are learning and what high-quality work looks like, and actively use the success criteria to judge their own progress.'
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: '1 · Not evident: There is no evidence students know what they are learning or what success looks like — no target or success criteria are communicated.'
+    1: '2 · Inconsistent: A target is posted or stated, but students show little sign of understanding it, and success criteria are absent, unclear, or used only by the teacher.'
+    2: '3 · Evident: Students can generally explain what they are learning, and success criteria are communicated clearly and referenced during the lesson.'
+    3: '4 · Evident and student-owned: Students can articulate what they are learning and what high-quality work looks like, and actively use the success criteria to judge their own progress.'
+  actual:
+    0: '1: There is no evidence students know what they are learning or what success looks like — no target or success criteria are communicated.'
+    1: '2: A target is posted or stated, but students show little sign of understanding it, and success criteria are absent, unclear, or used only by the teacher.'
+    2: '3: Students can generally explain what they are learning, and success criteria are communicated clearly and referenced during the lesson.'
+    3: '4: Students can articulate what they are learning and what high-quality work looks like, and actively use the success criteria to judge their own progress.'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/browser-revision.test.mjs:355:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: REV-E6 the summary and the email draft are the 2026-10-14 prototype's own, apart from the recorded deviations
+ok 6 - REV-E6 the summary and the email draft are the 2026-10-14 prototype's own, apart from the recorded deviations
+  ---
+  duration_ms: 262.794157
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4857.514648

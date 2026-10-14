@@ -1,0 +1,59 @@
+TAP version 13
+# (node:14337) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: REV-E1 the 2026-10-14 document imports through Instrument admin with the recorded checksum, and publishes
+ok 1 - REV-E1 the 2026-10-14 document imports through Instrument admin with the recorded checksum, and publishes
+  ---
+  duration_ms: 2933.473864
+  type: 'test'
+  ...
+# Subtest: REV-E2 a walk on the new version is served that version's model
+ok 2 - REV-E2 a walk on the new version is served that version's model
+  ---
+  duration_ms: 82.527331
+  type: 'test'
+  ...
+# Subtest: REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this version does not offer, and the tag field
+ok 3 - REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this version does not offer, and the tag field
+  ---
+  duration_ms: 402.262142
+  type: 'test'
+  ...
+# Subtest: REV-E4 the server summary equals the browser formatter's and reads as the new prototype does
+ok 4 - REV-E4 the server summary equals the browser formatter's and reads as the new prototype does
+  ---
+  duration_ms: 136.724308
+  type: 'test'
+  ...
+# Subtest: REV-E5 the editor renders the new version: level names, the third Teaming question, Part 1 order, the visit fields and the header
+not ok 5 - REV-E5 the editor renders the new version: level names, the third Teaming question, Part 1 order, the visit fields and the header
+  ---
+  duration_ms: 30909.46164
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-revision.test.mjs:308:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    locator.click: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('button', { name: 'Open 7 · Visual Arts' })[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-revision.test.mjs:323:68)
+  ...
+# Subtest: REV-E6 the summary and the email draft are the 2026-10-14 prototype's own, apart from the recorded deviations
+ok 6 - REV-E6 the summary and the email draft are the 2026-10-14 prototype's own, apart from the recorded deviations
+  ---
+  duration_ms: 252.738309
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 35539.161933
