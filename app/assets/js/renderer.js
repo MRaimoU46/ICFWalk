@@ -395,12 +395,30 @@ function pillRow(item, labelId, ctx, section) {
   return { row, pills };
 }
 
-function definitionsToggle(item) {
+/**
+ * The version's names for its rating levels, keyed by stored code (behavior.ratings.levelNames),
+ * for a scored item only. A scored item's definitions then lead with "1 · Not evident:" as the
+ * prototype's do; a version that names no levels (the 2026-09-17 instrument) keeps "1:". Anything
+ * that is not a non-blank string is ignored, so a malformed entry can only lose a name, never a row.
+ */
+function levelNamesOf(item, model) {
+  if (!item.responseSet.scoreEnabled) return new Map();
+  const ratings = model && model.behavior ? model.behavior.ratings : null;
+  const names = ratings && typeof ratings === "object" ? ratings.levelNames : null;
+  const out = new Map();
+  if (!names || typeof names !== "object" || Array.isArray(names)) return out;
+  for (const [code, name] of Object.entries(names)) if (typeof name === "string" && name.trim()) out.set(code, name);
+  return out;
+}
+
+function definitionsToggle(item, ctx) {
   const boxId = nextId("defs");
   const box = el("div", { class: "defs-box", id: boxId });
+  const names = levelNamesOf(item, ctx.model);
   for (const o of item.responseSet.options) {
     if (!o.definition) continue;
-    box.appendChild(el("div", { class: "defs-row" }, [el("b", { text: `${o.label}:` }), ` ${o.definition}`]));
+    const lead = names.has(o.storedCode) ? `${o.label} · ${names.get(o.storedCode)}:` : `${o.label}:`;
+    box.appendChild(el("div", { class: "defs-row" }, [el("b", { text: lead }), ` ${o.definition}`]));
   }
   const toggle = el("button", { type: "button", class: "defs-toggle", "aria-expanded": "false", "aria-controls": boxId, text: DEFS_SHOW });
   toggle.addEventListener("click", () => {
@@ -437,7 +455,7 @@ function renderQuestion(item, section, ctx) {
   const href = safeLinkUrl(item.linkUrl);
   if (href) row.appendChild(el("p", { class: "item-help" }, [el("a", { href, target: "_blank", rel: "noopener", text: item.helpText || "Reference" })]));
   else if (item.helpText) row.appendChild(el("p", { class: "item-help", text: item.helpText }));
-  if (item.responseSet.hasDefinitions) for (const n of definitionsToggle(item)) row.appendChild(n);
+  if (item.responseSet.hasDefinitions) for (const n of definitionsToggle(item, ctx)) row.appendChild(n);
   ctx.itemNodes.set(item.itemKey, { node: row, item, section, pills: buttons });
   return row;
 }

@@ -1,7 +1,8 @@
 // Compiles config/instrument-config.json (or a path given as the first argument) into the
 // canonical instrument snapshot and prints its checksums and counts. With --write-golden it
-// refreshes tests/golden/instrument-snapshot.golden.json; with --print it writes the full
-// canonical JSON to stdout instead of the summary.
+// refreshes tests/golden/instrument-snapshot.golden.json, or the file --golden=<path> names (the
+// 2026-10-14 revision keeps its own); with --print it writes the full canonical JSON to stdout
+// instead of the summary.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,7 +25,10 @@ if (args.includes("--print")) {
     counts: compiled.counts,
   };
   if (args.includes("--write-golden")) {
-    const goldenPath = path.join(root, "tests", "golden", "instrument-snapshot.golden.json");
+    const named = args.find((a) => a.startsWith("--golden="));
+    const goldenPath = named
+      ? path.resolve(root, named.slice("--golden=".length))
+      : path.join(root, "tests", "golden", "instrument-snapshot.golden.json");
     await fs.mkdir(path.dirname(goldenPath), { recursive: true });
     await fs.writeFile(goldenPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
     summary.goldenWritten = path.relative(root, goldenPath);

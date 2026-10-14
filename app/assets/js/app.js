@@ -577,6 +577,15 @@ async function renderList() {
     list.appendChild(empty);
     return;
   }
+  // A walk on another instrument version is titled from that version's own model: its values need
+  // not exist in the current one (a 2026-09-17 walk's "Music" is no 2026-10-14 value, and the current
+  // model would drop it from the title). One request per version not yet loaded; one that fails
+  // leaves the current model's reading, as before.
+  const otherVersions = new Map();
+  for (const w of walks) {
+    if (w.versionId !== app.instrument.version.versionId && !app.models[w.versionId] && !otherVersions.has(w.versionId)) otherVersions.set(w.versionId, w);
+  }
+  await Promise.all([...otherVersions.values()].map((w) => ensureModel(w).catch(() => {})));
   for (const w of walks) {
     const s = summarize(w);
     const card = document.createElement("article");

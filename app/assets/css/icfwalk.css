@@ -23,7 +23,7 @@ body{margin:0;font-family:'Work Sans',-apple-system,BlinkMacSystemFont,"Segoe UI
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff;font-size:15px;letter-spacing:.2px}
 .brand img{height:40px;width:40px;flex-shrink:0;background:#fff;border-radius:50%;padding:3px;object-fit:contain}
 .brand img.is-missing{display:none}
-.brand small{display:block;font-weight:400;color:rgba(255,255,255,.78);font-size:30px;letter-spacing:.3px}
+.brand small{display:block;font-weight:800;color:#fff;font-size:36px;letter-spacing:.5px;line-height:1.1;margin-top:2px}
 .spacer{flex:1}
 button{font-family:inherit;cursor:pointer}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}

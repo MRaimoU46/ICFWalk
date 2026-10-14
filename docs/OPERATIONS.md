@@ -511,6 +511,12 @@ before dying (SEC-06; `tests/ops/restart-during-autosave.test.mjs`).
 
 ### 9.4 The yearly instrument update, and report releases
 
+The 2026-10-14 revision is waiting to be put into service: import
+`config/instrument-config-2026-10-14.json` (Instrument admin, Import; or
+`node scripts/seed-instrument.mjs --file instrument-config-2026-10-14.json` from the server), preview and
+compare it, confirm its source file, and publish it. `docs/INSTRUMENT_REVISION_2026-10-14.md`, "Putting it
+into service", has the steps and what to expect.
+
 See `docs/LOCAL_SETUP.md` step 9 (Excel round trip, preview, compare, publish) and
 `docs/OPEN_DECISIONS.md`, "Aggregate privacy rule (RPT-03)" (releases are created by someone with
 walk and report access across every active unit, cover closed past dates, never overlap and never

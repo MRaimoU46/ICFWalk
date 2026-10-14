@@ -246,6 +246,13 @@ in-memory `SessionWalkStore`; Phase 4 replaced it with `ApiWalkStore` (same inte
 composition (title = grade · content, meta = school · date · relative time) is presentation
 configuration by dimension code in `app.js` (`LIST_CARD`), not instrument content.
 
+**Rating level names and per-version titles (2026-10-14 revision).** A version may name its rating
+levels in `behavior.ratings.levelNames`, keyed by stored code. `renderer.js` then leads a scored item's
+definitions with the level and its name ("1 · Not evident:"); an unscored choice, and a version that
+names no levels, keep the bare label ("1:"). My Walks titles each card from the model of the walk's own
+version, loaded once per version, because versions may offer different values: a 2026-09-17 walk's
+"Music" is not a 2026-10-14 value (`docs/INSTRUMENT_REVISION_2026-10-14.md`).
+
 ## Walk persistence and autosave (Phase 4)
 
 ```
