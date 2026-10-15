@@ -186,12 +186,14 @@ component output="false" {
 		if (!structKeyExists(arguments.state.dimensions, arguments.code)) return "";
 		var v = arguments.state.dimensions[arguments.code];
 		if (!isStruct(v)) return "";
-		if (structKeyExists(v, "selectedValueCodes") && !isNull(v.selectedValueCodes) && isArray(v.selectedValueCodes)) {
+		if (structKeyExists(v, "selectedValueCodes") && isArray(v.selectedValueCodes)) {
 			if (!structKeyExists(arguments.model.dimensions, arguments.code)) return "";
 			var parts = [];
 			var several = toString(nv(v, "otherText", ""));
-			for (var pick in v.selectedValueCodes) {
-				if (isNull(pick) || !isSimpleValue(pick)) continue;
+			var picks = v.selectedValueCodes;
+			for (var i = 1; i <= arrayLen(picks); i++) {
+				if (!arrayIsDefined(picks, i) || !isSimpleValue(picks[i])) continue;
+				var pick = picks[i];
 				for (var listed in arguments.model.dimensions[arguments.code].values) {
 					if (compare(listed.valueCode, toString(pick)) != 0) continue;
 					if (compareNoCase(toString(listed.valueCode), "other") == 0 && len(several)) arrayAppend(parts, several);

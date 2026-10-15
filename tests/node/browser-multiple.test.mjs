@@ -8,8 +8,9 @@
 //   MULTI-E2  the JavaScript engine reproduces tests/fixtures/visibility-vectors-multiple.json on that
 //             model (the CFML engine runs the same vectors)
 //   MULTI-E3  several values save in the version's order and read back the same, one row each; Other's
-//             text goes only with Other; the same values in another order are no change to a completed
-//             walk; and every malformed submission is refused before anything is written
+//             text goes only with Other, and text that spells "null" is text; the same values in another
+//             order are no change to a completed walk; and every malformed submission is refused before
+//             anything is written
 //   MULTI-E4  the server summary equals the browser formatter's, and both read as the 2026-10-14
 //             prototype's own buildSummaryText and generateEmailDraftFor do
 //   MULTI-E5  the editor: a fieldset of checkboxes per field, from the keyboard; Other's text; a school
@@ -287,6 +288,12 @@ test("MULTI-E3 several values save in the version's order, one row each, and eve
   const [{ n: revisions }] = await query("SELECT COUNT(*) AS n FROM icf.walk_revision WHERE walk_id = @w AND reason = N'POST_COMPLETION_EDIT'", { w: done });
   assert.equal(revisions, 0, "and append no revision");
 
+  // Text that spells "null" is text (defect P8-08: ColdFusion 2023's isNull() is true for it). Other's
+  // text "Null" is kept with its value, and a value code "null" is refused below, never skipped.
+  const nulled = await completedWalk({ content: { selectedValueCodes: ["other", "ela"], otherText: "Null" } }, "2026-10-15");
+  const nulledState = (await who.walker.call("GET", `/api/walks/${nulled}`)).json.walk.state;
+  assert.deepEqual(nulledState.dimensions.content, { selectedValueCodes: ["ela", "other"], otherText: "Null" }, "Other's text Null is text");
+
   const before = await rowVersionOf(mainWalk);
 
   const refusals = [
@@ -295,6 +302,7 @@ test("MULTI-E3 several values save in the version's order, one row each, and eve
     [{ grade: { selectedValueCodes: ["7", "7"] } }, "dimensions.grade.selectedValueCodes[1]"],
     [{ grade: { selectedValueCodes: ["7", "13"] } }, "dimensions.grade.selectedValueCodes[1]"],
     [{ grade: { selectedValueCodes: ["7", 8] } }, "dimensions.grade.selectedValueCodes[1]"],
+    [{ grade: { selectedValueCodes: ["7", "null"] } }, "dimensions.grade.selectedValueCodes[1]"],
     [{ grade: { selectedValueCodes: "7" } }, "dimensions.grade.selectedValueCodes"],
     [{ content: { selectedValueCodes: ["music"] } }, "dimensions.content.selectedValueCodes[0]"],
   ];

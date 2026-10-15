@@ -162,15 +162,15 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		db.run("INSERT INTO [icf].[walk] (walk_id, version_id, org_unit_id, owner_user_id, status) VALUES (:id, :version, :org, :owner, N'DRAFT')",
 			{ "id": db.guid(id), "version": db.guid(variables.versionId), "org": db.guid(arguments.orgUnitId), "owner": db.guid(walker.userId) });
 		var principal = p(walker);
-		var dims = { "date": { "dateValue": arguments.day } };
-		structAppend(dims, arguments.dims);
+		var all = { "date": { "dateValue": arguments.day } };
+		structAppend(all, arguments.dims);
 		var responses = {
 			"p1q1": { "storedCode": "Yes" }, "p1q2": { "storedCode": "Analysis" }, "p1q3": { "storedCode": "Comprehension" },
 			"part1_targettask_tt1": { "storedCode": "4" }, "part1_targettask_tt2": { "storedCode": "3" },
 			"part1_adopted_pacing": { "storedCode": "notevident" }, "part1_adopted_ac1": { "storedCode": "2" }, "part1_adopted_ac2": { "storedCode": "1" }
 		};
 		var opened = variables.c.walkService.open(principal, id);
-		var saved = variables.c.walkService.save(principal, id, { "rowVersion": opened.rowVersion, "clientMutationId": db.newGuid(), "dimensions": dims, "responses": responses });
+		var saved = variables.c.walkService.save(principal, id, { "rowVersion": opened.rowVersion, "clientMutationId": db.newGuid(), "dimensions": all, "responses": responses });
 		variables.c.walkService.complete(principal, id, { "rowVersion": saved.rowVersion, "clientMutationId": db.newGuid() });
 		return id;
 	}

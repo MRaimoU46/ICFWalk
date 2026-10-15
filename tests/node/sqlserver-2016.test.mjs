@@ -84,7 +84,7 @@ const lineOf = (text, index) => text.slice(0, index).split("\n").length;
 
 test("SQL Server 2016: no migration uses T-SQL that SQL Server 2016 does not have", () => {
   const files = fs.readdirSync(path.join(root, "database")).filter((f) => /^\d{3}_.*\.sql$/.test(f)).sort();
-  assert.deepEqual(files.map((f) => f.slice(0, 3)), ["001", "002", "003", "004", "005", "006", "007"], "every migration is read");
+  assert.deepEqual(files.map((f) => f.slice(0, 3)), ["001", "002", "003", "004", "005", "006", "007", "008"], "every migration is read");
   const found = [];
   for (const f of files) {
     const text = fs.readFileSync(path.join(root, "database", f), "utf8");

@@ -299,7 +299,7 @@ component output="false" {
 
 	/** Whether a dimension value holds several values: selectedValueCodes is an array. */
 	private boolean function isSeveral(required any v) {
-		return isStruct(arguments.v) && structKeyExists(arguments.v, "selectedValueCodes") && !isNull(arguments.v.selectedValueCodes) && isArray(arguments.v.selectedValueCodes);
+		return isStruct(arguments.v) && structKeyExists(arguments.v, "selectedValueCodes") && isArray(arguments.v.selectedValueCodes);
 	}
 
 	/**
@@ -310,8 +310,11 @@ component output="false" {
 	private array function selectedCodes(required any v) {
 		var out = [];
 		if (isSeveral(arguments.v)) {
-			for (var c in arguments.v.selectedValueCodes) {
-				if (!isNull(c) && isSimpleValue(c) && len(toString(c))) arrayAppend(out, toString(c));
+			var codes = arguments.v.selectedValueCodes;
+			for (var i = 1; i <= arrayLen(codes); i++) {
+				if (!arrayIsDefined(codes, i)) continue;
+				var c = codes[i];
+				if (isSimpleValue(c) && len(toString(c))) arrayAppend(out, toString(c));
 			}
 			return out;
 		}

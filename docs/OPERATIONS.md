@@ -149,7 +149,7 @@ ColdFusion 2023 on the production stack".
      triggers, and a principal that can alter the schema can switch them off
      (`database/README.md`, "Production responsibilities").
 3. Apply the migrations in order with the administrative login, each exactly as shipped:
-   `001_schema.sql` through `007_report_release.sql` (`sqlcmd -b -i <file>`, SSMS, or
+   `001_schema.sql` through `008_multiple_dimension_values.sql` (`sqlcmd -b -i <file>`, SSMS, or
    `node scripts/db/apply-schema.mjs --database <name>` with the administrative login in
    `ICFWALK_TEST_DB_ADMIN_USER`/`_PASSWORD`). Each one prints a success row. Section 6 covers
    failures.
@@ -298,9 +298,13 @@ Roll back the code, not the database, when a release misbehaves (the smoke test 
    the template cache or restart ColdFusion. Open pages renew their session and keep their edits.
 2. Leave the database as it is. Migrations are additive, so the previous release runs on the migrated
    database, including the rows the newer release wrote. This is verified: the frozen Phase 0-7
-   release served, edited and reported on a database that 007 had migrated and this release had
-   written to, and read the report release this release had created
-   (`tests/ops/upgrade-and-rollback.test.mjs`, evidence in `docs/evidence/phase8/operations/`).
+   release served, edited and reported on a database that 007 (and, since the 2026-10-14 revision,
+   008) had migrated and this release had written to, and read the report release this release had
+   created (`tests/ops/upgrade-and-rollback.test.mjs`, evidence in `docs/evidence/phase8/operations/`).
+   One limit since 008: a walk that holds several values of a visit field (a version whose
+   checkboxes are published, such as 2026-10-14) shows one of them in a release from before 008, and
+   that release cannot change such a field -- its save is refused by `UQ_walk_dimension_value_selected`
+   and writes nothing. Walks on versions whose fields take one value are unaffected.
 3. Never reverse a migration by hand. Restore the backup from step 2 (section 7.3) only when the data
    itself is damaged: everything written since that backup is lost, so decide it with the owner.
 4. Repeat the smoke test and record what was rolled back, when, and why.
@@ -317,7 +321,7 @@ after the first go-live is corrected forward with a new release, or the service 
 * Apply in order, with the administrative login, each file exactly as shipped. Never edit a shipped
   script; a correction ships as a new numbered script.
 * Every script is one transaction under `SET XACT_ABORT ON`: it commits whole or not at all.
-  Scripts 002 to 007 are idempotent -- re-applying one changes nothing -- and 001 refuses to run
+  Scripts 002 to 008 are idempotent -- re-applying one changes nothing -- and 001 refuses to run
   against a database that already has `icf` tables (error 50001).
 * Back up first (section 7.2).
 
@@ -326,18 +330,23 @@ This is verified: a 007 killed half way, after it had created two tables, left n
 the same script then applied and re-applied cleanly (`tests/ops/database-operations.test.mjs`,
 evidence in `docs/evidence/phase8/operations/`).
 
-1. Read the error. A `THROW 500xx` is a precondition the script checks (for example 50061: the icf
-   schema is missing; 50053: a published version without a publisher; 50054 and 50067: states the
-   script refuses to guess about -- `database/README.md` explains each). Anything else is SQL
+1. Read the error. A `THROW 500xx` is a precondition the script checks (for example 50061 and 50081:
+   the icf schema is missing or incomplete; 50053: a published version without a publisher; 50054 and
+   50067: states the script refuses to guess about -- `database/README.md` explains each). Anything else is SQL
    Server's own error (permissions, a lock timeout, a lost connection).
 2. Fix the cause. Do not hand-edit tables to "finish" a migration.
 3. Apply the same script again. If the cause cannot be fixed, restore the backup (section 7.3) and
    stay on the previous release.
 
-**Upgrading an existing installation.** An installation at Phase 7 needs nothing (it has 001 to
-007). From the Phase 6 release apply `007_report_release.sql` (the exercise with Phase 6 data is in
-`docs/evidence/phase8/operations/`). From earlier, apply the missing scripts in order; the one-time
-transition in 006 is described in `database/README.md`.
+**Upgrading an existing installation.** An installation at Phase 7 or Phase 8 needs
+`008_multiple_dimension_values.sql` (instrument revision 2026-10-14, step 2), applied **before** the
+release that carries it is deployed: that release answers its health probe `outdated` (503) on a
+database without 008, so a node deployed first stays out of the load balancer until the migration is
+in. 008 rebuilds the keys of `icf.walk_dimension_value` and `icf.report_release_cell`, so it takes
+those tables' locks while it runs; apply it in a quiet period. From the Phase 6 release apply
+`007_report_release.sql` and then 008 (the exercise with Phase 6 data is in
+`tests/ops/upgrade-and-rollback.test.mjs`). From earlier, apply the missing scripts in order; the
+one-time transition in 006 is described in `database/README.md`.
 
 ## 7. Backup and restore
 
@@ -409,13 +418,14 @@ verified, and the application run against the restored copy -- is in
 | HTTP | `status` | Meaning |
 | --- | --- | --- |
 | 200 | `ok` | All three at once: the database answers (`checks.database = ok`), the schema is present (`checks.schema = present`), and long text comes back whole (`checks.longText = ok`). |
-| 503 | `degraded` | Anything else: the database is unavailable (`checks.database = unavailable`: datasource, network, login; `schema` and `longText` are then `unknown`), the schema is missing (`checks.schema = missing`: the database answers but the migrations were not applied to it, section 4.1), or long text is truncated (`checks.longText = truncated`, section 4.2). |
+| 503 | `degraded` | Anything else: the database is unavailable (`checks.database = unavailable`: datasource, network, login; `schema` and `longText` are then `unknown`), the schema is missing (`checks.schema = missing`: the database answers but the migrations were not applied to it, section 4.1), the schema is behind this release (`checks.schema = outdated`: the latest migration, 008, is not applied, section 6), or long text is truncated (`checks.longText = truncated`, section 4.2). |
 
 The endpoint fails closed, and that is what makes it the load balancer's readiness probe: every
 state above in which the node could not serve walks answers 503, and only a node that can answers
 200 (correction A8-01; before it, a database without the schema answered 200).
 `tests/ops/readiness-schema-missing.test.mjs` proves it on either engine against a brand-new
-database: 503 with `schema: missing` before the migrations, 200 after them. Point the load
+database: 503 with `schema: missing` before the migrations, 200 after them, and 503 with
+`schema: outdated` when 008 is undone and 200 once it is applied again. Point the load
 balancer's readiness probe at it, taking a node out on 503 and back on 200; alert on two consecutive
 non-200 answers. The long-text check runs at most every ten minutes. In production the body carries
 no environment or engine information.

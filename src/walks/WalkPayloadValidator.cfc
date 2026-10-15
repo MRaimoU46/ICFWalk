@@ -234,7 +234,7 @@ component output="false" {
 	}
 
 	private boolean function isMultiple(required struct dim) {
-		return structKeyExists(arguments.dim, "multiple") && !isNull(arguments.dim.multiple) && isBoolean(arguments.dim.multiple) && arguments.dim.multiple;
+		return structKeyExists(arguments.dim, "multiple") && isBoolean(arguments.dim.multiple) && arguments.dim.multiple;
 	}
 
 	/** Whether a clean dimension value selects Other: its one code, or any of its several. */
@@ -268,7 +268,6 @@ component output="false" {
 			// A null or empty element selects nothing, as a null or empty value field does.
 			if (!arrayIsDefined(arguments.v, i)) continue;
 			var e = arguments.v[i];
-			if (isNull(e)) continue;
 			if (!jsonString(e)) { issue(arguments.issues, "INVALID_DIMENSION_VALUE", at, "Each value code must be a JSON string."); ok = false; continue; }
 			if (!len(e)) continue;
 			var valueId = findValueId(arguments.dim, arguments.definitionIndex.values[dimId], toString(e));

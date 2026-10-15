@@ -564,7 +564,9 @@ does not have it.
 A walk comprises:
 
 - one `icf.walk` row;
-- zero or one `icf.walk_dimension_value` row for each configured dimension;
+- zero or one `icf.walk_dimension_value` row for each configured dimension, or, for a dimension
+  whose placement in the walk's version takes several values (`settings.multiple`, migration 008),
+  one row per selected value (`selection_ordinal` 0, 1, 2 ..., in the version's value order);
 - zero or one `icf.walk_response` row for each single-value/text item;
 - zero or more `icf.walk_response_selection` rows for a multi-select item;
 - append-only revision and audit records.
@@ -598,6 +600,21 @@ not contradict it. Response `state` is derived data: the server owns it, and a p
 that asserts one is rejected (`CLIENT_STATE_NOT_ACCEPTED`) rather than silently ignored. Values are
 checked against their JSON primitive type, never coerced.
 
+A dimension whose placement in the walk's version takes several values (the 2026-10-14 version's Grade
+level, Content / Subject Area, Program and Visit timing) is sent as `selectedValueCodes`, a JSON array of
+value codes, never as `selectedValueCode`, and every other list dimension the other way round, so a
+version whose fields take one value keeps refusing an array:
+
+```json
+"grade": { "selectedValueCodes": ["7", "8"] },
+"content": { "selectedValueCodes": ["ela", "other"], "otherText": "Robotics" }
+```
+
+Each code is a JSON string the version defines and appears once; the server stores and returns them in
+the version's value order whatever order they arrive in, and an empty array is no value. `otherText` is
+kept only while `other` is among the codes. A rule condition on such a dimension holds for `EQUALS` and
+`IN` when any selected value matches, and for `NOT_EQUALS` and `NOT_IN` when none does.
+
 The server response returns the committed `rowVersion`, normalized values, save timestamp, and mutation ID. A retry with the same mutation ID must not duplicate data. A stale row version returns a conflict, never a last-write-wins overwrite.
 
 ## Response states
@@ -621,6 +638,10 @@ Never convert UNANSWERED, HIDDEN, or NOT_APPLICABLE to numeric zero.
 ## Values by type
 
 - Controlled single choice: `selected_option_id` for item responses or `selected_value_id` for dimensions.
+- Several values of one dimension (migration 008): one `walk_dimension_value` row per value, each with
+  its `selected_value_id` and `selection_ordinal`; Other's text on the Other row's `text_value`.
+  `UQ_walk_dimension_value_selected` stores a value once per walk and dimension, and
+  `CK_walk_dimension_value_ordinal` gives an ordinal above 0 to a selected list value only.
 - Free text and long text: `text_value`.
 - Numeric values: `number_value`.
 - Dates: `date_value`.
@@ -685,6 +706,16 @@ report asks the engine: a dimension value counts only when the instrument shows 
 the walk's own values of the dimensions its rules read. A Period retained while hidden is `HIDDEN`,
 is never counted as its value and never matches a Period filter. A dimension whose visibility would
 depend on a response or on free text is left out of reports rather than counted wrongly.
+
+**Several values of one dimension** (step 2 of the 2026-10-14 revision, the owner's rule in
+`docs/OPEN_DECISIONS.md`). A walk holding several values of a dimension counts under each of them, so
+the value figures can add up to more than the walks; `ANSWERED`, `UNANSWERED` and `HIDDEN` count each
+walk once; a `dim_<code>` filter keeps every walk holding the value, alone or among others. The
+dimension carries `multiple: true` in the report, the CSV adds a `DIMENSION_NOTE` row saying the values
+can add up to more than the walks, and the page says so under the field. Visibility read from such a
+dimension is exact when one `EQUALS` or `IN` condition reads it (a walk is visible when any of its
+values shows the target); a rule that reads it twice or negates it leaves the governed dimension out of
+reports.
 
 **Report coherence.** A report reads many walks in several statements. It captures every
 population walk's `row_version` from the walk row before any child row is read, and verifies them
@@ -780,7 +811,10 @@ built in three steps:
 1. **Per block, per breakdown.** A breakdown is every category a block's walks fall into for one
    item (each option, then `UNANSWERED`, `HIDDEN`, `NOT_APPLICABLE`, `UNRECORDED`) or one dimension
    (each value, then `UNANSWERED`, `HIDDEN`); the categories do not overlap and add up to the
-   block's walks. Each breakdown of each block is protected by `DisclosureControl.suppress`:
+   block's walks. For a dimension a walk can hold several values of, a category is the combination
+   of values the walk holds -- their codes in the version's order joined by `+`, stored as one
+   `VALUE` category (`category_code` holds up to 300 characters, migration 008) -- so a walk is still
+   in exactly one category; `Grade 7` alone and `Grades 7 and 8` are different categories. Each breakdown of each block is protected by `DisclosureControl.suppress`:
    * cells of 1..k-1 are withheld (primary); zero is published;
    * complementary cells -- the smallest other non-zero cell, ties by category order -- are added
      until at least two are withheld, they total k or more, and they are not all forced to be 1;
@@ -806,7 +840,13 @@ built in three steps:
    withheld in some block is marked `withheld: true` and its count is the published part -- a lower
    bound -- or `null` when no block published any of it. Because every figure is a sum of figures
    each block's own report already publishes, subtracting any two reports of one release (a district
-   and its schools, a school and its neighbour) yields nothing that is not already published.
+   and its schools, a school and its neighbour) yields nothing that is not already published. A
+   dimension a walk can hold several values of shows each value, not each combination: a value's
+   figure is the published walks of every combination holding it, marked withheld when any such
+   combination is withheld anywhere, and `ANSWERED` counts each walk once. Those figures can add up
+   to more than the walks, and the report says so (`multiple: true`, and a `DIMENSION_NOTE` row in the
+   CSV). Counting a walk under each value in the cells themselves would let a reader work out small
+   overlaps the rule withholds, so the combinations are what is protected.
 
 **Derived figures.** `states.ANSWERED` is the sum of the published option counts (withheld if any
 option is). An item's `scored` figures are computed from its published scored options only: with
@@ -1105,7 +1145,8 @@ submitted one.
   `text_value` = the typed text. The text is a qualifier of the selected value, not a second typed
   value; it is accepted only when the Other value is selected (stale text from a previous Other
   selection is dropped) and it never enters aggregate grouping (reports group by
-  `selected_value_id`). Value codes are compared exactly.
+  `selected_value_id`). Value codes are compared exactly. On a dimension that takes several values
+  the text sits on the row of the Other value.
 - **Response rows**: one `walk_response` row exists for every response-capable item of the pinned
   version (display items excluded) from creation, with `response_state = UNANSWERED` when empty, so
   the four states are countable in reports. Values are cleared (option NULL) for `NOT_APPLICABLE`

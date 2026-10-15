@@ -406,6 +406,78 @@ test("DB-01..03 supplied scripts against an empty SQL Server database", { skip: 
     const afterRemoval = await pool.request().query(`SELECT (SELECT COUNT(*) FROM icf.report_release WHERE release_id = '${R1}') AS releases,
       (SELECT COUNT(*) FROM sys.triggers WHERE name LIKE 'TR_report_release%' AND is_disabled = 0) AS enabled`);
     assert.deepEqual(afterRemoval.recordset[0], { releases: 0, enabled: 12 }, "the release is gone and every guard is on again");
+
+    // ---- Instrument revision 2026-10-14, step 2: migration 008 ------------------------------------
+    // Applied over data: a value stored before 008 reads as before, a field can hold several values
+    // afterwards (and only as 008's keys and check allow), and a release stored before 008 keeps every
+    // cell and guard through the rebuild of its key, while a category longer than 100 characters, refused
+    // before, is stored after.
+    const MV = "55555555-5555-5555-5555-555555555501";
+    const DIM = "77777777-7777-7777-7777-777777777701";
+    const K = "88888888-8888-8888-8888-888888888801";
+    const G1 = "88888888-8888-8888-8888-888888888802";
+    const WM = "66666666-0000-0000-0000-000000000099";
+    await pool.request().batch(`INSERT INTO icf.walk (walk_id, version_id, org_unit_id, owner_user_id) VALUES ('${WM}', '${MV}', '${U}', '${USER}');
+      INSERT INTO icf.walk_dimension_value (walk_id, version_id, dimension_id, selected_value_id) VALUES ('${WM}', '${MV}', '${DIM}', '${K}');`);
+    const R6 = "77777777-0000-0000-0000-000000000016";
+    const stored = await applyScript(pool, inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('${R6}', '1931-02-01', '1931-02-28', 3, '${USER}');
+      ${member(W[0], R6)} ${member(W[1], R6)} ${member(W[2], R6)}
+      INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('${R6}', '${V}', '${U}', 3);
+      INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R6}', '${V}', '${U}', 'DIMENSION', 'grade', 'VALUE', 'k+g1', 3);`));
+    assert.equal(stored.ok, true, stored.error?.message);
+    const longCode = Array.from({ length: 12 }, (_, i) => `value_code_${i}`).join("+");
+    assert.ok(longCode.length > 100 && longCode.length <= 300);
+    const R7 = "77777777-0000-0000-0000-000000000017";
+    const longRelease = inOneTransaction(`
+      INSERT INTO icf.report_release (release_id, observed_from, observed_to, minimum_walks, released_by_user_id) VALUES ('${R7}', '1931-03-01', '1931-03-31', 3, '${USER}');
+      ${member(W[3], R7)} ${member(W[4], R7)} ${member(W[5], R7)}
+      INSERT INTO icf.report_release_block (release_id, version_id, org_unit_id, walks) VALUES ('${R7}', '${V}', '${U}', 3);
+      INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R7}', '${V}', '${U}', 'DIMENSION', 'grade', 'VALUE', '${longCode}', 3);`);
+    const tooLong = await applyScript(pool, longRelease);
+    assert.equal(tooLong.ok, false, "before 008 a release category holds 100 characters");
+
+    const multiple = await applyScript(pool, readScript("008_multiple_dimension_values.sql"));
+    assert.equal(multiple.ok, true, multiple.error?.message);
+    assert.deepEqual(multiple.recordset[0], { result: "ICFWalk multiple dimension values patch applied successfully.", multiple_values_available: 1, release_category_characters: 300 });
+    const multipleAgain = await applyScript(pool, readScript("008_multiple_dimension_values.sql"));
+    assert.equal(multipleAgain.ok, true, multipleAgain.error?.message);
+    assert.equal(multipleAgain.recordset[0].release_category_characters, 300, "re-applying changes nothing");
+    const keyColumns = await pool.request().query(`SELECT c.name FROM sys.key_constraints k
+      JOIN sys.index_columns ic ON ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id
+      JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+      WHERE k.name = 'PK_walk_dimension_value' ORDER BY ic.key_ordinal`);
+    assert.deepEqual(keyColumns.recordset.map((r) => r.name), ["walk_id", "dimension_id", "selection_ordinal"]);
+
+    const earlier = await pool.request().query(`SELECT selection_ordinal, selected_value_id FROM icf.walk_dimension_value WHERE walk_id = '${WM}'`);
+    assert.deepEqual(earlier.recordset.map((r) => [r.selection_ordinal, r.selected_value_id.toUpperCase()]), [[0, K]], "the value stored before 008 is ordinal 0");
+    const secondValue = await applyScript(pool, `INSERT INTO icf.walk_dimension_value (walk_id, version_id, dimension_id, selection_ordinal, selected_value_id) VALUES ('${WM}', '${MV}', '${DIM}', 1, '${G1}');`);
+    assert.equal(secondValue.ok, true, secondValue.error?.message);
+    for (const [sqlText, number, why] of [
+      [`INSERT INTO icf.walk_dimension_value (walk_id, version_id, dimension_id, selected_value_id) VALUES ('${WM}', '${MV}', '${DIM}', '${G1}');`, 2627, "the previous release's insert (ordinal 0) cannot add a second row"],
+      [`INSERT INTO icf.walk_dimension_value (walk_id, version_id, dimension_id, selection_ordinal, selected_value_id) VALUES ('${WM}', '${MV}', '${DIM}', 2, '${K}');`, 2627, "a value is stored once per walk and field (UQ_walk_dimension_value_selected)"],
+      [`INSERT INTO icf.walk_dimension_value (walk_id, version_id, dimension_id, selection_ordinal, text_value) VALUES ('${WM}', '${MV}', '${DIM}', 2, N'typed');`, 547, "only a selected list value takes an ordinal above 0"],
+      [`UPDATE icf.walk_dimension_value SET selected_value_id = '${K}' WHERE walk_id = '${WM}' AND dimension_id = '${DIM}';`, 2627, "the previous release's update of a field with several values is refused, writing nothing"]]) {
+      const refused = await applyScript(pool, sqlText);
+      assert.equal(refused.ok, false, why);
+      assert.equal(refused.error?.number, number, `${why}: ${refused.error?.message}`);
+    }
+    const both = await pool.request().query(`SELECT COUNT(*) AS n FROM icf.walk_dimension_value WHERE walk_id = '${WM}'`);
+    assert.equal(both.recordset[0].n, 2, "the walk holds its two values");
+
+    const kept = await pool.request().query(`SELECT category_code, responses FROM icf.report_release_cell WHERE release_id = '${R6}'`);
+    assert.deepEqual(kept.recordset, [{ category_code: "k+g1", responses: 3 }], "a cell stored before 008 is intact");
+    const guardsAfter = await pool.request().query(`SELECT COUNT(*) AS n FROM sys.triggers WHERE name LIKE 'TR_report_release%' AND is_disabled = 0`);
+    assert.equal(guardsAfter.recordset[0].n, 12, "every release guard survives the rebuild of the cell key");
+    const sealedStill = await applyScript(pool, inOneTransaction(`INSERT INTO icf.report_release_cell (release_id, version_id, org_unit_id, subject_type, subject_key, category_type, category_code, responses)
+      VALUES ('${R6}', '${V}', '${U}', 'DIMENSION', 'grade', 'VALUE', 'g1', 3);`));
+    assert.equal(sealedStill.error?.number, 50066, "and nothing can be added to it later");
+    const longStored = await applyScript(pool, longRelease);
+    assert.equal(longStored.ok, true, longStored.error?.message);
+    const longCell = await pool.request().query(`SELECT category_code FROM icf.report_release_cell WHERE release_id = '${R7}'`);
+    assert.equal(longCell.recordset[0].category_code, longCode, "a combination longer than 100 characters is stored whole");
   } finally {
     await pool.close();
     const cleanup = await sql.connect(connectionConfig(env, "master", true));

@@ -430,11 +430,11 @@ component output="false" {
 			return;
 		}
 		var valueCode = arguments.q.value_code[arguments.r];
-		if (isNull(valueCode) || !len(valueCode)) return;
+		if (!len(valueCode)) return;
 		if (!structKeyExists(arguments.out, code)) arguments.out[code] = { "selectedValueCodes": [] };
 		arrayAppend(arguments.out[code].selectedValueCodes, valueCode);
 		var text = arguments.q.text_value[arguments.r];
-		if (lCase(valueCode) == "other" && !isNull(text) && len(text)) arguments.out[code]["otherText"] = text;
+		if (lCase(valueCode) == "other" && len(text)) arguments.out[code]["otherText"] = text;
 	}
 
 	/**
@@ -443,11 +443,11 @@ component output="false" {
 	 * under "settings"; there, "multiple" is the boolean true.
 	 */
 	private boolean function placementTakesSeveral(required any settingsJson) {
-		if (isNull(arguments.settingsJson) || !isSimpleValue(arguments.settingsJson) || !len(arguments.settingsJson) || !isJSON(arguments.settingsJson)) return false;
+		if (!isSimpleValue(arguments.settingsJson) || !len(arguments.settingsJson) || !isJSON(arguments.settingsJson)) return false;
 		var row = deserializeJSON(arguments.settingsJson);
-		if (!isStruct(row) || !structKeyExists(row, "settings") || isNull(row.settings) || !isStruct(row.settings)) return false;
+		if (!isStruct(row) || !structKeyExists(row, "settings") || !isStruct(row.settings)) return false;
 		var s = row.settings;
-		if (!structKeyExists(s, "multiple") || isNull(s.multiple)) return false;
+		if (!structKeyExists(s, "multiple")) return false;
 		return variables.types.isJsonBoolean(s.multiple) && s.multiple;
 	}
 

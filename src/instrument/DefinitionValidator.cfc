@@ -360,7 +360,7 @@ component output="false" {
 		var settings = arguments.placement.settings;
 		if (!structKeyExists(settings, "multiple")) return;
 		var dimensionCode = keyOf(arguments.placement, "dimensionCode");
-		if (isNull(settings.multiple) || !variables.types.isJsonBoolean(settings.multiple)) {
+		if (!variables.types.isJsonBoolean(settings.multiple)) {
 			err(arguments.r, "MULTIPLE_SETTING_INVALID", "Placement of dimension '" & dimensionCode & "' has settings.multiple that is not true or false.", arguments.pa & ".settings.multiple");
 			return;
 		}

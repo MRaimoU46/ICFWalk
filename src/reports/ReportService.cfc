@@ -1304,7 +1304,7 @@ component output="false" {
 		}
 		var visibility = visibilityFor(code, arguments.ancestry, arguments.model, arguments.index);
 		if (structIsEmpty(visibility)) return {};
-		var several = structKeyExists(dim, "multiple") && !isNull(dim.multiple) && isBoolean(dim.multiple) && dim.multiple;
+		var several = structKeyExists(dim, "multiple") && isBoolean(dim.multiple) && dim.multiple;
 		return { "code": code, "label": dim.label, "dimensionId": dimensionId, "values": values, "valueById": valueById, "visibility": visibility, "multiple": several };
 	}
 

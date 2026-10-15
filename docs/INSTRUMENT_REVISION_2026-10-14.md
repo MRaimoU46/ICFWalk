@@ -3,10 +3,11 @@
 The product owner supplied a new prototype on 2026-10-14 ("the most up-to-date document that shows the
 new launch page with the check boxes") and asked for it in two steps:
 
-1. **This change.** Everything in the new prototype except the checkboxes, as a new version of the
-   ICFWALK instrument.
-2. **Next.** Grade level, Content / Subject Area, Program and Visit timing as multi-select checkboxes.
-   The owner's reporting rule for it is decided and recorded in `docs/OPEN_DECISIONS.md`.
+1. **Step 1.** Everything in the new prototype except the checkboxes, as a new version of the
+   ICFWALK instrument (code `36f9db0`).
+2. **Step 2.** Grade level, Content / Subject Area, Program and Visit timing as checkboxes: a walk
+   holds several values of each, and reports count it under each, by the owner's rule recorded in
+   `docs/OPEN_DECISIONS.md`. See "Step 2: several values per visit field" below.
 
 The 2026-09-17 instrument is not edited. It stays the supplied baseline, the default seed and the version
 every walk taken so far is pinned to.
@@ -55,6 +56,7 @@ immutable and records the fingerprint.
 | Class type field | "Class type", 8 options | **"Program"**, 17 options in the prototype's order (Advanced Placement, Advisory, AVID, Cross-Cat, DHH, Dual Credit, Dual Language, ESL, General Education, IB, Ignite, MAC, Magnet, Morning Meeting, PREP, VI, Other) |
 | Content-area card | shown for Music, Art or CTE | shown for **Performing Arts, Visual Arts or CTE** |
 | Other disaggregation tag(s) | a free-text field in Part 1 | **removed** |
+| Grade level, Content / Subject Area, Program, Visit timing (step 2) | one value each | **several values each** (checkboxes), in the version's order |
 | Header (every version) | "School District U-46" over "ICFWalk · Instructional Clarity Framework" | "School District U-46 · Instructional Clarity Framework" over **INSTRUCTIONAL WALK** |
 
 Counts, 2026-09-17 to 2026-10-14: sections 23 to 23, items 144 to 166 (one rated question and 21 look-for
@@ -88,9 +90,8 @@ values 95 to 104, placements 10 to 9, placeholders 17 to 17.
    labels the way every existing code is.
 5. **The tag field is gone from this version only.** Its dimension identity stays for the 2026-09-17
    walks that use it. A walk on this version that sends one is refused (`UNKNOWN_DIMENSION`).
-6. **Single-select, for now.** The checkboxes are step 2: a walk stores one value per visit field
-   (`icf.walk_dimension_value` is keyed on walk and field), so multi-select is a schema, save-path, rules,
-   reports and export change, not instrument content.
+6. **The checkboxes are step 2**, below: several values per walk and field is a schema, save-path, rules,
+   reports and export change, not instrument content alone.
 7. **The recorded summary deviations carry over** (`docs/PHASE_5_IMPLEMENTATION_BRIEF.md` section 14):
    the content-area heading is the section title (14.3), Yes and No print as their labels (14.5), and
    the rest are unchanged. `tests/node/browser-revision.test.mjs` REV-E6 runs the 2026-10-14 prototype's
@@ -112,7 +113,11 @@ cached) before titling. REV-E5 failed without the correction and passes with it.
 1. Import `config/instrument-config-2026-10-14.json`: **Instrument admin**, Import, choose the file; or,
    from the server with maintenance on, `node scripts/seed-instrument.mjs --file instrument-config-2026-10-14.json`.
    The result is a DRAFT labelled `2026-10-14 prototype revision` with definitions checksum
-   `b9e7d0df0c722a4861d2fdcaddc3b972e7bfc8a24a559f3ad839fecd3d95999a` and the 17 placeholder warnings.
+   `4ac0f64ac250e8b8f452957a657f19bbb344f75038f696b3ab906032084187e4` and the 17 placeholder warnings.
+   (Step 1's document, before its four checkbox fields took several values, had
+   `b9e7d0df0c722a4861d2fdcaddc3b972e7bfc8a24a559f3ad839fecd3d95999a`.) The database must have
+   migration 008 first (`database/README.md`): an application of this change answers its health
+   probe `outdated` (503) until it has.
 2. Preview it, and Compare it with `2026-09-17 aligned prototype`. The comparison lists the changes in
    the table above and nothing else.
 3. Confirm the source file (see "Source fingerprint and provenance").
@@ -123,6 +128,49 @@ A brand-new installation can seed this document instead of the 2026-09-17 one wi
 argument (or `ICFWALK_INSTRUMENT_CONFIG_PATH`). The test suite keeps seeding the 2026-09-17 document,
 which its baselines describe.
 
+## Step 2: several values per visit field
+
+The 2026-10-14 prototype's launch page makes four visit fields checkboxes (`META_FIELDS` type
+`"checkboxes"`): Grade level, Content / Subject Area, Program and Visit timing. A walk holds any number of
+values of each, Other's text goes with Other, and the prototype's own code tests a field with "any of
+these values" (`metaHas`, `metaHasAny`).
+
+| Area | What this change does |
+| --- | --- |
+| The instrument | A placement's `settings.multiple: true` (version-scoped) says its field takes several values. The derivation gives it to exactly the prototype's four checkbox fields. Nothing else in any version changes, so every other version's checksums stay as they were. The authoring validator refuses a non-boolean `multiple` (`MULTIPLE_SETTING_INVALID`), one on a field that is not a list (`MULTIPLE_NOT_A_LIST`), a value code a combination could not carry (`MULTIPLE_VALUE_CODE_INVALID`: letters, digits, `_`, `-`, `.` only), codes that joined by `+` exceed 300 characters (`MULTIPLE_CODES_TOO_LONG`), and an option filter that would read such a field (`OPTION_FILTER_SOURCE_MULTIPLE`) |
+| Storage | Migration 008: `icf.walk_dimension_value` holds one row per value (`selection_ordinal` 0, 1, 2 ..., in the version's value order) with the Other text on the Other row; `UQ_walk_dimension_value_selected` and `CK_walk_dimension_value_ordinal` hold the shape. Every existing row is ordinal 0 and reads as before |
+| The walk state | `{ "selectedValueCodes": ["7", "8"], "otherText"?: "..." }` for such a field, and `selectedValueCode` for every other list field, on the API, in the browser and in the engines. The server checks each code, refuses duplicates and the wrong shape for the field, and orders the codes by the version; an empty list is no value |
+| Rules | A condition on such a field holds for `EQUALS`/`IN` when any value matches and for `NOT_EQUALS`/`NOT_IN` when none does, in both engines (`tests/fixtures/visibility-vectors-multiple.json` is their parity contract). A school change keeps the grades the school allows and removes the rest (`DIMENSION_VALUES_REMOVED`), as the prototype does |
+| The editor | A fieldset of checkboxes per field, named by its legend, in the version's order; an option filter hides the values it does not allow; Other shows its text box while ticked and clears it when unticked, as the prototype does |
+| Summary, email, file name, My walks | The values joined by `", "`, Other as its text (the prototype's `metaDisplay`): "Grade level: 7, 8", `ICFWalk_7_8_ELA_Visual_Arts_2026-10-15.txt`, "Open 7, 8 · ELA, Visual Arts" |
+| Live reports | Each walk counts under each of its values and once among the states (answered, not answered, hidden); a filter on one value includes a walk holding it among others. The report, the CSV (`DIMENSION_NOTE ... MULTIPLE_VALUES`) and the page say that the values can add up to more than the walks |
+| Releases | A field's breakdown is the combinations of values (codes joined by `+`, one category per walk), so its categories still never overlap and add up to the block's walks, and the approved rule (D5) protects them unchanged. Each value is then published as the sum of the published combinations holding it, "at least" when one of them is withheld |
+
+### Decisions
+
+1. **Several values are counted the owner's way** (`docs/OPEN_DECISIONS.md`): under each value, a
+   filter on one value includes them, and the totals are labelled as able to exceed the walks.
+2. **Releases protect combinations, not values.** Counting a walk under each value in a release cell
+   would publish overlapping counts, from which a reader could work out small groups the k = 3 rule
+   withholds: 3 walks at Grade 7, 3 at Grade 8 and 5 answered mean exactly one walk was both. Protecting
+   each combination of values as one category keeps the approved rule exactly as it was (categories that
+   do not overlap and add up to the walks), and each value's figure is a sum of figures already
+   published, which reveals nothing new. The price is that a value's figure is marked "at least" more
+   often when combinations are rare. Live figures, for people who can open every walk counted, are not
+   affected.
+3. **The flag is a placement setting**, not a new field of the instrument's records, so no version but
+   this one changes, and an option filter, a rule or a report can be refused at authoring time when it
+   cannot read several values.
+4. **A report leaves out a field it cannot decide exactly.** Its visibility is worked out per
+   combination of one value per field (`ReportService.visibilityFor`); that is exact for a field that
+   holds several values only when one `EQUALS` or `IN` condition reads it. A rule that reads it twice, or
+   negates it, leaves the governed field out of the report instead of counting it wrong. No rule of the
+   2026-10-14 version does either.
+5. **Rolling back** to the previous release on a database with 008 works for every walk on a version
+   whose fields take one value. A walk holding several values of a field shows one of them there, and
+   that release cannot change such a field: its update is refused by `UQ_walk_dimension_value_selected`
+   and writes nothing (`docs/OPERATIONS.md`).
+
 ## Verification
 
 | Where | What |
@@ -130,5 +178,9 @@ which its baselines describe.
 | `tests/node/instrument-revision.test.mjs` (REV-01 to REV-11, no application) | The document is exactly what the derivation makes; its source fingerprint; its golden checksums; references and keys; every rated item on the prototype's 4-point scale with its exact definitions; the level names; the look-fors; Academic Teaming's third question and its rule; Part 1 order and Pacing; the visit fields, their lists and the content-area triggers; nothing else moved |
 | `tests/cfml/specs/InstrumentRevisionTest.cfc` (6) | The CFML compiler produces the golden bytes (parity with the reference compiler); the authoring validator accepts it with only the 17 placeholder warnings; the real renderer builds it; the visibility engine follows the new triggers and the third Teaming question; the summary formatter prints 4-point scores |
 | `tests/node/browser-revision.test.mjs` (REV-E1 to REV-E6) | Imported through Instrument admin with the golden definitions checksum, and published; a walk on it is served its own model; it saves, and a 5, a value the version does not offer and the tag field are refused; the server's summary equals the browser formatter's; the editor renders level names, three Teaming questions, the Part 1 order, the visit fields and the header, with keyboard, axe-core and 375 px checks; the prototype's own summary and email code agree |
+| `tests/cfml/specs/MultipleValuesTest.cfc` (7, step 2) | The authoring rules for `settings.multiple`; the model's flags; the shared vectors (parity with the browser engine); the operators over several values; a school change; the save validator's checks and order; the summary, file name and email with several values |
+| `tests/cfml/specs/MultipleValuesReportTest.cfc` (2, step 2) | Against SQL Server, through a ReportService configured for a fixture instrument holding the 2026-10-14 document: live figures under each value and once per walk, the filter, the CSV label; a release that stores combinations (one longer than 100 characters) and publishes each value as the sum of its published combinations |
+| `tests/node/browser-multiple.test.mjs` (MULTI-E1 to E6, step 2) | The flags in the served model; the shared vectors; saves in order, one row per value, Other's text, no change on reordering, every malformed shape refused; the summary and email against the prototype's own code; the checkbox editor with the keyboard, Other, a school change, My walks, axe-core and 375 px; the Reports view's label |
+| `tests/node/db-scripts.test.mjs`, `tests/node/schema-contract.test.mjs` (step 2) | Migration 008 over data and twice: ordinal 0 for existing values, the new key, unique value and check refusing what they must, the previous release's insert and update refused, release cells and guards intact through the key rebuild, a long combination refused before and stored after |
 
 The results of the gate on both engines are in `BUILD_STATUS.md`, "Instrument revision 2026-10-14".

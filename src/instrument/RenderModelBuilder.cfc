@@ -354,7 +354,7 @@ component output="false" {
 	 * (DefinitionValidator refuses any other value, and anything but a list).
 	 */
 	private boolean function isMultiple(required struct settings) {
-		if (!structKeyExists(arguments.settings, "multiple") || isNull(arguments.settings.multiple)) return false;
+		if (!structKeyExists(arguments.settings, "multiple")) return false;
 		return variables.types.isJsonBoolean(arguments.settings.multiple) && arguments.settings.multiple;
 	}
 
