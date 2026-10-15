@@ -7,7 +7,11 @@
  * A BREAKDOWN is every category a block's walks can fall into for one item or one dimension, in a
  * fixed order, with the walks in each. The categories are mutually exclusive and exhaustive, so
  * the counts add up to the block's walks, which are published. What a reader can know about a
- * breakdown is therefore its published cells, that total, and this algorithm.
+ * breakdown is therefore its published cells, that total, and this algorithm. A dimension a walk
+ * can hold several values of (instrument revision 2026-10-14, step 2) is broken down by the
+ * combination of values each walk holds, one category per combination, so that its categories are
+ * exclusive and exhaustive too (ReportService); a value's own figure is then a sum of published
+ * cells, never a cell this rule decides on.
  *
  * THE RULE, for a breakdown with cells c[1..m] and minimum k:
  *

@@ -301,10 +301,22 @@ Roll back the code, not the database, when a release misbehaves (the smoke test 
    release served, edited and reported on a database that 007 (and, since the 2026-10-14 revision,
    008) had migrated and this release had written to, and read the report release this release had
    created (`tests/ops/upgrade-and-rollback.test.mjs`, evidence in `docs/evidence/phase8/operations/`).
-   One limit since 008: a walk that holds several values of a visit field (a version whose
-   checkboxes are published, such as 2026-10-14) shows one of them in a release from before 008, and
-   that release cannot change such a field -- its save is refused by `UQ_walk_dimension_value_selected`
-   and writes nothing. Walks on versions whose fields take one value are unaffected.
+   **Rolling back past 008** (instrument revision 2026-10-14, step 2) has limits for walks that hold
+   several values of a visit field, which exist once a version with checkboxes (such as 2026-10-14)
+   is published. Walks on versions whose fields take one value are unaffected. The release before
+   step 2, verified with step 1's code (`36f9db0`, whose walk and report code is the Phase 8
+   release's) on walks this release recorded, in the same test:
+   - It shows one of such a field's values. A save that leaves the field alone goes through and
+     keeps every value; a change to the field fails (500 `INTERNAL_ERROR`: the unique key
+     `UQ_walk_dimension_value_selected` refuses it) and writes nothing.
+   - Its live report counts such a walk under each of its values, as this release does, but also
+     once per value among the walks that answered the field.
+   - It reads a report release this release created, protected exactly as this release protects
+     it (the same cells withheld), but leaves each combination of values out of the values: a value
+     shows only the walks that hold it alone. The walks that answered are right.
+   - A report release it creates counts such a walk under each of its values, so that field's
+     breakdown adds up to more than its walks, and its protection assumes it does not. **Create no
+     report release while rolled back past 008**; create it once this release is back.
 3. Never reverse a migration by hand. Restore the backup from step 2 (section 7.3) only when the data
    itself is damaged: everything written since that backup is lost, so decide it with the owner.
 4. Repeat the smoke test and record what was rolled back, when, and why.

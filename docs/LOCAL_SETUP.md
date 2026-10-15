@@ -41,7 +41,8 @@ cp .env.example .env                          # then set ICFWALK_DB_* from .runt
 node scripts/db/apply-schema.mjs              # applies database/001_schema.sql, 002_alignment_patch.sql,
                                               # 003_walk_mutation.sql, 004_mutation_fingerprint.sql,
                                               # 005_org_unit_dimension_map.sql,
-                                              # 006_version_scoped_dimensions.sql, 007_report_release.sql
+                                              # 006_version_scoped_dimensions.sql, 007_report_release.sql,
+                                              # 008_multiple_dimension_values.sql
 
 tools/runtime/lucee-up.sh                     # or deploy app/ to ColdFusion 2023 (below)
 node scripts/seed-instrument.mjs              # imports config/instrument-config.json as a DRAFT version
@@ -65,9 +66,11 @@ npm test                                      # all Node tests + the CFML suite 
    `ICFWALK_ENV_FILE` pointing at a file readable only by the service account).
 5. Apply `database/001_schema.sql`, then `database/002_alignment_patch.sql`, then
    `database/003_walk_mutation.sql`, `database/004_mutation_fingerprint.sql`,
-   `database/005_org_unit_dimension_map.sql`, `database/006_version_scoped_dimensions.sql` and
-   `database/007_report_release.sql` (all idempotent) with SQL Server tooling (`sqlcmd`, SSMS) or
-   `node scripts/db/apply-schema.mjs`. An existing Phase 7 installation needs only `007`.
+   `database/005_org_unit_dimension_map.sql`, `database/006_version_scoped_dimensions.sql`,
+   `database/007_report_release.sql` and `database/008_multiple_dimension_values.sql` (all
+   idempotent) with SQL Server tooling (`sqlcmd`, SSMS) or `node scripts/db/apply-schema.mjs`. An
+   existing installation at `007` needs only `008`, applied before this release starts
+   (`docs/OPERATIONS.md`, section 6).
 6. Enable maintenance for the bootstrap (`ICFWALK_MAINTENANCE_ENABLED=true`, a 32+ character
    `ICFWALK_MAINTENANCE_TOKEN`) and keep it on until step 11. Seed the instrument from the server
    itself (`node scripts/seed-instrument.mjs` or `curl` against

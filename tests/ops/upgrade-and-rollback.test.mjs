@@ -286,7 +286,11 @@ function figures(d) {
   return { beginning: of(BEGINNING), middle: of(MIDDLE), end: of(END), answered: d.states.ANSWERED };
 }
 
-/** Step 5, on this release: the 2026-10-14 version published, walks holding several values, a release. */
+/**
+ * Step 5, on this release: the 2026-10-14 version published, walks holding several values, a release.
+ * Visit timing is tied to no rule, so its breakdown is protected on its own. A release keeps only
+ * blocks of at least the minimum walks (3 here), so each day has at least three in its one school.
+ */
 async function recordSeveral(unit) {
   const imported = await maintenance("/api/maintenance/instrument/import", { configFile: "instrument-config-2026-10-14.json" });
   const admin = client(`${tag}-admin`);
@@ -296,7 +300,7 @@ async function recordSeveral(unit) {
   const walker = client(`${tag}-walker`);
   await walker.call("GET", "/api/me");
   const made = [];
-  for (const [day, codes, n] of [[DAY1, [BEGINNING], 3], [DAY1, [MIDDLE], 3], [DAY1, [BEGINNING, MIDDLE], 3], [DAY2, [MIDDLE, BEGINNING], 1]]) {
+  for (const [day, codes, n] of [[DAY1, [BEGINNING], 3], [DAY1, [MIDDLE], 3], [DAY1, [BEGINNING, MIDDLE], 3], [DAY2, [MIDDLE, BEGINNING], 3]]) {
     for (let i = 0; i < n; i++) {
       const created = await walker.call("POST", "/api/walks", { orgUnitId: unit, clientMutationId: crypto.randomUUID() });
       assert.equal(created.status, 201, created.text.slice(0, 300));
@@ -315,9 +319,9 @@ async function recordSeveral(unit) {
   const districtId = Object.keys(me.json.orgUnits).find((id) => me.json.orgUnits[id].code === `${tag}-district`);
   const live = await reporter.call("GET", `/api/reports/aggregate?versionId=${imported.versionId}&orgUnitId=${districtId}`);
   assert.equal(live.status, 200, live.text.slice(0, 300));
-  assert.equal(walksOf(live.json), 10);
+  assert.equal(walksOf(live.json), 12);
   assert.equal(timingOf(live.json).multiple, true);
-  assert.deepEqual(figures(timingOf(live.json)), { beginning: 7, middle: 7, end: 0, answered: 10 }, "this release: a walk under each of its values, once among the answered");
+  assert.deepEqual(figures(timingOf(live.json)), { beginning: 9, middle: 9, end: 0, answered: 12 }, "this release: a walk under each of its values, once among the answered");
   const created = await reporter.call("POST", "/api/reports/releases", { observedFrom: DAY1, observedTo: DAY1 });
   assert.equal(created.status, 201, created.text.slice(0, 400));
   const releaseId = created.json.release?.releaseId ?? created.json.releaseId;
@@ -358,8 +362,8 @@ async function previousOnSeveral(several) {
   await reporter.call("GET", "/api/me");
   const live = await reporter.call("GET", `/api/reports/aggregate?versionId=${several.versionId}&orgUnitId=${several.districtId}`);
   assert.equal(live.status, 200, live.text.slice(0, 300));
-  assert.equal(walksOf(live.json), 10);
-  assert.deepEqual(figures(timingOf(live.json)), { beginning: 7, middle: 7, end: 0, answered: 14 }, "its live report: a walk under each value, and once per value among the answered");
+  assert.equal(walksOf(live.json), 12);
+  assert.deepEqual(figures(timingOf(live.json)), { beginning: 9, middle: 9, end: 0, answered: 18 }, "its live report: a walk under each value, and once per value among the answered");
   record.live = figures(timingOf(live.json));
   const read = await reporter.call("GET", `/api/reports/aggregate?versionId=${several.versionId}&orgUnitId=${several.districtId}&releaseId=${several.releaseId}`);
   assert.equal(read.status, 200, read.text.slice(0, 300));
@@ -368,7 +372,7 @@ async function previousOnSeveral(several) {
   const created = await reporter.call("POST", "/api/reports/releases", { observedFrom: DAY2, observedTo: DAY2 });
   assert.equal(created.status, 201, created.text.slice(0, 400));
   const releaseId = created.json.release?.releaseId ?? created.json.releaseId;
-  assert.deepEqual(await releasedTiming(releaseId), { [BEGINNING]: 1, [MIDDLE]: 1 }, "a release it creates counts the walk under each value: 2 for 1 walk");
+  assert.deepEqual(await releasedTiming(releaseId), { [BEGINNING]: 3, [MIDDLE]: 3 }, "a release it creates counts a walk under each value: 6 for 3 walks");
   record.released = await releasedTiming(releaseId);
   return record;
 }

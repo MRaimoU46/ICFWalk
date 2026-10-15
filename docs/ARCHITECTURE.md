@@ -267,8 +267,10 @@ browser app.js (700 ms debounce, mutation ids, rowVersion)
 ```
 
 **Aggregate and transaction.** A walk is `icf.walk` plus one `walk_dimension_value` row per
-dimension with a value and one `walk_response` row per response-capable item of the pinned
-version (state `UNANSWERED` when empty, so state counts are reportable). `PUT /api/walks/{id}`
+dimension with a value -- one per selected value of a field that takes several (a placement's
+`settings.multiple`, instrument revision 2026-10-14 step 2, migration `008`), numbered by
+`selection_ordinal` in the version's value order -- and one `walk_response` row per response-capable
+item of the pinned version (state `UNANSWERED` when empty, so state counts are reportable). `PUT /api/walks/{id}`
 carries the whole working state; the server validates it (`WalkPayloadValidator`), re-normalizes it
 with the same engine the browser uses, then, inside one transaction, locks the walk row, compares the
 client's `rowVersion` token with the row's `rowversion` (409 `STALE_ROW_VERSION`, nothing written,
@@ -279,9 +281,11 @@ bound to its walk, actor, and action. Reads never trust request fields for scope
 version, and status always come from the row.
 
 **Validation (fail closed).** Dimension codes must be placements of the pinned version; list codes
-resolve to `dimension_value` GUIDs of that dimension, `otherText` is accepted only on `allowOther`
-dimensions and stored only with the Other value selected (documented mapping: `selected_value_id`
-= Other, `text_value` = the text); TEXT/DATE/NUMBER/BOOLEAN values must fit the data type
+resolve to `dimension_value` GUIDs of that dimension (a field that takes several values accepts
+`selectedValueCodes`, an array of distinct codes, and refuses `selectedValueCode`; every other field
+the reverse), `otherText` is accepted only on `allowOther` dimensions and stored only with the Other
+value selected (documented mapping: `selected_value_id` = Other, `text_value` = the text, on the
+Other row of a field that takes several); TEXT/DATE/NUMBER/BOOLEAN values must fit the data type
 (`YYYY-MM-DD` calendar dates, 1000-character texts). Item keys must be active items of the version;
 display items accept nothing; choice items accept only a `storedCode` of their own response set
 (resolved to the option GUID of that set, so an option that exists in another set or version is
@@ -291,7 +295,9 @@ All comparisons of codes use exact string comparison (`compare`), never CFML `==
 `"yes"` and `"1"` (and `"1"` and `"1.0"`) as equal; the shared vectors carry cases for this.
 
 **States and clearing.** The engine's `normalize` runs server-side on every save: a grade outside
-the selected school's band is cleared (`DIMENSION_CLEARED/OPTION_FILTER`), and setting a skippable
+the selected school's band is cleared (`DIMENSION_CLEARED/OPTION_FILTER`; of several grades, those
+outside the band are removed, `DIMENSION_VALUES_REMOVED`, and the field is cleared only when none is
+left), and setting a skippable
 component to No clears its ratings (`RESPONSE_CLEARED/NOT_APPLICABLE`) in the same transaction as
 the applicability answer; notes are never rated and are retained. Persisted response states follow
 `evaluateVisibility`: `HIDDEN` rows keep their value (conditional classroom sections reappear with

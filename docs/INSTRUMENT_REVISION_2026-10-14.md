@@ -167,9 +167,12 @@ these values" (`metaHas`, `metaHasAny`).
    negates it, leaves the governed field out of the report instead of counting it wrong. No rule of the
    2026-10-14 version does either.
 5. **Rolling back** to the previous release on a database with 008 works for every walk on a version
-   whose fields take one value. A walk holding several values of a field shows one of them there, and
-   that release cannot change such a field: its update is refused by `UQ_walk_dimension_value_selected`
-   and writes nothing (`docs/OPERATIONS.md`).
+   whose fields take one value. For a walk holding several values of a field, that release shows one of
+   them; a save that leaves the field alone goes through and keeps every value, and a change to the field
+   fails (`UQ_walk_dimension_value_selected`) and writes nothing. Its live report counts such a walk once
+   per value among the answered, it reads this release's report releases with each combination left out
+   of the values, and a release it created would count a walk under each value: create no report release
+   while rolled back (`docs/OPERATIONS.md`, 5.1, verified by `tests/ops/upgrade-and-rollback.test.mjs`).
 
 ## Verification
 
@@ -181,6 +184,9 @@ these values" (`metaHas`, `metaHasAny`).
 | `tests/cfml/specs/MultipleValuesTest.cfc` (7, step 2) | The authoring rules for `settings.multiple`; the model's flags; the shared vectors (parity with the browser engine); the operators over several values; a school change; the save validator's checks and order; the summary, file name and email with several values |
 | `tests/cfml/specs/MultipleValuesReportTest.cfc` (2, step 2) | Against SQL Server, through a ReportService configured for a fixture instrument holding the 2026-10-14 document: live figures under each value and once per walk, the filter, the CSV label; a release that stores combinations (one longer than 100 characters) and publishes each value as the sum of its published combinations |
 | `tests/node/browser-multiple.test.mjs` (MULTI-E1 to E6, step 2) | The flags in the served model; the shared vectors; saves in order, one row per value, Other's text, no change on reordering, every malformed shape refused; the summary and email against the prototype's own code; the checkbox editor with the keyboard, Other, a school change, My walks, axe-core and 375 px; the Reports view's label |
+| `tests/ops/upgrade-and-rollback.test.mjs` (steps 5 and 6, step 2) | On a Phase 6 installation upgraded with 007 and 008: this release publishes 2026-10-14, records walks holding several values of Visit timing, reports on them live and releases them as combinations; then the release before step 2 (`36f9db0`) shows one value, saves a walk that leaves the field alone, refuses a change to it with nothing written, counts the answered once per value, reads that release with the combinations left out, and creates a release that counts a walk under each value |
+| `tests/ops/readiness-schema-missing.test.mjs` (step 2) | Health answers `outdated` (503) on a database without 008, and 200 once it is applied |
+| `tests/node/cfml-portability.test.mjs`, `tests/node/sqlserver-2016.test.mjs` (step 2) | The step-2 CFML asks `structKeyExists` and `arrayIsDefined`, never `isNull()` of a value (rule 7: on ColdFusion 2023 `isNull("Null")` is true, so an Other text "Null" was dropped until this was corrected; MULTI-E3 now saves one), and 008 uses nothing SQL Server 2016 lacks |
 | `tests/node/db-scripts.test.mjs`, `tests/node/schema-contract.test.mjs` (step 2) | Migration 008 over data and twice: ordinal 0 for existing values, the new key, unique value and check refusing what they must, the previous release's insert and update refused, release cells and guards intact through the key rebuild, a long combination refused before and stored after |
 
 The results of the gate on both engines are in `BUILD_STATUS.md`, "Instrument revision 2026-10-14".
