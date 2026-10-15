@@ -85,6 +85,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);bo
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
 textarea{resize:vertical;min-height:56px;background:#FFF9E7;border:3px solid var(--navy)}
 .other-input{margin-top:6px}
+/* A visit field that takes several values (the 2026-10-14 prototype's .chk-group / .chk). */
+.check-group{border:0;margin:0;padding:0;min-width:0}
+.check-group legend{display:block;font-size:11px;font-weight:600;color:var(--gray);letter-spacing:.3px;margin-bottom:4px;padding:0}
+.check-options{display:flex;flex-wrap:wrap;gap:6px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+label.check-option{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0;margin:0;cursor:pointer;white-space:nowrap}
+.check-option[hidden]{display:none}
+.check-option input{margin:0;cursor:pointer;width:15px;height:15px;accent-color:var(--navy)}
+.check-option input:disabled{cursor:not-allowed}
+.has-error .check-options{border-color:var(--warn)}
 /* A dimension the server owns for this walk (see docs/DATA_CONTRACT.md): read-only with a reason. */
 .field-note{color:var(--muted,#5A6270);font-size:12.5px;margin:5px 0 0}
 .placement[data-locked=true] select{background:var(--surface-2,#F3F4F6);cursor:not-allowed}

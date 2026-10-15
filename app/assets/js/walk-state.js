@@ -21,7 +21,9 @@ export function setDimension(state, code, patch) {
   const current = state.dimensions[code] || {};
   state.dimensions[code] = { ...current, ...patch };
   for (const k of Object.keys(state.dimensions[code])) {
-    if (state.dimensions[code][k] === "" || state.dimensions[code][k] === null || state.dimensions[code][k] === undefined) delete state.dimensions[code][k];
+    const v = state.dimensions[code][k];
+    // An empty list of values is no value, as an empty string is.
+    if (v === "" || v === null || v === undefined || (Array.isArray(v) && v.length === 0)) delete state.dimensions[code][k];
   }
 }
 
@@ -39,11 +41,23 @@ export function settle(model, state, policies) {
   return { state: result.state, changes: result.changes, evaluation: evaluate(model, result.state) };
 }
 
-/** Display text for a dimension value: the selected label, the typed "Other" text, or typed value. */
+/**
+ * Display text for a dimension value: the selected label, the typed "Other" text, or typed value. A
+ * field holding several values lists each the same way, in the version's order, joined by ", " (the
+ * prototype's metaDisplay).
+ */
 export function dimensionDisplay(model, state, code) {
   const v = state.dimensions[code];
   if (!v) return "";
   const dim = model.dimensions[code];
+  if (Array.isArray(v.selectedValueCodes)) {
+    if (!dim) return "";
+    return v.selectedValueCodes
+      .map((c) => dim.values.find((x) => x.valueCode === c))
+      .filter(Boolean)
+      .map((value) => (isOtherValue(value) && v.otherText ? v.otherText : value.label))
+      .join(", ");
+  }
   if (v.selectedValueCode && dim) {
     const value = dim.values.find((x) => x.valueCode === v.selectedValueCode);
     if (!value) return "";

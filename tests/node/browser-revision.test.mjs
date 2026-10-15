@@ -111,11 +111,13 @@ const STATE = {
   dimensions: {
     date: { dateValue: "2026-10-14" },
     observer: { textValue: "Revision Walker" },
-    grade: { selectedValueCode: "7" },
-    content: { selectedValueCode: "visual_arts" },
+    // The prototype's checkboxes take several values (step 2): one each here; several are
+    // tests/node/browser-multiple.test.mjs.
+    grade: { selectedValueCodes: ["7"] },
+    content: { selectedValueCodes: ["visual_arts"] },
     period: { selectedValueCode: "second" },
-    classType: { selectedValueCode: "dhh" },
-    visitTiming: { selectedValueCode: "middle_of_the_lesson" },
+    classType: { selectedValueCodes: ["dhh"] },
+    visitTiming: { selectedValueCodes: ["middle_of_the_lesson"] },
     topic: { textValue: "RL.7.2" },
   },
   responses: {
@@ -248,7 +250,7 @@ test("REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this v
 
   const refusals = [
     [{ dimensions: STATE.dimensions, responses: { ...STATE.responses, comp_s1_q1: { storedCode: "5" } } }, "INVALID_OPTION", "responses.comp_s1_q1.storedCode"],
-    [{ dimensions: { ...STATE.dimensions, content: { selectedValueCode: "music" } }, responses: STATE.responses }, null, "dimensions.content"],
+    [{ dimensions: { ...STATE.dimensions, content: { selectedValueCodes: ["music"] } }, responses: STATE.responses }, "INVALID_DIMENSION_VALUE", "dimensions.content"],
     [{ dimensions: { ...STATE.dimensions, tag: { textValue: "cohort B" } }, responses: STATE.responses }, "UNKNOWN_DIMENSION", "dimensions.tag"],
   ];
   for (const [body, code, at] of refusals) {
@@ -267,8 +269,8 @@ test("REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this v
   const state = reread.json.walk.state;
   assert.equal(state.responses.comp_s4_q3.storedCode, "3");
   assert.equal(state.responses.part1_adopted_pacing.storedCode, "notevident");
-  assert.equal(state.dimensions.classType.selectedValueCode, "dhh");
-  assert.equal(state.dimensions.content.selectedValueCode, "visual_arts");
+  assert.deepEqual(state.dimensions.classType.selectedValueCodes, ["dhh"]);
+  assert.deepEqual(state.dimensions.content.selectedValueCodes, ["visual_arts"]);
 });
 
 test("REV-E4 the server summary equals the browser formatter's and reads as the new prototype does", { skip }, async () => {
@@ -324,15 +326,15 @@ test("REV-E5 the editor renders the new version: level names, the third Teaming 
   await page.waitForSelector("#view-walk:not([hidden])");
   assert.equal(await page.textContent("#version-note"), "Instrument version: 2026-10-14 prototype revision.");
 
-  // Visit fields: the new labels and lists, single-select, and no tag field.
+  // Visit fields: the new labels and lists, the prototype's checkboxes, and no tag field.
   const dims = await page.$$eval("[data-dimension-code]", (els) => els.map((e) => e.dataset.dimensionCode));
   assert.deepEqual(dims, ["date", "observer", "school", "grade", "content", "period", "classType", "visitTiming", "topic"]);
-  assert.equal(await page.textContent('[data-dimension-code="classType"] label'), "Program");
-  assert.equal(await page.textContent('[data-dimension-code="content"] label'), "Content / Subject Area");
-  const optionLabels = (code) => page.$$eval(`[data-dimension-code="${code}"] select option`, (os) => os.filter((o) => o.value).map((o) => o.textContent));
+  assert.equal(await page.textContent('[data-dimension-code="classType"] legend'), "Program");
+  assert.equal(await page.textContent('[data-dimension-code="content"] legend'), "Content / Subject Area");
+  const optionLabels = (code) => page.$$eval(`[data-dimension-code="${code}"] .check-option span`, (os) => os.map((o) => o.textContent));
   assert.deepEqual(await optionLabels("classType"), P.CLASS_TYPE_OPTIONS);
   assert.deepEqual(await optionLabels("content"), P.CONTENT_OPTIONS);
-  assert.equal(await page.inputValue('[data-dimension-code="classType"] select'), "dhh");
+  assert.deepEqual(await page.$$eval('[data-dimension-code="classType"] input[type=checkbox]:checked', (bs) => bs.map((b) => b.value)), ["dhh"]);
   const visible = (key) => page.$eval(`[data-section-key="${key}"]`, (e) => !e.hidden && !e.closest("[hidden]"));
   assert.equal(await visible("content_area_look_fors"), true, "Visual Arts shows the content-area card");
 

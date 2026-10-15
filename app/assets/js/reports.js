@@ -26,6 +26,8 @@
  */
 
 const STATE_LABELS = { ANSWERED: "Answered", UNANSWERED: "Not answered", NOT_APPLICABLE: "Not applicable", HIDDEN: "Hidden" };
+// The same words the CSV carries (ReportService MULTIPLE_VALUES_NOTE).
+const MULTIPLE_VALUES_NOTE = "A walk can be counted under more than one value, so these counts can add up to more than the number of walks.";
 const ALL = "";
 const LIVE = "live";
 
@@ -336,8 +338,14 @@ export function mountReports({ api, apiBase }) {
         if (withheld || d.states[k]) notes.push(`${STATE_LABELS[k]}: ${figure(d.states[k], withheld)}`);
       }
       if (d.withheldResponses) notes.push(`Withheld: ${formatNumber(d.withheldResponses)}`);
+      // A field a walk may hold several values of counts the walk under each (the owner's rule), so
+      // its rows can add up to more than the walks; the report says so, and how many walks it covers.
+      const several = d.multiple
+        ? el("p", { className: "muted report-multiple", text: `${MULTIPLE_VALUES_NOTE} Walks with at least one ${d.label} value: ${figure(d.states.ANSWERED, d.withheldStates.includes("ANSWERED"))}.` })
+        : null;
       return el("div", { className: "report-dimension", "data-dimension": d.code },
         rows.length ? table(d.label, [d.label, "Walks"], rows) : el("p", { className: "muted", text: `${d.label}: no answers.` }),
+        several,
         notes.length ? el("p", { className: "muted report-states", text: notes.join(" · ") }) : null);
     });
     return card("Visit information", "rr-dimensions", el("div", { className: "report-dimensions" }, ...blocks));

@@ -22,8 +22,8 @@
       "extractedOn": "2026-10-14",
       "sourceFile": "prototype-2026-10-14.html",
       "sourceSha256": "25cd1be1ea475e9de096e09afb9a980ab70184eb17165fd45e2b00e009517cc8",
-      "reviewStatus": "Aligned to the 2026-10-14 prototype (visit fields single-select until the multi-select change)",
-      "revisionNotes": "Supersedes the 2026-09-17 aligned prototype version: 4-point rating scale with level names and new level definitions; Academic Teaming question 3; the prototype's look-for lists; Target/Task Alignment before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) and Program (17 programs) options; Other disaggregation tag(s) removed. The prototype's checkboxes for Grade level, Content / Subject Area, Program and Visit timing are not part of this version."
+      "reviewStatus": "Aligned to the 2026-10-14 prototype",
+      "revisionNotes": "Supersedes the 2026-09-17 aligned prototype version: 4-point rating scale with level names and new level definitions; Academic Teaming question 3; the prototype's look-for lists; Target/Task Alignment before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) and Program (17 programs) options; Other disaggregation tag(s) removed; Grade level, Content / Subject Area, Program and Visit timing take several values (the prototype's checkboxes)."
     }
   },
   "sections": [
@@ -8527,7 +8527,8 @@
       "placeholder": "Select...",
       "active": true,
       "settings": {
-        "optionFilter": "schoolTypeToGradeBand"
+        "optionFilter": "schoolTypeToGradeBand",
+        "multiple": true
       },
       "sourceLocation": "META_FIELDS[grade]",
       "reviewStatus": "Source baseline",
@@ -8545,7 +8546,9 @@
       "labelOverride": null,
       "placeholder": "Select...",
       "active": true,
-      "settings": {},
+      "settings": {
+        "multiple": true
+      },
       "sourceLocation": "META_FIELDS[content]",
       "reviewStatus": "Source baseline",
       "revisionNotes": null
@@ -8579,7 +8582,9 @@
       "labelOverride": null,
       "placeholder": "Select...",
       "active": true,
-      "settings": {},
+      "settings": {
+        "multiple": true
+      },
       "sourceLocation": "META_FIELDS[classType]",
       "reviewStatus": "Source baseline",
       "revisionNotes": null
@@ -8596,7 +8601,9 @@
       "labelOverride": null,
       "placeholder": "Select...",
       "active": true,
-      "settings": {},
+      "settings": {
+        "multiple": true
+      },
       "sourceLocation": "META_FIELDS[visitTiming]",
       "reviewStatus": "Source baseline",
       "revisionNotes": null

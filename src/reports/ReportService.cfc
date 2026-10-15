@@ -81,6 +81,10 @@ component output="false" {
 	variables.DIMENSION_STATE_CATEGORIES = ["UNANSWERED", "HIDDEN"];
 	variables.ITEM_REPORT_STATES = ["ANSWERED", "UNANSWERED", "HIDDEN", "NOT_APPLICABLE", "UNRECORDED"];
 	variables.DIMENSION_REPORT_STATES = ["ANSWERED", "UNANSWERED", "HIDDEN"];
+	// The label a dimension whose walks may hold several values carries (the owner's rule,
+	// docs/OPEN_DECISIONS.md: "Breakdown totals can add up to more than the number of walks, and I'd
+	// label them that way"). The browser shows the same words from reports.js.
+	variables.MULTIPLE_VALUES_NOTE = "A walk can be counted under more than one value, so these counts can add up to more than the number of walks.";
 
 	public ReportService function init(
 		required struct config, required any db, required any errors, required any logger, required any auditRepository,
@@ -219,6 +223,7 @@ component output="false" {
 				arrayAppend(lines, csvRow(["DIMENSION_STATE", d.code, state, "", cell(d.states, state), flag(arrayContains(d.withheldStates, state)), "", "", ""]));
 			}
 			if (d.withheldResponses > 0) arrayAppend(lines, csvRow(["DIMENSION_STATE", d.code, "WITHHELD_RESPONSES", "", num(d.withheldResponses), "1", "", "", ""]));
+			if (d.multiple) arrayAppend(lines, csvRow(["DIMENSION_NOTE", d.code, "MULTIPLE_VALUES", variables.MULTIPLE_VALUES_NOTE, "", "", "", "", ""]));
 			for (var v in d.values) arrayAppend(lines, csvRow(["DIMENSION_VALUE", d.code, v.code, v.label, cell(v, "walks"), flag(v.withheld), "", "", ""]));
 		}
 		for (var s in report.sections) {
@@ -387,7 +392,7 @@ component output="false" {
 			// S2: every aggregate reads child rows.
 			var units = reports.unitStatusCounts(population);
 			var dims = {};
-			for (var d in catalog.dimensions) dims[d.code] = reports.unitDimensionCounts(population, d.dimensionId, d.visibility);
+			for (var d in catalog.dimensions) dims[d.code] = d.multiple ? reports.unitValueCombinations(population, d.dimensionId, d.visibility) : reports.unitDimensionCounts(population, d.dimensionId, d.visibility);
 			var items = reports.unitItemCounts(population, itemIds);
 			// S3: every walk still at the row version S1 captured, or this attempt is discarded.
 			var moved = reports.verifyPopulation(population);
@@ -454,6 +459,15 @@ component output="false" {
 		for (var d in arguments.catalog.dimensions) {
 			for (var row in arguments.dims[d.code]) {
 				if (!structKeyExists(walksByUnit, row.orgUnitId)) continue;
+				if (d.multiple) {
+					// Several values: the walk's combination is its one category (codes in the version's
+					// order, joined by "+"), so the breakdown still partitions the block's walks.
+					var combination = combinationCode(d, row.valueIds);
+					if (!row.visible) addCell(cellsByUnit, row.orgUnitId, "DIMENSION", d.code, "STATE", "HIDDEN", row.walks);
+					else if (len(combination)) addCell(cellsByUnit, row.orgUnitId, "DIMENSION", d.code, "VALUE", combination, row.walks);
+					else addCell(cellsByUnit, row.orgUnitId, "DIMENSION", d.code, "STATE", "UNANSWERED", row.walks);
+					continue;
+				}
 				if (!row.visible) addCell(cellsByUnit, row.orgUnitId, "DIMENSION", d.code, "STATE", "HIDDEN", row.walks);
 				else if (len(row.valueId) && structKeyExists(d.valueById, row.valueId)) addCell(cellsByUnit, row.orgUnitId, "DIMENSION", d.code, "VALUE", d.valueById[row.valueId], row.walks);
 				else addCell(cellsByUnit, row.orgUnitId, "DIMENSION", d.code, "STATE", "UNANSWERED", row.walks);
@@ -659,7 +673,7 @@ component output="false" {
 				outcome = variables.db.transact(function() {
 					var population = reports.beginPopulation();
 					var result = { "units": [], "dimensions": {}, "items": [], "moved": 0 };
-					for (var d in catalog.dimensions) result.dimensions[d.code] = [];
+					for (var d in catalog.dimensions) result.dimensions[d.code] = d.multiple ? { "states": [], "values": [] } : [];
 					if (arrayLen(f.unitIds)) {
 						reports.loadScope(population, f.unitIds);
 						// S1: walk rows only, row versions captured.
@@ -668,7 +682,9 @@ component output="false" {
 						for (var df in f.dimensionFilters) reports.restrictToDimensionValue(population, df.dimension.dimensionId, df.value.valueId, df.dimension.visibility);
 						if (!structIsEmpty(f.optionFilter)) reports.restrictToOption(population, f.optionFilter.itemId, f.optionFilter.optionId);
 						result.units = reports.unitStatusCounts(population);
-						for (var d in catalog.dimensions) result.dimensions[d.code] = reports.dimensionCounts(population, d.dimensionId, d.visibility);
+						for (var d in catalog.dimensions) {
+							result.dimensions[d.code] = d.multiple ? reports.severalValueCounts(population, d.dimensionId, d.visibility) : reports.dimensionCounts(population, d.dimensionId, d.visibility);
+						}
 						result.items = reports.itemCounts(population, itemIds);
 						// S3: every walk still at the row version S1 captured, or the report is discarded.
 						result.moved = reports.verifyPopulation(population);
@@ -780,7 +796,8 @@ component output="false" {
 		return out;
 	}
 
-	private struct function liveDimensionDto(required struct d, required array rows) {
+	private struct function liveDimensionDto(required struct d, required any rows) {
+		if (arguments.d.multiple) return liveSeveralDto(arguments.d, arguments.rows);
 		var states = { "ANSWERED": 0, "UNANSWERED": 0, "HIDDEN": 0 };
 		var byValue = {};
 		for (var row in arguments.rows) {
@@ -796,7 +813,30 @@ component output="false" {
 		for (var v in arguments.d.values) {
 			arrayAppend(values, { "code": v.code, "label": v.label, "walks": structKeyExists(byValue, v.valueId) ? byValue[v.valueId] : 0, "withheld": false });
 		}
-		return { "code": arguments.d.code, "label": arguments.d.label, "states": states, "withheldStates": [], "withheldResponses": 0, "values": values };
+		return { "code": arguments.d.code, "label": arguments.d.label, "multiple": false, "states": states, "withheldStates": [], "withheldResponses": 0, "values": values };
+	}
+
+	/**
+	 * A live dimension a walk may hold several values of: each walk counted once among the states,
+	 * and under every value it holds among the values, so the values can add up to more than the
+	 * walks ("multiple": true says so to every reader of the report).
+	 */
+	private struct function liveSeveralDto(required struct d, required struct counts) {
+		var states = { "ANSWERED": 0, "UNANSWERED": 0, "HIDDEN": 0 };
+		for (var row in arguments.counts.states) {
+			if (!row.visible) states.HIDDEN += row.walks;
+			else if (row.hasValue) states.ANSWERED += row.walks;
+			else states.UNANSWERED += row.walks;
+		}
+		var byValue = {};
+		for (var row in arguments.counts.values) {
+			if (structKeyExists(arguments.d.valueById, row.valueId)) byValue[row.valueId] = (structKeyExists(byValue, row.valueId) ? byValue[row.valueId] : 0) + row.walks;
+		}
+		var values = [];
+		for (var v in arguments.d.values) {
+			arrayAppend(values, { "code": v.code, "label": v.label, "walks": structKeyExists(byValue, v.valueId) ? byValue[v.valueId] : 0, "withheld": false });
+		}
+		return { "code": arguments.d.code, "label": arguments.d.label, "multiple": true, "states": states, "withheldStates": [], "withheldResponses": 0, "values": values };
 	}
 
 	/** One live item. Records its scored responses and exact sum in `pooled` for the sections. */
@@ -1005,7 +1045,63 @@ component output="false" {
 		return { "count": (withheld && sum == 0) ? javaCast("null", "") : sum, "withheld": withheld };
 	}
 
+	/**
+	 * The category a walk's several values form in a release: their codes in the version's value
+	 * order joined by "+" (DefinitionValidator keeps "+" out of such codes, and the whole within
+	 * report_release_cell.category_code), or "" when none of them is a value of the version.
+	 */
+	private string function combinationCode(required struct d, required array valueIds) {
+		var held = {};
+		for (var id in arguments.valueIds) if (structKeyExists(arguments.d.valueById, id)) held[arguments.d.valueById[id]] = true;
+		var codes = [];
+		for (var v in arguments.d.values) if (structKeyExists(held, v.code)) arrayAppend(codes, v.code);
+		return arrayToList(codes, "+");
+	}
+
+	/**
+	 * A released dimension a walk may hold several values of. Its breakdown is the combinations of
+	 * values (each walk in one), protected like any other; each value's figure is then the published
+	 * walks of every combination that holds it -- a sum of published figures, so it reveals nothing
+	 * the breakdown does not -- marked withheld when any such combination was withheld somewhere.
+	 * The values can add up to more than the walks; ANSWERED counts each walk once.
+	 */
+	private struct function releasedSeveralDto(required struct d, required struct totals, required numeric population) {
+		var shown = 0;
+		var sums = {};
+		var withheld = {};
+		for (var key in structKeyArray(arguments.totals)) {
+			if (left(key, 6) != "VALUE:") continue;
+			var t = arguments.totals[key];
+			shown += t.sum;
+			for (var code in listToArray(mid(key, 7, len(key)), "+")) {
+				sums[code] = (structKeyExists(sums, code) ? sums[code] : 0) + t.sum;
+				if (t.withheld) withheld[code] = true;
+			}
+		}
+		var values = [];
+		for (var v in arguments.d.values) {
+			var sum = structKeyExists(sums, v.code) ? sums[v.code] : 0;
+			var isWithheldValue = structKeyExists(withheld, v.code);
+			arrayAppend(values, { "code": v.code, "label": v.label, "walks": (isWithheldValue && sum == 0) ? javaCast("null", "") : sum, "withheld": isWithheldValue });
+		}
+		var answered = publishedSum(arguments.totals, "VALUE:");
+		var states = { "ANSWERED": !structKeyExists(answered, "count") ? javaCast("null", "") : answered.count };
+		var withheldStates = [];
+		if (answered.withheld) withheldStates = ["ANSWERED"];
+		for (var s in variables.DIMENSION_STATE_CATEGORIES) {
+			var count = publishedCount(arguments.totals, "STATE:" & s);
+			states[s] = !structKeyExists(local, "count") ? javaCast("null", "") : count;
+			if (structKeyExists(local, "count")) shown += count;
+			if (isWithheld(arguments.totals, "STATE:" & s)) arrayAppend(withheldStates, s);
+		}
+		return {
+			"code": arguments.d.code, "label": arguments.d.label, "multiple": true, "states": states, "withheldStates": withheldStates,
+			"withheldResponses": arguments.population - shown, "values": values
+		};
+	}
+
 	private struct function releasedDimensionDto(required struct d, required struct totals, required numeric population) {
+		if (arguments.d.multiple) return releasedSeveralDto(arguments.d, arguments.totals, arguments.population);
 		var shown = 0;
 		var values = [];
 		for (var v in arguments.d.values) {
@@ -1025,7 +1121,7 @@ component output="false" {
 			if (isWithheld(arguments.totals, "STATE:" & s)) arrayAppend(withheldStates, s);
 		}
 		return {
-			"code": arguments.d.code, "label": arguments.d.label, "states": states, "withheldStates": withheldStates,
+			"code": arguments.d.code, "label": arguments.d.label, "multiple": false, "states": states, "withheldStates": withheldStates,
 			"withheldResponses": arguments.population - shown, "values": values
 		};
 	}
@@ -1208,7 +1304,8 @@ component output="false" {
 		}
 		var visibility = visibilityFor(code, arguments.ancestry, arguments.model, arguments.index);
 		if (structIsEmpty(visibility)) return {};
-		return { "code": code, "label": dim.label, "dimensionId": dimensionId, "values": values, "valueById": valueById, "visibility": visibility };
+		var several = structKeyExists(dim, "multiple") && !isNull(dim.multiple) && isBoolean(dim.multiple) && dim.multiple;
+		return { "code": code, "label": dim.label, "dimensionId": dimensionId, "values": values, "valueById": valueById, "visibility": visibility, "multiple": several };
 	}
 
 	/**
@@ -1225,6 +1322,7 @@ component output="false" {
 	 */
 	private struct function visibilityFor(required string code, required array ancestry, required struct model, required struct index) {
 		var sources = [];
+		var readsOf = {};
 		for (var r in arguments.model.rules) {
 			var relevant = (compare(r.targetType, "DIMENSION") == 0 && compare(r.targetKey, arguments.code) == 0)
 				|| (compare(r.targetType, "SECTION") == 0 && arrayContains(arguments.ancestry, r.targetKey));
@@ -1233,6 +1331,15 @@ component output="false" {
 			for (var c in conds) {
 				if (compare(c.sourceType, "DIMENSION") != 0) return {};
 				if (!arrayContains(sources, c.sourceKey)) arrayAppend(sources, c.sourceKey);
+				// A source holding several values is exact here only when one EQUALS or IN condition
+				// reads it: then "some selected value makes the rule hold" is "some combination of one
+				// value per source does", which is what the tuples enumerate. Two conditions on it, or a
+				// negated one, need every subset of its values, so the dimension is left out instead.
+				if (structKeyExists(arguments.model.dimensions, c.sourceKey) && structKeyExists(arguments.model.dimensions[c.sourceKey], "multiple") && arguments.model.dimensions[c.sourceKey].multiple) {
+					if (uCase(c.operator) != "EQUALS" && uCase(c.operator) != "IN") return {};
+					readsOf[c.sourceKey] = (structKeyExists(readsOf, c.sourceKey) ? readsOf[c.sourceKey] : 0) + 1;
+					if (readsOf[c.sourceKey] > 1) return {};
+				}
 			}
 		}
 		if (!arrayLen(sources)) {

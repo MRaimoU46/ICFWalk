@@ -21,9 +21,9 @@
  * section titles from its markup, rule wiring, reporting flags -- is kept from the supplied document,
  * so an unchanged record is byte-for-byte the record the supplied document has.
  *
- * Deliberately NOT part of this version: the prototype's checkboxes. Grade level, Content / Subject
- * Area, Program and Visit timing stay single-select here, because a walk stores one value per field
- * (icf.walk_dimension_value) and making them multi-select is its own change (step 2).
+ *   - Grade level, Content / Subject Area, Program and Visit timing take several values: every
+ *     META_FIELDS entry of type "checkboxes" gives its placement settings.multiple (step 2, migration
+ *     008; docs/INSTRUMENT_REVISION_2026-10-14.md)
  *
  *   node scripts/derive-instrument-revision.mjs           # rewrite the document
  *   node scripts/derive-instrument-revision.mjs --check   # exit 1 when the committed document is stale
@@ -46,13 +46,13 @@ export const REVISION = {
   versionLabel: "2026-10-14 prototype revision",
   extractedOn: "2026-10-14",
   generatedAt: "2026-10-14T00:00:00Z",
-  reviewStatus: "Aligned to the 2026-10-14 prototype (visit fields single-select until the multi-select change)",
+  reviewStatus: "Aligned to the 2026-10-14 prototype",
   revisionNotes:
     "Supersedes the 2026-09-17 aligned prototype version: 4-point rating scale with level names and new " +
     "level definitions; Academic Teaming question 3; the prototype's look-for lists; Target/Task Alignment " +
     "before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) " +
-    "and Program (17 programs) options; Other disaggregation tag(s) removed. The prototype's checkboxes " +
-    "for Grade level, Content / Subject Area, Program and Visit timing are not part of this version.",
+    "and Program (17 programs) options; Other disaggregation tag(s) removed; Grade level, Content / Subject " +
+    "Area, Program and Visit timing take several values (the prototype's checkboxes).",
 };
 
 const PLACEHOLDER = "Placeholder in source";
@@ -353,9 +353,11 @@ export function deriveRevision(base, prototypeBytes) {
   const droppedIds = new Set(doc.dimensions.filter((d) => dropped.has(d.code)).map((d) => d.dimensionId));
   doc.dimensions = doc.dimensions.filter((d) => !droppedIds.has(d.dimensionId));
   doc.dimensionValues = doc.dimensionValues.filter((v) => !droppedIds.has(v.dimensionId));
+  // The prototype's checkboxes: a field of type "checkboxes" takes several values.
+  const several = new Set(doc.dimensions.filter((d) => metaById.get(d.code)?.type === "checkboxes").map((d) => d.dimensionId));
   doc.instrumentDimensions = doc.instrumentDimensions
     .filter((pl) => !droppedIds.has(pl.dimensionId))
-    .map((pl) => ({ ...pl, versionId: vid }));
+    .map((pl) => ({ ...pl, versionId: vid, ...(several.has(pl.dimensionId) ? { settings: { ...pl.settings, multiple: true } } : {}) }));
 
   // ---- behavior and content review ------------------------------------------------------------------
   const cs = doc.behavior.conditionalSections;

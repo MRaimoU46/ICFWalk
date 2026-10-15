@@ -249,11 +249,22 @@ test("REV-10 the visit fields carry the prototype's labels and option lists, and
   assert.equal(dimensionOf(DOC, "tag"), undefined);
   assert.ok(!DOC.instrumentDimensions.some((p) => p.dimensionId === "dim_tag"));
   assert.deepEqual(DOC.instrumentDimensions.map((p) => p.dimensionId), BASE.instrumentDimensions.map((p) => p.dimensionId).filter((id) => id !== "dim_tag"));
-  // Single-select, as before: making them multi-select is the next change, not this version.
-  for (const code of ["grade", "content", "classType", "visitTiming"]) {
-    assert.equal(dimensionOf(DOC, code).dataType, "LIST");
-    assert.equal(dimensionOf(DOC, code).valueMode, "CONTROLLED_LIST");
+  // The prototype's checkboxes (step 2): exactly the fields of type "checkboxes" take several values,
+  // and the 2026-09-17 document has no such field.
+  const checkboxes = P.META_FIELDS.filter((f) => f.type === "checkboxes").map((f) => f.id);
+  assert.deepEqual(checkboxes, ["grade", "content", "classType", "visitTiming"]);
+  for (const placement of DOC.instrumentDimensions) {
+    const code = DOC.dimensions.find((d) => d.dimensionId === placement.dimensionId).code;
+    if (checkboxes.includes(code)) {
+      assert.equal(placement.settings.multiple, true, `${code} takes several values`);
+      assert.equal(dimensionOf(DOC, code).dataType, "LIST");
+      assert.equal(dimensionOf(DOC, code).valueMode, "CONTROLLED_LIST");
+    } else {
+      assert.equal(Object.hasOwn(placement.settings, "multiple"), false, `${code} takes one value`);
+    }
   }
+  assert.ok(BASE.instrumentDimensions.every((p) => !Object.hasOwn(p.settings, "multiple")), "the 2026-09-17 version has no field that takes several values");
+  assert.deepEqual(Object.keys(DOC.instrumentDimensions.find((p) => p.dimensionId === "dim_grade").settings).sort(), ["multiple", "optionFilter"], "grade keeps its option filter");
 });
 
 test("REV-11 nothing else moved: every record the revision does not own is the supplied record", () => {
@@ -269,7 +280,12 @@ test("REV-11 nothing else moved: every record the revision does not own is the s
     instrumentDimensions: (p) => p.dimensionId === "dim_tag",
   };
   const ids = { sections: "sectionId", items: "itemId", responseSets: "responseSetId", responseOptions: "optionId", rules: "ruleId", dimensions: "dimensionId", dimensionValues: "dimensionValueId", instrumentDimensions: "instrumentDimensionId" };
-  const strip = (r) => { const { versionId, ...rest } = r; return rest; };
+  // A placement's settings.multiple is the revision's (REV-10); everything else about it is not.
+  const strip = (r) => {
+    const { versionId, ...rest } = r;
+    if (rest.settings && Object.hasOwn(rest.settings, "multiple")) { const { multiple, ...settings } = rest.settings; rest.settings = settings; }
+    return rest;
+  };
   for (const [key, id] of Object.entries(ids)) {
     const before = new Map(BASE[key].filter((r) => !owned[key](r)).map((r) => [r[id], r]));
     const after = new Map(DOC[key].filter((r) => !owned[key](r)).map((r) => [r[id], r]));

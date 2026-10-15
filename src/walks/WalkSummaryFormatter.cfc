@@ -176,7 +176,9 @@ component output="false" {
 	/**
 	 * A dimension's display text: the selected option's label, the typed Other text, or the typed
 	 * value -- but only while the engine reports it ANSWERED (brief 14.2), so a value the pinned
-	 * instrument currently hides is never exported, named in a file, or quoted in an email.
+	 * instrument currently hides is never exported, named in a file, or quoted in an email. A field
+	 * holding several values lists each the same way, in the version's order, joined by ", " (the
+	 * prototype's metaDisplay; twin of walk-state.js dimensionDisplay).
 	 */
 	private string function dimensionText(required struct model, required struct state, required struct evaluation, required string code) {
 		if (!structKeyExists(arguments.evaluation.dimensionStates, arguments.code)) return "";
@@ -184,6 +186,20 @@ component output="false" {
 		if (!structKeyExists(arguments.state.dimensions, arguments.code)) return "";
 		var v = arguments.state.dimensions[arguments.code];
 		if (!isStruct(v)) return "";
+		if (structKeyExists(v, "selectedValueCodes") && !isNull(v.selectedValueCodes) && isArray(v.selectedValueCodes)) {
+			if (!structKeyExists(arguments.model.dimensions, arguments.code)) return "";
+			var parts = [];
+			var several = toString(nv(v, "otherText", ""));
+			for (var pick in v.selectedValueCodes) {
+				if (isNull(pick) || !isSimpleValue(pick)) continue;
+				for (var listed in arguments.model.dimensions[arguments.code].values) {
+					if (compare(listed.valueCode, toString(pick)) != 0) continue;
+					if (compareNoCase(toString(listed.valueCode), "other") == 0 && len(several)) arrayAppend(parts, several);
+					else arrayAppend(parts, toString(listed.label));
+				}
+			}
+			return arrayToList(parts, ", ");
+		}
 		var selected = toString(nv(v, "selectedValueCode", ""));
 		if (len(selected)) {
 			if (!structKeyExists(arguments.model.dimensions, arguments.code)) return "";

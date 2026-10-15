@@ -286,6 +286,78 @@ component output="false" {
 	}
 
 	/**
+	 * For a dimension a walk may hold several values of (its placement's settings.multiple, migration
+	 * 008): { states: [{ visible, hasValue, walks }], values: [{ valueId, walks }] }. The states count
+	 * each walk once -- visible with at least one value, visible with none, or hidden -- and the
+	 * values count each walk under every value it holds (the owner's rule, docs/OPEN_DECISIONS.md),
+	 * visible walks only, so their total can exceed the walks. Value identity is read; text never is.
+	 */
+	public struct function severalValueCounts(required struct population, required string dimensionId, required struct visibility) {
+		var stateParams = { "dimension": variables.db.guid(arguments.dimensionId) };
+		var vis = visibilitySql(arguments.visibility, "p", stateParams);
+		var sq = variables.db.run(
+			"SELECT t.visible, t.has_value, COUNT(*) AS n
+			   FROM (SELECT CASE WHEN " & vis & " THEN 1 ELSE 0 END AS visible,
+			                CASE WHEN EXISTS (SELECT 1 FROM [icf].[walk_dimension_value] x
+			                                   WHERE x.walk_id = p.walk_id AND x.dimension_id = :dimension AND x.selected_value_id IS NOT NULL) THEN 1 ELSE 0 END AS has_value
+			           FROM " & popTable(arguments.population) & " p) t
+			  GROUP BY t.visible, t.has_value",
+			stateParams
+		);
+		var states = [];
+		for (var r = 1; r <= sq.recordCount; r++) arrayAppend(states, { "visible": sq.visible[r] == 1, "hasValue": sq.has_value[r] == 1, "walks": sq.n[r] });
+		var valueParams = { "dimension": variables.db.guid(arguments.dimensionId) };
+		var valueVis = visibilitySql(arguments.visibility, "p", valueParams);
+		var vq = variables.db.run(
+			"SELECT x.selected_value_id, COUNT(*) AS n
+			   FROM " & popTable(arguments.population) & " p
+			   JOIN [icf].[walk_dimension_value] x ON x.walk_id = p.walk_id AND x.dimension_id = :dimension
+			  WHERE x.selected_value_id IS NOT NULL AND " & valueVis & "
+			  GROUP BY x.selected_value_id",
+			valueParams
+		);
+		var values = [];
+		for (var r = 1; r <= vq.recordCount; r++) arrayAppend(values, { "valueId": uCase(vq.selected_value_id[r]), "walks": vq.n[r] });
+		return { "states": states, "values": values };
+	}
+
+	/**
+	 * For a dimension a walk may hold several values of, per org unit: [{ orgUnitId, visible,
+	 * valueIds, walks }], one row per combination of values -- the walk's values in the order they
+	 * were written -- so every walk is in exactly one row. This is the partition a release protects
+	 * (docs/DATA_CONTRACT.md, "Releases"); valueIds is empty for a walk with no value, and for every
+	 * hidden walk, which counts as HIDDEN whatever it retains. SQL Server 2016 has no STRING_AGG, so
+	 * the combination is built with FOR XML PATH.
+	 */
+	public array function unitValueCombinations(required struct population, required string dimensionId, required struct visibility) {
+		var params = { "dimension": variables.db.guid(arguments.dimensionId) };
+		var vis = visibilitySql(arguments.visibility, "p", params);
+		var q = variables.db.run(
+			"SELECT t.org_unit_id, t.visible, t.combination, COUNT(*) AS n
+			   FROM (SELECT p.org_unit_id,
+			                CASE WHEN " & vis & " THEN 1 ELSE 0 END AS visible,
+			                CASE WHEN " & vis & " THEN
+			                     ISNULL(STUFF((SELECT N',' + CONVERT(nvarchar(36), x.selected_value_id)
+			                                     FROM [icf].[walk_dimension_value] x
+			                                    WHERE x.walk_id = p.walk_id AND x.dimension_id = :dimension AND x.selected_value_id IS NOT NULL
+			                                    ORDER BY x.selection_ordinal
+			                                      FOR XML PATH(''), TYPE).value('.', 'nvarchar(4000)'), 1, 1, N''), N'')
+			                     ELSE N'' END AS combination
+			           FROM " & popTable(arguments.population) & " p) t
+			  GROUP BY t.org_unit_id, t.visible, t.combination",
+			params
+		);
+		var out = [];
+		for (var r = 1; r <= q.recordCount; r++) {
+			var combination = isNull(q.combination[r]) ? "" : q.combination[r];
+			var valueIds = [];
+			for (var id in listToArray(combination, ",")) arrayAppend(valueIds, uCase(trim(id)));
+			arrayAppend(out, { "orgUnitId": uCase(q.org_unit_id[r]), "visible": q.visible[r] == 1, "valueIds": valueIds, "walks": q.n[r] });
+		}
+		return out;
+	}
+
+	/**
 	 * [{ itemId, state, optionId, responses }] for the given items over the population. The
 	 * persisted response state is the server engine's own evaluation, written in the same
 	 * transaction as the value it describes (Phase 4), so it is read rather than re-derived.
@@ -500,7 +572,8 @@ component output="false" {
 				params["st" & i] = variables.db.nvarchar(c.subjectType, 12);
 				params["sk" & i] = variables.db.nvarchar(c.subjectKey, 100);
 				params["ct" & i] = variables.db.nvarchar(c.categoryType, 12);
-				params["cc" & i] = variables.db.nvarchar(c.categoryCode, 100);
+				// 300: a combination of several values' codes (migration 008, DefinitionValidator).
+				params["cc" & i] = variables.db.nvarchar(c.categoryCode, 300);
 				params["n" & i] = variables.db.integer(c.responses);
 			}
 			variables.db.run(

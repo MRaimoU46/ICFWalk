@@ -434,11 +434,17 @@ component output="false" {
 		if (lCase(valueCode) == "other" && !isNull(text) && len(text)) arguments.out[code]["otherText"] = text;
 	}
 
-	/** Whether placement settings JSON asks for several values: "multiple" is the boolean true. */
+	/**
+	 * Whether a placement asks for several values. instrument_dimension.settings_json holds the
+	 * placement's authoring record (DefinitionMapper.placementRow), with the placement's own settings
+	 * under "settings"; there, "multiple" is the boolean true.
+	 */
 	private boolean function placementTakesSeveral(required any settingsJson) {
 		if (isNull(arguments.settingsJson) || !isSimpleValue(arguments.settingsJson) || !len(arguments.settingsJson) || !isJSON(arguments.settingsJson)) return false;
-		var s = deserializeJSON(arguments.settingsJson);
-		if (!isStruct(s) || !structKeyExists(s, "multiple") || isNull(s.multiple)) return false;
+		var row = deserializeJSON(arguments.settingsJson);
+		if (!isStruct(row) || !structKeyExists(row, "settings") || isNull(row.settings) || !isStruct(row.settings)) return false;
+		var s = row.settings;
+		if (!structKeyExists(s, "multiple") || isNull(s.multiple)) return false;
 		return variables.types.isJsonBoolean(s.multiple) && s.multiple;
 	}
 

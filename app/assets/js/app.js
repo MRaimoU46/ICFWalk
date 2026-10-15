@@ -10,7 +10,7 @@
 import { createApi, ApiError, NetworkError, ResponseError } from "./api.js";
 import { ApiWalkStore, newId } from "./walk-store.js";
 import { renderEditor } from "./renderer.js";
-import { createBlankState, dimensionDisplay } from "./walk-state.js";
+import { createBlankState, dimensionDisplay, isOtherValue } from "./walk-state.js";
 import { fileName as summaryFileName, summaryText } from "./summary.js";
 import { mountReports } from "./reports.js";
 import { mountAdmin } from "./admin.js";
@@ -1050,6 +1050,14 @@ function valueText(model, kind, key, value) {
   if (!value) return "(empty)";
   if (kind === "dimension") {
     const dim = model.dimensions[key];
+    if (Array.isArray(value.selectedValueCodes) && dim) {
+      const labels = value.selectedValueCodes.map((code) => {
+        const v = dim.values.find((x) => x.valueCode === code);
+        const label = v ? v.label : code;
+        return v && isOtherValue(v) && value.otherText ? `${label}: ${value.otherText}` : label;
+      });
+      return labels.length ? labels.join(", ") : "(empty)";
+    }
     if (value.selectedValueCode && dim) {
       const v = dim.values.find((x) => x.valueCode === value.selectedValueCode);
       const label = v ? v.label : value.selectedValueCode;
@@ -1376,7 +1384,7 @@ function renderCompletionErrors(errors) {
   list.innerHTML = "";
   for (const node of $("editor").querySelectorAll(".has-error")) {
     node.classList.remove("has-error");
-    const group = node.querySelector("[role=group], textarea, select, input");
+    const group = node.querySelector("[role=group], fieldset, textarea, select, input");
     if (group) { group.removeAttribute("aria-invalid"); group.removeAttribute("aria-describedby"); }
     const msg = node.querySelector(".field-error");
     if (msg) msg.remove();
@@ -1401,7 +1409,7 @@ function renderCompletionErrors(errors) {
       const msg = document.createElement("p");
       msg.className = "field-error"; msg.id = msgId; msg.textContent = err.message;
       node.appendChild(msg);
-      const group = node.querySelector("[role=group], textarea, select, input");
+      const group = node.querySelector("[role=group], fieldset, textarea, select, input");
       if (group) { group.setAttribute("aria-invalid", "true"); group.setAttribute("aria-describedby", msgId); }
     }
   });

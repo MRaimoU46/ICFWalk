@@ -7,9 +7,11 @@
  *
  * Accessibility: accordion headers are buttons with aria-expanded/aria-controls, choice pills are
  * toggle buttons with aria-pressed inside labelled groups, definition and look-for toggles expose
- * aria-expanded, every input has a programmatic label, and visibility changes are announced.
+ * aria-expanded, every input has a programmatic label, a visit field that takes several values is a
+ * fieldset of checkboxes named by its legend, and visibility changes are announced.
  */
 import { setDimension, setResponse, settle, isOtherValue, ratingSummary } from "./walk-state.js";
+import { selectedCodes } from "./rules.js";
 import { createEmailComposer } from "./email-composer.js";
 
 const SELECT_PLACEHOLDER = "Select...";
@@ -129,9 +131,24 @@ function refresh(ctx, initial = false) {
 }
 
 function syncPlacement(entry, ctx) {
-  const { placement, select, input, other } = entry;
+  const { placement, select, input, other, checks } = entry;
   const value = ctx.state.dimensions[placement.dimensionCode] || {};
-  if (select) {
+  if (checks) {
+    // Every value's checkbox exists from the start (so editability, set once when the walk opens,
+    // holds for all of them); an option filter only hides the ones it does not allow.
+    const dim = ctx.model.dimensions[placement.dimensionCode];
+    const allowed = ctx.evaluation.dimensionOptions[placement.dimensionCode];
+    const chosen = new Set(selectedCodes(value));
+    for (const box of checks.querySelectorAll("input[type=checkbox]")) {
+      box.closest(".check-option").hidden = Boolean(allowed) && !allowed.includes(box.value);
+      box.checked = chosen.has(box.value);
+    }
+    if (other) {
+      const showOther = dim.values.some((v) => chosen.has(v.valueCode) && isOtherValue(v));
+      other.hidden = !showOther;
+      if (other.value !== (value.otherText || "")) other.value = value.otherText || "";
+    }
+  } else if (select) {
     const dim = ctx.model.dimensions[placement.dimensionCode];
     const allowed = ctx.evaluation.dimensionOptions[placement.dimensionCode];
     const values = allowed ? dim.values.filter((v) => allowed.includes(v.valueCode)) : dim.values;
@@ -255,8 +272,31 @@ function renderPlacement(placement, ctx) {
   const wrap = el("div", { class: "placement", "data-dimension-code": placement.dimensionCode, "data-locked": locked ? "true" : null });
   const label = el("label", { for: id }, [placement.label, placement.required && !locked ? el("span", { class: "field-required", "aria-hidden": "true", text: "*" }) : null]);
   wrap.appendChild(label);
-  const entry = { node: wrap, placement, select: null, input: null, other: null, signature: null };
-  if (placement.dataType === "LIST") {
+  const entry = { node: wrap, placement, select: null, input: null, other: null, checks: null, locked, signature: null };
+  if (placement.dataType === "LIST" && placement.multiple) {
+    // Several values (the 2026-10-14 prototype's checkboxes): a fieldset named by its legend, one
+    // checkbox per value the field currently offers, built and kept in step by syncPlacement.
+    wrap.removeChild(label);
+    const group = el("fieldset", { class: "check-group", id, "aria-required": placement.required && !locked ? "true" : null }, [
+      el("legend", {}, [placement.label, placement.required && !locked ? el("span", { class: "field-required", "aria-hidden": "true", text: "*" }) : null]),
+    ]);
+    const checks = el("div", { class: "check-options" });
+    for (const v of ctx.model.dimensions[placement.dimensionCode].values) {
+      const box = el("input", { type: "checkbox", value: v.valueCode, id: `${id}-${v.valueCode}`, disabled: locked ? "" : null });
+      box.addEventListener("change", () => toggleValue(entry, ctx, v.valueCode, box.checked));
+      checks.appendChild(el("label", { class: "check-option", for: box.id }, [box, el("span", { text: v.label })]));
+    }
+    group.appendChild(checks);
+    wrap.appendChild(group);
+    entry.checks = checks;
+    if (placement.allowOther && !locked) {
+      const otherId = `${id}-other`;
+      const other = el("input", { type: "text", id: otherId, class: "other-input", placeholder: OTHER_PLACEHOLDER, "aria-label": `${placement.label} (please specify)`, hidden: true });
+      other.addEventListener("input", () => { setDimension(ctx.state, placement.dimensionCode, { otherText: other.value }); commit(ctx); });
+      wrap.appendChild(other);
+      entry.other = other;
+    }
+  } else if (placement.dataType === "LIST") {
     const select = el("select", { id, "aria-required": placement.required && !locked ? "true" : null, disabled: locked ? "" : null });
     if (locked) {
       // Read-only, and it stays read-only when the walk is editable (see applyEditability).
@@ -290,6 +330,24 @@ function renderPlacement(placement, ctx) {
   }
   ctx.placementNodes.set(placement.dimensionCode, entry);
   return wrap;
+}
+
+/**
+ * Ticks or unticks one value of a field that takes several. The values stay in the version's order
+ * whatever order they were ticked in (the prototype keeps "the saved order matching the option
+ * list"), and unticking Other clears its text, as the prototype does.
+ */
+function toggleValue(entry, ctx, code, checked) {
+  const placement = entry.placement;
+  const dim = ctx.model.dimensions[placement.dimensionCode];
+  const current = ctx.state.dimensions[placement.dimensionCode] || {};
+  const chosen = new Set(selectedCodes(current));
+  if (checked) chosen.add(code);
+  else chosen.delete(code);
+  const ordered = dim.values.map((v) => v.valueCode).filter((c) => chosen.has(c));
+  const keepsOther = dim.values.some((v) => chosen.has(v.valueCode) && isOtherValue(v));
+  setDimension(ctx.state, placement.dimensionCode, { selectedValueCodes: ordered, otherText: keepsOther ? current.otherText : "" });
+  commit(ctx);
 }
 
 // ---- items -------------------------------------------------------------------------------------
