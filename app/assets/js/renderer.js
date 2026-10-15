@@ -277,8 +277,10 @@ function renderPlacement(placement, ctx) {
     // Several values (the 2026-10-14 prototype's checkboxes): a fieldset named by its legend, one
     // checkbox per value the field currently offers, built and kept in step by syncPlacement.
     wrap.removeChild(label);
-    const group = el("fieldset", { class: "check-group", id, "aria-required": placement.required && !locked ? "true" : null }, [
-      el("legend", {}, [placement.label, placement.required && !locked ? el("span", { class: "field-required", "aria-hidden": "true", text: "*" }) : null]),
+    // aria-required does not apply to a group, so a required field says so in its legend.
+    const required = placement.required && !locked;
+    const group = el("fieldset", { class: "check-group", id }, [
+      el("legend", {}, [placement.label, required ? el("span", { class: "field-required", "aria-hidden": "true", text: "*" }) : null, required ? el("span", { class: "sr-only", text: " (required)" }) : null]),
     ]);
     const checks = el("div", { class: "check-options" });
     for (const v of ctx.model.dimensions[placement.dimensionCode].values) {

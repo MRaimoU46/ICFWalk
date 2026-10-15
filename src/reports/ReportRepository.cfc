@@ -341,7 +341,7 @@ component output="false" {
 			                                     FROM [icf].[walk_dimension_value] x
 			                                    WHERE x.walk_id = p.walk_id AND x.dimension_id = :dimension AND x.selected_value_id IS NOT NULL
 			                                    ORDER BY x.selection_ordinal
-			                                      FOR XML PATH(''), TYPE).value('.', 'nvarchar(4000)'), 1, 1, N''), N'')
+			                                      FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 1, N''), N'')
 			                     ELSE N'' END AS combination
 			           FROM " & popTable(arguments.population) & " p) t
 			  GROUP BY t.org_unit_id, t.visible, t.combination",
