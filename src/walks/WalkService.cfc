@@ -148,7 +148,7 @@ component output="false" {
 		var materialized = variables.db.transact(function() {
 			var row = walks.findWalk(id, true);
 			if (structIsEmpty(row)) errors.notFound();
-			var dims = walks.loadDimensionValues(id, walks.definitionIndex(row.versionId).multiple);
+			var dims = walks.loadDimensionValues(id);
 			var responses = walks.loadResponses(id);
 			var model = variables.snapshots.renderModelFor(row.versionId);
 			var state = stateOf(dims, responses);
@@ -291,7 +291,7 @@ component output="false" {
 			if (compare(row.rowVersion, rowVersion) != 0) {
 				return { "conflict": { "walkId": id, "serverRowVersion": row.rowVersion, "serverUpdatedAt": json.formatDate(row.updatedAt) } };
 			}
-			var priorDims = walks.loadDimensionValues(id, index.multiple);
+			var priorDims = walks.loadDimensionValues(id);
 			var priorResponses = walks.loadResponses(id);
 			// Server-authoritative retention: currently hidden values come from the database.
 			var merged = mergeRetainedHidden(model, validated.state, priorDims, priorResponses);
@@ -370,7 +370,7 @@ component output="false" {
 			if (row.status == "VOIDED") errors.conflict("This walk has been voided.", "WALK_VOIDED", { "walkId": id });
 			if (row.status == "COMPLETED") errors.conflict("This walk is already completed.", "WALK_ALREADY_COMPLETED", { "walkId": id, "completedAt": json.formatDate(row.completedAt) });
 			if (compare(row.rowVersion, rowVersion) != 0) return { "conflict": { "walkId": id, "serverRowVersion": row.rowVersion, "serverUpdatedAt": json.formatDate(row.updatedAt) } };
-			var dims = walks.loadDimensionValues(id, walks.definitionIndex(row.versionId).multiple);
+			var dims = walks.loadDimensionValues(id);
 			var responses = walks.loadResponses(id);
 			var state = stateOf(dims, responses);
 			var evaluation = engine.evaluateVisibility(model, state);
@@ -953,7 +953,7 @@ component output="false" {
 	private struct function loadDto(required string walkId, required struct principal, struct row = {}) {
 		var header = structIsEmpty(arguments.row) ? variables.walks.findWalk(arguments.walkId) : arguments.row;
 		if (structIsEmpty(header)) variables.errors.notFound();
-		var dims = variables.walks.loadDimensionValues(arguments.walkId, variables.walks.definitionIndex(header.versionId).multiple);
+		var dims = variables.walks.loadDimensionValues(arguments.walkId);
 		var responses = variables.walks.loadResponses(arguments.walkId);
 		var model = variables.snapshots.renderModelFor(header.versionId);
 		var state = stateOf(dims, responses);

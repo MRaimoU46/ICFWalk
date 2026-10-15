@@ -181,14 +181,15 @@ component output="false" {
 	// ---- dimension values ---------------------------------------------------------------------
 
 	/**
-	 * Persisted dimension values keyed by dimension code, in the working-state value shape. `multiple`
-	 * names the dimensions the walk's version lets a walk select several values of
-	 * (definitionIndex(versionId).multiple): each of those comes back as selectedValueCodes, in the
-	 * order they were written (the version's value order), with the Other text of the "other" row.
+	 * Persisted dimension values keyed by dimension code, in the working-state value shape. A
+	 * dimension the walk's version lets a walk select several values of
+	 * (definitionIndex(versionId).multiple; every row carries the walk's version) comes back as
+	 * selectedValueCodes, in the order they were written (the version's value order), with the Other
+	 * text of the "other" row.
 	 */
-	public struct function loadDimensionValues(required string walkId, struct multiple = {}) {
+	public struct function loadDimensionValues(required string walkId) {
 		var q = variables.db.run(
-			"SELECT d.code, d.data_type, dv.value_code, x.text_value, x.number_value, x.date_value, x.boolean_value
+			"SELECT d.code, d.data_type, dv.value_code, x.text_value, x.number_value, x.date_value, x.boolean_value, x.version_id
 			 FROM [icf].[walk_dimension_value] x
 			 JOIN [icf].[dimension_definition] d ON d.dimension_id = x.dimension_id
 			 LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = x.selected_value_id
@@ -197,7 +198,9 @@ component output="false" {
 			{ "id": variables.db.guid(arguments.walkId) }
 		);
 		var out = {};
-		for (var r = 1; r <= q.recordCount; r++) addDimensionRow(out, q, r, arguments.multiple);
+		if (!q.recordCount) return out;
+		var multiple = definitionIndex(uCase(q.version_id[1])).multiple;
+		for (var r = 1; r <= q.recordCount; r++) addDimensionRow(out, q, r, multiple);
 		return out;
 	}
 
