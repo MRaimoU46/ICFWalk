@@ -29,11 +29,13 @@ work. See "Phase 8 accepted and frozen" near the end and `docs/evidence/phase8-f
   and on Adobe ColdFusion 2023 Update 25, with 0 failed, skipped, todo or cancelled, `test:package`
   20/20 and `validate:handoff` 51 checks. OPERATIONS PASSED on the same commit.
 
-**On top of the frozen state, this branch carries the instrument revision 2026-10-14, step 1** (code
-commit `36f9db09f595294bdc5f8e151706dbb8dc7b758b`, gated on both engines): a new DRAFT version of the
-instrument from the product owner's 2026-10-14 prototype, with the visit fields' checkboxes left to step
-2. It is not audited, not frozen and not in service until an administrator publishes it, and it changes
-nothing Phase 8 froze. See "Instrument revision 2026-10-14 (step 1)", the last section.
+**On top of the frozen state, this branch carries the instrument revision 2026-10-14, steps 1 and 2**
+(code commits `36f9db09f595294bdc5f8e151706dbb8dc7b758b` and `7a639ac41e1253dda75086325419c5764d391755`,
+each gated on both engines): a new DRAFT version of the instrument from the product owner's 2026-10-14
+prototype, and then its four visit-field checkboxes, which take several values (migration 008). It is not
+audited, not frozen and not in service until 008 is applied, the release deployed and an administrator
+publishes the version, and it changes nothing Phase 8 froze. See "Instrument revision 2026-10-14 (step 1)"
+and "(step 2)", the last two sections.
 
 This is **not production certification**. ColdFusion's own SQL Server driver behind IIS or Apache with
 the connector, SQL Server 2016, connector-level limits, Microsoft Excel, a real screen reader and the
@@ -48,7 +50,7 @@ round-trip, the audit corrections, the re-audit correction P6A-R01, **Phase 6 fr
 accepted**, **Phase 6 and Phase 7 integration**, **Phase 7 and the integrated Phase 0-7 baseline
 accepted**, **Phase 8: hardening and handoff**, **Phase 8 correction A8**, **Phase 8 accepted and
 frozen**, which is the frozen state of this branch, and finally **Instrument revision 2026-10-14 (step
-1)**, a change on top of it that is not audited or frozen. The Phase 7 correction sections and
+1)** and **(step 2)**, changes on top of it that are not audited or frozen. The Phase 7 correction sections and
 the Phase 6 administration sections were written on two
 branches from the same commit, `0c6fa10`, and appear in the order they were delivered (Phase 7's on
 2026-09-23, Phase 6's from 2026-09-24), each block exactly as its branch delivered it.
@@ -4644,3 +4646,120 @@ diff (records only) were checked.
 
 This section adds to "Phase 8 accepted and frozen" and supersedes nothing in it: Phase 8 stays frozen at
 `b73f519` with records and delivery tip `bbb4d15`.
+
+## Instrument revision 2026-10-14 (step 2)
+
+Step 2 of the product owner's 2026-10-14 request: Grade level, Content / Subject Area, Program and Visit
+timing become multi-select checkboxes, as on the prototype's launch page, counted the way the owner chose:
+"Count it under each value (my recommendation). Filtering on "Grade 7" includes it. Breakdown totals can
+add up to more than the number of walks, and I'd label them that way." It starts from step 1's records
+commit `9825d10` and changes nothing Phase 8 froze.
+
+**Code commit `7a639ac41e1253dda75086325419c5764d391755`** (tree
+`fa4fdea1be2447950b37b974adac57ebf715525b`). The commits after `9825d10` up to it are step 2's: five
+checkpoints marked "not gated", made so the work would survive the session's container, and the three
+commits that completed it; the gate covers the whole change from `9825d10`. The records commit that adds
+this section follows it. **Not audited, not frozen, and not in service**: the 2026-10-14 version is still
+a DRAFT, and this release needs migration 008 applied before it is deployed.
+
+- **The instrument.** A placement's `settings.multiple: true` says its field takes several values. The
+  derivation gives it to exactly the four checkbox fields of the 2026-10-14 version (new golden checksums
+  `e25925a3...` whole snapshot, `4ac0f64a...` definitions); no other version changes. The authoring
+  validator refuses a flag that is not true or false, one on a field that is not a list, value codes a
+  release combination cannot carry or that joined by `+` exceed 300 characters, and an option filter that
+  would read such a field.
+- **Migration 008** (`database/008_multiple_dimension_values.sql`). `icf.walk_dimension_value` holds one
+  row per value (`selection_ordinal`, in the version's value order; the key becomes walk, field, ordinal;
+  a unique value per walk and field; ordinals above 0 only for list values); every existing row is ordinal
+  0 and reads as before. `icf.report_release_cell.category_code` widens from 100 to 300 characters, its key
+  rebuilt (896 of SQL Server's 900 bytes). Idempotent; refused with 50081 without 001 to 007. **Apply it
+  before deploying this release**: without it the health probe answers `outdated` (503), so a node
+  deployed first stays out of the load balancer.
+- **The walk.** `{ "selectedValueCodes": [...], "otherText"? }` for such a field and `selectedValueCode`
+  for every other, on the API, in the browser and in both engines; the server checks every code, refuses
+  duplicates and the wrong shape, and orders the codes by the version. Rules over such a field: `EQUALS`
+  and `IN` hold when any value matches, `NOT_EQUALS` and `NOT_IN` when none does
+  (`tests/fixtures/visibility-vectors-multiple.json` is both engines' contract). A school change removes
+  only the grades the school does not allow (`DIMENSION_VALUES_REMOVED`), as the prototype does.
+- **The editor and the outputs.** A fieldset of checkboxes per field, named by its legend; Other's text
+  box while Other is ticked. The summary, the email draft, the file name and My walks join the values with
+  ", " as the prototype's `metaDisplay` does.
+- **Reports.** Live: a walk counts under each value it holds and once among the states; a filter on one
+  value includes it; the page, the JSON (`multiple: true`) and the CSV (`DIMENSION_NOTE ...
+  MULTIPLE_VALUES`) say the counts can add up to more than the walks. Releases: overlapping counts would
+  let a reader work out groups smaller than the minimum (3 at Grade 7, 3 at Grade 8 and 5 answered mean
+  exactly one walk was both), so a release stores each field's breakdown as the combinations of values the
+  walks hold, which never overlap, and protects them with the approved rule unchanged; each value is
+  published as the sum of the published combinations that hold it, "at least" when one is withheld.
+- **The Excel round-trip** needed no change: placement settings travel in `settings_json`. A standing test
+  now proves the 2026-10-14 version comes back exactly.
+- **Rolling back past 008** (verified, `docs/OPERATIONS.md` 5.1): the release before step 2 shows one of a
+  several-valued field's values, keeps them all on a save that leaves the field alone, refuses a change to
+  the field with nothing written, counts such a walk once per value among the answered, reads this
+  release's releases with the combinations left out of the values, and would create releases that count a
+  walk under each value. **Create no report release while rolled back past 008.**
+- **Brought in line with the portability rules before the gate.** Step 2's CFML first asked `isNull()`
+  about values in fourteen places, which rule 7 refuses because ColdFusion 2023's `isNull()` can answer
+  true for the text "null" (Phase 8's P8-08). They now ask `structKeyExists` and `arrayIsDefined`. **This
+  changed no behavior**, contrary to what this branch's commit `af3dc31` and the red-before-green script
+  expected: a probe on both engines shows ColdFusion 2023's quirk reaching struct members and the
+  `arguments` scope but not plain local variables, and step 2 held the texts a person sends in locals,
+  while each member check was followed by one that refuses "null" anyway. MULTI-E3 saves an Other text
+  "Null" and refuses a value code "null" as regression tests. The review before the code commit also stopped
+  a required checkbox field from carrying `aria-required` on its fieldset (it says so in its legend
+  instead; no field of any version is required) and let a release's combination of value ids grow past
+  4000 characters (a field of over about 108 values could have reached that).
+- **Unchanged:** dependencies, the lock file and `.env.example`; the supplied sources and baselines;
+  migrations 001 to 007; every earlier evidence directory; every earlier test, all of which still exist
+  and pass. The gate checks each from the diff.
+
+### Verification
+
+The exact-commit gate of `7a639ac` (`docs/evidence/instrument-revision-2026-10-14-step2/gate/`), from a
+clean tree on brand-new SQL Server 2022 databases migrated 001 to 008 (002 to 008 re-applied, 001 refused):
+Node/HTTP/Playwright 324/324 and CFML 557/557 on Lucee 6.2.8.20 and on Adobe ColdFusion 2023 Update 25,
+with 0 failed, skipped, todo or cancelled; `test:package` 32/32, `validate:handoff` 51 checks, and the
+revision document current. All 316 Node tests step 1's gate passed pass on both engines, both engines passed
+the same names, and the CFML suites ran step 1's 548 test functions, every one still present, plus the 9
+new ones. The gate ran with Google Fonts out of the browser's reach, as step 1's did. A first run on
+`edea2fa` was stopped by hand during its Lucee suite, with no failure, to add the workbook test; it is kept.
+
+OPERATIONS PASSED on `7a639ac` (`.../operations/`): restart during autosave, the production profile
+and the readiness probe on ColdFusion and on Lucee (the probe answers 503 `outdated` with 008 undone and
+200 once it is applied again); upgrade and rollback, including steps 5 and 6 (this release on walks holding
+several values, live and released, then the release before step 2 on them, with the figures
+`docs/OPERATIONS.md` 5.1 states); and the database operations, with 008 among the killed and refused
+migrations.
+
+Red before green (`.../red/`), the seven components reverted to `95ddaf4` with the tests unchanged: the
+portability rules fail on rule 7, naming the calls (red as required). The browser suite passes on Lucee,
+as expected, and on ColdFusion 2023, which the script expected to fail, so its verdict is RED BEFORE GREEN
+NOT CONFIRMED. The probe in `.../red/isnull-probe/` explains why (above, and the evidence README); with
+nothing reverted all three runs pass.
+
+New tests: `tests/node/browser-multiple.test.mjs` (MULTI-E1 to MULTI-E6), the 008 test in
+`tests/node/schema-contract.test.mjs`, the 2026-10-14 round-trip in `tests/node/workbook.test.mjs`,
+`tests/cfml/specs/MultipleValuesTest.cfc` (7) and `tests/cfml/specs/MultipleValuesReportTest.cfc` (2).
+Extended without renaming: `db-scripts` (008 over data, twice), `sqlserver-2016` (reads 008),
+`instrument-revision` and `browser-revision` (the four fields as checkboxes). Operations scenarios
+extended: readiness (`outdated` without 008), the killed and refused migrations (008 among them), the
+production profile (applies 008), and upgrade and rollback (008 on a Phase 6 installation; steps 5 and 6
+above; its title now says so).
+
+On the records commit only `test:package`, `validate:handoff`, the evidence checksums and the restricted
+diff were checked: records, and one sentence of `docs/INSTRUMENT_REVISION_2026-10-14.md`, which said the
+`isNull()` calls had dropped an Other text "Null" on ColdFusion; the red-before-green run disproved it.
+
+### Open
+
+- **Art and Music** (owner): the version's Content / Subject Area list has new values Performing Arts and
+  Visual Arts. The prototype's own loading code maps an old "Art" to Visual Arts and "Music" to Performing
+  Arts; following it would keep the codes `art` and `music` under the new labels, so reports would line up
+  across versions. Recommended, not applied; reversible until the version is published.
+- **Putting it into service**, in this order: apply 008, deploy this release, confirm the 2026-10-14
+  source file, then import and publish the version (`docs/INSTRUMENT_REVISION_2026-10-14.md`).
+- The test-harness Google Fonts defect recorded in step 1 is unchanged; the gate ran with the fonts out of
+  the browser's reach, as step 1's did.
+
+This section adds to "Instrument revision 2026-10-14 (step 1)" and to "Phase 8 accepted and frozen", and
+supersedes nothing in them: Phase 8 stays frozen at `b73f519` with records and delivery tip `bbb4d15`.

@@ -1,0 +1,183 @@
+{
+  "finding": "A8-01",
+  "engine": "acf",
+  "startedAt": "2026-10-15T07:11:58.484Z",
+  "database": {
+    "name": "icfwalk_a801readymv97as5w",
+    "databaseId": 8,
+    "createDate": "2026-10-15T07:11:58.597",
+    "collation": "SQL_Latin1_General_CP1_CI_AS",
+    "compatibilityLevel": 160,
+    "state": "ONLINE",
+    "serverVersion": "16.0.4295.3",
+    "serverEdition": "Developer Edition (64-bit)",
+    "tables": 0,
+    "icfSchemas": 0,
+    "instrumentTable": 0
+  },
+  "runtimeLogin": "<generated, db_datareader + db_datawriter only>",
+  "steps": {
+    "beforeMigrations": {
+      "secondsToAnswer": 0.049,
+      "status": 503,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "missing"
+        },
+        "correlationId": "a043ca8a-fb00-4277-94b7-6b440ca4079b",
+        "status": "degraded"
+      },
+      "applicationSessionsOnTheDatabase": 0
+    },
+    "migrations": {
+      "command": "node scripts/db/apply-schema.mjs --database icfwalk_a801readymv97as5w",
+      "exit": 0,
+      "scripts": [
+        {
+          "script": "001_schema.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "002_alignment_patch.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "003_walk_mutation.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "004_mutation_fingerprint.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "005_org_unit_dimension_map.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "006_version_scoped_dimensions.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "007_report_release.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        },
+        {
+          "script": "008_multiple_dimension_values.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        }
+      ]
+    },
+    "afterMigrationsWithoutRestart": {
+      "status": 200,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "6336ebfb-d883-44c6-a1dc-4461ab9aec23",
+        "status": "ok"
+      }
+    },
+    "afterRestart": {
+      "secondsToAnswer": 7.174,
+      "status": 200,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "6551bf65-9696-4e47-9300-ae05b2851f6d",
+        "status": "ok"
+      }
+    },
+    "withoutMigration008": {
+      "status": 503,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "outdated"
+        },
+        "correlationId": "9450ca14-6904-4bd1-be8a-d3895f9641f9",
+        "status": "degraded"
+      }
+    },
+    "migration008": {
+      "command": "node scripts/db/apply-schema.mjs --database icfwalk_a801readymv97as5w --only 008",
+      "scripts": [
+        {
+          "script": "008_multiple_dimension_values.sql",
+          "database": "icfwalk_a801readymv97as5w",
+          "ok": true
+        }
+      ]
+    },
+    "afterMigration008": {
+      "status": 200,
+      "body": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "bc2f066d-6212-471e-8692-c97a245cd35f",
+        "status": "ok"
+      }
+    }
+  },
+  "normalEnvironmentBefore": {
+    "url": "http://127.0.0.1:8888",
+    "status": 0
+  },
+  "directConnection": {
+    "asRuntimeLogin": true,
+    "databaseName": "icfwalk_a801readymv97as5w",
+    "db_datareader": true,
+    "db_datawriter": true,
+    "db_owner": false
+  },
+  "engineIdentity": {
+    "container": "icfwalk-acf-ready",
+    "image": "adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e",
+    "imageId": "sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e",
+    "applicationStarted": [
+      {
+        "engine": "ColdFusion Server 2023,0,25,330977",
+        "environment": "production"
+      },
+      {
+        "engine": "ColdFusion Server 2023,0,25,330977",
+        "environment": "production"
+      }
+    ]
+  },
+  "cleanup": {
+    "engineRemoved": true,
+    "databaseDropped": true,
+    "loginDropped": true,
+    "readinessDatabasesLeft": 0
+  },
+  "normalEnvironmentAfter": {
+    "url": "http://127.0.0.1:8888",
+    "status": 0,
+    "checks": null
+  },
+  "finishedAt": "2026-10-15T07:13:23.431Z"
+}

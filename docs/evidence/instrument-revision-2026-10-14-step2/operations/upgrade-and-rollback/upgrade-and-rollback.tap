@@ -1,0 +1,20 @@
+TAP version 13
+# (node:25094) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: an installation made by the Phase 6 release upgrades with 007 and 008, changing nothing that existed, and this release serves it; the frozen release serves it after a rollback, and the release before step 2 keeps walks holding several values of a field
+ok 1 - an installation made by the Phase 6 release upgrades with 007 and 008, changing nothing that existed, and this release serves it; the frozen release serves it after a rollback, and the release before step 2 keeps walks holding several values of a field
+  ---
+  duration_ms: 47920.208066
+  type: 'test'
+  ...
+# Phase 6 made 5 walks; 24 tables
+# upgrade and rollback exercised on 6 walks, and 12 holding several values
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 48595.827345

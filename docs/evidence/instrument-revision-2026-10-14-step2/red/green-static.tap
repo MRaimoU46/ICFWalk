@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: rule 1: no reserved word is a variable name
+ok 1 - rule 1: no reserved word is a variable name
+  ---
+  duration_ms: 53.287408
+  type: 'test'
+  ...
+# Subtest: rule 2: no function re-declares one of its own arguments
+ok 2 - rule 2: no function re-declares one of its own arguments
+  ---
+  duration_ms: 33.37474
+  type: 'test'
+  ...
+# Subtest: rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+ok 3 - rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+  ---
+  duration_ms: 17.990807
+  type: 'test'
+  ...
+# Subtest: rule 4: no conditional's true branch is a one-element array of a string literal
+ok 4 - rule 4: no conditional's true branch is a one-element array of a string literal
+  ---
+  duration_ms: 2.168874
+  type: 'test'
+  ...
+# Subtest: rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+ok 5 - rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+  ---
+  duration_ms: 1.7615
+  type: 'test'
+  ...
+# Subtest: rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+ok 6 - rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+  ---
+  duration_ms: 1.179202
+  type: 'test'
+  ...
+# Subtest: rule 7: the application never asks isNull() about a value, only about a query cell
+ok 7 - rule 7: the application never asks isNull() about a value, only about a query cell
+  ---
+  duration_ms: 1.003137
+  type: 'test'
+  ...
+# Subtest: rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+ok 8 - rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+  ---
+  duration_ms: 3.160859
+  type: 'test'
+  ...
+# Subtest: the rules read every CFML template and component
+ok 9 - the rules read every CFML template and component
+  ---
+  duration_ms: 0.54442
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 492.849887

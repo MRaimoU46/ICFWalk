@@ -1,0 +1,48 @@
+TAP version 13
+# (node:27281) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: MULTI-E1 the 2026-10-14 document imports and publishes, and exactly its four checkbox fields take several values
+ok 1 - MULTI-E1 the 2026-10-14 document imports and publishes, and exactly its four checkbox fields take several values
+  ---
+  duration_ms: 3567.356581
+  type: 'test'
+  ...
+# Subtest: MULTI-E2 the JavaScript engine reproduces the shared multiple-value vectors on the served model
+ok 2 - MULTI-E2 the JavaScript engine reproduces the shared multiple-value vectors on the served model
+  ---
+  duration_ms: 37.971349
+  type: 'test'
+  ...
+# Subtest: MULTI-E3 several values save in the version's order, one row each, and every malformed submission is refused
+ok 3 - MULTI-E3 several values save in the version's order, one row each, and every malformed submission is refused
+  ---
+  duration_ms: 2105.551765
+  type: 'test'
+  ...
+# Subtest: MULTI-E4 the summary and the email draft list several values as the 2026-10-14 prototype does
+ok 4 - MULTI-E4 the summary and the email draft list several values as the 2026-10-14 prototype does
+  ---
+  duration_ms: 281.37496
+  type: 'test'
+  ...
+# Subtest: MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text, a school change, My walks, axe-core and 375 px
+ok 5 - MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text, a school change, My walks, axe-core and 375 px
+  ---
+  duration_ms: 2585.78244
+  type: 'test'
+  ...
+# Subtest: MULTI-E6 the Reports view labels a field that takes several values, and only such a field
+ok 6 - MULTI-E6 the Reports view labels a field that takes several values, and only such a field
+  ---
+  duration_ms: 1408.706845
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 11153.05965

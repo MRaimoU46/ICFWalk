@@ -1,0 +1,115 @@
+TAP version 13
+# Subtest: rule 1: no reserved word is a variable name
+ok 1 - rule 1: no reserved word is a variable name
+  ---
+  duration_ms: 58.988597
+  type: 'test'
+  ...
+# Subtest: rule 2: no function re-declares one of its own arguments
+ok 2 - rule 2: no function re-declares one of its own arguments
+  ---
+  duration_ms: 35.379838
+  type: 'test'
+  ...
+# Subtest: rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+ok 3 - rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+  ---
+  duration_ms: 16.616655
+  type: 'test'
+  ...
+# Subtest: rule 4: no conditional's true branch is a one-element array of a string literal
+ok 4 - rule 4: no conditional's true branch is a one-element array of a string literal
+  ---
+  duration_ms: 2.034761
+  type: 'test'
+  ...
+# Subtest: rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+ok 5 - rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+  ---
+  duration_ms: 1.81124
+  type: 'test'
+  ...
+# Subtest: rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+ok 6 - rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+  ---
+  duration_ms: 1.127656
+  type: 'test'
+  ...
+# Subtest: rule 7: the application never asks isNull() about a value, only about a query cell
+not ok 7 - rule 7: the application never asks isNull() about a value, only about a query cell
+  ---
+  duration_ms: 3.728845
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/cfml-portability.test.mjs:195:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   'src/instrument/DefinitionValidator.cfc:363 isNull(settings.multiple)',
+    +   'src/instrument/RenderModelBuilder.cfc:357 isNull(arguments.settings.multiple)',
+    +   'src/instrument/VisibilityEngine.cfc:302 isNull(arguments.v.selectedValueCodes)',
+    +   'src/instrument/VisibilityEngine.cfc:314 isNull(c)',
+    +   'src/reports/ReportService.cfc:1307 isNull(dim.multiple)',
+    +   'src/walks/WalkPayloadValidator.cfc:237 isNull(arguments.dim.multiple)',
+    +   'src/walks/WalkPayloadValidator.cfc:271 isNull(e)',
+    +   'src/walks/WalkRepository.cfc:433 isNull(valueCode)',
+    +   'src/walks/WalkRepository.cfc:437 isNull(text)',
+    +   'src/walks/WalkRepository.cfc:446 isNull(arguments.settingsJson)',
+    +   'src/walks/WalkRepository.cfc:448 isNull(row.settings)',
+    +   'src/walks/WalkRepository.cfc:450 isNull(s.multiple)',
+    +   'src/walks/WalkSummaryFormatter.cfc:189 isNull(v.selectedValueCodes)',
+    +   'src/walks/WalkSummaryFormatter.cfc:194 isNull(pick)'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'src/instrument/DefinitionValidator.cfc:363 isNull(settings.multiple)'
+    1: 'src/instrument/RenderModelBuilder.cfc:357 isNull(arguments.settings.multiple)'
+    2: 'src/instrument/VisibilityEngine.cfc:302 isNull(arguments.v.selectedValueCodes)'
+    3: 'src/instrument/VisibilityEngine.cfc:314 isNull(c)'
+    4: 'src/reports/ReportService.cfc:1307 isNull(dim.multiple)'
+    5: 'src/walks/WalkPayloadValidator.cfc:237 isNull(arguments.dim.multiple)'
+    6: 'src/walks/WalkPayloadValidator.cfc:271 isNull(e)'
+    7: 'src/walks/WalkRepository.cfc:433 isNull(valueCode)'
+    8: 'src/walks/WalkRepository.cfc:437 isNull(text)'
+    9: 'src/walks/WalkRepository.cfc:446 isNull(arguments.settingsJson)'
+    10: 'src/walks/WalkRepository.cfc:448 isNull(row.settings)'
+    11: 'src/walks/WalkRepository.cfc:450 isNull(s.multiple)'
+    12: 'src/walks/WalkSummaryFormatter.cfc:189 isNull(v.selectedValueCodes)'
+    13: 'src/walks/WalkSummaryFormatter.cfc:194 isNull(pick)'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/cfml-portability.test.mjs:206:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+ok 8 - rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+  ---
+  duration_ms: 2.864214
+  type: 'test'
+  ...
+# Subtest: the rules read every CFML template and component
+ok 9 - the rules read every CFML template and component
+  ---
+  duration_ms: 0.548806
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 8
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 844.251994

@@ -1,0 +1,152 @@
+{
+  "startedAt": "2026-10-15T07:14:32.778Z",
+  "database": "icfwalk_p8upgmv97e37u",
+  "phase6": "158debca5da2c4f3a07f602689cd08af9db9bd6e",
+  "frozen": "68f9026d39ba0ff44d12d6398c5e933971dad2f4",
+  "previous": "36f9db09f595294bdc5f8e151706dbb8dc7b758b",
+  "port": 8891,
+  "steps": {
+    "phase6Start": {
+      "secondsToAnswer": 4.522,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "schema": "present"
+        },
+        "correlationId": "413cf037-c355-4e3f-9a96-0ab77660ff50",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "phase6Data": {
+      "tables": 24,
+      "walks": "5:172547117",
+      "responses": "365:-1799613617",
+      "mutations": "15:255596852",
+      "revisions": "4:-1850513511",
+      "audit": "29:22426631"
+    },
+    "upgrade": {
+      "applied": [
+        "007_report_release.sql",
+        "008_multiple_dimension_values.sql"
+      ],
+      "tablesAdded": [
+        "report_release",
+        "report_release_block",
+        "report_release_cell",
+        "report_release_walk"
+      ],
+      "existingTablesUnchanged": 24,
+      "dimensionValuesAtOrdinalZero": 15
+    },
+    "releaseStart": {
+      "secondsToAnswer": 4.73,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "9469c5f0-dbc6-4e61-b477-54b48626d9c0",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "release": {
+      "listed": 4,
+      "reportWalks": 3,
+      "health": {
+        "database": "ok",
+        "longText": "ok",
+        "schema": "present"
+      },
+      "releaseCreated": 201,
+      "releaseId": "6B902656-110D-4811-A275-A16C929E3569"
+    },
+    "rollbackStart": {
+      "secondsToAnswer": 4.791,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "schema": "present"
+        },
+        "correlationId": "c723fb06-beae-46f0-84ed-63ea54595ecf",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      }
+    },
+    "rollback": {
+      "listed": 5,
+      "reportWalks": 4,
+      "health": {
+        "database": "ok",
+        "schema": "present"
+      },
+      "releaseRead": 200
+    },
+    "several": {
+      "versionId": "ED528C72-A085-4901-B004-30F043D001E8",
+      "walks": 12,
+      "live": {
+        "beginning": 9,
+        "middle": 9,
+        "end": 0,
+        "answered": 12
+      },
+      "releaseId": "01D05E1B-3DE5-4016-9044-3FDD897E0F00",
+      "released": {
+        "beginning_of_lesson": 3,
+        "beginning_of_lesson+middle_of_the_lesson": 3,
+        "middle_of_the_lesson": 3
+      },
+      "read": {
+        "beginning": 6,
+        "middle": 6,
+        "end": 0,
+        "answered": 9
+      }
+    },
+    "previous": {
+      "secondsToAnswer": 4.708,
+      "health": {
+        "application": "ICFWalk",
+        "checks": {
+          "database": "ok",
+          "longText": "ok",
+          "schema": "present"
+        },
+        "correlationId": "eab2dfac-9af1-4af3-8230-86191b47ea7e",
+        "engine": "Lucee 6.2.8.20",
+        "environment": "development",
+        "status": "ok"
+      },
+      "shown": "middle_of_the_lesson",
+      "changeStatus": 500,
+      "live": {
+        "beginning": 9,
+        "middle": 9,
+        "end": 0,
+        "answered": 18
+      },
+      "read": {
+        "beginning": 3,
+        "middle": 3,
+        "end": 0,
+        "answered": 9
+      },
+      "released": {
+        "beginning_of_lesson": 3,
+        "middle_of_the_lesson": 3
+      }
+    }
+  },
+  "finishedAt": "2026-10-15T07:15:20.930Z",
+  "workDirectory": "/tmp/icfwalk-upgrade-4qYCys"
+}

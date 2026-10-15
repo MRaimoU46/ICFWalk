@@ -1,0 +1,1344 @@
+
+================================================================================
+== 2026-10-15T06:36:40Z  0. The gate script itself
+================================================================================
+#!/usr/bin/env bash
+# Instrument revision 2026-10-14, step 2: the exact-commit gate, on step 2's code commit, from a clean
+# tree, on brand-new databases, on both engines.
+#
+# HEAD must be step 2's code commit: step 1's records commit (9825d10, the end of step 1) and step 1's
+# code commit among its ancestors, with the frozen Phase 8 code and records tips, and the tree clean.
+# Step 2 was committed in checkpoints (each marked "not gated") so that it would survive the session's
+# container; the change gated here is everything from 9825d10 to HEAD. The commits were pushed as they
+# were made, so the remote branch is recorded here, not compared.
+#
+# The steps are step 1's gate (docs/evidence/instrument-revision-2026-10-14/gate/gate.sh), which are the
+# Phase 8 correction A8 gate's, from the brand-new SQL Server container to the end of the ColdFusion
+# suite: npm ci, handoff validation, the revision document and the package tests, every JavaScript file
+# parsed, migrations 001 to 008 with every re-application and 001 refused, Lucee with the seed and the
+# full suite, then Adobe ColdFusion 2023 (pinned) on a brand-new database and container with the seed
+# and the full suite (CFML in 12 parts). Changed here: step 2 adds migration 008, so the change may touch
+# the database directory only by adding 008 and describing it in database/README.md; 001 to 007, the
+# dependencies, the supplied sources and baselines, and every earlier evidence directory must be as
+# step 1 left them.
+#
+# Baselines move from step 1's gate results:
+#
+#   - Node: every one of the 316 test names step 1's gate passed on both engines is present and passes
+#     on both engines here, and each run has exactly 316 plus the names this change adds.
+#   - CFML: every test function of step 1's code (548) still exists; the suites run exactly 548 plus the
+#     test functions this change adds (counted from the tree, listed by name), on both engines, with
+#     none failed or skipped.
+#
+# It writes nothing into the repository: TAP copies and screenshots go to OUT, outside it. It rewrites the
+# git-ignored .env's ICFWALK_DB_PASSWORD with the new container's generated password (never printed).
+# Every command is echoed with its exit code. It stops on the first unexpected result.
+#
+# usage: gate.sh <expected HEAD sha> <output directory outside the repository>
+set -uo pipefail
+REPO=/home/user/ICFWalk
+BRANCH=claude/icfwalk-phase-8-correction-cgsc7q
+STEP1_RECORDS=9825d1052a295bbef7df4ed132a626950bf5bb9b    # step 1's records commit: where step 2 starts
+STEP1_CODE=36f9db09f595294bdc5f8e151706dbb8dc7b758b       # step 1's gated code commit
+STEP1_GATE=docs/evidence/instrument-revision-2026-10-14/gate
+FREEZE_RECORDS=452bd2690f6b29f24cbd0555147f4a2d75e614ba   # "Phase 8 accepted and frozen" (records only)
+P8_TIP=bbb4d1592d09d35d707741af462849622000091a           # the Phase 8 records and delivery tip
+P8_CODE=b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d          # the frozen, gated Phase 8 code
+P8_HANDOFF_BRANCH=claude/icfwalk-phase-8-hardening-handoff; P8_HANDOFF_TIP=10f476ba9a69359f23a259be0e903afeed64b415
+INTEGRATION=claude/icfwalk-phase-6-7-integration; INTEGRATION_TIP=133f02192a99970029847bc2da2d31b9d8da06e1
+MSSQL_IMAGE=mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090
+ACF_IMAGE=adobecoldfusion/coldfusion2023@sha256:e42bbf07745ebd4d8c23d6679738ac13e264218618093bc3689ebfaf8966f30e
+BASE_NODE=316
+BASE_CFML=548
+ACF_DB=icfwalk_acf_gate
+EXPECTED="$1"
+OUT="$2"
+cd "$REPO"
+# The suites run with Google Fonts out of the browser's reach, as in every earlier gate: without the
+# container's proxy variables Chromium cannot reach it, and the font request fails as a network error the
+# suites already ignore. With it reachable, Playwright's extraHTTPHeaders sends the development identity
+# header to fonts.gstatic.com, Google refuses the CORS preflight, and 36 frozen browser tests count that
+# console message as a page error (environment.md, font-cors/). Nothing in npm test needs the proxy.
+NO_PROXY_ENV=(env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy -u ALL_PROXY -u all_proxy)
+
+step() { echo; echo "================================================================================"; echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ)  $*"; echo "================================================================================"; }
+run() { echo "\$ $*"; "$@"; local rc=$?; echo "[exit $rc]"; return $rc; }
+die() { echo; echo "GATE FAILED: $*"; exit 1; }
+totals() { # totals <tap> <label>: prints the Node and CFML totals and sets N_* and C_*
+  local tap="$1"
+  N_TESTS=$(grep -E '^# tests ' "$tap" | tail -1 | awk '{print $3}'); N_PASS=$(grep -E '^# pass ' "$tap" | tail -1 | awk '{print $3}')
+  N_FAIL=$(grep -E '^# fail ' "$tap" | tail -1 | awk '{print $3}'); N_SKIP=$(grep -E '^# skipped ' "$tap" | tail -1 | awk '{print $3}')
+  N_TODO=$(grep -E '^# todo ' "$tap" | tail -1 | awk '{print $3}'); N_CANC=$(grep -E '^# cancelled ' "$tap" | tail -1 | awk '{print $3}')
+  C_LINE=$(grep -E '^# engine=' "$tap" | tail -1)
+  C_PASS=$(echo "$C_LINE" | grep -o 'passed=[0-9]*' | cut -d= -f2); C_FAIL=$(echo "$C_LINE" | grep -o 'failed=[0-9]*' | cut -d= -f2)
+  C_SKIP=$(echo "$C_LINE" | grep -o 'skipped=[0-9]*' | cut -d= -f2)
+  echo "$2 node: tests=$N_TESTS pass=$N_PASS fail=$N_FAIL skipped=$N_SKIP todo=$N_TODO cancelled=$N_CANC"
+  echo "$2 cfml: ${C_LINE:-<no totals line>}"
+  grep -E '^not ok ' "$tap" || echo "$2: no failed Node test"
+}
+clean() { [ "$1" = 0 ] && [ "$N_FAIL" = 0 ] && [ "$N_SKIP" = 0 ] && [ "$N_TODO" = 0 ] && [ "$N_CANC" = 0 ] && [ "$N_TESTS" = "$N_PASS" ] && [ "${C_FAIL:-x}" = 0 ] && [ "${C_SKIP:-x}" = 0 ]; }
+
+step "0. The gate script itself"
+cat "$0"
+
+step "1. Repository identity before the gate"
+run date -u
+BR=$(git rev-parse --abbrev-ref HEAD); echo "branch $BR"
+[ "$BR" = "$BRANCH" ] || die "not on $BRANCH"
+HEAD_SHA=$(git rev-parse HEAD); TREE_SHA=$(git rev-parse 'HEAD^{tree}')
+echo "HEAD   $HEAD_SHA"; echo "TREE   $TREE_SHA"
+[ "$HEAD_SHA" = "$EXPECTED" ] || die "HEAD $HEAD_SHA is not the expected commit $EXPECTED"
+run git log -3 --format='%H %T %P %an %aI %s'
+for c in "$STEP1_RECORDS" "$STEP1_CODE" "$FREEZE_RECORDS" "$P8_TIP" "$P8_CODE"; do
+  git merge-base --is-ancestor "$c" HEAD && echo "$c is an ancestor of HEAD" || die "$c is not an ancestor of HEAD"
+done
+echo "\$ git log --format='%H %s' $STEP1_RECORDS..HEAD   (step 2's commits)"
+git log --format='%H %s' "$STEP1_RECORDS..HEAD"
+echo "\$ git diff --name-status $STEP1_RECORDS HEAD   (the whole change: every file it touches)"
+git diff --name-status "$STEP1_RECORDS" HEAD
+echo "\$ git diff --name-status $STEP1_RECORDS HEAD -- database   (must be exactly: 008 added, database/README.md changed)"
+D=$(git diff --name-status "$STEP1_RECORDS" HEAD -- database); echo "${D:-<empty>}"
+[ "$D" = "$(printf 'A\tdatabase/008_multiple_dimension_values.sql\nM\tdatabase/README.md')" ] || die "the database directory changed other than by adding 008"
+echo "\$ git diff --name-only $STEP1_RECORDS HEAD -- package.json package-lock.json .env.example config/instrument-config.json source   (must be empty: no dependency, no supplied source or baseline)"
+D=$(git diff --name-only "$STEP1_RECORDS" HEAD -- package.json package-lock.json .env.example config/instrument-config.json source); echo "${D:-<empty>}"
+[ -z "$D" ] || die "a dependency, a supplied source or a baseline document changed"
+echo "\$ git diff --name-only $STEP1_RECORDS HEAD -- docs/evidence   (must be empty: the code commit carries no evidence, and earlier evidence is never rewritten)"
+D=$(git diff --name-only "$STEP1_RECORDS" HEAD -- docs/evidence); echo "${D:-<empty>}"
+[ -z "$D" ] || die "evidence changed"
+echo "\$ git status --porcelain=v1 --untracked-files=all  (tracked, staged, unstaged and untracked)"
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo "${STATUS:-<empty>}"
+[ -z "$STATUS" ] || die "working tree is not clean"
+echo "\$ git ls-remote origin refs/heads/$BRANCH   (recorded only: pushed as committed)"
+R=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1); echo "${R:-<no such branch on origin>}"
+echo "--- the earlier Phase 8 branch and the frozen integration branch are unchanged"
+for pair in "$P8_HANDOFF_BRANCH=$P8_HANDOFF_TIP" "$INTEGRATION=$INTEGRATION_TIP"; do
+  B=${pair%%=*}; W=${pair#*=}; R=$(git ls-remote origin "refs/heads/$B" | cut -f1)
+  echo "$B $R"; [ "$R" = "$W" ] || die "$B is $R, expected $W"
+done
+
+step "2. Runtime versions"
+run uname -srm
+echo "os $(. /etc/os-release; echo "$PRETTY_NAME")"
+echo "cpus $(nproc), memory $(free -g | awk '/^Mem:/ {print $2}') GB"
+run node --version
+run npm --version
+java -version 2>&1 | sed -e 's/^Picked up JAVA_TOOL_OPTIONS: .*/Picked up JAVA_TOOL_OPTIONS: [redacted: container proxy and truststore settings]/'
+run docker version --format 'docker client {{.Client.Version}} server {{.Server.Version}}'
+
+step "3. Dependencies from the lock file"
+run npm ci || die "npm ci failed"
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo "status after npm ci: ${STATUS:-<empty>}"
+[ -z "$STATUS" ] || die "npm ci changed the tree"
+run node -e 'for (const p of ["playwright","playwright-core","mssql","axe-core"]) console.log(p, require("/home/user/ICFWalk/node_modules/"+p+"/package.json").version)'
+echo "Chromium $(node -e 'const {chromium}=require("playwright");chromium.launch().then(async b=>{console.log(b.version());await b.close()})')"
+
+step "4. Handoff validation, the revision document, and the package tests"
+run npm run validate:handoff || die "handoff validation failed"
+run npm run revision:check || die "the revision document is not what the derivation produces"
+run npm run test:package || die "package tests failed"
+
+step "5. JavaScript syntax (every tracked .js and .mjs)"
+COUNT=0; FAILED=0
+for f in $(git ls-files '*.js' '*.mjs'); do COUNT=$((COUNT+1)); if node --check "$f" 2>&1; then :; else echo "SYNTAX ERROR $f"; FAILED=$((FAILED+1)); fi; done
+echo "checked $COUNT files, $FAILED syntax errors"
+[ "$FAILED" = 0 ] || die "syntax errors"
+
+step "6. No CFML test was removed: every test function of step 1's code exists at HEAD"
+# Files, not pipes: under pipefail, `git show | grep -q` fails when grep stops reading early.
+SPECS_TMP=$(mktemp -d)
+MISSING=0; FUNCS=0; HEAD_FUNCS=0
+for f in $(git ls-tree -r --name-only "$STEP1_CODE" tests/cfml/specs | grep '\.cfc$'); do
+  git show "$STEP1_CODE:$f" > "$SPECS_TMP/base.cfc"
+  git show "HEAD:$f" > "$SPECS_TMP/head.cfc" 2>/dev/null || : > "$SPECS_TMP/head.cfc"
+  for fn in $(grep -oE 'function test[A-Za-z0-9_]+' "$SPECS_TMP/base.cfc" | awk '{print $2}'); do
+    FUNCS=$((FUNCS+1))
+    grep -qE "function $fn\(" "$SPECS_TMP/head.cfc" || { echo "MISSING $f $fn"; MISSING=$((MISSING+1)); }
+  done
+done
+echo "--- test functions this change adds (at HEAD, not in $STEP1_CODE)"
+for f in $(git ls-tree -r --name-only HEAD tests/cfml/specs | grep '\.cfc$'); do
+  git show "HEAD:$f" > "$SPECS_TMP/head.cfc"
+  git show "$STEP1_CODE:$f" > "$SPECS_TMP/base.cfc" 2>/dev/null || : > "$SPECS_TMP/base.cfc"
+  for fn in $(grep -oE 'function test[A-Za-z0-9_]+' "$SPECS_TMP/head.cfc" | awk '{print $2}'); do
+    HEAD_FUNCS=$((HEAD_FUNCS+1))
+    grep -qE "function $fn\(" "$SPECS_TMP/base.cfc" || echo "NEW $f $fn"
+  done
+done
+rm -rf "${SPECS_TMP:?}"
+NEW_CFML=$((HEAD_FUNCS - FUNCS))
+echo "test functions: $STEP1_CODE $FUNCS; missing at HEAD: $MISSING; HEAD $HEAD_FUNCS (new: $NEW_CFML)"
+[ "$MISSING" = 0 ] || die "a CFML test function was removed"
+[ "$FUNCS" = "$BASE_CFML" ] || die "step 1's code has $FUNCS test functions, not $BASE_CFML"
+EXPECT_CFML=$((BASE_CFML + NEW_CFML))
+echo "the CFML suites must run exactly $BASE_CFML + $NEW_CFML = $EXPECT_CFML cases on each engine"
+
+step "7. A brand-new SQL Server container and database"
+tools/runtime/lucee-down.sh; echo "[lucee-down exit $?]"
+tools/runtime/acf-down.sh; echo "[acf-down exit $?]"
+run docker rm -f icfwalk-mssql
+run rm -f .runtime/mssql.env
+echo "\$ ICFWALK_MSSQL_IMAGE=$MSSQL_IMAGE tools/runtime/mssql-up.sh"
+ICFWALK_MSSQL_IMAGE="$MSSQL_IMAGE" tools/runtime/mssql-up.sh; RC=$?; echo "[exit $RC]"; [ "$RC" = 0 ] || die "SQL Server did not start"
+source .runtime/mssql.env
+[ -n "${MSSQL_SA_PASSWORD:-}" ] || die "the new container's password was not generated"
+NEWPW="$MSSQL_SA_PASSWORD" node -e 'const fs=require("fs");const pw=process.env.NEWPW;if(!pw)process.exit(1);const t=fs.readFileSync(".env","utf8");if(!/^ICFWALK_DB_PASSWORD=/m.test(t))process.exit(1);fs.writeFileSync(".env",t.replace(/^ICFWALK_DB_PASSWORD=.*$/m,()=>"ICFWALK_DB_PASSWORD="+pw))' || die "could not update .env"
+echo "(.env ICFWALK_DB_PASSWORD set to the new container's generated password; not printed)"
+run docker ps --filter name=icfwalk-mssql --format '{{.ID}} {{.Image}} {{.Status}} created {{.CreatedAt}}'
+run docker inspect --format '{{.Config.Image}} @ {{.Image}}' icfwalk-mssql
+SQLCMD=(docker exec icfwalk-mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -b)
+"${SQLCMD[@]}" -h -1 -W -Q "SET NOCOUNT ON; SELECT @@VERSION; SELECT name, create_date FROM sys.databases WHERE name LIKE 'icfwalk%'; SELECT COUNT(*) AS tables_in_icfwalk_dev FROM icfwalk_dev.sys.tables;"
+
+step "8. Schema: 001 to 008 in order, then each of 002 to 008 re-applied, and 001 refused"
+run node scripts/db/apply-schema.mjs || die "schema application failed"
+for n in 002 003 004 005 006 007 008; do run node scripts/db/apply-schema.mjs --only "$n" || die "re-applying $n failed"; done
+echo "\$ node scripts/db/apply-schema.mjs --only 001   (must refuse: the schema already has tables)"
+node scripts/db/apply-schema.mjs --only 001; RC=$?; echo "[exit $RC]"
+[ "$RC" != 0 ] && echo "001 refused a second application, as designed" || die "001 re-applied"
+"${SQLCMD[@]}" -d icfwalk_dev -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(*) AS icf_tables FROM sys.tables WHERE schema_id = SCHEMA_ID('icf'); SELECT name FROM sys.triggers ORDER BY name; SELECT migration, step, state FROM icf.schema_migration_state; SELECT COL_LENGTH('icf.walk_dimension_value', 'selection_ordinal') AS selection_ordinal_bytes, COL_LENGTH('icf.report_release_cell', 'category_code') AS release_category_bytes; SELECT c.name FROM sys.index_columns ic JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id WHERE ic.object_id = OBJECT_ID('icf.walk_dimension_value') AND ic.index_id = 1 ORDER BY ic.key_ordinal;"
+
+step "9. Lucee: the application on the new database, and the instrument seed"
+run tools/runtime/lucee-up.sh || die "the application did not start"
+echo "lucee jars:"; sha256sum .runtime/jars/*.jar
+run curl -sS http://127.0.0.1:8888/index.cfm/api/health
+echo
+run node scripts/seed-instrument.mjs || die "seed failed"
+
+step "10. Lucee: the full suite (ICFWALK_REQUIRE_APP=1 npm test: Node, HTTP, Playwright and CFML)"
+rm -rf "${OUT:?}"; mkdir -p "$OUT/lucee" "$OUT/acf"
+echo "\$ ${NO_PROXY_ENV[*]} ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR=<outside the repository> npm test"
+"${NO_PROXY_ENV[@]}" ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR="$OUT/lucee" npm test 2>&1 | tee "$OUT/lucee/npm-test.tap"
+L_RC=${PIPESTATUS[0]}; echo "[exit $L_RC]"
+totals "$OUT/lucee/npm-test.tap" lucee
+L_TESTS=$N_TESTS; L_CFML=$C_PASS
+clean "$L_RC" || die "the Lucee run did not pass cleanly"
+
+step "11. Adobe ColdFusion 2023: a brand-new database, a brand-new container, and the seed"
+tools/runtime/lucee-down.sh; echo "[lucee-down exit $?] (the machine is left to ColdFusion)"
+"${SQLCMD[@]}" -Q "CREATE DATABASE [$ACF_DB]" || die "could not create $ACF_DB"
+run node scripts/db/apply-schema.mjs --database "$ACF_DB" || die "schema application failed on $ACF_DB"
+for n in 002 003 004 005 006 007 008; do run node scripts/db/apply-schema.mjs --database "$ACF_DB" --only "$n" || die "re-applying $n failed on $ACF_DB"; done
+node scripts/db/apply-schema.mjs --database "$ACF_DB" --only 001; RC=$?; echo "[exit $RC]"
+[ "$RC" != 0 ] && echo "001 refused a second application, as designed" || die "001 re-applied on $ACF_DB"
+echo "\$ ICFWALK_DB_NAME=$ACF_DB ICFWALK_ACF_IMAGE=$ACF_IMAGE tools/runtime/acf-up.sh"
+ICFWALK_DB_NAME="$ACF_DB" ICFWALK_ACF_IMAGE="$ACF_IMAGE" tools/runtime/acf-up.sh; RC=$?; echo "[exit $RC]"; [ "$RC" = 0 ] || die "ColdFusion did not start"
+run docker inspect --format '{{.Config.Image}} @ {{.Image}} created {{.Created}}' icfwalk-acf
+run curl -sS http://127.0.0.1:8500/index.cfm/api/health
+echo
+ICFWALK_DB_NAME="$ACF_DB" ICFWALK_BASE_URL=http://127.0.0.1:8500 node scripts/seed-instrument.mjs; RC=$?; echo "[exit $RC]"; [ "$RC" = 0 ] || die "seed failed on ColdFusion"
+
+step "12. Adobe ColdFusion 2023: the full suite against it"
+echo "\$ ${NO_PROXY_ENV[*]} ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_DB_NAME=$ACF_DB ICFWALK_CFML_SUITE_PARTS=12 ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR=<outside> npm test"
+"${NO_PROXY_ENV[@]}" ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_DB_NAME="$ACF_DB" ICFWALK_CFML_SUITE_PARTS=12 ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR="$OUT/acf" npm test 2>&1 | tee "$OUT/acf/npm-test.tap"
+A_RC=${PIPESTATUS[0]}; echo "[exit $A_RC]"
+totals "$OUT/acf/npm-test.tap" coldfusion
+A_TESTS=$N_TESTS; A_CFML=$C_PASS
+[[ "$C_LINE" == *"engine=ColdFusion Server 2023"* ]] || die "the CFML suite did not run on ColdFusion 2023"
+clean "$A_RC" || die "the ColdFusion run did not pass cleanly"
+
+step "13. Nothing was removed: every Node test step 1's gate passed passed in both runs, and the totals"
+cp "$STEP1_GATE/lucee/passing-names.txt" "$OUT/baseline-names.txt"
+cmp -s "$STEP1_GATE/lucee/passing-names.txt" "$STEP1_GATE/acf/passing-names.txt" && echo "step 1's gate passed the same $(wc -l < "$OUT/baseline-names.txt") names on both engines" || die "step 1's gate lists differ"
+MISSING=0
+for run_name in lucee acf; do
+  grep -E '^ok [0-9]+ - ' "$OUT/$run_name/npm-test.tap" | sed -E 's/^ok [0-9]+ - //' | sort -u > "$OUT/$run_name/passing-names.txt"
+  GONE=$(comm -23 "$OUT/baseline-names.txt" "$OUT/$run_name/passing-names.txt")
+  ADDED=$(comm -13 "$OUT/baseline-names.txt" "$OUT/$run_name/passing-names.txt")
+  echo "$run_name: baseline names $(wc -l < "$OUT/baseline-names.txt"), passing names $(wc -l < "$OUT/$run_name/passing-names.txt"), baseline names not passing: ${GONE:-<none>}"
+  echo "$run_name: names not in the baseline:"; echo "${ADDED:-<none>}"
+  [ -z "$GONE" ] || MISSING=$((MISSING+1))
+done
+[ "$MISSING" = 0 ] || die "a Node test of the baseline is missing or not passing"
+cmp -s "$OUT/lucee/passing-names.txt" "$OUT/acf/passing-names.txt" && echo "both engines passed the same names" || die "the two engines passed different names"
+NEW_NODE=$(comm -13 "$OUT/baseline-names.txt" "$OUT/lucee/passing-names.txt" | wc -l)
+echo "totals: baseline node $BASE_NODE (+$NEW_NODE new = $((BASE_NODE + NEW_NODE))) cfml $BASE_CFML (+$NEW_CFML new = $EXPECT_CFML); Lucee node $L_TESTS cfml $L_CFML; ColdFusion node $A_TESTS cfml $A_CFML"
+[ "$L_TESTS" = "$((BASE_NODE + NEW_NODE))" ] && [ "$A_TESTS" = "$((BASE_NODE + NEW_NODE))" ] || die "a run is not exactly the baseline plus the new Node tests"
+[ "$L_CFML" = "$EXPECT_CFML" ] && [ "$A_CFML" = "$EXPECT_CFML" ] || die "a CFML suite did not run exactly $EXPECT_CFML cases"
+
+step "14. Repository identity after the gate"
+run git rev-parse HEAD 'HEAD^{tree}'
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo "\$ git status --porcelain=v1 --untracked-files=all"; echo "${STATUS:-<empty>}"
+run git ls-remote origin "refs/heads/$BRANCH"
+run date -u
+[ -z "$STATUS" ] || die "the gate changed the working tree"
+[ "$(git rev-parse HEAD)" = "$EXPECTED" ] || die "HEAD moved"
+[ "$(git rev-parse 'HEAD^{tree}')" = "$TREE_SHA" ] || die "the tree changed"
+echo "screenshots written outside the repository: lucee $(find "$OUT/lucee" -name '*.png' | wc -l), coldfusion $(find "$OUT/acf" -name '*.png' | wc -l)"
+echo; echo "GATE PASSED for $EXPECTED tree $TREE_SHA (Lucee node $L_TESTS, cfml $L_CFML; ColdFusion node $A_TESTS, cfml $A_CFML)"
+
+================================================================================
+== 2026-10-15T06:36:40Z  1. Repository identity before the gate
+================================================================================
+$ date -u
+Thu Oct 15 06:36:40 UTC 2026
+[exit 0]
+branch claude/icfwalk-phase-8-correction-cgsc7q
+HEAD   edea2fa75153f6eac044a1643f1eeffe4e1f339d
+TREE   8e5b13de883ddd85a7229629bc390abc910cfc0e
+$ git log -3 --format=%H %T %P %an %aI %s
+edea2fa75153f6eac044a1643f1eeffe4e1f339d 8e5b13de883ddd85a7229629bc390abc910cfc0e a0689d1b80f4c70dd2186dae8552a25562f07799 Claude 2026-10-15T06:35:33+00:00 Instrument revision 2026-10-14, step 2: several values per visit field
+a0689d1b80f4c70dd2186dae8552a25562f07799 15817e19444cef57398c51ed48909c47c359ee5a af3dc31fe59643f9c4b58d1f165b7ce8d9620855 Claude 2026-10-15T06:32:31+00:00 Instrument revision 2026-10-14, step 2: rollback limits verified, documents complete
+af3dc31fe59643f9c4b58d1f165b7ce8d9620855 45cf3fbb98dc32728cb807cfd4fc3bbc9cb869fd 95ddaf435bef59738d27a0449e78bcec203c110c Claude 2026-10-15T02:32:47+00:00 Instrument revision 2026-10-14, step 2 checkpoint (not gated): ColdFusion-safe null checks, rollback steps, docs
+[exit 0]
+9825d1052a295bbef7df4ed132a626950bf5bb9b is an ancestor of HEAD
+36f9db09f595294bdc5f8e151706dbb8dc7b758b is an ancestor of HEAD
+452bd2690f6b29f24cbd0555147f4a2d75e614ba is an ancestor of HEAD
+bbb4d1592d09d35d707741af462849622000091a is an ancestor of HEAD
+b73f5190f4b3c326a2ceb48e2b15e64b8ae1fd5d is an ancestor of HEAD
+$ git log --format='%H %s' 9825d1052a295bbef7df4ed132a626950bf5bb9b..HEAD   (step 2's commits)
+edea2fa75153f6eac044a1643f1eeffe4e1f339d Instrument revision 2026-10-14, step 2: several values per visit field
+a0689d1b80f4c70dd2186dae8552a25562f07799 Instrument revision 2026-10-14, step 2: rollback limits verified, documents complete
+af3dc31fe59643f9c4b58d1f165b7ce8d9620855 Instrument revision 2026-10-14, step 2 checkpoint (not gated): ColdFusion-safe null checks, rollback steps, docs
+95ddaf435bef59738d27a0449e78bcec203c110c Instrument revision 2026-10-14, step 2 checkpoint (not gated): end-to-end and report specs
+8f8dfbf8399cddc65e60ad56f672d2f9eb8e67fe Instrument revision 2026-10-14, step 2 checkpoint (not gated): CFML spec, shared vectors, read path
+e3db3f676a199cdb95908ccb84ba7e7c92530661 Instrument revision 2026-10-14, step 2 checkpoint (not gated): checkbox editor, formatters, reports, document
+bbe2f78234d4d6486cc076c4d860ca3d15d11e7e Instrument revision 2026-10-14, step 2 checkpoint (not gated): several values per visit field, storage and engines
+$ git diff --name-status 9825d1052a295bbef7df4ed132a626950bf5bb9b HEAD   (the whole change: every file it touches)
+M	app/assets/css/icfwalk.css
+M	app/assets/js/app.js
+M	app/assets/js/renderer.js
+M	app/assets/js/reports.js
+M	app/assets/js/rules.js
+M	app/assets/js/walk-state.js
+M	config/instrument-config-2026-10-14.json
+A	database/008_multiple_dimension_values.sql
+M	database/README.md
+M	docs/ARCHITECTURE.md
+M	docs/DATA_CONTRACT.md
+M	docs/ENDPOINTS.md
+M	docs/INSTRUMENT_REVISION_2026-10-14.md
+M	docs/LOCAL_SETUP.md
+M	docs/OPEN_DECISIONS.md
+M	docs/OPERATIONS.md
+M	manifest.json
+M	scripts/db/apply-schema.mjs
+M	scripts/derive-instrument-revision.mjs
+M	src/controllers/HealthController.cfc
+M	src/instrument/DefinitionValidator.cfc
+M	src/instrument/RenderModelBuilder.cfc
+M	src/instrument/VisibilityEngine.cfc
+M	src/reports/DisclosureControl.cfc
+M	src/reports/ReportRepository.cfc
+M	src/reports/ReportService.cfc
+M	src/walks/WalkPayloadValidator.cfc
+M	src/walks/WalkRepository.cfc
+M	src/walks/WalkService.cfc
+M	src/walks/WalkSummaryFormatter.cfc
+A	tests/cfml/specs/MultipleValuesReportTest.cfc
+A	tests/cfml/specs/MultipleValuesTest.cfc
+A	tests/fixtures/visibility-vectors-multiple.json
+M	tests/golden/instrument-snapshot-2026-10-14.golden.json
+A	tests/node/browser-multiple.test.mjs
+M	tests/node/browser-revision.test.mjs
+M	tests/node/db-scripts.test.mjs
+M	tests/node/instrument-revision.test.mjs
+M	tests/node/schema-contract.test.mjs
+M	tests/node/sqlserver-2016.test.mjs
+M	tests/ops/database-operations.test.mjs
+M	tests/ops/production-profile.test.mjs
+M	tests/ops/readiness-schema-missing.test.mjs
+M	tests/ops/upgrade-and-rollback.test.mjs
+$ git diff --name-status 9825d1052a295bbef7df4ed132a626950bf5bb9b HEAD -- database   (must be exactly: 008 added, database/README.md changed)
+A	database/008_multiple_dimension_values.sql
+M	database/README.md
+$ git diff --name-only 9825d1052a295bbef7df4ed132a626950bf5bb9b HEAD -- package.json package-lock.json .env.example config/instrument-config.json source   (must be empty: no dependency, no supplied source or baseline)
+<empty>
+$ git diff --name-only 9825d1052a295bbef7df4ed132a626950bf5bb9b HEAD -- docs/evidence   (must be empty: the code commit carries no evidence, and earlier evidence is never rewritten)
+<empty>
+$ git status --porcelain=v1 --untracked-files=all  (tracked, staged, unstaged and untracked)
+<empty>
+$ git ls-remote origin refs/heads/claude/icfwalk-phase-8-correction-cgsc7q   (recorded only: pushed as committed)
+edea2fa75153f6eac044a1643f1eeffe4e1f339d
+--- the earlier Phase 8 branch and the frozen integration branch are unchanged
+claude/icfwalk-phase-8-hardening-handoff 10f476ba9a69359f23a259be0e903afeed64b415
+claude/icfwalk-phase-6-7-integration 133f02192a99970029847bc2da2d31b9d8da06e1
+
+================================================================================
+== 2026-10-15T06:36:42Z  2. Runtime versions
+================================================================================
+$ uname -srm
+Linux 6.18.44-fc-v114 x86_64
+[exit 0]
+os Ubuntu 24.04.5 LTS
+cpus 4, memory 15 GB
+$ node --version
+v22.22.0
+[exit 0]
+$ npm --version
+10.9.4
+[exit 0]
+Picked up JAVA_TOOL_OPTIONS: [redacted: container proxy and truststore settings]
+openjdk version "21.0.12.1" 2026-08-18
+OpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)
+OpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)
+$ docker version --format docker client {{.Client.Version}} server {{.Server.Version}}
+docker client 29.8.2 server 29.8.2
+[exit 0]
+
+================================================================================
+== 2026-10-15T06:36:42Z  3. Dependencies from the lock file
+================================================================================
+$ npm ci
+
+added 76 packages, and audited 77 packages in 4s
+
+15 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+[exit 0]
+status after npm ci: <empty>
+$ node -e for (const p of ["playwright","playwright-core","mssql","axe-core"]) console.log(p, require("/home/user/ICFWalk/node_modules/"+p+"/package.json").version)
+playwright 1.56.1
+playwright-core 1.56.1
+mssql 12.7.2
+axe-core 4.13.0
+[exit 0]
+Chromium 141.0.7390.37
+
+================================================================================
+== 2026-10-15T06:36:46Z  4. Handoff validation, the revision document, and the package tests
+================================================================================
+$ npm run validate:handoff
+
+> icfwalk@0.1.0 validate:handoff
+> node scripts/validate-handoff.mjs
+
+{
+  "ok": true,
+  "checks": 51,
+  "errors": 0,
+  "counts": {
+    "sections": 23,
+    "items": 144,
+    "responseSets": 29,
+    "responseOptions": 138,
+    "rules": 12,
+    "dimensions": 10,
+    "dimensionValues": 95,
+    "instrumentDimensions": 10
+  }
+}
+[exit 0]
+$ npm run revision:check
+
+> icfwalk@0.1.0 revision:check
+> node scripts/derive-instrument-revision.mjs --check
+
+config/instrument-config-2026-10-14.json is current.
+[exit 0]
+$ npm run test:package
+
+> icfwalk@0.1.0 test:package
+> node --test tests/node/package.test.mjs tests/node/canonical-json.test.mjs tests/node/snapshot.test.mjs tests/node/schema-contract.test.mjs tests/node/instrument-revision.test.mjs
+
+TAP version 13
+# Subtest: shared canonical JSON vectors (reference implementation)
+ok 1 - shared canonical JSON vectors (reference implementation)
+  ---
+  duration_ms: 1.380174
+  type: 'test'
+  ...
+# Subtest: canonicalize rejects undefined and non-finite numbers
+ok 2 - canonicalize rejects undefined and non-finite numbers
+  ---
+  duration_ms: 0.318549
+  type: 'test'
+  ...
+# Subtest: canonicalize is stable under key insertion order
+ok 3 - canonicalize is stable under key insertion order
+  ---
+  duration_ms: 0.118376
+  type: 'test'
+  ...
+# Subtest: REV-01 the 2026-10-14 document is exactly what the derivation makes of the supplied document and the prototype
+ok 4 - REV-01 the 2026-10-14 document is exactly what the derivation makes of the supplied document and the prototype
+  ---
+  duration_ms: 18.452088
+  type: 'test'
+  ...
+# Subtest: REV-02 its source is the 2026-10-14 prototype, and the supplied baseline is untouched
+ok 5 - REV-02 its source is the 2026-10-14 prototype, and the supplied baseline is untouched
+  ---
+  duration_ms: 0.475722
+  type: 'test'
+  ...
+# Subtest: REV-03 the document compiles to its recorded checksums and counts
+ok 6 - REV-03 the document compiles to its recorded checksums and counts
+  ---
+  duration_ms: 25.549733
+  type: 'test'
+  ...
+# Subtest: REV-04 the document's references resolve and its keys are unique
+ok 7 - REV-04 the document's references resolve and its keys are unique
+  ---
+  duration_ms: 1.24981
+  type: 'test'
+  ...
+# Subtest: REV-05 every rated item is on the prototype's 4-point scale, with its exact level definitions
+ok 8 - REV-05 every rated item is on the prototype's 4-point scale, with its exact level definitions
+  ---
+  duration_ms: 1.13772
+  type: 'test'
+  ...
+# Subtest: REV-06 the level names travel with the version, and the 2026-09-17 version keeps its 1-5 scale
+ok 9 - REV-06 the level names travel with the version, and the 2026-09-17 version keeps its 1-5 scale
+  ---
+  duration_ms: 0.143593
+  type: 'test'
+  ...
+# Subtest: REV-07 the look-fors are the prototype's lists, in its order, for Part 1 and every component
+ok 10 - REV-07 the look-fors are the prototype's lists, in its order, for Part 1 and every component
+  ---
+  duration_ms: 0.478111
+  type: 'test'
+  ...
+# Subtest: REV-08 Academic Teaming has three rated questions, each shown only while the component applies
+ok 11 - REV-08 Academic Teaming has three rated questions, each shown only while the component applies
+  ---
+  duration_ms: 0.744339
+  type: 'test'
+  ...
+# Subtest: REV-09 Part 1: Target/Task Alignment before Adopted Curriculum, and Pacing offers Pacing NOT evident first
+ok 12 - REV-09 Part 1: Target/Task Alignment before Adopted Curriculum, and Pacing offers Pacing NOT evident first
+  ---
+  duration_ms: 1.048254
+  type: 'test'
+  ...
+# Subtest: REV-10 the visit fields carry the prototype's labels and option lists, and Part 1's tag field is gone
+ok 13 - REV-10 the visit fields carry the prototype's labels and option lists, and Part 1's tag field is gone
+  ---
+  duration_ms: 0.948247
+  type: 'test'
+  ...
+# Subtest: REV-11 nothing else moved: every record the revision does not own is the supplied record
+ok 14 - REV-11 nothing else moved: every record the revision does not own is the supplied record
+  ---
+  duration_ms: 2.0167
+  type: 'test'
+  ...
+# Subtest: PKG-01 validate-handoff exits 0 with all checks confirmed
+ok 15 - PKG-01 validate-handoff exits 0 with all checks confirmed
+  ---
+  duration_ms: 218.133992
+  type: 'test'
+  ...
+# Subtest: PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+ok 16 - PKG-02 no retired SIP hierarchy; Part 3 is Conditions for Learning
+  ---
+  duration_ms: 1.177105
+  type: 'test'
+  ...
+# Subtest: PKG-03 exactly 17 placeholders split 3/3/3/3/5
+ok 17 - PKG-03 exactly 17 placeholders split 3/3/3/3/5
+  ---
+  duration_ms: 1.395339
+  type: 'test'
+  ...
+# Subtest: PKG-04 prototype SHA-256 equals JSON source metadata
+ok 18 - PKG-04 prototype SHA-256 equals JSON source metadata
+  ---
+  duration_ms: 0.604115
+  type: 'test'
+  ...
+# Subtest: PKG-05 aligned workbook table row counts equal JSON counts
+ok 19 - PKG-05 aligned workbook table row counts equal JSON counts
+  ---
+  duration_ms: 4.768635
+  type: 'test'
+  ...
+# Subtest: repository columns exist in 001_schema.sql
+ok 20 - repository columns exist in 001_schema.sql
+  ---
+  duration_ms: 1.690198
+  type: 'test'
+  ...
+# Subtest: 002 patch adds response_option.definition idempotently
+ok 21 - 002 patch adds response_option.definition idempotently
+  ---
+  duration_ms: 0.191102
+  type: 'test'
+  ...
+# Subtest: 003 patch adds icf.walk_mutation idempotently
+ok 22 - 003 patch adds icf.walk_mutation idempotently
+  ---
+  duration_ms: 0.096337
+  type: 'test'
+  ...
+# Subtest: 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+ok 23 - 004 patch adds walk_mutation.request_fingerprint idempotently and additively
+  ---
+  duration_ms: 0.294505
+  type: 'test'
+  ...
+# Subtest: 005 patch adds icf.org_unit_dimension_map idempotently and additively
+ok 24 - 005 patch adds icf.org_unit_dimension_map idempotently and additively
+  ---
+  duration_ms: 0.481819
+  type: 'test'
+  ...
+# Subtest: 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+ok 25 - 006 patch scopes dimensions to a version and requires a publisher, idempotently and non-destructively
+  ---
+  duration_ms: 0.668034
+  type: 'test'
+  ...
+# Subtest: 007 patch adds frozen report releases idempotently, additively, and guarded in the database
+ok 26 - 007 patch adds frozen report releases idempotently, additively, and guarded in the database
+  ---
+  duration_ms: 0.793463
+  type: 'test'
+  ...
+# Subtest: 008 patch lets a walk hold several values of a field, idempotently, and widens release categories
+ok 27 - 008 patch lets a walk hold several values of a field, idempotently, and widens release categories
+  ---
+  duration_ms: 0.434734
+  type: 'test'
+  ...
+# Subtest: CFML SQL references only known icf tables
+ok 28 - CFML SQL references only known icf tables
+  ---
+  duration_ms: 1.585874
+  type: 'test'
+  ...
+# Subtest: schema-critical constraints the importer relies on are present
+ok 29 - schema-critical constraints the importer relies on are present
+  ---
+  duration_ms: 0.565486
+  type: 'test'
+  ...
+# Subtest: compiled snapshot matches the golden checksums and counts
+ok 30 - compiled snapshot matches the golden checksums and counts
+  ---
+  duration_ms: 28.929622
+  type: 'test'
+  ...
+# Subtest: snapshot references are logical keys, never GUIDs, and rules resolve to keys
+ok 31 - snapshot references are logical keys, never GUIDs, and rules resolve to keys
+  ---
+  duration_ms: 15.462013
+  type: 'test'
+  ...
+# Subtest: snapshot preserves exact prototype wording and skippable defaults
+ok 32 - snapshot preserves exact prototype wording and skippable defaults
+  ---
+  duration_ms: 13.195104
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 373.184287
+[exit 0]
+
+================================================================================
+== 2026-10-15T06:36:48Z  5. JavaScript syntax (every tracked .js and .mjs)
+================================================================================
+checked 75 files, 0 syntax errors
+
+================================================================================
+== 2026-10-15T06:36:50Z  6. No CFML test was removed: every test function of step 1's code exists at HEAD
+================================================================================
+--- test functions this change adds (at HEAD, not in 36f9db09f595294bdc5f8e151706dbb8dc7b758b)
+NEW tests/cfml/specs/MultipleValuesReportTest.cfc testLiveFiguresCountAWalkUnderEachOfItsValues
+NEW tests/cfml/specs/MultipleValuesReportTest.cfc testAReleaseProtectsCombinationsAndPublishesValuesAsTheirSums
+NEW tests/cfml/specs/MultipleValuesTest.cfc testTheFourCheckboxFieldsTakeSeveralValues
+NEW tests/cfml/specs/MultipleValuesTest.cfc testTheValidatorRefusesWhatSeveralValuesCannotBe
+NEW tests/cfml/specs/MultipleValuesTest.cfc testMatchesTheSharedMultipleVectorsExactly
+NEW tests/cfml/specs/MultipleValuesTest.cfc testOperatorsReadEveryValue
+NEW tests/cfml/specs/MultipleValuesTest.cfc testNarrowingKeepsWhatTheSchoolAllows
+NEW tests/cfml/specs/MultipleValuesTest.cfc testTheSaveValidatorChecksAndOrdersSeveralValues
+NEW tests/cfml/specs/MultipleValuesTest.cfc testTheSummaryListsSeveralValues
+test functions: 36f9db09f595294bdc5f8e151706dbb8dc7b758b 548; missing at HEAD: 0; HEAD 557 (new: 9)
+the CFML suites must run exactly 548 + 9 = 557 cases on each engine
+
+================================================================================
+== 2026-10-15T06:36:52Z  7. A brand-new SQL Server container and database
+================================================================================
+Stopped Lucee (pid 1178)
+[lucee-down exit 0]
+Container icfwalk-acf does not exist.
+[acf-down exit 0]
+$ docker rm -f icfwalk-mssql
+icfwalk-mssql
+[exit 0]
+$ rm -f .runtime/mssql.env
+[exit 0]
+$ ICFWALK_MSSQL_IMAGE=mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090 tools/runtime/mssql-up.sh
+Generated SA password into /home/user/ICFWalk/.runtime/mssql.env
+Started icfwalk-mssql from mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090
+Databases icfwalk_dev and icfwalk_test are available on 127.0.0.1:1433 (user sa, password in /home/user/ICFWalk/.runtime/mssql.env).
+[exit 0]
+(.env ICFWALK_DB_PASSWORD set to the new container's generated password; not printed)
+$ docker ps --filter name=icfwalk-mssql --format {{.ID}} {{.Image}} {{.Status}} created {{.CreatedAt}}
+df2cae1c97ff 4402d880dd4c Up 6 seconds created 2026-10-15 06:36:53 +0000 UTC
+[exit 0]
+$ docker inspect --format {{.Config.Image}} @ {{.Image}} icfwalk-mssql
+mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090 @ sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090
+[exit 0]
+Microsoft SQL Server 2022 (RTM-CU27) (KB5104824) - 16.0.4295.3 (X64) 
+	Aug 26 2026 11:02:22 
+	Copyright (C) 2022 Microsoft Corporation
+	Developer Edition (64-bit) on Linux (Ubuntu 22.04.5 LTS) <X64>
+icfwalk_dev 2026-10-15 06:36:59.343
+icfwalk_test 2026-10-15 06:36:59.487
+0
+
+================================================================================
+== 2026-10-15T06:36:59Z  8. Schema: 001 to 008 in order, then each of 002 to 008 re-applied, and 001 refused
+================================================================================
+$ node scripts/db/apply-schema.mjs
+(node:4508) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "001_schema.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk database objects created successfully.",
+      "table_count": "20"
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "002_alignment_patch.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk alignment patch applied successfully.",
+      "response_option_definition_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "003_walk_mutation.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk walk mutation log applied successfully.",
+      "walk_mutation_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "004_mutation_fingerprint.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk mutation fingerprint patch applied successfully.",
+      "request_fingerprint_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "005_org_unit_dimension_map.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk org-unit dimension mapping patch applied successfully.",
+      "org_unit_dimension_map_available": 1,
+      "identifying_value_constraint_present": 1,
+      "non_identifying_rows_removed": 0,
+      "mapping_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "006_version_scoped_dimensions.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk version-scoped dimension patch applied successfully.",
+      "version_scoped_dimension_columns_available": 1,
+      "instrument_dimension_value_available": 1,
+      "publisher_required_constraint_present": 1,
+      "legacy_membership_backfill_state": "COMPLETED",
+      "legacy_membership_backfill_ran_now": 1,
+      "version_dimension_rows": 0,
+      "version_dimension_value_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "007_report_release.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk report release patch applied successfully.",
+      "report_release_available": 1,
+      "release_guards_present": 12,
+      "release_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+{
+  "script": "008_multiple_dimension_values.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk multiple dimension values patch applied successfully.",
+      "multiple_values_available": 1,
+      "release_category_characters": 300
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 002
+(node:4515) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "002_alignment_patch.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk alignment patch applied successfully.",
+      "response_option_definition_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 003
+(node:4522) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "003_walk_mutation.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk walk mutation log applied successfully.",
+      "walk_mutation_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 004
+(node:4529) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "004_mutation_fingerprint.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk mutation fingerprint patch applied successfully.",
+      "request_fingerprint_available": 1
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 005
+(node:4536) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "005_org_unit_dimension_map.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk org-unit dimension mapping patch applied successfully.",
+      "org_unit_dimension_map_available": 1,
+      "identifying_value_constraint_present": 1,
+      "non_identifying_rows_removed": 0,
+      "mapping_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 006
+(node:4543) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "006_version_scoped_dimensions.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk version-scoped dimension patch applied successfully.",
+      "version_scoped_dimension_columns_available": 1,
+      "instrument_dimension_value_available": 1,
+      "publisher_required_constraint_present": 1,
+      "legacy_membership_backfill_state": "COMPLETED",
+      "legacy_membership_backfill_ran_now": 0,
+      "version_dimension_rows": 0,
+      "version_dimension_value_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 007
+(node:4550) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "007_report_release.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk report release patch applied successfully.",
+      "report_release_available": 1,
+      "release_guards_present": 12,
+      "release_rows": 0
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 008
+(node:4557) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "008_multiple_dimension_values.sql",
+  "database": "icfwalk_dev",
+  "ok": true,
+  "resultSet": [
+    {
+      "result": "ICFWalk multiple dimension values patch applied successfully.",
+      "multiple_values_available": 1,
+      "release_category_characters": 300
+    }
+  ],
+  "error": null,
+  "errorNumber": null
+}
+[exit 0]
+$ node scripts/db/apply-schema.mjs --only 001   (must refuse: the schema already has tables)
+(node:4567) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "script": "001_schema.sql",
+  "database": "icfwalk_dev",
+  "ok": false,
+  "resultSet": null,
+  "error": "The icf schema already contains tables. No changes were made. Use a reviewed migration script for an existing installation.",
+  "errorNumber": 50001
+}
+[exit 1]
+001 refused a second application, as designed
+28
+TR_report_release_block_floor
+TR_report_release_block_immutable
+TR_report_release_block_members
+TR_report_release_block_no_delete
+TR_report_release_cell_immutable
+TR_report_release_cell_no_delete
+TR_report_release_cell_sealed
+TR_report_release_immutable
+TR_report_release_no_delete
+TR_report_release_no_overlap
+TR_report_release_walk_guard
+TR_report_release_walk_no_delete
+006_version_scoped_dimensions legacy_membership_backfill COMPLETED
+1 600
+walk_id
+dimension_id
+selection_ordinal
+
+================================================================================
+== 2026-10-15T06:37:04Z  9. Lucee: the application on the new database, and the instrument seed
+================================================================================
+$ tools/runtime/lucee-up.sh
+Starting Lucee/Jetty on port 8888 (pid 4614, log /home/user/ICFWalk/.runtime/lucee.log)
+curl: (7) Failed to connect to 127.0.0.1 port 8888 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to 127.0.0.1 port 8888 after 0 ms: Couldn't connect to server
+Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"611b5b03-304a-426b-870e-ff49de0f4d88","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}
+[exit 0]
+lucee jars:
+b692f66bb7a53bfa739b7eb466dc2bf75bddd5bfa0e7d425cd2a0434233987c2  .runtime/jars/jetty-runner.jar
+e004579cf48a6d0f4d527429ad19d7543070803d3454eacb5e8efe674419be80  .runtime/jars/lucee-light.jar
+dbf27d0d7ff85f133bbc80b0282ec2cd4d1fa1f0954033dd6bbd68612a1c0a6e  .runtime/jars/mssql-jdbc.jar
+$ curl -sS http://127.0.0.1:8888/index.cfm/api/health
+{"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"04e19389-58b9-4d10-8fc6-0fcb182d8074","engine":"Lucee 6.2.8.20","environment":"development","status":"ok"}[exit 0]
+
+$ node scripts/seed-instrument.mjs
+{
+  "status": 201,
+  "created": true,
+  "versionId": "8F0F88D8-C22C-4FBB-A7F0-05E8E01DA021",
+  "versionLabel": "2026-09-17 aligned prototype",
+  "versionStatus": "DRAFT",
+  "checksum": "c125b4ae28524884865956326ecdaaded00019f16635ef13c9830dcf4f84dda9",
+  "definitionsChecksum": "7df87ad01b10027fe19b8b559bc2c1cd10f33411dba0070aab35b8e4d6dfcb5f",
+  "counts": {
+    "dimensionValues": 95,
+    "dimensions": 10,
+    "instrumentDimensions": 10,
+    "items": 144,
+    "placeholders": 17,
+    "responseOptions": 138,
+    "responseSets": 29,
+    "rules": 12,
+    "sections": 23
+  },
+  "warningCount": 17,
+  "placeholderCount": 17,
+  "elapsedMs": 2178
+}
+[exit 0]
+
+================================================================================
+== 2026-10-15T06:37:12Z  10. Lucee: the full suite (ICFWALK_REQUIRE_APP=1 npm test: Node, HTTP, Playwright and CFML)
+================================================================================
+$ env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy -u ALL_PROXY -u all_proxy ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR=<outside the repository> npm test
+
+> icfwalk@0.1.0 test
+> node --test --test-concurrency=1 "tests/node/*.test.mjs"
+
+TAP version 13
+# (node:4708) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+ok 1 - every administration route refuses anonymous callers, users without instrument.manage, and a POST without CSRF
+  ---
+  duration_ms: 2055.993749
+  type: 'test'
+  ...
+# Subtest: ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+ok 2 - ADM-01: an administrator imports a document and gets the validation summary; re-import answers 200
+  ---
+  duration_ms: 2705.904724
+  type: 'test'
+  ...
+# Subtest: P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+ok 3 - P6A-02: an import replaces a DRAFT only when it names that DRAFT's exact id and checksum
+  ---
+  duration_ms: 3946.15994
+  type: 'test'
+  ...
+# Subtest: ADM-01: an invalid document is refused with every issue and writes nothing
+ok 4 - ADM-01: an invalid document is refused with every issue and writes nothing
+  ---
+  duration_ms: 83.762955
+  type: 'test'
+  ...
+# Subtest: ADM-01: the import body contract and the size cap
+ok 5 - ADM-01: the import body contract and the size cap
+  ---
+  duration_ms: 145.167679
+  type: 'test'
+  ...
+# Subtest: P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+ok 6 - P6A-01: an unauthenticated import is answered 401 without its body being read, however large or malformed
+  ---
+  duration_ms: 27.269453
+  type: 'test'
+  ...
+# Subtest: P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+ok 7 - P6A-01: an import with a missing or wrong CSRF token is answered 403 without its body being read
+  ---
+  duration_ms: 38.47173
+  type: 'test'
+  ...
+# Subtest: P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+ok 8 - P6A-01: an authorized import over 5,000,000 bytes is 413 DOCUMENT_TOO_LARGE before it is parsed, malformed or not
+  ---
+  duration_ms: 431.592149
+  type: 'test'
+  ...
+# Subtest: P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+ok 9 - P6A-01: a chunked import is measured in UTF-8 bytes, so multibyte text cannot slip under the limit
+  ---
+  duration_ms: 138.646517
+  type: 'test'
+  ...
+# Subtest: P6A-01: a maintenance route without its token is hidden without its body being read
+ok 10 - P6A-01: a maintenance route without its token is hidden without its body being read
+  ---
+  duration_ms: 6.594615
+  type: 'test'
+  ...
+# Subtest: P6A-01: a body declared over the web server's own ceiling is refused without being read, by the application or before it
+ok 11 - P6A-01: a body declared over the web server's own ceiling is refused without being read, by the application or before it
+  ---
+  duration_ms: 17.109237
+  type: 'test'
+  ...
+# Subtest: ADM-02: preview returns exactly the render model the walk runtime serves
+ok 12 - ADM-02: preview returns exactly the render model the walk runtime serves
+  ---
+  duration_ms: 2006.101711
+  type: 'test'
+  ...
+# Subtest: ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+ok 13 - ADM-06: a new DRAFT from a published version, a prompt changed in it, and the comparison
+  ---
+  duration_ms: 3904.737468
+  type: 'test'
+  ...
+# Subtest: ADM-06: malformed edit requests are refused with their paths
+ok 14 - ADM-06: malformed edit requests are refused with their paths
+  ---
+  duration_ms: 1080.154866
+  type: 'test'
+  ...
+# Subtest: ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+ok 15 - ADM-07: retiring a version with a historical walk keeps that walk openable and saveable
+  ---
+  duration_ms: 2972.189417
+  type: 'test'
+  ...
+# Subtest: ADM-07: retiring the only version in service needs explicit confirmation
+ok 16 - ADM-07: retiring the only version in service needs explicit confirmation
+  ---
+  duration_ms: 2108.523084
+  type: 'test'
+  ...
+# Subtest: ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+ok 17 - ADM-08: the placeholder queue lists every placeholder prompt, searches, and shrinks when one is resolved
+  ---
+  duration_ms: 1953.702529
+  type: 'test'
+  ...
+# Subtest: a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+ok 18 - a DRAFT can be discarded through the admin route; a published version cannot; a body is refused
+  ---
+  duration_ms: 2430.021051
+  type: 'test'
+  ...
+# Subtest: Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+ok 19 - Excel round-trip: a version exports as its document and as a workbook, and an edited workbook imports as a draft with exactly the edit
+  ---
+  duration_ms: 3374.848251
+  type: 'test'
+  ...
+# Subtest: Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+ok 20 - Excel round-trip: a workbook edited in LibreOffice Calc imports, and the comparison shows exactly its edits
+  ---
+  duration_ms: 1909.643146
+  type: 'test'
+  ...
+# (node:4763) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: publish refuses an anonymous request and discloses nothing
+ok 21 - publish refuses an anonymous request and discloses nothing
+  ---
+  duration_ms: 1061.662043
+  type: 'test'
+  ...
+# Subtest: publish refuses a signed-in user without instrument.manage
+ok 22 - publish refuses a signed-in user without instrument.manage
+  ---
+  duration_ms: 800.512748
+  type: 'test'
+  ...
+# Subtest: publish refuses a missing and an invalid CSRF token
+ok 23 - publish refuses a missing and an invalid CSRF token
+  ---
+  duration_ms: 773.569798
+  type: 'test'
+  ...
+# Subtest: publish refuses a malformed version id
+ok 24 - publish refuses a malformed version id
+  ---
+  duration_ms: 6.862556
+  type: 'test'
+  ...
+# Subtest: publish answers 404 for an unknown version without disclosing or mutating anything
+ok 25 - publish answers 404 for an unknown version without disclosing or mutating anything
+  ---
+  duration_ms: 30.907994
+  type: 'test'
+  ...
+# Subtest: publish takes no request body, and a client cannot name the publisher
+ok 26 - publish takes no request body, and a client cannot name the publisher
+  ---
+  duration_ms: 1103.303223
+  type: 'test'
+  ...
+# Subtest: the publish route's no-body contract is exact: {}, whitespace and null are all bodies
+ok 27 - the publish route's no-body contract is exact: {}, whitespace and null are all bodies
+  ---
+  duration_ms: 1113.642837
+  type: 'test'
+  ...
+# Subtest: an administrator publishes a DRAFT: frozen bytes, stored publisher, one audit
+ok 28 - an administrator publishes a DRAFT: frozen bytes, stored publisher, one audit
+  ---
+  duration_ms: 1084.735942
+  type: 'test'
+  ...
+# Subtest: a checksum-matching semantically invalid DRAFT is refused with the validation response and changes nothing
+ok 29 - a checksum-matching semantically invalid DRAFT is refused with the validation response and changes nothing
+  ---
+  duration_ms: 1046.290138
+  type: 'test'
+  ...
+# Subtest: publishing twice is a deterministic conflict and creates no second success event
+ok 30 - publishing twice is a deterministic conflict and creates no second success event
+  ---
+  duration_ms: 1045.18911
+  type: 'test'
+  ...
+# Subtest: a retry after an assumed-lost successful response cannot publish twice or alter the frozen state
+ok 31 - a retry after an assumed-lost successful response cannot publish twice or alter the frozen state
+  ---
+  duration_ms: 1028.622436
+  type: 'test'
+  ...
+# Subtest: two concurrent publishes produce exactly one transition and one deterministic refusal
+ok 32 - two concurrent publishes produce exactly one transition and one deterministic refusal
+  ---
+  duration_ms: 1139.83152
+  type: 'test'
+  ...
+# Subtest: a publish racing a mutation ends in one serial order, and published content never changes after
+ok 33 - a publish racing a mutation ends in one serial order, and published content never changes after
+  ---
+  duration_ms: 1280.581374
+  type: 'test'
+  ...
+# Subtest: repeated publish/mutation races never deadlock: the two paths share one lock order
+ok 34 - repeated publish/mutation races never deadlock: the two paths share one lock order
+  ---
+  duration_ms: 4261.604752
+  type: 'test'
+  ...
+# Subtest: fixtures: org units, users, and roles through maintenance endpoints
+ok 35 - fixtures: org units, users, and roles through maintenance endpoints
+  ---
+  duration_ms: 115.991552
+  type: 'test'
+  ...
+# Subtest: AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+ok 36 - AUTH-01 authenticated endpoints deny anonymous requests without leaking data
+  ---
+  duration_ms: 23.730775
+  type: 'test'
+  ...
+# Subtest: signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+ok 37 - signed-in user gets identity, permissions, CSRF token, and a secure session cookie
+  ---
+  duration_ms: 43.558342
+  type: 'test'
+  ...
+# Subtest: AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+ok 38 - AUTH-06 admin route is separate from walk roles; users without roles are forbidden
+  ---
+  duration_ms: 54.196273
+  type: 'test'
+  ...
+# Subtest: maintenance endpoints stay token-guarded even for signed-in admins
+ok 39 - maintenance endpoints stay token-guarded even for signed-in admins
+  ---
+  duration_ms: 5.057388
+  type: 'test'
+  ...
+# (node:4802) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: A11Y (phone-375): My Walks, the chooser and every editor state
+ok 40 - A11Y (phone-375): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 13857.790393
+  type: 'test'
+  ...
+# Subtest: A11Y (phone-375): live reports, and a report-only reader's released reports
+ok 41 - A11Y (phone-375): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 4440.832049
+  type: 'test'
+  ...
+# Subtest: A11Y (phone-375): every administration panel and its confirmation
+ok 42 - A11Y (phone-375): every administration panel and its confirmation
+  ---
+  duration_ms: 3944.389521
+  type: 'test'
+  ...
+# Subtest: A11Y (tablet-768): My Walks, the chooser and every editor state
+ok 43 - A11Y (tablet-768): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 11408.455403
+  type: 'test'
+  ...
+# Subtest: A11Y (tablet-768): live reports, and a report-only reader's released reports
+ok 44 - A11Y (tablet-768): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 4686.32577
+  type: 'test'
+  ...
+# Subtest: A11Y (tablet-768): every administration panel and its confirmation
+ok 45 - A11Y (tablet-768): every administration panel and its confirmation
+  ---
+  duration_ms: 4035.244163
+  type: 'test'
+  ...
+# Subtest: A11Y (desktop-1280): My Walks, the chooser and every editor state
+ok 46 - A11Y (desktop-1280): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 11356.672304
+  type: 'test'
+  ...
+# Subtest: A11Y (desktop-1280): live reports, and a report-only reader's released reports
+ok 47 - A11Y (desktop-1280): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 4985.467042
+  type: 'test'
+  ...
+# Subtest: A11Y (desktop-1280): every administration panel and its confirmation
+ok 48 - A11Y (desktop-1280): every administration panel and its confirmation
+  ---
+  duration_ms: 4007.507192
+  type: 'test'
+  ...
+# Subtest: A11Y (zoom-200): My Walks, the chooser and every editor state
+ok 49 - A11Y (zoom-200): My Walks, the chooser and every editor state
+  ---
+  duration_ms: 11257.001765
+  type: 'test'
+  ...
+# Subtest: A11Y (zoom-200): live reports, and a report-only reader's released reports
+ok 50 - A11Y (zoom-200): live reports, and a report-only reader's released reports
+  ---
+  duration_ms: 4863.162573
+  type: 'test'
+  ...
+# Subtest: A11Y (zoom-200): every administration panel and its confirmation
+ok 51 - A11Y (zoom-200): every administration panel and its confirmation
+  ---
+  duration_ms: 4461.39794
+  type: 'test'
+  ...

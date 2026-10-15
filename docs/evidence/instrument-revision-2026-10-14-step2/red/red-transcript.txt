@@ -1,0 +1,343 @@
+== 2026-10-15T07:16:37Z the script
+#!/usr/bin/env bash
+# Instrument revision 2026-10-14, step 2: red before green for the correction made while step 2 was
+# verified, run on step 2's code commit after its gate and operations.
+#
+# Step 2's CFML first asked isNull() about values in seven components. On Adobe ColdFusion 2023 isNull()
+# is also true for a string whose value is "null", in any letter case (Phase 8 defect P8-08), so the read
+# path dropped an Other text "Null" and the save validator skipped a value code "null" instead of refusing
+# it. The portability rules refused the calls (rule 7), and the components now ask structKeyExists and
+# arrayIsDefined; MULTI-E3 saves an Other text "Null" and refuses the code "null".
+#
+# Red: the seven components as they were before the correction (95ddaf4, the checkpoint before it; the
+# script prints the difference, which is the correction alone), with the tests as committed:
+#
+#   static      tests/node/cfml-portability.test.mjs (no engine): rule 7 names the isNull() calls
+#   coldfusion  tests/node/browser-multiple.test.mjs against ColdFusion 2023: MULTI-E3 fails on
+#               "Other's text Null is text", and the five others pass
+#   lucee       the same file against Lucee: all six pass, which is how the defect got past Lucee
+#
+# Green: nothing reverted, the same three runs pass. The application reloads its components after every
+# change: ColdFusion through the development reinit (its trusted cache is off), Lucee by a restart. Run
+# with Google Fonts out of the browser's reach, as the gate runs. The tree is checked clean at the end.
+#
+# usage: red.sh <expected HEAD> <output directory outside the repository>
+set -uo pipefail
+REPO=/home/user/ICFWalk
+BASE=95ddaf435bef59738d27a0449e78bcec203c110c
+FILES=(src/instrument/DefinitionValidator.cfc src/instrument/RenderModelBuilder.cfc src/instrument/VisibilityEngine.cfc src/reports/ReportService.cfc src/walks/WalkPayloadValidator.cfc src/walks/WalkRepository.cfc src/walks/WalkSummaryFormatter.cfc)
+ACF_DB=icfwalk_acf_gate
+EXPECTED="$1"; OUT="$2"
+NO_PROXY_ENV=(env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy -u ALL_PROXY -u all_proxy)
+cd "$REPO"
+echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ) the script"; cat "$0"
+[ "$(git rev-parse HEAD)" = "$EXPECTED" ] || { echo "HEAD is not $EXPECTED"; exit 1; }
+[ -z "$(git status --porcelain=v1 --untracked-files=all)" ] || { echo "the tree is not clean"; exit 1; }
+echo "HEAD $(git rev-parse HEAD) tree $(git rev-parse 'HEAD^{tree}'), clean"
+mkdir -p "$OUT"
+RESULT=0
+echo; echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ) the correction: git diff $BASE HEAD -- the seven components"
+git diff "$BASE" HEAD -- "${FILES[@]}"
+
+reload() { # reload <coldfusion|lucee>
+  if [ "$1" = coldfusion ]; then
+    curl -sS -o /dev/null -w "coldfusion reinit %{http_code}\n" --max-time 300 "http://127.0.0.1:8500/index.cfm/api/health?reinit=1"
+  else
+    tools/runtime/lucee-down.sh > /dev/null 2>&1; tools/runtime/lucee-up.sh > "$OUT/lucee-up-last.txt" 2>&1; echo "lucee restarted: $(tail -1 "$OUT/lucee-up-last.txt" | cut -c1-120)"
+  fi
+}
+browser() { # browser <engine> <name>: browser-multiple against that engine
+  local engine="$1" name="$2"
+  if [ "$engine" = coldfusion ]; then
+    "${NO_PROXY_ENV[@]}" ICFWALK_BASE_URL=http://127.0.0.1:8500 ICFWALK_DB_NAME="$ACF_DB" ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR="$OUT/shots" node --test tests/node/browser-multiple.test.mjs > "$OUT/$name.tap" 2>&1
+  else
+    "${NO_PROXY_ENV[@]}" ICFWALK_BASE_URL=http://127.0.0.1:8888 ICFWALK_REQUIRE_APP=1 ICFWALK_SCREENSHOT_DIR="$OUT/shots" node --test tests/node/browser-multiple.test.mjs > "$OUT/$name.tap" 2>&1
+  fi
+  local rc=$?
+  grep -E "^(ok|not ok) |^# (tests|pass|fail) " "$OUT/$name.tap"
+  echo "[exit $rc]"
+  return $rc
+}
+static() { # static <name>
+  node --test tests/node/cfml-portability.test.mjs > "$OUT/$1.tap" 2>&1; local rc=$?
+  grep -E "^(ok|not ok) |^# (tests|pass|fail) " "$OUT/$1.tap"; echo "[exit $rc]"; return $rc
+}
+
+echo; echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ) red: the seven components reverted to ${BASE:0:7}"
+for f in "${FILES[@]}"; do git show "$BASE:$f" > "$f"; done
+echo "\$ git status --porcelain=v1"; git status --porcelain=v1
+echo; echo "-- static"
+static red-static; RC=$?
+if [ "$RC" != 0 ] && grep -q "not ok 7 - rule 7" "$OUT/red-static.tap" && [ "$(grep -c "isNull(" "$OUT/red-static.tap")" -gt 0 ]; then echo "RED as required: rule 7 names the isNull() calls"; else echo "NOT RED as required"; RESULT=1; fi
+echo; echo "-- coldfusion"
+reload coldfusion
+browser coldfusion red-coldfusion; RC=$?
+if [ "$RC" != 0 ] && grep -q "^not ok 3 - MULTI-E3" "$OUT/red-coldfusion.tap" && grep -qF "Other's text Null is text" "$OUT/red-coldfusion.tap" && [ "$(grep -cE '^not ok ' "$OUT/red-coldfusion.tap")" = 1 ]; then
+  echo "RED as required: on ColdFusion 2023 MULTI-E3 alone fails, on the Other text \"Null\""
+else echo "NOT RED as required"; RESULT=1; fi
+echo; echo "-- lucee"
+reload lucee
+browser lucee red-lucee; RC=$?
+if [ "$RC" = 0 ]; then echo "As expected, Lucee passes the uncorrected components: its isNull() answers false for the text \"null\""; else echo "UNEXPECTED: Lucee failed the uncorrected components"; RESULT=1; fi
+
+echo; echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ) green: nothing reverted"
+git checkout -- "${FILES[@]}"
+echo "\$ git status --porcelain=v1"; S=$(git status --porcelain=v1); echo "${S:-<empty>}"
+echo; echo "-- static"; static green-static || RESULT=1
+echo; echo "-- coldfusion"; reload coldfusion; browser coldfusion green-coldfusion || RESULT=1
+echo; echo "-- lucee"; reload lucee; browser lucee green-lucee || RESULT=1
+
+rm -rf "$OUT/shots"
+STATUS=$(git status --porcelain=v1 --untracked-files=all); echo; echo "status after: ${STATUS:-<empty>}"
+[ -z "$STATUS" ] || RESULT=1
+[ "$(git rev-parse HEAD)" = "$EXPECTED" ] || RESULT=1
+[ "$RESULT" = 0 ] && echo "RED BEFORE GREEN CONFIRMED" || echo "RED BEFORE GREEN NOT CONFIRMED"
+exit $RESULT
+HEAD 7a639ac41e1253dda75086325419c5764d391755 tree fa4fdea1be2447950b37b974adac57ebf715525b, clean
+
+== 2026-10-15T07:16:37Z the correction: git diff 95ddaf435bef59738d27a0449e78bcec203c110c HEAD -- the seven components
+diff --git a/src/instrument/DefinitionValidator.cfc b/src/instrument/DefinitionValidator.cfc
+index 1d28d73..77a6d8f 100644
+--- a/src/instrument/DefinitionValidator.cfc
++++ b/src/instrument/DefinitionValidator.cfc
+@@ -360,7 +360,7 @@ component output="false" {
+ 		var settings = arguments.placement.settings;
+ 		if (!structKeyExists(settings, "multiple")) return;
+ 		var dimensionCode = keyOf(arguments.placement, "dimensionCode");
+-		if (isNull(settings.multiple) || !variables.types.isJsonBoolean(settings.multiple)) {
++		if (!variables.types.isJsonBoolean(settings.multiple)) {
+ 			err(arguments.r, "MULTIPLE_SETTING_INVALID", "Placement of dimension '" & dimensionCode & "' has settings.multiple that is not true or false.", arguments.pa & ".settings.multiple");
+ 			return;
+ 		}
+diff --git a/src/instrument/RenderModelBuilder.cfc b/src/instrument/RenderModelBuilder.cfc
+index 1fd4995..02c7c7e 100644
+--- a/src/instrument/RenderModelBuilder.cfc
++++ b/src/instrument/RenderModelBuilder.cfc
+@@ -354,7 +354,7 @@ component output="false" {
+ 	 * (DefinitionValidator refuses any other value, and anything but a list).
+ 	 */
+ 	private boolean function isMultiple(required struct settings) {
+-		if (!structKeyExists(arguments.settings, "multiple") || isNull(arguments.settings.multiple)) return false;
++		if (!structKeyExists(arguments.settings, "multiple")) return false;
+ 		return variables.types.isJsonBoolean(arguments.settings.multiple) && arguments.settings.multiple;
+ 	}
+ 
+diff --git a/src/instrument/VisibilityEngine.cfc b/src/instrument/VisibilityEngine.cfc
+index 348a227..63c5cdb 100644
+--- a/src/instrument/VisibilityEngine.cfc
++++ b/src/instrument/VisibilityEngine.cfc
+@@ -299,7 +299,7 @@ component output="false" {
+ 
+ 	/** Whether a dimension value holds several values: selectedValueCodes is an array. */
+ 	private boolean function isSeveral(required any v) {
+-		return isStruct(arguments.v) && structKeyExists(arguments.v, "selectedValueCodes") && !isNull(arguments.v.selectedValueCodes) && isArray(arguments.v.selectedValueCodes);
++		return isStruct(arguments.v) && structKeyExists(arguments.v, "selectedValueCodes") && isArray(arguments.v.selectedValueCodes);
+ 	}
+ 
+ 	/**
+@@ -310,8 +310,11 @@ component output="false" {
+ 	private array function selectedCodes(required any v) {
+ 		var out = [];
+ 		if (isSeveral(arguments.v)) {
+-			for (var c in arguments.v.selectedValueCodes) {
+-				if (!isNull(c) && isSimpleValue(c) && len(toString(c))) arrayAppend(out, toString(c));
++			var codes = arguments.v.selectedValueCodes;
++			for (var i = 1; i <= arrayLen(codes); i++) {
++				if (!arrayIsDefined(codes, i)) continue;
++				var c = codes[i];
++				if (isSimpleValue(c) && len(toString(c))) arrayAppend(out, toString(c));
+ 			}
+ 			return out;
+ 		}
+diff --git a/src/reports/ReportService.cfc b/src/reports/ReportService.cfc
+index eb588ae..18743a5 100644
+--- a/src/reports/ReportService.cfc
++++ b/src/reports/ReportService.cfc
+@@ -1304,7 +1304,7 @@ component output="false" {
+ 		}
+ 		var visibility = visibilityFor(code, arguments.ancestry, arguments.model, arguments.index);
+ 		if (structIsEmpty(visibility)) return {};
+-		var several = structKeyExists(dim, "multiple") && !isNull(dim.multiple) && isBoolean(dim.multiple) && dim.multiple;
++		var several = structKeyExists(dim, "multiple") && isBoolean(dim.multiple) && dim.multiple;
+ 		return { "code": code, "label": dim.label, "dimensionId": dimensionId, "values": values, "valueById": valueById, "visibility": visibility, "multiple": several };
+ 	}
+ 
+diff --git a/src/walks/WalkPayloadValidator.cfc b/src/walks/WalkPayloadValidator.cfc
+index d36cbec..a4ce098 100644
+--- a/src/walks/WalkPayloadValidator.cfc
++++ b/src/walks/WalkPayloadValidator.cfc
+@@ -234,7 +234,7 @@ component output="false" {
+ 	}
+ 
+ 	private boolean function isMultiple(required struct dim) {
+-		return structKeyExists(arguments.dim, "multiple") && !isNull(arguments.dim.multiple) && isBoolean(arguments.dim.multiple) && arguments.dim.multiple;
++		return structKeyExists(arguments.dim, "multiple") && isBoolean(arguments.dim.multiple) && arguments.dim.multiple;
+ 	}
+ 
+ 	/** Whether a clean dimension value selects Other: its one code, or any of its several. */
+@@ -268,7 +268,6 @@ component output="false" {
+ 			// A null or empty element selects nothing, as a null or empty value field does.
+ 			if (!arrayIsDefined(arguments.v, i)) continue;
+ 			var e = arguments.v[i];
+-			if (isNull(e)) continue;
+ 			if (!jsonString(e)) { issue(arguments.issues, "INVALID_DIMENSION_VALUE", at, "Each value code must be a JSON string."); ok = false; continue; }
+ 			if (!len(e)) continue;
+ 			var valueId = findValueId(arguments.dim, arguments.definitionIndex.values[dimId], toString(e));
+diff --git a/src/walks/WalkRepository.cfc b/src/walks/WalkRepository.cfc
+index af8899b..8b5356c 100644
+--- a/src/walks/WalkRepository.cfc
++++ b/src/walks/WalkRepository.cfc
+@@ -430,11 +430,11 @@ component output="false" {
+ 			return;
+ 		}
+ 		var valueCode = arguments.q.value_code[arguments.r];
+-		if (isNull(valueCode) || !len(valueCode)) return;
++		if (!len(valueCode)) return;
+ 		if (!structKeyExists(arguments.out, code)) arguments.out[code] = { "selectedValueCodes": [] };
+ 		arrayAppend(arguments.out[code].selectedValueCodes, valueCode);
+ 		var text = arguments.q.text_value[arguments.r];
+-		if (lCase(valueCode) == "other" && !isNull(text) && len(text)) arguments.out[code]["otherText"] = text;
++		if (lCase(valueCode) == "other" && len(text)) arguments.out[code]["otherText"] = text;
+ 	}
+ 
+ 	/**
+@@ -443,11 +443,11 @@ component output="false" {
+ 	 * under "settings"; there, "multiple" is the boolean true.
+ 	 */
+ 	private boolean function placementTakesSeveral(required any settingsJson) {
+-		if (isNull(arguments.settingsJson) || !isSimpleValue(arguments.settingsJson) || !len(arguments.settingsJson) || !isJSON(arguments.settingsJson)) return false;
++		if (!isSimpleValue(arguments.settingsJson) || !len(arguments.settingsJson) || !isJSON(arguments.settingsJson)) return false;
+ 		var row = deserializeJSON(arguments.settingsJson);
+-		if (!isStruct(row) || !structKeyExists(row, "settings") || isNull(row.settings) || !isStruct(row.settings)) return false;
++		if (!isStruct(row) || !structKeyExists(row, "settings") || !isStruct(row.settings)) return false;
+ 		var s = row.settings;
+-		if (!structKeyExists(s, "multiple") || isNull(s.multiple)) return false;
++		if (!structKeyExists(s, "multiple")) return false;
+ 		return variables.types.isJsonBoolean(s.multiple) && s.multiple;
+ 	}
+ 
+diff --git a/src/walks/WalkSummaryFormatter.cfc b/src/walks/WalkSummaryFormatter.cfc
+index 95f7252..378cb2d 100644
+--- a/src/walks/WalkSummaryFormatter.cfc
++++ b/src/walks/WalkSummaryFormatter.cfc
+@@ -186,12 +186,14 @@ component output="false" {
+ 		if (!structKeyExists(arguments.state.dimensions, arguments.code)) return "";
+ 		var v = arguments.state.dimensions[arguments.code];
+ 		if (!isStruct(v)) return "";
+-		if (structKeyExists(v, "selectedValueCodes") && !isNull(v.selectedValueCodes) && isArray(v.selectedValueCodes)) {
++		if (structKeyExists(v, "selectedValueCodes") && isArray(v.selectedValueCodes)) {
+ 			if (!structKeyExists(arguments.model.dimensions, arguments.code)) return "";
+ 			var parts = [];
+ 			var several = toString(nv(v, "otherText", ""));
+-			for (var pick in v.selectedValueCodes) {
+-				if (isNull(pick) || !isSimpleValue(pick)) continue;
++			var picks = v.selectedValueCodes;
++			for (var i = 1; i <= arrayLen(picks); i++) {
++				if (!arrayIsDefined(picks, i) || !isSimpleValue(picks[i])) continue;
++				var pick = picks[i];
+ 				for (var listed in arguments.model.dimensions[arguments.code].values) {
+ 					if (compare(listed.valueCode, toString(pick)) != 0) continue;
+ 					if (compareNoCase(toString(listed.valueCode), "other") == 0 && len(several)) arrayAppend(parts, several);
+
+== 2026-10-15T07:16:37Z red: the seven components reverted to 95ddaf4
+$ git status --porcelain=v1
+ M src/instrument/DefinitionValidator.cfc
+ M src/instrument/RenderModelBuilder.cfc
+ M src/instrument/VisibilityEngine.cfc
+ M src/reports/ReportService.cfc
+ M src/walks/WalkPayloadValidator.cfc
+ M src/walks/WalkRepository.cfc
+ M src/walks/WalkSummaryFormatter.cfc
+
+-- static
+ok 1 - rule 1: no reserved word is a variable name
+ok 2 - rule 2: no function re-declares one of its own arguments
+ok 3 - rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+ok 4 - rule 4: no conditional's true branch is a one-element array of a string literal
+ok 5 - rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+ok 6 - rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+not ok 7 - rule 7: the application never asks isNull() about a value, only about a query cell
+ok 8 - rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+ok 9 - the rules read every CFML template and component
+# tests 9
+# pass 8
+# fail 1
+[exit 1]
+RED as required: rule 7 names the isNull() calls
+
+-- coldfusion
+coldfusion reinit 200
+ok 1 - MULTI-E1 the 2026-10-14 document imports and publishes, and exactly its four checkbox fields take several values
+ok 2 - MULTI-E2 the JavaScript engine reproduces the shared multiple-value vectors on the served model
+ok 3 - MULTI-E3 several values save in the version's order, one row each, and every malformed submission is refused
+ok 4 - MULTI-E4 the summary and the email draft list several values as the 2026-10-14 prototype does
+ok 5 - MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text, a school change, My walks, axe-core and 375 px
+ok 6 - MULTI-E6 the Reports view labels a field that takes several values, and only such a field
+# tests 6
+# pass 6
+# fail 0
+[exit 0]
+NOT RED as required
+
+-- lucee
+lucee restarted: Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"0a300664
+ok 1 - MULTI-E1 the 2026-10-14 document imports and publishes, and exactly its four checkbox fields take several values
+ok 2 - MULTI-E2 the JavaScript engine reproduces the shared multiple-value vectors on the served model
+ok 3 - MULTI-E3 several values save in the version's order, one row each, and every malformed submission is refused
+ok 4 - MULTI-E4 the summary and the email draft list several values as the 2026-10-14 prototype does
+ok 5 - MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text, a school change, My walks, axe-core and 375 px
+ok 6 - MULTI-E6 the Reports view labels a field that takes several values, and only such a field
+# tests 6
+# pass 6
+# fail 0
+[exit 0]
+As expected, Lucee passes the uncorrected components: its isNull() answers false for the text "null"
+
+== 2026-10-15T07:17:05Z green: nothing reverted
+$ git status --porcelain=v1
+<empty>
+
+-- static
+ok 1 - rule 1: no reserved word is a variable name
+ok 2 - rule 2: no function re-declares one of its own arguments
+ok 3 - rule 3: no component function is called unscoped under a name ColdFusion 2023 resolves first
+ok 4 - rule 4: no conditional's true branch is a one-element array of a string literal
+ok 5 - rule 5: CFML source is ASCII, so no engine or platform default charset can change a literal
+ok 6 - rule 6: isNull() tests a variable path, never a bracket expression followed by a member
+ok 7 - rule 7: the application never asks isNull() about a value, only about a query cell
+ok 8 - rule 8: a thread reaches a spec's barrier through the variables scope, never as an attribute
+ok 9 - the rules read every CFML template and component
+# tests 9
+# pass 9
+# fail 0
+[exit 0]
+
+-- coldfusion
+coldfusion reinit 200
+ok 1 - MULTI-E1 the 2026-10-14 document imports and publishes, and exactly its four checkbox fields take several values
+ok 2 - MULTI-E2 the JavaScript engine reproduces the shared multiple-value vectors on the served model
+ok 3 - MULTI-E3 several values save in the version's order, one row each, and every malformed submission is refused
+ok 4 - MULTI-E4 the summary and the email draft list several values as the 2026-10-14 prototype does
+ok 5 - MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text, a school change, My walks, axe-core and 375 px
+ok 6 - MULTI-E6 the Reports view labels a field that takes several values, and only such a field
+# tests 6
+# pass 6
+# fail 0
+[exit 0]
+
+-- lucee
+lucee restarted: Health: {"application":"ICFWalk","checks":{"database":"ok","longText":"ok","schema":"present"},"correlationId":"1c5d9586
+ok 1 - MULTI-E1 the 2026-10-14 document imports and publishes, and exactly its four checkbox fields take several values
+ok 2 - MULTI-E2 the JavaScript engine reproduces the shared multiple-value vectors on the served model
+ok 3 - MULTI-E3 several values save in the version's order, one row each, and every malformed submission is refused
+ok 4 - MULTI-E4 the summary and the email draft list several values as the 2026-10-14 prototype does
+ok 5 - MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text, a school change, My walks, axe-core and 375 px
+ok 6 - MULTI-E6 the Reports view labels a field that takes several values, and only such a field
+# tests 6
+# pass 6
+# fail 0
+[exit 0]
+
+status after: <empty>
+RED BEFORE GREEN NOT CONFIRMED
+red exit=1

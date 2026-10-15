@@ -1,0 +1,7 @@
+# 2026-10-15T07:18:45Z the probe, copied to tests/cfml/specs/ZzIsNullProbeTest.cfc, run through POST /api/maintenance/tests/run?filter=ZzIsNullProbe on each engine, then removed
+## port 8500
+engine: ColdFusion Server 2023,0,25,330977
+ZzIsNullProbeTest testProbe failed: local=NO structMember=YES argument=YES argumentMember=YES arrayElementLocal=NO forInLocal=NO parsedMember=YES parsedElementLocal=NO queryCellLocal=NO queryCell=NO literal=NO
+## port 8888
+engine: Lucee 6.2.8.20
+ZzIsNullProbeTest testProbe failed: local=false structMember=false argument=false argumentMember=false arrayElementLocal=false forInLocal=false parsedMember=false parsedElementLocal=false queryCellLocal=false queryCell=false literal=false
