@@ -460,7 +460,7 @@ test("MULTI-E6 the Reports view labels a field that takes several values, and on
   await page.click("#nav-reports-btn");
   await page.waitForSelector('.report-dimension[data-dimension="grade"]', { timeout: 20000 });
   assert.ok(marked, "the report carried a Grade level");
-  assert.equal(await page.textContent('.report-dimension[data-dimension="grade"] .report-multiple'), `${NOTE} Walks with at least one Grade level value: 3.`);
+  assert.equal(await page.textContent('.report-dimension[data-dimension="grade"] .report-multiple'), `${NOTE} Walks with at least one value: 3.`);
   assert.equal(await page.locator(".report-multiple").count(), 1, "no other field is labelled");
   await page.locator('.report-dimension[data-dimension="grade"]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(shotDir, "multiple-report-label.png") });

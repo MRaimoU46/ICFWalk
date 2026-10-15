@@ -340,8 +340,10 @@ export function mountReports({ api, apiBase }) {
       if (d.withheldResponses) notes.push(`Withheld: ${formatNumber(d.withheldResponses)}`);
       // A field a walk may hold several values of counts the walk under each (the owner's rule), so
       // its rows can add up to more than the walks; the report says so, and how many walks it covers.
+      // The sentence sits under the field's own table, so it does not repeat the label, which may not
+      // read as a noun ("Visit occurred at the:").
       const several = d.multiple
-        ? el("p", { className: "muted report-multiple", text: `${MULTIPLE_VALUES_NOTE} Walks with at least one ${d.label} value: ${figure(d.states.ANSWERED, d.withheldStates.includes("ANSWERED"))}.` })
+        ? el("p", { className: "muted report-multiple", text: `${MULTIPLE_VALUES_NOTE} Walks with at least one value: ${figure(d.states.ANSWERED, d.withheldStates.includes("ANSWERED"))}.` })
         : null;
       return el("div", { className: "report-dimension", "data-dimension": d.code },
         rows.length ? table(d.label, [d.label, "Walks"], rows) : el("p", { className: "muted", text: `${d.label}: no answers.` }),
