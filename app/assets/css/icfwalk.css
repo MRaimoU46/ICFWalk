@@ -243,6 +243,8 @@ a.btn{display:inline-block;text-decoration:none;line-height:normal}
 .report-table .num{text-align:right;white-space:nowrap;width:1%}
 .report-dist caption{font-weight:600;color:var(--gray);font-size:12px;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .report-states{font-size:12px;margin:0 0 6px}
+/* A field a walk can hold several values of: its counts can add up to more than the walks. */
+.report-multiple{font-size:12px;margin:6px 0}
 .report-avg{font-size:13px;font-weight:600;color:var(--navy);margin:0 0 4px}
 .report-section{margin-top:18px;padding-top:12px;border-top:3px solid var(--navy)}
 .report-section.depth-2,.report-section.depth-3{border-top:1px solid var(--line);margin-top:12px}
