@@ -23,7 +23,7 @@ const tag = `p8ops${Date.now().toString(36)}`;
 const restored = `${source}_restore_${tag}`;
 const scratch = `icfwalk_${tag}_mig`;
 const evidence = { startedAt: new Date().toISOString(), source, restored, scratch };
-const SCRIPTS = ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql", "005_org_unit_dimension_map.sql", "006_version_scoped_dimensions.sql", "007_report_release.sql"];
+const SCRIPTS = ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql", "005_org_unit_dimension_map.sql", "006_version_scoped_dimensions.sql", "007_report_release.sql", "008_multiple_dimension_values.sql"];
 
 const missing = !hasDatabaseConfig(env) ? "no database configuration" : false;
 if (requireApp(env) && missing) throw new Error(`ICFWALK_REQUIRE_APP is set but ${missing}`);
@@ -215,6 +215,12 @@ test("a migration refused by its own precondition changes nothing", { skip, time
     assert.equal(results[0].ok, false);
     assert.equal(results[0].errorNumber, 50061, results[0].error);
     assert.deepEqual(await fingerprint(empty), before, "the refused patch created nothing");
+    // 008 alters existing tables only, and refuses a database without them.
+    const results008 = await applyTo(empty, ["008_multiple_dimension_values.sql"]);
+    record.results008 = results008;
+    assert.equal(results008[0].ok, false);
+    assert.equal(results008[0].errorNumber, 50081, results008[0].error);
+    assert.deepEqual(await fingerprint(empty), before, "the refused 008 changed nothing");
   } finally {
     await dropDatabase(empty);
   }

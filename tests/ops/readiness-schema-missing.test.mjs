@@ -15,7 +15,7 @@
 //   2. The application, started on it. Health must answer 503 "degraded" with database "ok", schema
 //      "missing" and longText "ok": a 200 here fails the operation. The body must name no environment,
 //      engine, database, login, datasource or secret.
-//   3. Migrations 001 to 007, applied the documented way (scripts/db/apply-schema.mjs --database), to
+//   3. Migrations 001 to 008, applied the documented way (scripts/db/apply-schema.mjs --database), to
 //      this database only.
 //   4. Health read again with no restart, and again after restarting the application: both 200 "ok" with
 //      schema "present". The first of these is also what shows that the database the application reads
@@ -23,6 +23,10 @@
 //      restart between, and step 3 touched no other database. (The count of the runtime login's open
 //      sessions on the database is recorded too, but not relied on: Lucee keeps a pooled connection
 //      open after a request, ColdFusion's datasource here does not.)
+//   4b. A database the migrations have not reached (migration 008): 008 is undone on this database by the
+//      administrative login (a test-only return to the 007 shape of icf.walk_dimension_value), and health
+//      answers 503 with schema "outdated", with no restart; 008 applied the documented way
+//      (scripts/db/apply-schema.mjs --database --only 008) makes it 200 "present" again.
 //   5. The engine this started is removed, the database and the login are dropped and shown gone, and the
 //      development application, when one was answering before, still answers 200.
 //
@@ -321,12 +325,12 @@ test("the readiness probe on a reachable database without the ICFWalk schema: 50
   const stillEmpty = await master.request().query(`SELECT COUNT(*) AS n FROM [${database}].sys.tables`);
   assert.equal(stillEmpty.recordset[0].n, 0, "nothing the application did created a table");
 
-  // 3. Migrations 001 to 007, the documented way.
+  // 3. Migrations 001 to 008, the documented way.
   const command = ["scripts/db/apply-schema.mjs", "--database", database];
   const output = execFileSync(process.execPath, command, { cwd: root, encoding: "utf8" });
   const scripts = [...output.matchAll(/"script": "([^"]+)",\s*"database": "([^"]+)",\s*"ok": (true|false)/g)].map((m) => ({ script: m[1], database: m[2], ok: m[3] === "true" }));
   evidence.steps.migrations = { command: `node ${command.join(" ")}`, exit: 0, scripts };
-  assert.deepEqual(scripts.map((s) => s.script), ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql", "005_org_unit_dimension_map.sql", "006_version_scoped_dimensions.sql", "007_report_release.sql"]);
+  assert.deepEqual(scripts.map((s) => s.script), ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql", "005_org_unit_dimension_map.sql", "006_version_scoped_dimensions.sql", "007_report_release.sql", "008_multiple_dimension_values.sql"]);
   assert.ok(scripts.every((s) => s.ok && s.database === database), "every script applied to the new database");
 
   // 4. Ready: with no restart, and after one. "missing" before step 3 and "present" now, with no restart
@@ -345,6 +349,31 @@ test("the readiness probe on a reachable database without the ICFWalk schema: 50
   assert.equal(afterRestart.body.status, "ok");
   assert.deepEqual(afterRestart.body.checks, { database: "ok", longText: "ok", schema: "present" });
   assertSafe(afterRestart, "after the restart");
+
+  // 4b. Outdated: the code is ahead of the database's migrations (008 not applied).
+  await master.request().batch(`USE [${database}];
+    ALTER TABLE [icf].[walk_dimension_value] DROP CONSTRAINT [CK_walk_dimension_value_ordinal];
+    ALTER TABLE [icf].[walk_dimension_value] DROP CONSTRAINT [UQ_walk_dimension_value_selected];
+    ALTER TABLE [icf].[walk_dimension_value] DROP CONSTRAINT [PK_walk_dimension_value];
+    ALTER TABLE [icf].[walk_dimension_value] DROP CONSTRAINT [DF_walk_dimension_value_selection_ordinal];
+    ALTER TABLE [icf].[walk_dimension_value] DROP COLUMN [selection_ordinal];
+    ALTER TABLE [icf].[walk_dimension_value] ADD CONSTRAINT [PK_walk_dimension_value] PRIMARY KEY CLUSTERED ([walk_id], [dimension_id]);
+    USE [master];`);
+  const outdated = await probeHealth(engine.base);
+  evidence.steps.withoutMigration008 = { status: outdated.status, body: outdated.body };
+  assert.equal(outdated.status, 503, `health with migration 008 undone: ${outdated.text ?? outdated.error}`);
+  assert.equal(outdated.body.status, "degraded");
+  assert.deepEqual(outdated.body.checks, { database: "ok", longText: "ok", schema: "outdated" });
+  assertSafe(outdated, "with 008 undone");
+  const command008 = ["scripts/db/apply-schema.mjs", "--database", database, "--only", "008"];
+  const output008 = execFileSync(process.execPath, command008, { cwd: root, encoding: "utf8" });
+  const scripts008 = [...output008.matchAll(/"script": "([^"]+)",\s*"database": "([^"]+)",\s*"ok": (true|false)/g)].map((m) => ({ script: m[1], database: m[2], ok: m[3] === "true" }));
+  evidence.steps.migration008 = { command: `node ${command008.join(" ")}`, scripts: scripts008 };
+  assert.deepEqual(scripts008, [{ script: "008_multiple_dimension_values.sql", database, ok: true }]);
+  const current = await probeHealth(engine.base);
+  evidence.steps.afterMigration008 = { status: current.status, body: current.body };
+  assert.equal(current.status, 200, `health after 008, no restart: ${current.text ?? current.error}`);
+  assert.deepEqual(current.body.checks, { database: "ok", longText: "ok", schema: "present" });
 
   // What ran, from the application's own log: the engine it started on, and no request failed.
   const events = logEvents(engine.logText());
@@ -365,5 +394,5 @@ test("the readiness probe on a reachable database without the ICFWalk schema: 50
   evidence.normalEnvironmentAfter = { url: baseUrl(env), status: normalAfter.status, checks: normalAfter.body?.checks ?? null };
   if (normalBefore?.status === 200) assert.equal(normalAfter.status, 200, "the development application still answers 200");
 
-  t.diagnostic(`engine ${engine.name}: before migrations ${beforeMigrations.status} ${JSON.stringify(beforeMigrations.body.checks)}; after, no restart ${noRestart.status}; after a restart ${afterRestart.status}`);
+  t.diagnostic(`engine ${engine.name}: before migrations ${beforeMigrations.status} ${JSON.stringify(beforeMigrations.body.checks)}; after, no restart ${noRestart.status}; after a restart ${afterRestart.status}; without 008 ${outdated.status} ${outdated.body.checks.schema}; after 008 ${current.status}`);
 });

@@ -2,6 +2,11 @@
  * Liveness/readiness endpoint. Never reports configuration values or secrets. Answers 200 and
  * status "ok" only when the database answers, the ICFWalk schema is present and long text comes back
  * whole; anything else is 503 and "degraded", so a load balancer takes the node out (A8-01).
+ *
+ * "present" means the schema this code reads: the icf tables and the latest migration's change,
+ * walk_dimension_value.selection_ordinal (008). A database the migrations have not reached yet is
+ * "outdated", and this node stays out of service until 008 is applied rather than failing every
+ * walk it reads.
  */
 component output="false" {
 
@@ -26,8 +31,11 @@ component output="false" {
 		var schema = "unknown";
 		var longText = "unknown";
 		try {
-			var q = variables.db.run("SELECT CASE WHEN OBJECT_ID(N'[icf].[instrument]', N'U') IS NULL THEN 0 ELSE 1 END AS has_schema");
-			schema = q.has_schema[1] == 1 ? "present" : "missing";
+			var q = variables.db.run(
+				"SELECT CASE WHEN OBJECT_ID(N'[icf].[instrument]', N'U') IS NULL THEN 0 ELSE 1 END AS has_schema,
+				        CASE WHEN COL_LENGTH(N'[icf].[walk_dimension_value]', N'selection_ordinal') IS NULL THEN 0 ELSE 1 END AS has_latest"
+			);
+			schema = q.has_schema[1] != 1 ? "missing" : (q.has_latest[1] == 1 ? "present" : "outdated");
 			longText = longTextCheck();
 		} catch (any e) {
 			database = "unavailable";

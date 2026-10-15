@@ -67,6 +67,15 @@ component output="false" {
 	variables.OPTION_FILTERS = {
 		"schoolTypeToGradeBand": { "sourceDimensionCode": "school", "matchField": "valueGroup" }
 	};
+	/**
+	 * A placement whose settings carry "multiple": true lets a walk select several of the dimension's
+	 * values (the 2026-10-14 prototype's checkboxes). A frozen release stores a walk's values in such
+	 * a field as one category, its value codes joined by "+" in the version's order
+	 * (icf.report_release_cell.category_code, nvarchar(300), migration 008), so every code must be one
+	 * a combination can carry unambiguously, and all of them joined must fit the column.
+	 */
+	variables.MULTIPLE_CODE_PATTERN = "^[A-Za-z0-9_.-]+$";
+	variables.MULTIPLE_COMBINATION_MAX = 300;
 
 	public DefinitionValidator function init() {
 		// The shared JSON type helper. Constructed here rather than injected so that adopting it
@@ -96,6 +105,7 @@ component output="false" {
 	public array function snapshotCountKeys() { return duplicate(variables.SNAPSHOT_COUNT_KEYS); }
 	public array function retiredText() { return duplicate(variables.RETIRED_TEXT); }
 	public struct function optionFilters() { return duplicate(variables.OPTION_FILTERS); }
+	public numeric function multipleCombinationMax() { return variables.MULTIPLE_COMBINATION_MAX; }
 	public numeric function maxOrder() { return variables.MAX_ORDER; }
 	public string function placeholderReviewStatus() { return variables.PLACEHOLDER_REVIEW_STATUS; }
 
@@ -253,6 +263,12 @@ component output="false" {
 			activeValueCount[dimensionCode] = (structKeyExists(activeValueCount, dimensionCode) ? activeValueCount[dimensionCode] : 0) + 1;
 		}
 
+		// The dimensions an active placement lets a walk select several values of.
+		var multipleDimensions = {};
+		for (var pl in arguments.d.instrumentDimensions) {
+			if (truthy(pl, "active") && isMultiplePlacement(pl)) multipleDimensions[keyOf(pl, "dimensionCode")] = true;
+		}
+
 		i = 0;
 		for (var pl in arguments.d.instrumentDimensions) {
 			var pa = path(arguments.r, "instrumentDimensions") & "[" & i & "]";
@@ -276,7 +292,8 @@ component output="false" {
 					err(arguments.r, "DIMENSION_NO_ACTIVE_VALUES", "Active placement of list dimension '" & dimensionCode & "' offers no active value, so it would render with nothing to choose.", pa & ".dimensionCode");
 				}
 			}
-			checkOptionFilter(arguments.r, pl, pa, activeDimensions);
+			checkOptionFilter(arguments.r, pl, pa, activeDimensions, multipleDimensions);
+			checkMultiple(arguments.r, arguments.d, pl, pa, activeDimensions);
 		}
 
 		// Rules the runtime keeps (active ones) must point at content the runtime also keeps.
@@ -307,7 +324,7 @@ component output="false" {
 	}
 
 	/** A placement's option filter must be one the renderer implements, or it throws at build time. */
-	private void function checkOptionFilter(required struct r, required any placement, required string pa, required struct activeDimensions) {
+	private void function checkOptionFilter(required struct r, required any placement, required string pa, required struct activeDimensions, required struct multipleDimensions) {
 		if (!structKeyExists(arguments.placement, "settings") || !isStruct(arguments.placement.settings)) return;
 		var settings = arguments.placement.settings;
 		if (!has(settings, "optionFilter") || !isSimpleValue(settings.optionFilter) || !len(trim(toString(settings.optionFilter)))) return;
@@ -320,6 +337,56 @@ component output="false" {
 		var sourceCode = variables.OPTION_FILTERS[name].sourceDimensionCode;
 		if (!structKeyExists(arguments.activeDimensions, sourceCode)) {
 			err(arguments.r, "OPTION_FILTER_SOURCE_MISSING", "Option filter '" & name & "' reads dimension '" & sourceCode & "', which this version does not offer as an active dimension.", arguments.pa & ".settings.optionFilter");
+		} else if (structKeyExists(arguments.multipleDimensions, sourceCode)) {
+			// The filter narrows by the group of the source's one selected value.
+			err(arguments.r, "OPTION_FILTER_SOURCE_MULTIPLE", "Option filter '" & name & "' reads dimension '" & sourceCode & "', which this version lets a walk select several values of; the filter needs exactly one.", arguments.pa & ".settings.optionFilter");
+		}
+	}
+
+	/** Whether a placement's settings ask for several values: "multiple" is the JSON boolean true. */
+	private boolean function isMultiplePlacement(required any placement) {
+		if (!isStruct(arguments.placement) || !structKeyExists(arguments.placement, "settings") || !isStruct(arguments.placement.settings)) return false;
+		var settings = arguments.placement.settings;
+		return structKeyExists(settings, "multiple") && variables.types.isJsonBoolean(settings.multiple) && settings.multiple;
+	}
+
+	/**
+	 * settings.multiple, when present, is a JSON boolean; when true, the dimension is a controlled
+	 * list whose active value codes a release can combine (MULTIPLE_CODE_PATTERN) and whose codes,
+	 * all joined by "+", fit MULTIPLE_COMBINATION_MAX characters.
+	 */
+	private void function checkMultiple(required struct r, required struct d, required any placement, required string pa, required struct activeDimensions) {
+		if (!structKeyExists(arguments.placement, "settings") || !isStruct(arguments.placement.settings)) return;
+		var settings = arguments.placement.settings;
+		if (!structKeyExists(settings, "multiple")) return;
+		var dimensionCode = keyOf(arguments.placement, "dimensionCode");
+		if (isNull(settings.multiple) || !variables.types.isJsonBoolean(settings.multiple)) {
+			err(arguments.r, "MULTIPLE_SETTING_INVALID", "Placement of dimension '" & dimensionCode & "' has settings.multiple that is not true or false.", arguments.pa & ".settings.multiple");
+			return;
+		}
+		if (!settings.multiple || !structKeyExists(arguments.activeDimensions, dimensionCode)) return;
+		if (keyOf(arguments.activeDimensions[dimensionCode], "dataType") != "LIST") {
+			err(arguments.r, "MULTIPLE_NOT_A_LIST", "Placement of dimension '" & dimensionCode & "' asks for several values, but only a list dimension offers values to select.", arguments.pa & ".settings.multiple");
+			return;
+		}
+		var joined = 0;
+		var count = 0;
+		var vi = 0;
+		for (var v in arguments.d.dimensionValues) {
+			var vp = path(arguments.r, "dimensionValues") & "[" & vi & "]";
+			vi++;
+			if (!truthy(v, "active") || keyOf(v, "dimensionCode") != dimensionCode) continue;
+			var code = keyOf(v, "valueCode");
+			if (!len(code)) continue;
+			if (!reFind(variables.MULTIPLE_CODE_PATTERN, code)) {
+				err(arguments.r, "MULTIPLE_VALUE_CODE_INVALID", "Value '" & code & "' of dimension '" & dimensionCode & "', which takes several values, may hold only letters, digits, '_', '-' and '.' so that a report can combine it with others.", vp & ".valueCode");
+			}
+			joined += len(code);
+			count++;
+		}
+		if (count > 1) joined += count - 1;
+		if (joined > variables.MULTIPLE_COMBINATION_MAX) {
+			err(arguments.r, "MULTIPLE_CODES_TOO_LONG", "The value codes of dimension '" & dimensionCode & "', which takes several values, come to " & joined & " characters joined; a report stores a combination in at most " & variables.MULTIPLE_COMBINATION_MAX & ".", arguments.pa & ".settings.multiple");
 		}
 	}
 

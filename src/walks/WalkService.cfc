@@ -148,7 +148,7 @@ component output="false" {
 		var materialized = variables.db.transact(function() {
 			var row = walks.findWalk(id, true);
 			if (structIsEmpty(row)) errors.notFound();
-			var dims = walks.loadDimensionValues(id);
+			var dims = walks.loadDimensionValues(id, walks.definitionIndex(row.versionId).multiple);
 			var responses = walks.loadResponses(id);
 			var model = variables.snapshots.renderModelFor(row.versionId);
 			var state = stateOf(dims, responses);
@@ -291,7 +291,7 @@ component output="false" {
 			if (compare(row.rowVersion, rowVersion) != 0) {
 				return { "conflict": { "walkId": id, "serverRowVersion": row.rowVersion, "serverUpdatedAt": json.formatDate(row.updatedAt) } };
 			}
-			var priorDims = walks.loadDimensionValues(id);
+			var priorDims = walks.loadDimensionValues(id, index.multiple);
 			var priorResponses = walks.loadResponses(id);
 			// Server-authoritative retention: currently hidden values come from the database.
 			var merged = mergeRetainedHidden(model, validated.state, priorDims, priorResponses);
@@ -370,7 +370,7 @@ component output="false" {
 			if (row.status == "VOIDED") errors.conflict("This walk has been voided.", "WALK_VOIDED", { "walkId": id });
 			if (row.status == "COMPLETED") errors.conflict("This walk is already completed.", "WALK_ALREADY_COMPLETED", { "walkId": id, "completedAt": json.formatDate(row.completedAt) });
 			if (compare(row.rowVersion, rowVersion) != 0) return { "conflict": { "walkId": id, "serverRowVersion": row.rowVersion, "serverUpdatedAt": json.formatDate(row.updatedAt) } };
-			var dims = walks.loadDimensionValues(id);
+			var dims = walks.loadDimensionValues(id, walks.definitionIndex(row.versionId).multiple);
 			var responses = walks.loadResponses(id);
 			var state = stateOf(dims, responses);
 			var evaluation = engine.evaluateVisibility(model, state);
@@ -524,6 +524,24 @@ component output="false" {
 			}
 			var v = arguments.state.dimensions[code];
 			if (compare(variables.json.serialize(v), variables.json.serialize(prior)) == 0) continue;
+			if (structKeyExists(v, "selectedValueCodes")) {
+				// Several values (migration 008): the dimension's rows are replaced, one per value, in the
+				// order the validator put them (the version's value order), so a stored walk reads back
+				// exactly as saved and an unchanged one plans no write.
+				// Ids from the version's index, code by code: normalization may have removed values the
+				// validator resolved (a school change narrowing the grades), and retention may have put
+				// the stored values back in place of the submitted ones.
+				var ids = [];
+				for (var c in v.selectedValueCodes) arrayAppend(ids, arguments.index.values[dimensionId][c]);
+				var otherValueId = "";
+				for (var oi = 1; oi <= arrayLen(v.selectedValueCodes); oi++) if (lCase(v.selectedValueCodes[oi]) == "other") otherValueId = ids[oi];
+				arrayAppend(ops, {
+					"kind": "REPLACE_DIMENSION_VALUES", "walkId": arguments.walkId, "versionId": arguments.versionId, "dimensionId": dimensionId,
+					"valueIds": ids, "otherValueId": otherValueId, "otherText": structKeyExists(v, "otherText") ? v.otherText : ""
+				});
+				written.dimensions++;
+				continue;
+			}
 			var typed = {};
 			if (structKeyExists(v, "selectedValueCode")) {
 				typed["selectedValueId"] = structKeyExists(arguments.resolved.dimensions, code) && structKeyExists(arguments.resolved.dimensions[code], "valueId") ? arguments.resolved.dimensions[code].valueId : arguments.index.values[dimensionId][v.selectedValueCode];
@@ -568,6 +586,8 @@ component output="false" {
 		for (var op in arguments.ops) {
 			if (op.kind == "DELETE_DIMENSION") {
 				variables.walks.deleteDimensionValue(op.walkId, op.dimensionId);
+			} else if (op.kind == "REPLACE_DIMENSION_VALUES") {
+				variables.walks.replaceDimensionValues(op.walkId, op.versionId, op.dimensionId, op.valueIds, op.otherValueId, op.otherText);
 			} else if (op.kind == "UPSERT_DIMENSION") {
 				variables.walks.upsertDimensionValue(op.walkId, op.versionId, op.dimensionId, op.value, op.exists);
 			} else {
@@ -933,7 +953,7 @@ component output="false" {
 	private struct function loadDto(required string walkId, required struct principal, struct row = {}) {
 		var header = structIsEmpty(arguments.row) ? variables.walks.findWalk(arguments.walkId) : arguments.row;
 		if (structIsEmpty(header)) variables.errors.notFound();
-		var dims = variables.walks.loadDimensionValues(arguments.walkId);
+		var dims = variables.walks.loadDimensionValues(arguments.walkId, variables.walks.definitionIndex(header.versionId).multiple);
 		var responses = variables.walks.loadResponses(arguments.walkId);
 		var model = variables.snapshots.renderModelFor(header.versionId);
 		var state = stateOf(dims, responses);

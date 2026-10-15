@@ -3,8 +3,10 @@
  * tests/fixtures/visibility-vectors.json proves both produce the same output.
  *
  * Working state shape (docs/DATA_CONTRACT.md autosave payload):
- *   { dimensions: { code: { selectedValueCode?, otherText?, textValue?, dateValue? } },
+ *   { dimensions: { code: { selectedValueCode?, selectedValueCodes?, otherText?, textValue?, dateValue? } },
  *     responses:  { itemKey: { storedCode?, textValue? } } }
+ * selectedValueCodes (an array, in the version's value order) is a dimension whose placement lets a
+ * walk select several values; selectedValueCode is every other list dimension.
  *
  * See the CFML twin for the semantics. Nothing here is keyed to a specific section, item, or
  * dimension: every decision comes from the render model (rules, response sets, option filters).
@@ -15,6 +17,21 @@ function str(v, key) {
   const x = v[key];
   if (x === undefined || x === null) return "";
   return typeof x === "object" ? "" : String(x);
+}
+
+/** Whether a dimension value holds several values: selectedValueCodes is an array. */
+export function isSeveral(v) {
+  return Boolean(v) && typeof v === "object" && Array.isArray(v.selectedValueCodes);
+}
+
+/**
+ * The codes a dimension value selects: every non-empty text of selectedValueCodes, in order, or
+ * selectedValueCode alone. Anything else (an object, null) selects nothing, as str reads it.
+ */
+export function selectedCodes(v) {
+  if (isSeveral(v)) return v.selectedValueCodes.filter((c) => c !== null && c !== undefined && typeof c !== "object" && String(c).length > 0).map(String);
+  const sel = str(v, "selectedValueCode");
+  return sel ? [sel] : [];
 }
 
 export function indexModel(model) {
@@ -58,11 +75,13 @@ function dimensionCandidates(model, code, st) {
   const out = [];
   const v = st.dimensions[code];
   if (!v) return out;
-  const sel = str(v, "selectedValueCode");
-  if (sel) {
-    out.push(sel);
+  const selected = selectedCodes(v);
+  if (selected.length) {
     const dim = model.dimensions[code];
-    if (dim) for (const dv of dim.values) if (dv.valueCode === sel) out.push(dv.label);
+    for (const sel of selected) {
+      out.push(sel);
+      if (dim) for (const dv of dim.values) if (dv.valueCode === sel) out.push(dv.label);
+    }
     return out;
   }
   const text = str(v, "textValue");
@@ -125,8 +144,9 @@ function hiddenByItemRule(rulesByTarget, itemKey) {
 function allowedValueCodes(model, filter, st) {
   const dim = model.dimensions[filter.dimensionCode];
   const all = dim.values.map((v) => v.valueCode);
-  const src = st.dimensions[filter.sourceDimensionCode];
-  const sel = str(src, "selectedValueCode");
+  // The filter reads one selected value (a source holding several is refused at authoring).
+  const srcSelected = selectedCodes(st.dimensions[filter.sourceDimensionCode]);
+  const sel = srcSelected.length === 1 ? srcSelected[0] : "";
   const srcDim = model.dimensions[filter.sourceDimensionCode];
   if (!sel || !srcDim) return all;
   const selected = srcDim.values.find((v) => v.valueCode === sel);
@@ -149,10 +169,10 @@ function itemAnswered(it, st) {
 function dimensionAnswered(model, p, st) {
   const v = st.dimensions[p.dimensionCode];
   if (!v) return false;
-  const sel = str(v, "selectedValueCode");
-  if (sel) {
+  const selected = selectedCodes(v);
+  if (selected.length) {
     const dim = model.dimensions[p.dimensionCode];
-    return Boolean(dim && dim.values.some((dv) => dv.valueCode === sel));
+    return Boolean(dim && selected.some((sel) => dim.values.some((dv) => dv.valueCode === sel)));
   }
   return str(v, "textValue").trim().length > 0 || str(v, "dateValue").trim().length > 0;
 }
@@ -192,7 +212,7 @@ export function evaluate(model, state) {
 }
 
 function hasValue(v) {
-  return ["selectedValueCode", "otherText", "textValue", "dateValue", "storedCode"].some((k) => str(v, k).length > 0);
+  return ["selectedValueCode", "otherText", "textValue", "dateValue", "storedCode"].some((k) => str(v, k).length > 0) || selectedCodes(v).length > 0;
 }
 
 export function normalize(model, state, policies = {}) {
@@ -202,6 +222,21 @@ export function normalize(model, state, policies = {}) {
   let ev = evaluate(model, st);
   for (const code of Object.keys(ev.dimensionOptions)) {
     if (!st.dimensions[code]) continue;
+    if (isSeveral(st.dimensions[code])) {
+      const selected = selectedCodes(st.dimensions[code]);
+      const kept = selected.filter((c) => ev.dimensionOptions[code].includes(c));
+      if (!selected.length || kept.length === selected.length) continue;
+      if (!kept.length) {
+        st.dimensions[code] = {};
+        changes.push({ kind: "DIMENSION_CLEARED", key: code, reason: "OPTION_FILTER" });
+      } else {
+        const narrowed = { selectedValueCodes: kept };
+        if (st.dimensions[code].otherText !== undefined && kept.includes("other")) narrowed.otherText = st.dimensions[code].otherText;
+        st.dimensions[code] = narrowed;
+        changes.push({ kind: "DIMENSION_VALUES_REMOVED", key: code, reason: "OPTION_FILTER" });
+      }
+      continue;
+    }
     const sel = str(st.dimensions[code], "selectedValueCode");
     if (sel && !ev.dimensionOptions[code].includes(sel)) {
       st.dimensions[code] = {};

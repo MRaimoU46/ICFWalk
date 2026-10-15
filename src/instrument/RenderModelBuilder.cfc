@@ -11,7 +11,9 @@
  *   root            section tree: children ordered by displayOrder, each with placements, items,
  *                   and children; every node carries the derived presentation facts listed below
  *   rules           active rules (conditions block only; authoring metadata is not needed)
- *   dimensions      dimension code -> definition with ordered values
+ *   dimensions      dimension code -> definition with ordered values, and `multiple`: whether this
+ *                   version's placement lets a walk select several of them (settings.multiple,
+ *                   also on the placement itself)
  *   optionFilters   declarative option filters derived from placement settings.optionFilter
  *   placeholders    items whose reviewStatus is "Placeholder in source" (content review)
  *
@@ -51,6 +53,7 @@ component output="false" {
 		variables.definitionValidator = arguments.definitionValidator;
 		variables.PLACEHOLDER_STATUS = arguments.definitionValidator.placeholderReviewStatus();
 		variables.OPTION_FILTERS = arguments.definitionValidator.optionFilters();
+		variables.types = new icfwalk.core.JsonTypes();
 		return this;
 	}
 
@@ -234,6 +237,7 @@ component output="false" {
 			"conditional": arrayLen(ruleKeys) > 0 || !arguments.p.visibleByDefault,
 			"ruleKeys": ruleKeys,
 			"optionFilter": structKeyExists(settings, "optionFilter") && isSimpleValue(settings.optionFilter) ? settings.optionFilter : javaCast("null", ""),
+			"multiple": isMultiple(settings),
 			"settings": settings,
 			"dataType": dim.dataType,
 			"valueMode": dim.valueMode,
@@ -345,7 +349,22 @@ component output="false" {
 		return out;
 	}
 
+	/**
+	 * Whether a placement lets a walk select several values: settings.multiple is the boolean true
+	 * (DefinitionValidator refuses any other value, and anything but a list).
+	 */
+	private boolean function isMultiple(required struct settings) {
+		if (!structKeyExists(arguments.settings, "multiple") || isNull(arguments.settings.multiple)) return false;
+		return variables.types.isJsonBoolean(arguments.settings.multiple) && arguments.settings.multiple;
+	}
+
 	private struct function indexDimensions(required struct d) {
+		// A dimension is placed once per version, so its placement decides whether a walk on this
+		// version holds one value of it or several.
+		var multipleByDim = {};
+		for (var p in arguments.d.instrumentDimensions) {
+			if (p.active && isStruct(p.settings) && isMultiple(p.settings)) multipleByDim[p.dimensionCode] = true;
+		}
 		var valuesByDim = {};
 		for (var v in arguments.d.dimensionValues) {
 			if (!v.active) continue;
@@ -363,7 +382,8 @@ component output="false" {
 			out[dim.code] = {
 				"code": dim.code, "label": dim.label, "dataType": dim.dataType, "valueMode": dim.valueMode,
 				"allowOther": dim.allowOther ? true : false, "reportable": dim.reportable ? true : false,
-				"sensitive": dim.sensitive ? true : false, "settings": isStruct(dim.settings) ? dim.settings : {}, "values": values
+				"sensitive": dim.sensitive ? true : false, "settings": isStruct(dim.settings) ? dim.settings : {},
+				"multiple": structKeyExists(multipleByDim, dim.code), "values": values
 			};
 		}
 		return out;

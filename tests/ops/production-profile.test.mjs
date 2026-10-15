@@ -306,7 +306,7 @@ before(async () => {
   await master.request().batch(`CREATE DATABASE [${database}]`);
   const admin = await new sql.ConnectionPool(connectionConfig(env, database, true)).connect();
   try {
-    for (const name of ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql", "005_org_unit_dimension_map.sql", "006_version_scoped_dimensions.sql", "007_report_release.sql"]) {
+    for (const name of ["001_schema.sql", "002_alignment_patch.sql", "003_walk_mutation.sql", "004_mutation_fingerprint.sql", "005_org_unit_dimension_map.sql", "006_version_scoped_dimensions.sql", "007_report_release.sql", "008_multiple_dimension_values.sql"]) {
       const r = await applyScript(admin, readScript(name));
       assert.ok(r.ok, `${name}: ${r.error?.message}`);
     }

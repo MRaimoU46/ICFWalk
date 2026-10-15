@@ -14,6 +14,7 @@ const fingerprintPatch = fs.readFileSync(path.join(root, "database", "004_mutati
 const mappingPatch = fs.readFileSync(path.join(root, "database", "005_org_unit_dimension_map.sql"), "utf8");
 const dimensionPatch = fs.readFileSync(path.join(root, "database", "006_version_scoped_dimensions.sql"), "utf8");
 const releasePatch = fs.readFileSync(path.join(root, "database", "007_report_release.sql"), "utf8");
+const multiplePatch = fs.readFileSync(path.join(root, "database", "008_multiple_dimension_values.sql"), "utf8");
 
 function columnsOf(table) {
   const source = table === "walk_mutation" ? mutationPatch
@@ -32,6 +33,9 @@ function columnsOf(table) {
   }
   if (table === "instrument_dimension") {
     for (const m of dimensionPatch.matchAll(/\[(dimension_[a-z0-9_]+)\]\s+(?:nvarchar|bit)/g)) columns.add(m[1]);
+  }
+  if (table === "walk_dimension_value") {
+    for (const m of multiplePatch.matchAll(/ADD \[([a-z0-9_]+)\] tinyint/g)) columns.add(m[1]);
   }
   return columns;
 }
@@ -52,7 +56,8 @@ const expected = {
   instrument_dimension_value: ["version_id", "dimension_id", "value_id", "label", "display_order", "effective_start", "effective_end", "active", "created_at", "updated_at", "row_version"],
   item_definition: ["item_id", "version_id", "section_id", "response_set_id", "item_key", "reporting_key", "item_type", "prompt", "help_text", "display_order", "required", "settings_json", "active", "updated_at"],
   walk: ["walk_id", "version_id", "org_unit_id", "owner_user_id", "status", "observed_at", "created_at", "updated_at", "completed_at", "voided_at", "void_reason", "row_version"],
-  walk_dimension_value: ["walk_id", "version_id", "dimension_id", "selected_value_id", "text_value", "number_value", "date_value", "boolean_value", "updated_at"],
+  // selection_ordinal: migration 008, the position of each of a walk's several values in a field.
+  walk_dimension_value: ["walk_id", "version_id", "dimension_id", "selection_ordinal", "selected_value_id", "text_value", "number_value", "date_value", "boolean_value", "updated_at"],
   walk_response: ["response_id", "walk_id", "version_id", "item_id", "response_state", "selected_option_id", "text_value", "number_value", "date_value", "boolean_value", "updated_at"],
   walk_revision: ["revision_id", "walk_id", "revision_number", "actor_user_id", "reason", "prior_snapshot_json", "created_at"],
   walk_mutation: ["mutation_id", "walk_id", "actor_user_id", "action", "request_fingerprint", "result_json", "created_at"],
@@ -209,6 +214,30 @@ test("007 patch adds frozen report releases idempotently, additively, and guarde
   assert.doesNotMatch(releasePatch, /CREATE TABLE \[icf\]\.\[(?!report_release)/);
   // SQL Server 2016 RTM compatible: no CREATE OR ALTER (triggers are created through EXEC instead).
   assert.doesNotMatch(releasePatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST|CREATE OR ALTER/i);
+});
+
+test("008 patch lets a walk hold several values of a field, idempotently, and widens release categories", () => {
+  // Each step checks what is already there, so a second application changes nothing.
+  assert.match(multiplePatch, /IF COL_LENGTH\(N'\[icf\]\.\[walk_dimension_value\]', N'selection_ordinal'\) IS NULL/);
+  assert.match(multiplePatch, /ADD \[selection_ordinal\] tinyint NOT NULL\s+CONSTRAINT \[DF_walk_dimension_value_selection_ordinal\] DEFAULT \(0\)/);
+  assert.match(multiplePatch, /AND c\.\[name\] = N'selection_ordinal'/, "the key is rebuilt only while it lacks selection_ordinal");
+  assert.match(multiplePatch, /CONSTRAINT \[PK_walk_dimension_value\]\s+PRIMARY KEY CLUSTERED \(\[walk_id\], \[dimension_id\], \[selection_ordinal\]\)/);
+  assert.match(multiplePatch, /IF NOT EXISTS \(SELECT 1 FROM sys\.key_constraints WHERE \[parent_object_id\] = OBJECT_ID\(N'\[icf\]\.\[walk_dimension_value\]', N'U'\) AND \[name\] = N'UQ_walk_dimension_value_selected'\)/);
+  assert.match(multiplePatch, /CONSTRAINT \[UQ_walk_dimension_value_selected\]\s+UNIQUE \(\[walk_id\], \[dimension_id\], \[selected_value_id\]\)/);
+  assert.match(multiplePatch, /IF OBJECT_ID\(N'\[icf\]\.\[CK_walk_dimension_value_ordinal\]', N'C'\) IS NULL/);
+  assert.match(multiplePatch, /CHECK \(\[selection_ordinal\] = 0 OR \[selected_value_id\] IS NOT NULL\)/);
+  // The release category: rebuilt only while narrower than 300 characters, with its key and check.
+  assert.match(multiplePatch, /IF COL_LENGTH\(N'\[icf\]\.\[report_release_cell\]', N'category_code'\) < 600/);
+  assert.match(multiplePatch, /ALTER COLUMN \[category_code\] nvarchar\(300\) NOT NULL/);
+  assert.match(multiplePatch, /CONSTRAINT \[PK_report_release_cell\]\s+PRIMARY KEY CLUSTERED \(\[release_id\], \[version_id\], \[org_unit_id\], \[subject_type\], \[subject_key\], \[category_type\], \[category_code\]\)/);
+  assert.match(multiplePatch, /CONSTRAINT \[CK_report_release_cell_category_not_blank\]\s+CHECK \(LEN\(LTRIM\(RTRIM\(\[category_code\]\)\)\) > 0\)/);
+  // One transaction, refused on an incomplete schema, and no data written: no row is inserted,
+  // updated or deleted, no table dropped, and no release guard touched.
+  assert.match(multiplePatch, /SET XACT_ABORT ON;[\s\S]*BEGIN TRANSACTION;[\s\S]*COMMIT TRANSACTION;/);
+  assert.match(multiplePatch, /;THROW 50081,/);
+  assert.doesNotMatch(multiplePatch, /\bINSERT\b|\bUPDATE \[icf\]|\bDELETE FROM\b|\bTRUNCATE\b|\bDROP TABLE\b|\bDROP TRIGGER\b|DISABLE TRIGGER/);
+  assert.doesNotMatch(multiplePatch, /CREATE TABLE/);
+  assert.doesNotMatch(multiplePatch, /STRING_AGG|JSON_OBJECT|GENERATED ALWAYS|GREATEST|LEAST|CREATE OR ALTER/i);
 });
 
 test("CFML SQL references only known icf tables", () => {

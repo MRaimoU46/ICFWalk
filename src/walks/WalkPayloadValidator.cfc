@@ -17,6 +17,13 @@
  *
  * Output is a clean state in the working-state shape (docs/DATA_CONTRACT.md) with resolved GUIDs
  * attached out of band (resolved.dimensions[code].valueId, resolved.responses[itemKey].optionId).
+ *
+ * A dimension whose placement in the pinned version takes several values (model dimensions[code]
+ * .multiple, the 2026-10-14 prototype's checkboxes) arrives as selectedValueCodes, a JSON array of
+ * value codes, and never as selectedValueCode; every other list dimension is the reverse, so an
+ * older version keeps refusing an array. Each code is a JSON string the version defines, none is
+ * listed twice, and the clean state lists them in the version's value order, whatever order they
+ * came in (resolved.dimensions[code].valueIds, in that same order). An empty array is no value.
  */
 component output="false" {
 
@@ -79,10 +86,15 @@ component output="false" {
 			for (var k in structKeyArray(raw)) {
 				var v = raw[k];
 				if (!structKeyExists(local, "v") || (jsonString(v) && !len(v))) continue;
+				if (compare(k, "selectedValueCodes") == 0) {
+					if (!severalCodes(issues, code, dim, v, arguments.definitionIndex, clean, res)) ok = false;
+					continue;
+				}
 				if (!isSimpleValue(v) || isInstanceOf(v, "java.util.Date")) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & "." & safeKey(k), "Value must be a string, number, or boolean."); ok = false; continue; }
 				switch (k) {
 					case "selectedValueCode":
 						if (dim.dataType != "LIST") { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".selectedValueCode", "Dimension does not accept a list value."); ok = false; break; }
+						if (isMultiple(dim)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".selectedValueCode", "Dimension takes several values in this version: send selectedValueCodes, an array of value codes."); ok = false; break; }
 						if (!jsonString(v)) { issue(issues, "INVALID_DIMENSION_VALUE", "dimensions." & code & ".selectedValueCode", "Value code must be a JSON string."); ok = false; break; }
 						var dimId = arguments.definitionIndex.dimensions[code];
 						var valueId = findValueId(dim, arguments.definitionIndex.values[dimId], toString(v));
@@ -128,7 +140,7 @@ component output="false" {
 			// Documented "Other" mapping: free text is stored only as the qualifier of the selected Other
 			// value (selected_value_id = Other, text_value = the text). The browser keeps stale otherText
 			// in memory after switching to a listed value, so it is dropped here rather than rejected.
-			if (structKeyExists(clean, "otherText") && (!structKeyExists(clean, "selectedValueCode") || lCase(clean.selectedValueCode) != variables.OTHER_CODE)) {
+			if (structKeyExists(clean, "otherText") && !selectsOther(clean)) {
 				structDelete(clean, "otherText");
 			}
 			if (!structIsEmpty(clean)) { state.dimensions[code] = clean; resolved.dimensions[code] = res; }
@@ -219,6 +231,61 @@ component output="false" {
 		for (var p in arguments.node.placements) { arguments.idx.placements[p.dimensionCode] = p; arrayAppend(arguments.idx.placementOrder, p.dimensionCode); }
 		for (var it in arguments.node.items) { arguments.idx.items[it.itemKey] = it; arrayAppend(arguments.idx.itemOrder, it.itemKey); arguments.idx.sectionOfItem[it.itemKey] = arguments.node.sectionKey; }
 		for (var child in arguments.node.children) walkSection(child, arguments.idx);
+	}
+
+	private boolean function isMultiple(required struct dim) {
+		return structKeyExists(arguments.dim, "multiple") && !isNull(arguments.dim.multiple) && isBoolean(arguments.dim.multiple) && arguments.dim.multiple;
+	}
+
+	/** Whether a clean dimension value selects Other: its one code, or any of its several. */
+	private boolean function selectsOther(required struct clean) {
+		if (structKeyExists(arguments.clean, "selectedValueCode")) return lCase(arguments.clean.selectedValueCode) == variables.OTHER_CODE;
+		if (!structKeyExists(arguments.clean, "selectedValueCodes")) return false;
+		for (var c in arguments.clean.selectedValueCodes) if (lCase(c) == variables.OTHER_CODE) return true;
+		return false;
+	}
+
+	/**
+	 * selectedValueCodes of a dimension that takes several values: adds the codes (in the version's
+	 * value order) to `clean` and their ids to `res.valueIds`, or records every issue and returns false.
+	 */
+	private boolean function severalCodes(required array issues, required string code, required struct dim, required any v, required struct definitionIndex, required struct clean, required struct res) {
+		var p = "dimensions." & arguments.code & ".selectedValueCodes";
+		if (arguments.dim.dataType != "LIST" || !isMultiple(arguments.dim)) {
+			issue(arguments.issues, "INVALID_DIMENSION_VALUE", p, "Dimension takes one value in this version: send selectedValueCode.");
+			return false;
+		}
+		if (!isArray(arguments.v)) {
+			issue(arguments.issues, "INVALID_DIMENSION_VALUE", p, "Value codes must be a JSON array of strings.");
+			return false;
+		}
+		var dimId = arguments.definitionIndex.dimensions[arguments.code];
+		var wanted = {};
+		var ok = true;
+		var n = arrayLen(arguments.v);
+		for (var i = 1; i <= n; i++) {
+			var at = p & "[" & (i - 1) & "]";
+			// A null or empty element selects nothing, as a null or empty value field does.
+			if (!arrayIsDefined(arguments.v, i)) continue;
+			var e = arguments.v[i];
+			if (isNull(e)) continue;
+			if (!jsonString(e)) { issue(arguments.issues, "INVALID_DIMENSION_VALUE", at, "Each value code must be a JSON string."); ok = false; continue; }
+			if (!len(e)) continue;
+			var valueId = findValueId(arguments.dim, arguments.definitionIndex.values[dimId], toString(e));
+			if (!len(valueId)) { issue(arguments.issues, "INVALID_DIMENSION_VALUE", at, "Value code is not defined for this dimension."); ok = false; continue; }
+			if (structKeyExists(wanted, valueId)) { issue(arguments.issues, "INVALID_DIMENSION_VALUE", at, "Value code is listed more than once."); ok = false; continue; }
+			wanted[valueId] = toString(e);
+		}
+		if (!ok || structIsEmpty(wanted)) return ok;
+		var codes = [];
+		var ids = [];
+		for (var dv in arguments.dim.values) {
+			var id = findValueId(arguments.dim, arguments.definitionIndex.values[dimId], dv.valueCode);
+			if (len(id) && structKeyExists(wanted, id)) { arrayAppend(codes, dv.valueCode); arrayAppend(ids, id); }
+		}
+		arguments.clean["selectedValueCodes"] = codes;
+		arguments.res["valueIds"] = ids;
+		return true;
 	}
 
 	private string function findValueId(required struct dim, required struct valueIds, required string code) {

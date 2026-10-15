@@ -19,6 +19,7 @@ component output="false" {
 		variables.json = arguments.canonicalJson;
 		variables.definitions = arguments.definitionRepository;
 		variables.indexCache = {};
+		variables.types = new icfwalk.core.JsonTypes();
 		return this;
 	}
 
@@ -161,12 +162,17 @@ component output="false" {
 				 FROM [icf].[walk_dimension_value] x
 				 JOIN [icf].[dimension_definition] d ON d.dimension_id = x.dimension_id
 				 LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = x.selected_value_id
-				 WHERE x.walk_id IN (" & listed.sql & ")",
+				 WHERE x.walk_id IN (" & listed.sql & ")
+				 ORDER BY x.walk_id, d.code, x.selection_ordinal",
 				listed.params
 			);
+			var multipleByVersion = {};
 			for (var r = 1; r <= dq.recordCount; r++) {
 				var wid = uCase(dq.walk_id[r]);
-				if (structKeyExists(byId, wid)) byId[wid].dimensions[dq.code[r]] = dimensionRowToValue(dq, r);
+				if (!structKeyExists(byId, wid)) continue;
+				var vid = byId[wid].versionId;
+				if (!structKeyExists(multipleByVersion, vid)) multipleByVersion[vid] = definitionIndex(vid).multiple;
+				addDimensionRow(byId[wid].dimensions, dq, r, multipleByVersion[vid]);
 			}
 		}
 		return walks;
@@ -174,19 +180,49 @@ component output="false" {
 
 	// ---- dimension values ---------------------------------------------------------------------
 
-	/** Persisted dimension values keyed by dimension code, in the working-state value shape. */
-	public struct function loadDimensionValues(required string walkId) {
+	/**
+	 * Persisted dimension values keyed by dimension code, in the working-state value shape. `multiple`
+	 * names the dimensions the walk's version lets a walk select several values of
+	 * (definitionIndex(versionId).multiple): each of those comes back as selectedValueCodes, in the
+	 * order they were written (the version's value order), with the Other text of the "other" row.
+	 */
+	public struct function loadDimensionValues(required string walkId, struct multiple = {}) {
 		var q = variables.db.run(
 			"SELECT d.code, d.data_type, dv.value_code, x.text_value, x.number_value, x.date_value, x.boolean_value
 			 FROM [icf].[walk_dimension_value] x
 			 JOIN [icf].[dimension_definition] d ON d.dimension_id = x.dimension_id
 			 LEFT JOIN [icf].[dimension_value] dv ON dv.value_id = x.selected_value_id
-			 WHERE x.walk_id = :id",
+			 WHERE x.walk_id = :id
+			 ORDER BY d.code, x.selection_ordinal",
 			{ "id": variables.db.guid(arguments.walkId) }
 		);
 		var out = {};
-		for (var r = 1; r <= q.recordCount; r++) out[q.code[r]] = dimensionRowToValue(q, r);
+		for (var r = 1; r <= q.recordCount; r++) addDimensionRow(out, q, r, arguments.multiple);
 		return out;
+	}
+
+	/**
+	 * Writes the several values of a dimension that takes several (migration 008): every row of the
+	 * dimension is replaced by one row per value, selection_ordinal 0.. in the given order (the
+	 * version's value order), and the Other text, when there is one, on the row of the "other" value
+	 * -- the documented mapping (selected_value_id = Other, text_value = the text), once per value.
+	 */
+	public void function replaceDimensionValues(required string walkId, required string versionId, required string dimensionId, required array valueIds, string otherValueId = "", string otherText = "") {
+		var walkParam = variables.db.guid(arguments.walkId);
+		var dimParam = variables.db.guid(arguments.dimensionId);
+		variables.db.run("DELETE FROM [icf].[walk_dimension_value] WHERE walk_id = :walk AND dimension_id = :dim", { "walk": walkParam, "dim": dimParam });
+		var n = arrayLen(arguments.valueIds);
+		for (var i = 1; i <= n; i++) {
+			var isOther = len(arguments.otherValueId) && compare(uCase(arguments.valueIds[i]), uCase(arguments.otherValueId)) == 0 && len(arguments.otherText);
+			variables.db.run(
+				"INSERT INTO [icf].[walk_dimension_value] (walk_id, version_id, dimension_id, selection_ordinal, selected_value_id, text_value) VALUES (:walk, :version, :dim, :ordinal, :selected, :text)",
+				{
+					"walk": walkParam, "version": variables.db.guid(arguments.versionId), "dim": dimParam,
+					"ordinal": variables.db.integer(i - 1), "selected": variables.db.guid(arguments.valueIds[i]),
+					"text": variables.db.nvarchar(isOther ? arguments.otherText : javaCast("null", ""), 1000)
+				}
+			);
+		}
 	}
 
 	/**
@@ -311,7 +347,9 @@ component output="false" {
 
 	/**
 	 * { items: { itemKey: { itemId, responseSetId } }, options: { responseSetId: { storedCode: optionId } },
-	 *   dimensions: { code: dimensionId }, values: { dimensionId: { valueCode: valueId } }, checksum }
+	 *   dimensions: { code: dimensionId }, values: { dimensionId: { valueCode: valueId } },
+	 *   multiple: { code: true } for each dimension the version lets a walk select several values of
+	 *   (its placement's settings.multiple), checksum }
 	 */
 	public struct function definitionIndex(required string versionId) {
 		var id = uCase(arguments.versionId);
@@ -320,7 +358,7 @@ component output="false" {
 		var checksum = !structKeyExists(row, "checksum") ? "" : row.checksum;
 		if (structKeyExists(variables.indexCache, id) && variables.indexCache[id].checksum == checksum) return variables.indexCache[id];
 		var p = { "id": variables.db.guid(id) };
-		var idx = { "versionId": id, "checksum": checksum, "items": {}, "options": {}, "dimensions": {}, "values": {} };
+		var idx = { "versionId": id, "checksum": checksum, "items": {}, "options": {}, "dimensions": {}, "values": {}, "multiple": {} };
 		var iq = variables.db.run("SELECT item_id, item_key, response_set_id FROM [icf].[item_definition] WHERE version_id = :id AND active = 1", p);
 		for (var r = 1; r <= iq.recordCount; r++) idx.items[iq.item_key[r]] = { "itemId": uCase(iq.item_id[r]), "responseSetId": len(iq.response_set_id[r]) ? uCase(iq.response_set_id[r]) : "" };
 		var oq = variables.db.run("SELECT o.option_id, o.response_set_id, o.stored_code FROM [icf].[response_option] o JOIN [icf].[response_set] s ON s.response_set_id = o.response_set_id WHERE s.version_id = :id AND o.active = 1 AND s.active = 1", p);
@@ -333,12 +371,13 @@ component output="false" {
 		// global rows supply identity only; reading their label or active flag here would let a
 		// later DRAFT change which values an older published version accepts.
 		var dq = variables.db.run(
-			"SELECT p.dimension_id, d.code FROM [icf].[instrument_dimension] p
+			"SELECT p.dimension_id, d.code, p.settings_json FROM [icf].[instrument_dimension] p
 			   JOIN [icf].[dimension_definition] d ON d.dimension_id = p.dimension_id
 			  WHERE p.version_id = :id AND p.dimension_active = 1", p);
 		for (var r = 1; r <= dq.recordCount; r++) {
 			var did = uCase(dq.dimension_id[r]);
 			idx.dimensions[dq.code[r]] = did;
+			if (placementTakesSeveral(dq.settings_json[r])) idx.multiple[dq.code[r]] = true;
 			idx.values[did] = {};
 			var vq = variables.db.run(
 				"SELECT iv.value_id, dv.value_code FROM [icf].[instrument_dimension_value] iv
@@ -375,6 +414,32 @@ component output="false" {
 			"voidReason": isNull(arguments.q.void_reason[arguments.r]) ? "" : arguments.q.void_reason[arguments.r],
 			"rowVersion": arguments.q.row_version_hex[arguments.r]
 		};
+	}
+
+	/**
+	 * Adds one dimension row to `out` (keyed by code). Rows of a dimension in `multiple` collect into
+	 * selectedValueCodes in the order read (selection_ordinal); every other dimension has one row.
+	 */
+	private void function addDimensionRow(required struct out, required query q, required numeric r, required struct multiple) {
+		var code = arguments.q.code[arguments.r];
+		if (!structKeyExists(arguments.multiple, code)) {
+			arguments.out[code] = dimensionRowToValue(arguments.q, arguments.r);
+			return;
+		}
+		var valueCode = arguments.q.value_code[arguments.r];
+		if (isNull(valueCode) || !len(valueCode)) return;
+		if (!structKeyExists(arguments.out, code)) arguments.out[code] = { "selectedValueCodes": [] };
+		arrayAppend(arguments.out[code].selectedValueCodes, valueCode);
+		var text = arguments.q.text_value[arguments.r];
+		if (lCase(valueCode) == "other" && !isNull(text) && len(text)) arguments.out[code]["otherText"] = text;
+	}
+
+	/** Whether placement settings JSON asks for several values: "multiple" is the boolean true. */
+	private boolean function placementTakesSeveral(required any settingsJson) {
+		if (isNull(arguments.settingsJson) || !isSimpleValue(arguments.settingsJson) || !len(arguments.settingsJson) || !isJSON(arguments.settingsJson)) return false;
+		var s = deserializeJSON(arguments.settingsJson);
+		if (!isStruct(s) || !structKeyExists(s, "multiple") || isNull(s.multiple)) return false;
+		return variables.types.isJsonBoolean(s.multiple) && s.multiple;
 	}
 
 	private struct function dimensionRowToValue(required query q, required numeric r) {

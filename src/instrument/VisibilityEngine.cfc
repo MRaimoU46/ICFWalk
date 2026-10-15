@@ -4,8 +4,10 @@
  * both are proven equivalent by tests/fixtures/visibility-vectors.json.
  *
  * Working state (the same shape the Phase 4 autosave payload uses, docs/DATA_CONTRACT.md):
- *   { "dimensions": { code: { selectedValueCode?, otherText?, textValue?, dateValue? } },
+ *   { "dimensions": { code: { selectedValueCode?, selectedValueCodes?, otherText?, textValue?, dateValue? } },
  *     "responses":  { itemKey: { storedCode?, textValue? } } }
+ * selectedValueCodes (an array, in the version's value order) is a dimension whose placement lets a
+ * walk select several values (settings.multiple); selectedValueCode is every other list dimension.
  *
  * Codes are compared exactly with compare() (never ==, which coerces "yes"/"1" and "1"/"1.0" to
  * equal values in CFML), matching the strict equality of the JavaScript twin (Phase 4 fix).
@@ -16,7 +18,9 @@
  *     visibleByDefault). Children of a hidden section are hidden.
  *   - Conditions: DIMENSION sources compare the selected value's label or code (or the typed
  *     text/date value); ITEM sources compare the stored option code. Operators EQUALS, NOT_EQUALS,
- *     IN, NOT_IN; logic AND / OR.
+ *     IN, NOT_IN; logic AND / OR. A dimension holding several values offers every one of them, so
+ *     EQUALS and IN hold when any selected value matches (the prototype's metaHas / metaHasAny) and
+ *     NOT_EQUALS and NOT_IN when none does.
  *   - Response state: HIDDEN when the item is hidden by a section or a dimension-driven rule;
  *     NOT_APPLICABLE when hidden by a rule sourced from a sibling item (the skippable-component
  *     applicability answer); otherwise ANSWERED when a valid option code or non-empty text is
@@ -26,7 +30,10 @@
  *     source is unselected or ungrouped ("Other"), every value is allowed.
  *
  * normalize() applies the state changes the prototype performs in the browser: a filtered
- * selection that is no longer allowed is cleared; responses in NOT_APPLICABLE state are cleared
+ * selection that is no longer allowed is cleared (of several values, only the ones no longer
+ * allowed are removed, DIMENSION_VALUES_REMOVED, as the prototype keeps the rest of the grades a
+ * school change still allows; when none is left the dimension is cleared); responses in
+ * NOT_APPLICABLE state are cleared
  * (ratings clear when a component is marked not applicable; notes are never rated and so remain);
  * values hidden by dimension rules are retained (HIDDEN) unless the hidden-value policy is CLEAR.
  */
@@ -105,6 +112,22 @@ component output="false" {
 		var ev = evaluateVisibility(arguments.model, st);
 		for (var code in structKeyArray(ev.dimensionOptions)) {
 			if (!structKeyExists(st.dimensions, code)) continue;
+			if (isSeveral(st.dimensions[code])) {
+				var selected = selectedCodes(st.dimensions[code]);
+				var kept = [];
+				for (var c in selected) if (containsExactly(ev.dimensionOptions[code], c)) arrayAppend(kept, c);
+				if (!arrayLen(selected) || arrayLen(kept) == arrayLen(selected)) continue;
+				if (!arrayLen(kept)) {
+					st.dimensions[code] = {};
+					arrayAppend(changes, { "kind": "DIMENSION_CLEARED", "key": code, "reason": "OPTION_FILTER" });
+				} else {
+					var narrowed = { "selectedValueCodes": kept };
+					if (structKeyExists(st.dimensions[code], "otherText") && containsExactly(kept, "other")) narrowed["otherText"] = st.dimensions[code].otherText;
+					st.dimensions[code] = narrowed;
+					arrayAppend(changes, { "kind": "DIMENSION_VALUES_REMOVED", "key": code, "reason": "OPTION_FILTER" });
+				}
+				continue;
+			}
 			var sel = valueOf(st.dimensions[code], "selectedValueCode");
 			if (len(sel) && !containsExactly(ev.dimensionOptions[code], sel)) {
 				st.dimensions[code] = {};
@@ -177,16 +200,21 @@ component output="false" {
 		throw(type = "ICFWalk.Configuration", message = "Unsupported rule operator '" & arguments.c.operator & "'.", errorcode = "RULE_OPERATOR_UNSUPPORTED");
 	}
 
-	/** Strings a dimension value can be compared as: the selected value's code and label, or typed text. */
+	/**
+	 * Strings a dimension value can be compared as: each selected value's code and label (one value,
+	 * or every one of several), or typed text.
+	 */
 	private array function dimensionCandidates(required struct model, required string code, required struct st) {
 		var out = [];
 		if (!structKeyExists(arguments.st.dimensions, arguments.code)) return out;
 		var v = arguments.st.dimensions[arguments.code];
-		var sel = valueOf(v, "selectedValueCode");
-		if (len(sel)) {
-			arrayAppend(out, sel);
-			if (structKeyExists(arguments.model.dimensions, arguments.code)) {
-				for (var dv in arguments.model.dimensions[arguments.code].values) if (compare(dv.valueCode, sel) == 0) arrayAppend(out, dv.label);
+		var selected = selectedCodes(v);
+		if (arrayLen(selected)) {
+			for (var sel in selected) {
+				arrayAppend(out, sel);
+				if (structKeyExists(arguments.model.dimensions, arguments.code)) {
+					for (var dv in arguments.model.dimensions[arguments.code].values) if (compare(dv.valueCode, sel) == 0) arrayAppend(out, dv.label);
+				}
 			}
 			return out;
 		}
@@ -219,7 +247,9 @@ component output="false" {
 		for (var v in dim.values) arrayAppend(all, v.valueCode);
 		var srcCode = arguments.filter.sourceDimensionCode;
 		if (!structKeyExists(arguments.st.dimensions, srcCode)) return all;
-		var sel = valueOf(arguments.st.dimensions[srcCode], "selectedValueCode");
+		// The filter reads one selected value (a source holding several is refused at authoring).
+		var srcSelected = selectedCodes(arguments.st.dimensions[srcCode]);
+		var sel = arrayLen(srcSelected) == 1 ? srcSelected[1] : "";
 		if (!len(sel) || !structKeyExists(arguments.model.dimensions, srcCode)) return all;
 		var group = "";
 		var found = false;
@@ -251,10 +281,12 @@ component output="false" {
 	private boolean function dimensionAnswered(required struct model, required struct p, required struct st) {
 		if (!structKeyExists(arguments.st.dimensions, arguments.p.dimensionCode)) return false;
 		var v = arguments.st.dimensions[arguments.p.dimensionCode];
-		var sel = valueOf(v, "selectedValueCode");
-		if (len(sel)) {
+		var selected = selectedCodes(v);
+		if (arrayLen(selected)) {
 			if (!structKeyExists(arguments.model.dimensions, arguments.p.dimensionCode)) return false;
-			for (var dv in arguments.model.dimensions[arguments.p.dimensionCode].values) if (compare(dv.valueCode, sel) == 0) return true;
+			for (var sel in selected) {
+				for (var dv in arguments.model.dimensions[arguments.p.dimensionCode].values) if (compare(dv.valueCode, sel) == 0) return true;
+			}
 			return false;
 		}
 		return len(trim(valueOf(v, "textValue"))) > 0 || len(trim(valueOf(v, "dateValue"))) > 0;
@@ -262,7 +294,30 @@ component output="false" {
 
 	private boolean function hasValue(required struct v) {
 		for (var k in ["selectedValueCode", "otherText", "textValue", "dateValue", "storedCode"]) if (len(valueOf(arguments.v, k))) return true;
-		return false;
+		return arrayLen(selectedCodes(arguments.v)) > 0;
+	}
+
+	/** Whether a dimension value holds several values: selectedValueCodes is an array. */
+	private boolean function isSeveral(required any v) {
+		return isStruct(arguments.v) && structKeyExists(arguments.v, "selectedValueCodes") && !isNull(arguments.v.selectedValueCodes) && isArray(arguments.v.selectedValueCodes);
+	}
+
+	/**
+	 * The codes a dimension value selects: every non-empty text of selectedValueCodes, in order, or
+	 * selectedValueCode alone. Anything else (a number, a nested value) selects nothing, as valueOf
+	 * reads it.
+	 */
+	private array function selectedCodes(required any v) {
+		var out = [];
+		if (isSeveral(arguments.v)) {
+			for (var c in arguments.v.selectedValueCodes) {
+				if (!isNull(c) && isSimpleValue(c) && len(toString(c))) arrayAppend(out, toString(c));
+			}
+			return out;
+		}
+		var sel = valueOf(arguments.v, "selectedValueCode");
+		if (len(sel)) arrayAppend(out, sel);
+		return out;
 	}
 
 	/**
