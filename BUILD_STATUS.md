@@ -31,11 +31,11 @@ work. See "Phase 8 accepted and frozen" near the end and `docs/evidence/phase8-f
 
 **On top of the frozen state, this branch carries the instrument revision 2026-10-14, steps 1 and 2**
 (code commits `36f9db09f595294bdc5f8e151706dbb8dc7b758b` and `7a639ac41e1253dda75086325419c5764d391755`,
-each gated on both engines): a new DRAFT version of the instrument from the product owner's 2026-10-14
+and the report wording correction `0b6a8641538aecc38f66fe7220841188b353a879`, each gated on both engines): a new DRAFT version of the instrument from the product owner's 2026-10-14
 prototype, and then its four visit-field checkboxes, which take several values (migration 008). It is not
 audited, not frozen and not in service until 008 is applied, the release deployed and an administrator
-publishes the version, and it changes nothing Phase 8 froze. See "Instrument revision 2026-10-14 (step 1)"
-and "(step 2)", the last two sections.
+publishes the version, and it changes nothing Phase 8 froze. See "Instrument revision 2026-10-14 (step 1)",
+"(step 2)" and "(step 2): report wording", the last three sections.
 
 This is **not production certification**. ColdFusion's own SQL Server driver behind IIS or Apache with
 the connector, SQL Server 2016, connector-level limits, Microsoft Excel, a real screen reader and the
@@ -50,7 +50,7 @@ round-trip, the audit corrections, the re-audit correction P6A-R01, **Phase 6 fr
 accepted**, **Phase 6 and Phase 7 integration**, **Phase 7 and the integrated Phase 0-7 baseline
 accepted**, **Phase 8: hardening and handoff**, **Phase 8 correction A8**, **Phase 8 accepted and
 frozen**, which is the frozen state of this branch, and finally **Instrument revision 2026-10-14 (step
-1)** and **(step 2)**, changes on top of it that are not audited or frozen. The Phase 7 correction sections and
+1)**, **(step 2)** and **(step 2): report wording**, changes on top of it that are not audited or frozen. The Phase 7 correction sections and
 the Phase 6 administration sections were written on two
 branches from the same commit, `0c6fa10`, and appear in the order they were delivered (Phase 7's on
 2026-09-23, Phase 6's from 2026-09-24), each block exactly as its branch delivered it.
@@ -4763,3 +4763,22 @@ diff were checked: records, and one sentence of `docs/INSTRUMENT_REVISION_2026-1
 
 This section adds to "Instrument revision 2026-10-14 (step 1)" and to "Phase 8 accepted and frozen", and
 supersedes nothing in them: Phase 8 stays frozen at `b73f519` with records and delivery tip `bbb4d15`.
+
+## Instrument revision 2026-10-14 (step 2): report wording
+
+**Code commit `0b6a8641538aecc38f66fe7220841188b353a879`** (tree `245b060b8651f74654c9ce10cc0ed3d4226e8fee`,
+only parent step 2's records commit `3e441a4`); the records commit that adds this section follows it.
+
+Under the table of a field that takes several values, the Reports page said how many walks hold at least
+one of its values and named the field by its label. Visit timing's label is "Visit occurred at the:", so
+it read "Walks with at least one Visit occurred at the: value". The product owner saw it in the demo and
+asked for it fixed. The sentence sits under the field's own table, so it now leaves the label out: "Walks
+with at least one value: N." MULTI-E6 pins the new wording. The change is exactly `app/assets/js/reports.js`
+and that test; the gate checks it from the diff.
+
+The exact-commit gate of `0b6a864` (`docs/evidence/instrument-revision-2026-10-14-step2-wording/`): GATE
+PASSED, Node/HTTP/Playwright 324/324 and CFML 557/557 on Lucee 6.2.8.20 and on Adobe ColdFusion 2023 Update
+25, on brand-new databases migrated 001 to 008, `test:package` 32/32 and `validate:handoff` 51 checks; all
+324 Node tests step 2's gate passed pass on both engines under the same names, and step 2's 557 CFML test
+functions all ran. On the records commit only `test:package`, `validate:handoff`, the evidence checksums and
+the restricted diff (records only) were checked.
