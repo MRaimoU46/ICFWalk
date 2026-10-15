@@ -6,7 +6,7 @@
  *   - the reviewed aligned workbook in config/ (written by other software) reads to exactly the
  *     supplied instrument -- same definitions checksum, same whole-snapshot checksum;
  *   - download then upload with no change gives back the exact document, and the same document
- *     always produces the same bytes;
+ *     always produces the same bytes; so does the 2026-10-14 version, its checkbox fields included;
  *   - a workbook LibreOffice Calc opened and saved reads back unchanged, and edits made in
  *     LibreOffice come back exactly (fixtures in tests/fixtures/workbooks);
  *   - text survives exactly, and cells typed in a spreadsheet's own ways are read as their column
@@ -109,6 +109,22 @@ test("download then upload with no change gives back the exact document, and the
   const files = await readZip(bytes);
   const workbookXml = new TextDecoder().decode(files.get("xl/workbook.xml"));
   assert.deepEqual([...workbookXml.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1]), ["Start Here", ...SHEET_NAMES]);
+});
+
+test("the 2026-10-14 version comes back exactly, its four checkbox fields still taking several values", async () => {
+  // Instrument revision 2026-10-14, step 2: a placement's settings.multiple travels in the
+  // instrument_dimension sheet's settings_json, so the yearly Excel round-trip keeps the checkboxes.
+  const doc = JSON.parse(fs.readFileSync(path.join(root, "config", "instrument-config-2026-10-14.json"), "utf8"));
+  delete doc.generatedAt;
+  delete doc.counts;
+  const r = await readWorkbook(await workbookOf(doc));
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  assert.deepEqual(r.warnings, []);
+  assert.equal(canonicalize(r.document), canonicalize(doc));
+  const several = (d) => d.instrumentDimensions.filter((p) => p.settings?.multiple === true).map((p) => p.dimensionId);
+  assert.deepEqual(several(r.document), ["dim_grade", "dim_content", "dim_classtype", "dim_visittiming"]);
+  const golden = JSON.parse(fs.readFileSync(path.join(root, "tests", "golden", "instrument-snapshot-2026-10-14.golden.json"), "utf8"));
+  assert.equal(compileSnapshot(normalizeConfig(r.document)).checksum, golden.checksum, "the golden checksum");
 });
 
 test("a workbook LibreOffice Calc opened and saved reads back unchanged", async () => {
