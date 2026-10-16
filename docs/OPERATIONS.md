@@ -528,13 +528,22 @@ its schools with the network as its parent, in the same file or call:
 
 ```json
 { "orgUnits": [
-  { "code": "network_north", "type": "NETWORK", "name": "North Network", "parentCode": "district" },
-  { "code": "abbott_middle_school", "type": "SCHOOL", "name": "Abbott Middle School", "parentCode": "network_north" }
+  { "code": "middle_school_network", "type": "NETWORK", "name": "Middle School Network", "parentCode": "district" },
+  { "code": "abbott_middle_school", "type": "SCHOOL", "name": "Abbott Middle School", "parentCode": "middle_school_network" }
 ] }
 ```
 
 An import places every unit it lists under that unit's `parentCode`, and a listed unit without one
-becomes a top-level unit, so list each moved school with its new parent. A school's School mapping,
+becomes a top-level unit, so list each moved school with its new parent.
+
+The district's own structure is `config/org-units.networks.json`, built from what the owner sent on
+2026-10-16 (`docs/OPEN_DECISIONS.md`): its seven networks under `district`, its 53 open schools each
+under its network (four of them listed under another name, which the owner confirmed), the seven of
+them `config/org-units.example.json` does not have, under their official names and coded as the
+2026-10-14 version's School values, and the four schools the owner says are closed, imported inactive.
+Import it after the example with `{ "file": "org-units.networks.json" }` (`docs/LOCAL_SETUP.md`,
+step 8); importing it again changes nothing. Once the 2026-10-14 version is current, map the seven new
+schools to their School values (`docs/INSTRUMENT_REVISION_2026-10-14.md`, "Putting it into service"). A school's School mapping,
 walks and releases stay as they are. District-level assignments (`include_descendants`) cover the
 networks and their schools without change; the Reports page shows a Network filter once a person
 covers a network, and never offers a network as a place to start a walk. Keep a network active while

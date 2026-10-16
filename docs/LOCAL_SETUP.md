@@ -94,6 +94,8 @@ npm test                                      # all Node tests + the CFML suite 
    H="X-ICFWalk-Maintenance-Token: $ICFWALK_MAINTENANCE_TOKEN"
    curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"file":"org-units.example.json"}' \
      http://127.0.0.1/index.cfm/api/maintenance/org-units/import
+   curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"file":"org-units.networks.json"}' \
+     http://127.0.0.1/index.cfm/api/maintenance/org-units/import
    curl -sS -X POST -H "$H" -H 'Content-Type: application/json' -d '{"subject":"<sso subject>","displayName":"<name>"}' \
      http://127.0.0.1/index.cfm/api/maintenance/identity/provision-user
    curl -sS -X POST -H "$H" -H 'Content-Type: application/json' \
@@ -104,7 +106,9 @@ npm test                                      # all Node tests + the CFML suite 
    Walk and report roles (`DISTRICT_WALK_REPORT`, `DISTRICT_REPORT_ONLY`, `SCHOOL_WALK_REPORT`,
    `SCHOOL_REPORT_ONLY`) are assigned the same way with `orgUnitCode` of the district (with
    `"includeDescendants": true`) or of a school. Adjust `config/org-units.example.json` (codes are
-   stable identifiers) before the first import; re-importing updates names and parents by code.
+   stable identifiers) before the first import; re-importing updates names and parents by code. The
+   second import gives the district its networks, its schools the example does not have, and its closed
+   schools (`config/org-units.networks.json`, `docs/OPERATIONS.md` 9.2).
 9. The seeded version is a DRAFT. The administrator signs in and publishes it from the
    administration view (Publish on its row, then confirm); publishing freezes the snapshot it was
    imported with. Until a version is published, a production deployment has no version in service

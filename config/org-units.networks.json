@@ -1,0 +1,393 @@
+{
+  "description": "The district's networks and schools as the product owner gave them on 2026-10-16 (docs/OPEN_DECISIONS.md). Import it after org-units.example.json: it adds a NETWORK unit for each network under the district, lists each school with its network as parent, adds the schools the example does not have, and closes the schools no network lists. Every other field of an existing school stays as it is. Matched under a different name (confirmed by the owner): \"Ronald O'Neal\" = O'Neal Elementary School (o_neal_elementary_school); \"Central Schools Program\" = Central School (central_school); \"Harriet Gifford\" = Gifford Elementary School (gifford_elementary_school); \"Bartlett\" = Bartlett Elementary School (bartlett_elementary_school). New units, under their official names and coded as the 2026-10-14 version's School values: Independence, Laurel Hill Elementary, Spring Trail Elementary, Sycamore Trails Elementary, Illinois Park, Hawk Hollow Middle School, Legacy Middle School. Closed, so imported inactive under the district: Ellis Middle School, Hanover Countryside Elementary School, Lowrie Elementary School, Washington Elementary School.",
+  "orgUnits": [
+    {
+      "code": "bartlett_network",
+      "type": "NETWORK",
+      "name": "Bartlett Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "elgin_network",
+      "type": "NETWORK",
+      "name": "Elgin Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "high_school_network",
+      "type": "NETWORK",
+      "name": "High School Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "larkin_network",
+      "type": "NETWORK",
+      "name": "Larkin Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "middle_school_network",
+      "type": "NETWORK",
+      "name": "Middle School Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "south_elgin_network",
+      "type": "NETWORK",
+      "name": "South Elgin Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "streamwood_network",
+      "type": "NETWORK",
+      "name": "Streamwood Network",
+      "parentCode": "district"
+    },
+    {
+      "code": "centennial_elementary_school",
+      "type": "SCHOOL",
+      "name": "Centennial Elementary School",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "horizon_elementary_school",
+      "type": "SCHOOL",
+      "name": "Horizon Elementary School",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "independence",
+      "type": "SCHOOL",
+      "name": "Independence",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "laurel_hill_elementary",
+      "type": "SCHOOL",
+      "name": "Laurel Hill Elementary",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "ontarioville_elementary_school",
+      "type": "SCHOOL",
+      "name": "Ontarioville Elementary School",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "prairieview_elementary_school",
+      "type": "SCHOOL",
+      "name": "Prairieview Elementary School",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "spring_trail_elementary",
+      "type": "SCHOOL",
+      "name": "Spring Trail Elementary",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "sycamore_trails_elementary",
+      "type": "SCHOOL",
+      "name": "Sycamore Trails Elementary",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "wayne_elementary_school",
+      "type": "SCHOOL",
+      "name": "Wayne Elementary School",
+      "parentCode": "bartlett_network"
+    },
+    {
+      "code": "channing_elementary_school",
+      "type": "SCHOOL",
+      "name": "Channing Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "coleman_elementary_school",
+      "type": "SCHOOL",
+      "name": "Coleman Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "huff_elementary_school",
+      "type": "SCHOOL",
+      "name": "Huff Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "lincoln_elementary_school",
+      "type": "SCHOOL",
+      "name": "Lincoln Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "lords_park_elementary_school",
+      "type": "SCHOOL",
+      "name": "Lords Park Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "mckinley_elementary_school",
+      "type": "SCHOOL",
+      "name": "McKinley Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "o_neal_elementary_school",
+      "type": "SCHOOL",
+      "name": "O'Neal Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "timber_trails_elementary_school",
+      "type": "SCHOOL",
+      "name": "Timber Trails Elementary School",
+      "parentCode": "elgin_network"
+    },
+    {
+      "code": "bartlett_high_school",
+      "type": "SCHOOL",
+      "name": "Bartlett High School",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "central_school",
+      "type": "SCHOOL",
+      "name": "Central School",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "dream_academy",
+      "type": "SCHOOL",
+      "name": "Dream Academy",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "elgin_high_school",
+      "type": "SCHOOL",
+      "name": "Elgin High School",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "larkin_high_school",
+      "type": "SCHOOL",
+      "name": "Larkin High School",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "south_elgin_high_school",
+      "type": "SCHOOL",
+      "name": "South Elgin High School",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "streamwood_high_school",
+      "type": "SCHOOL",
+      "name": "Streamwood High School",
+      "parentCode": "high_school_network"
+    },
+    {
+      "code": "century_oaks_elementary_school",
+      "type": "SCHOOL",
+      "name": "Century Oaks Elementary School",
+      "parentCode": "larkin_network"
+    },
+    {
+      "code": "creekside_elementary_school",
+      "type": "SCHOOL",
+      "name": "Creekside Elementary School",
+      "parentCode": "larkin_network"
+    },
+    {
+      "code": "gifford_elementary_school",
+      "type": "SCHOOL",
+      "name": "Gifford Elementary School",
+      "parentCode": "larkin_network"
+    },
+    {
+      "code": "highland_elementary_school",
+      "type": "SCHOOL",
+      "name": "Highland Elementary School",
+      "parentCode": "larkin_network"
+    },
+    {
+      "code": "hillcrest_elementary_school",
+      "type": "SCHOOL",
+      "name": "Hillcrest Elementary School",
+      "parentCode": "larkin_network"
+    },
+    {
+      "code": "illinois_park",
+      "type": "SCHOOL",
+      "name": "Illinois Park",
+      "parentCode": "larkin_network"
+    },
+    {
+      "code": "abbott_middle_school",
+      "type": "SCHOOL",
+      "name": "Abbott Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "canton_middle_school",
+      "type": "SCHOOL",
+      "name": "Canton Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "eastview_middle_school",
+      "type": "SCHOOL",
+      "name": "Eastview Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "hawk_hollow_middle_school",
+      "type": "SCHOOL",
+      "name": "Hawk Hollow Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "kenyon_woods_middle_school",
+      "type": "SCHOOL",
+      "name": "Kenyon Woods Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "kimball_middle_school",
+      "type": "SCHOOL",
+      "name": "Kimball Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "larsen_middle_school",
+      "type": "SCHOOL",
+      "name": "Larsen Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "legacy_middle_school",
+      "type": "SCHOOL",
+      "name": "Legacy Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "tefft_middle_school",
+      "type": "SCHOOL",
+      "name": "Tefft Middle School",
+      "parentCode": "middle_school_network"
+    },
+    {
+      "code": "bartlett_elementary_school",
+      "type": "SCHOOL",
+      "name": "Bartlett Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "clinton_elementary_school",
+      "type": "SCHOOL",
+      "name": "Clinton Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "fox_meadow_elementary_school",
+      "type": "SCHOOL",
+      "name": "Fox Meadow Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "liberty_elementary_school",
+      "type": "SCHOOL",
+      "name": "Liberty Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "nature_ridge_elementary_school",
+      "type": "SCHOOL",
+      "name": "Nature Ridge Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "otter_creek_elementary_school",
+      "type": "SCHOOL",
+      "name": "Otter Creek Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "willard_elementary_school",
+      "type": "SCHOOL",
+      "name": "Willard Elementary School",
+      "parentCode": "south_elgin_network"
+    },
+    {
+      "code": "glenbrook_elementary_school",
+      "type": "SCHOOL",
+      "name": "Glenbrook Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "heritage_elementary_school",
+      "type": "SCHOOL",
+      "name": "Heritage Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "hilltop_elementary_school",
+      "type": "SCHOOL",
+      "name": "Hilltop Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "oakhill_elementary_school",
+      "type": "SCHOOL",
+      "name": "Oakhill Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "parkwood_elementary_school",
+      "type": "SCHOOL",
+      "name": "Parkwood Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "ridge_circle_elementary_school",
+      "type": "SCHOOL",
+      "name": "Ridge Circle Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "sunnydale_elementary_school",
+      "type": "SCHOOL",
+      "name": "Sunnydale Elementary School",
+      "parentCode": "streamwood_network"
+    },
+    {
+      "code": "ellis_middle_school",
+      "type": "SCHOOL",
+      "name": "Ellis Middle School",
+      "parentCode": "district",
+      "active": false
+    },
+    {
+      "code": "hanover_countryside_elementary_school",
+      "type": "SCHOOL",
+      "name": "Hanover Countryside Elementary School",
+      "parentCode": "district",
+      "active": false
+    },
+    {
+      "code": "lowrie_elementary_school",
+      "type": "SCHOOL",
+      "name": "Lowrie Elementary School",
+      "parentCode": "district",
+      "active": false
+    },
+    {
+      "code": "washington_elementary_school",
+      "type": "SCHOOL",
+      "name": "Washington Elementary School",
+      "parentCode": "district",
+      "active": false
+    }
+  ]
+}
