@@ -4782,3 +4782,59 @@ PASSED, Node/HTTP/Playwright 324/324 and CFML 557/557 on Lucee 6.2.8.20 and on A
 324 Node tests step 2's gate passed pass on both engines under the same names, and step 2's 557 CFML test
 functions all ran. On the records commit only `test:package`, `validate:handoff`, the evidence checksums and
 the restricted diff (records only) were checked.
+
+## Report filters (the owner's decisions of 2026-10-16)
+
+**Last code commit `0c7cf916507e47fa7f83b4e6c1e897f81252a294`** (tree `b6ab58e8d98c1d776a79af68d0b6f34d927ea1ac`), the last of five code
+commits in a line on the step 2 wording correction's records commit `eb0d4ef`: `8597069`, `2e359a7`,
+`e9e0a3b`, `04548c7`, `0c7cf91`. The records commit that adds this section follows it.
+
+Trying the demo, the product owner picked a Section, ran a report, and saw the walk summary stay the same
+while only the questions below it changed. They asked for a Network filter ("We have schools grouped by
+network") and for School, Network, Grade, Subject, Period, Program and Visit timing to take several
+values. Asked which walks a report should cover when a Section is picked, they chose the walks where it
+was shown. Both decisions are in `docs/OPEN_DECISIONS.md`, verbatim.
+
+| What | Built |
+| --- | --- |
+| Section and Question (`ReportService.parseFilters`, `ReportRepository.restrictToShown`) | In a live report, only the walks with a recorded state other than `HIDDEN` for the question, or for any reportable question of the section and the sections nested in it, are counted, in every figure. A walk that left it unanswered or marked it not applicable stays in. `filters.walksWhereShown`, the CSV's `META` `population_rule` and a line under "Walks in this report" say so. A release stores block totals, not walks, so a released report keeps counting every released walk and says that instead. A section with no reportable question beneath it narrows nothing and says nothing |
+| Several values (`splitList`, `restrictToDimensionValues`) | `orgUnitId` and every `dim_<code>` take a comma list (a repeated parameter arrives so on both engines): any value of a filter, every filter together. Each named unit is checked on its own (one out of scope refuses the request, audited); the population is the named units' covered descendants, each walk once. At most 200 values of 100 characters. Format `icfwalk-aggregate-report/3`: `filters.orgUnitIds[]`, each `filters.dimensions` entry a list, `walksWhereShown`; one CSV `META` row per value; `REPORT_EXPORTED` carries `orgUnitIds` |
+| Networks | `NETWORK` org units between the district and its schools, loaded and moved by the org-unit import (`docs/OPERATIONS.md` 9.2); no migration. A deactivated network cuts its schools off from district-level scope, so OPERATIONS says to move the schools first |
+| The page (`reports.js`, `icfwalk.css`, `app.js`) | Network (when the scope holds one) and School narrowed to the chosen networks' schools, and every visit field, as checkbox lists in a `<details>` disclosure: Enter opens, Space ticks, Escape closes and returns focus; the summary names what is chosen while it fits and otherwise counts it. The new-walk chooser never offers a network |
+
+### Verification
+
+- **The exact-commit gate of `0c7cf91`** (`docs/evidence/report-filters-2026-10-16/`): GATE PASSED,
+  Node/HTTP/Playwright 326/326 and CFML 559/559 on Lucee 6.2.8.20 and on Adobe ColdFusion 2023 Update 25,
+  each on a brand-new database migrated 001 to 008; `test:package` 32/32, `validate:handoff` 51 checks.
+  All 324 Node tests the wording correction's gate passed pass on both engines under the same names, plus
+  this change's two; the 557 CFML test functions at `eb0d4ef` all ran, plus this change's two.
+- **New tests**: `ReportServiceTest.testSeveralValuesOfAFilterCountAnyOfThem` and
+  `testNetworksAndSeveralUnitsNarrowTogetherWithinScope`; `reports.test.mjs` "owner 2026-10-16" (lists,
+  several units and values, the Section and Question population, the CSV's `population_rule`, a section
+  with nothing reportable, a release); `browser-reports.test.mjs` "owner 2026-10-16 (browser)" (Network,
+  the School list following it, several values, the counting note live and released, axe-core, and no
+  network in the new-walk chooser, red without that change). `testRpt04...` and
+  `testRetainedAnswersOfAHiddenSectionAreCountedAsHidden` now also show a hidden walk leaving a Section or
+  Question report; the keyboard test operates a checkbox list. The a11y sweep's keyboard traversal counts
+  a control as visible only when `checkVisibility()` agrees: Chromium lays out the options of a closed
+  disclosure without showing or focusing them.
+- **Operations** (`ops/`): `docs/OPERATIONS.md` 9.2 on both engines, 10 of 10 each. Schools with walks and
+  a School mapping moved under new networks keep their walks, mapping and district scope. A network counts
+  its schools, and several units count each walk once. A deactivated network cuts its schools off from
+  the district lead, as documented, and moving them first loses nothing.
+- **Red before green** on Lucee (`red/`): with the change's five code files back at `eb0d4ef`, the HTTP
+  owner test and the options format fail, and so do the browser owner test and the five others that
+  operate the new checkbox lists. Restored, 16/16 and 8/8.
+- On the records commit only `test:package`, `validate:handoff`, the evidence checksums and the restricted
+  diff (records only) were checked.
+
+### Open
+
+- **The district's networks**: the owner sent them the same day (seven networks, 53 schools), confirmed
+  four names that differ, gave the official names of seven schools the instrument does not list, and said
+  the four schools no network lists are closed. Loading them, and the 2026-10-14 School list those answers
+  change, is the next change.
+- Not yet in service: deploy. There is no migration in this change.
+- Still open from step 1: whether Performing Arts and Visual Arts continue Music and Art
+  (`docs/OPEN_DECISIONS.md`).

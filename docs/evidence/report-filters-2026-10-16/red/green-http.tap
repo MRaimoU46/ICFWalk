@@ -1,0 +1,108 @@
+TAP version 13
+# Subtest: RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+ok 1 - RPT-06 (structural): the report repository selects no narrative, identifying or teacher column
+  ---
+  duration_ms: 2.715066
+  type: 'test'
+  ...
+# Subtest: P7C-01 / P7C-02 (structural): report tables are connection-local, and release membership is never read out
+ok 2 - P7C-01 / P7C-02 (structural): report tables are connection-local, and release membership is never read out
+  ---
+  duration_ms: 4.989033
+  type: 'test'
+  ...
+# Subtest: reports are driven by the instrument, not by names written into the report code
+ok 3 - reports are driven by the instrument, not by names written into the report code
+  ---
+  duration_ms: 4.25333
+  type: 'test'
+  ...
+# Subtest: SEC-02 (structural): the reports view builds its DOM without HTML strings
+ok 4 - SEC-02 (structural): the reports view builds its DOM without HTML strings
+  ---
+  duration_ms: 0.56058
+  type: 'test'
+  ...
+# (node:1147) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: AUTH-01: every report route requires an identity and discloses nothing without one
+ok 5 - AUTH-01: every report route requires an identity and discloses nothing without one
+  ---
+  duration_ms: 3269.682989
+  type: 'test'
+  ...
+# Subtest: AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+ok 6 - AUTH-06 / RPT-03: instrument administration and role-less users are refused every report route
+  ---
+  duration_ms: 115.822486
+  type: 'test'
+  ...
+# Subtest: RPT-03: a report-only role is refused every live figure, however the request is narrowed
+ok 7 - RPT-03: a report-only role is refused every live figure, however the request is narrowed
+  ---
+  duration_ms: 482.829432
+  type: 'test'
+  ...
+# Subtest: RPT-01: a school report role reads its school's release; another school is 404 over HTTP
+ok 8 - RPT-01: a school report role reads its school's release; another school is 404 over HTTP
+  ---
+  duration_ms: 409.532012
+  type: 'test'
+  ...
+# Subtest: RPT-02: district roles aggregate their descendant schools and nothing else, live or released
+ok 9 - RPT-02: district roles aggregate their descendant schools and nothing else, live or released
+  ---
+  duration_ms: 274.200798
+  type: 'test'
+  ...
+# Subtest: RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+ok 10 - RPT-03 / RPT-06: payload and export carry no walk, owner, narrative, email or free text
+  ---
+  duration_ms: 324.152295
+  type: 'test'
+  ...
+# Subtest: releases: only someone who can open every walk may release, with CSRF, a closed period, and no overlap
+ok 11 - releases: only someone who can open every walk may release, with CSRF, a closed period, and no overlap
+  ---
+  duration_ms: 512.446891
+  type: 'test'
+  ...
+# Subtest: report routes are read-only: other methods are refused before anything runs
+ok 12 - report routes are read-only: other methods are refused before anything runs
+  ---
+  duration_ms: 54.812119
+  type: 'test'
+  ...
+# Subtest: the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+ok 13 - the CSV export is an attachment with a safe name, no-store, nosniff, a BOM and CRLF rows
+  ---
+  duration_ms: 316.732602
+  type: 'test'
+  ...
+# Subtest: SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+ok 14 - SEC-01: injection payloads in any parameter are refused as data, and nothing is returned
+  ---
+  duration_ms: 405.467101
+  type: 'test'
+  ...
+# Subtest: options describe the version, the scope, the releases and the reportable surface only
+ok 15 - options describe the version, the scope, the releases and the reportable surface only
+  ---
+  duration_ms: 118.540995
+  type: 'test'
+  ...
+# Subtest: owner 2026-10-16: a repeated parameter is a list, several schools and values narrow together, and a Section counts the walks where it was shown, live only
+ok 16 - owner 2026-10-16: a repeated parameter is a list, several schools and values narrow together, and a Section counts the walks where it was shown, live only
+  ---
+  duration_ms: 1150.906562
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 7801.924905

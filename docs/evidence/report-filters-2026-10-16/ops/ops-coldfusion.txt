@@ -1,0 +1,18 @@
+engine at http://127.0.0.1:8500, database icfwalk_acf_gate, tag opsnet-mvbe6mj4, visit date 1996-08-01
+health: status ok, environment development
+(node:392) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ok 1 - district opsnet-mvbe6mj4-district with school A (mapped to School value abbott_middle_school) and school B, both directly under it
+ok 2 - two completed walks at A (each carrying A's School value), one at B
+ok 3 - before: the district lead counts 3 walks, school A 2
+re-import: {"created":2,"imported":4,"schoolValuesMapped":0,"updated":2}
+ok 4 - after the re-import the lead's options list district, networks and schools, each school under its network
+ok 5 - the district lead still counts 3 walks; North is A's 2, South is B's 1, both networks 3, North with A 2
+ok 6 - A's walker still lists A's 2 walks and reports on them
+ok 7 - a new walk at A still carries A's School value: the mapping stayed
+ok 8 - WARNING CONFIRMED: with North inactive the district lead loses school A (1 walk, A gone from the options); A's own walker keeps it
+ok 9 - reactivating North gives the lead school A back (3 walks)
+ok 10 - retiring North after moving A to South loses nothing: the lead counts 3, South 3
+fixture cleanup: 200
+OPS PROBE PASSED
+exit=0

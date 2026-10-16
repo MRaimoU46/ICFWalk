@@ -1,0 +1,145 @@
+TAP version 13
+# (node:788) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: RPT-03 (browser): a report-only user reads released figures only and is never sent a withheld value
+not ok 1 - RPT-03 (browser): a report-only user reads released figures only and is never sent a withheld value
+  ---
+  duration_ms: 33007.181468
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-reports.test.mjs:206:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.click: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#rf-org > summary')[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    pick (/home/user/ICFWalk/tests/node/browser-reports.test.mjs:141:14)
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-reports.test.mjs:250:9)
+  ...
+# Subtest: RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+not ok 2 - RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+  ---
+  duration_ms: 31045.494414
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-reports.test.mjs:258:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.click: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#rf-org > summary')[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    pick (/home/user/ICFWalk/tests/node/browser-reports.test.mjs:141:14)
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-reports.test.mjs:263:9)
+  ...
+# Subtest: a refused filter is announced and leaves no stale results behind
+ok 3 - a refused filter is announced and leaves no stale results behind
+  ---
+  duration_ms: 1367.455371
+  type: 'test'
+  ...
+# Subtest: a walk user moves between My walks and Reports and sees only their own scope
+not ok 4 - a walk user moves between My walks and Reports and sees only their own scope
+  ---
+  duration_ms: 31011.173641
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-reports.test.mjs:320:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.textContent: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#rf-org-text')[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-reports.test.mjs:330:27)
+  ...
+# Subtest: SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+not ok 5 - SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+  ---
+  duration_ms: 1001.317561
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-reports.test.mjs:341:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(options.includes(XSS_NAME))
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/browser-reports.test.mjs:350:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: releases (browser): someone who can open every walk releases dates from the page
+ok 6 - releases (browser): someone who can open every walk releases dates from the page
+  ---
+  duration_ms: 1328.330103
+  type: 'test'
+  ...
+# Subtest: A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+not ok 7 - A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+  ---
+  duration_ms: 30972.829683
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-reports.test.mjs:384:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.focus: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#rf-org > summary')[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/home/user/ICFWalk/tests/node/browser-reports.test.mjs:396:14)
+  ...
+# Subtest: owner 2026-10-16 (browser): networks narrow the School list, filters take several values, and a Section counts the walks where it was shown
+not ok 8 - owner 2026-10-16 (browser): networks narrow the School list, filters take several values, and a Section counts the walks where it was shown
+  ---
+  duration_ms: 1030.846998
+  type: 'test'
+  location: '/home/user/ICFWalk/tests/node/browser-reports.test.mjs:443:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + []
+    - [
+    -   'Report browser network 1',
+    -   'Report browser network 2'
+    - ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'Report browser network 1'
+    1: 'Report browser network 2'
+  actual:
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ICFWalk/tests/node/browser-reports.test.mjs:450:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 2
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 131385.45901

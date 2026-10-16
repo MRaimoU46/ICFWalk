@@ -1,0 +1,60 @@
+TAP version 13
+# (node:1167) [DEP0123] DeprecationWarning: Setting the TLS ServerName to an IP address is not permitted by RFC 6066. This will be ignored in a future version.
+# (Use `node --trace-deprecation ...` to show where the warning was created)
+# Subtest: RPT-03 (browser): a report-only user reads released figures only and is never sent a withheld value
+ok 1 - RPT-03 (browser): a report-only user reads released figures only and is never sent a withheld value
+  ---
+  duration_ms: 2645.371966
+  type: 'test'
+  ...
+# Subtest: RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+ok 2 - RPT-07 (browser): filters narrow the population and the CSV download is the route's own file
+  ---
+  duration_ms: 1757.753739
+  type: 'test'
+  ...
+# Subtest: a refused filter is announced and leaves no stale results behind
+ok 3 - a refused filter is announced and leaves no stale results behind
+  ---
+  duration_ms: 1176.461335
+  type: 'test'
+  ...
+# Subtest: a walk user moves between My walks and Reports and sees only their own scope
+ok 4 - a walk user moves between My walks and Reports and sees only their own scope
+  ---
+  duration_ms: 1066.258214
+  type: 'test'
+  ...
+# Subtest: SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+ok 5 - SEC-02 (browser): stored markup in an org unit name is shown as text and never runs
+  ---
+  duration_ms: 1076.635234
+  type: 'test'
+  ...
+# Subtest: releases (browser): someone who can open every walk releases dates from the page
+ok 6 - releases (browser): someone who can open every walk releases dates from the page
+  ---
+  duration_ms: 1214.042924
+  type: 'test'
+  ...
+# Subtest: A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+ok 7 - A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px without horizontal loss
+  ---
+  duration_ms: 8131.500041
+  type: 'test'
+  ...
+# Subtest: owner 2026-10-16 (browser): networks narrow the School list, filters take several values, and a Section counts the walks where it was shown
+ok 8 - owner 2026-10-16 (browser): networks narrow the School list, filters take several values, and a Section counts the walks where it was shown
+  ---
+  duration_ms: 2556.426315
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 20173.665154
