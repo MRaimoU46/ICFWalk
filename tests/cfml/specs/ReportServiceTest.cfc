@@ -474,7 +474,8 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		}
 		assertEquals(1, report(analyst, { "orgUnitId": other.id, "dim_period": "first" }).population.walks, "the other school is its own population");
 
-		// Section and item restrict what is reported, not who is counted.
+		// Section and item restrict what is reported. They also count only the walks where they were
+		// shown (owner's decision 2026-10-16), and component 1 is shown on every walk, so all 3 count.
 		var bySection = q({ "section": "s1" });
 		assertEquals(3, bySection.population.walks);
 		var keys = [];

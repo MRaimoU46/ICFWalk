@@ -5,7 +5,7 @@
  * first, and this service checks it again so a direct call cannot skip it). The population is
  * always drawn from the org units the caller's report.view assignments cover right now -- effective
  * dates, active units and include_descendants all resolved by AuthorizationService -- intersected
- * with any unit the request names. A named unit outside that scope is refused as not found and
+ * with the units the request names. A named unit outside that scope is refused as not found and
  * audited (AuthorizationService.requirePermission), so a report cannot be used to learn that a
  * unit, or its walks, exist. Instrument administrators hold no report.view and are refused.
  *
@@ -20,7 +20,7 @@
  *             can disclose nothing to them that they could not read directly.
  *   RELEASE   a frozen release of one closed period (migration 007; createRelease). Anyone with
  *             report.view may read one, and a caller without walk.read on the whole scope may read
- *             nothing else (REPORT_RELEASE_REQUIRED). It takes the version, a covered unit, a
+ *             nothing else (REPORT_RELEASE_REQUIRED). It takes the version, covered units, a
  *             section and a question -- nothing that narrows who is counted
  *             (REPORT_FILTER_NOT_PERMITTED) -- and counts COMPLETED walks only. Releases never
  *             overlap and never change, so no two can be subtracted and rerunning one returns the
