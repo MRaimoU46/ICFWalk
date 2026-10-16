@@ -135,8 +135,9 @@ export function mountReports({ api, apiBase }) {
 
   /**
    * A filter that takes several values: a disclosure holding one checkbox per value, like the
-   * editor's checkbox fields. Its summary says what is chosen (the "none" text, up to two names, or
-   * how many) and is named by the field's label. Enter or Space opens it, Tab moves through the
+   * editor's checkbox fields. Its summary says what is chosen (the "none" text, the names while they
+   * fit, or how many: a list cut off at the edge would hide that a second value is chosen) and is
+   * named by the field's label. Enter or Space opens it, Tab moves through the
    * values, Space ticks one, and Escape closes it; opening one closes the others.
    */
   function multiSelect(id, labelText, options, selected = [], noneText = "Any") {
@@ -152,7 +153,8 @@ export function mountReports({ api, apiBase }) {
     const details = el("details", { className: "multi-select", id }, summary, list);
     const sync = () => {
       const names = [...list.querySelectorAll("input:checked")].map((c) => c.nextElementSibling.textContent);
-      text.textContent = !names.length ? noneText : names.length <= 2 ? names.join(", ") : `${names.length} selected`;
+      const joined = names.join(", ");
+      text.textContent = !names.length ? noneText : names.length === 1 || (names.length === 2 && joined.length <= 24) ? joined : `${names.length} selected`;
     };
     list.addEventListener("change", sync);
     details.addEventListener("keydown", (ev) => {

@@ -464,6 +464,7 @@ test("owner 2026-10-16 (browser): networks narrow the School list, filters take 
 
   // Both networks, and two grades: any of them. Every walk here is grade 7.
   await pick(page, "rf-network", networks);
+  assert.equal(await page.textContent("#rf-network-text"), "2 selected", "two long names would be cut off, so the summary counts them");
   assert.equal((await names("rf-org")).length, 2);
   assert.equal(await page.textContent("#rf-org-text"), "Report browser school A", "a school still in the chosen networks stays chosen");
   await pick(page, "rf-org", []);
