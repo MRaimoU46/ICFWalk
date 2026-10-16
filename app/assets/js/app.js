@@ -698,7 +698,9 @@ function confirmDelete(card, walk, title) {
 
 function creatableUnits() {
   const ids = app.me.permissions["walk.create"] || [];
+  // A NETWORK unit only groups schools (for scope and reports): no walk is started there.
   return ids.map((id) => ({ id, ...(app.me.orgUnits[id] || { code: "", name: id, type: "" }) }))
+    .filter((u) => u.type !== "NETWORK")
     .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "SCHOOL" ? -1 : 1));
 }
 

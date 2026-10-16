@@ -684,11 +684,13 @@ This object is private walk content, not an aggregate-report source. Nothing in 
 **The population.** A report covers the walks of **one** instrument version (default: the current
 one), because every walk is pinned to one immutable version and two versions may word or score an
 item differently. Within it: walks whose org unit is one the caller's `report.view` assignments cover
-now (effective dates, active units and `include_descendants` resolved), narrowed to one named unit
-and its covered descendants when the request names one; COMPLETED walks, plus DRAFT walks only when
-the request asks (`includeDrafts=true`); never a VOIDED walk; and, when given, an observation window
-on `icf.walk.observed_at` (the visit date, or the creation instant when there is none), inclusive of
-both calendar dates.
+now (effective dates, active units and `include_descendants` resolved), narrowed to the named units
+and their covered descendants when the request names any (schools, networks or any unit the caller
+covers, each walk once); COMPLETED walks, plus DRAFT walks only when the request asks
+(`includeDrafts=true`); never a VOIDED walk; when given, an observation window on
+`icf.walk.observed_at` (the visit date, or the creation instant when there is none), inclusive of
+both calendar dates; and, in a live report that names a section or a question, only the walks where
+it was shown (below).
 
 **What is reportable.** An item is reported when it is an active `SINGLE_CHOICE` item flagged
 reportable in the pinned version; notes, text, display items and the email draft never are,
@@ -716,6 +718,40 @@ can add up to more than the walks, and the page says so under the field. Visibil
 dimension is exact when one `EQUALS` or `IN` condition reads it (a walk is visible when any of its
 values shows the target); a rule that reads it twice or negates it leaves the governed dimension out of
 reports.
+
+**Filters that take several values** (the owner, 2026-10-16, `docs/OPEN_DECISIONS.md`). `orgUnitId`
+and every `dim_<code>` take one value or several, as a comma-separated list; a parameter repeated in
+the query string arrives joined with commas, on both engines. A walk matches a filter when it matches
+any of its values, and it must match every filter: Grade 7 or 8, at school A or B. Each named unit is
+authorized on its own, so one unit outside the caller's scope refuses the whole request (404, audited
+`ACCESS_DENIED`), and the population is the named units' covered descendants together, each walk
+counted once however many of the named units hold it (a network and one of its schools, say). Values
+are trimmed, empty parts and repeats dropped, at most 200 per parameter and 100 characters each, and a
+dimension value code that itself holds a comma matches as the whole text first. The report echoes
+`filters.orgUnitIds[]` and `filters.dimensions` as `{ <code>: [values] }` in the version's value order;
+the CSV has one `META` row per value (`filter_orgUnitId`, `filter_dim_<code>`); `filterCount` counts a
+filter once however many values it holds.
+
+**Networks.** A network is an org unit of type `NETWORK` between the district and its schools
+(`DISTRICT` > `NETWORK` > `SCHOOL`). Nothing in the schema changes: the org tree already nests to any
+depth, assignments with `include_descendants` cover through it, and walks stay at their schools.
+Naming a network narrows a report to its schools. The Reports page offers a Network filter when the
+caller covers a network and narrows its School list to the chosen networks' schools; the new-walk
+chooser never offers a network as a place to walk. `docs/OPERATIONS.md` says how to load networks.
+
+**The walks a Section or Question counts** (the owner, 2026-10-16). In a live report, naming a
+`section` or an `item` also narrows who is counted, to the walks where it was shown: walks with a
+recorded response state other than `HIDDEN` for the question, or for at least one reportable question
+of the section and the sections nested in it. A walk where the instrument hid it leaves every figure
+in the report, the walk count and the org unit and dimension breakdowns included, so a conditional
+section such as Dual Language Classroom reports over the walks that showed it. A walk where it was
+shown but left unanswered or marked not applicable stays in and counts in that state; a walk with no
+recorded state for it is left out, since nothing records that it was shown. The report says so: `filters.walksWhereShown` is `true`, the CSV adds `META` `population_rule` ("Walks
+where the chosen section or question was shown."), and the page names what it counted by. A section
+with no reportable question beneath it (Visit information, Part 4) narrows nothing and says nothing.
+A release holds totals per block, not walks, so a released report keeps counting every released walk:
+there `section` and `item` choose only which questions are shown, `walksWhereShown` is `false`, and the
+CSV's `population_rule` and the page say so.
 
 **Report coherence.** A report reads many walks in several statements. It captures every
 population walk's `row_version` from the walk row before any child row is read, and verifies them
@@ -803,8 +839,9 @@ the COMPLETED walks observed on a range of dates (`observedFrom`..`observedTo`, 
 
 **Reading a release** (`releaseId=` on `/api/reports/aggregate` and `.csv`). Anyone with
 `report.view` may read one, within their own scope (an out-of-scope unit is still 404 and audited).
-A release takes `versionId`, `orgUnitId`, `section` and `item` -- what is shown -- and nothing that
-narrows who is counted: `from`, `to`, every `dim_*`, `optionItem`/`option` and `includeDrafts` are
+A release takes `versionId`, `orgUnitId` (one unit or several), `section` and `item` -- what is
+shown -- and nothing that narrows who is counted (a Section or Question narrows a live report's walks,
+never a release's): `from`, `to`, every `dim_*`, `optionItem`/`option` and `includeDrafts` are
 refused with 400 `REPORT_FILTER_NOT_PERMITTED`, each offending parameter named. The figures are
 built in three steps:
 

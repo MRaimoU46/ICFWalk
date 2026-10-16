@@ -515,12 +515,23 @@ test("owner 2026-10-16: a repeated parameter is a list, several schools and valu
   const csv = await who.districtWalker.call("GET", "/api/reports/aggregate.csv?section=dual_language_classroom");
   assert.equal(csv.status, 200);
   assert.ok(csv.text.includes("\r\nMETA,,population_rule,Walks where the chosen section or question was shown.,,,,,\r\n"), "the export says how walks were counted");
+  // A section with no reportable question beneath it (Visit information holds the visit's fields)
+  // narrows nothing, and neither the report nor its export says it did.
+  const fields = await live("section=visit_information");
+  assert.equal(fields.population.walks, all);
+  assert.equal(fields.filters.walksWhereShown, false);
+  const fieldsCsv = await who.districtWalker.call("GET", "/api/reports/aggregate.csv?section=visit_information");
+  assert.equal(fieldsCsv.status, 200);
+  assert.ok(!fieldsCsv.text.includes("population_rule"));
 
   // A release holds totals, not walks: there the Section only chooses questions, and the report says so.
   const rel = await who.districtReport.call("GET", released("/api/reports/aggregate", "&section=dual_language_classroom"));
   assert.equal(rel.status, 200, rel.text);
   assert.equal(rel.json.population.walks, 3, "every released walk");
   assert.equal(rel.json.filters.walksWhereShown, false);
+  const relCsv = await who.districtReport.call("GET", released("/api/reports/aggregate.csv", "&section=dual_language_classroom"));
+  assert.equal(relCsv.status, 200);
+  assert.ok(relCsv.text.includes("\r\nMETA,,population_rule,Every released walk: in released figures the section and question choose which questions are shown.,,,,,\r\n"));
   const relUnits = await who.districtReport.call("GET", released("/api/reports/aggregate", `&orgUnitId=${units.a}&orgUnitId=${units.b}`));
   assert.equal(relUnits.status, 200, relUnits.text);
   assert.equal(relUnits.json.population.walks, 3, "several units in a release: A's block; B's single walk was never released");

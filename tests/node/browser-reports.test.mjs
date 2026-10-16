@@ -486,6 +486,14 @@ test("owner 2026-10-16 (browser): networks narrow the School list, filters take 
   await waitForReport(page, "Report updated: 3 walks.");
   assert.equal(await page.textContent("#report-results .report-counted"), "Released figures count every released walk. Section and Question only choose which questions are shown.");
   assert.deepEqual(await axe(page), [], "the filters and results");
+
+  // A network groups schools: the new-walk chooser never offers one as a place to walk.
+  await page.click("#nav-list-btn");
+  await page.click("#new-walk-btn");
+  await page.waitForSelector("#new-walk-chooser:not([hidden])");
+  const places = await page.$$eval("#chooser-unit option", (o) => o.map((x) => x.textContent));
+  assert.deepEqual(places, [...["Report browser school A", XSS_NAME].sort((a, b) => a.localeCompare(b)), "Report browser district"], "the schools, then the district as before");
+  await page.click("#chooser-cancel");
   assert.deepEqual(pageErrors, [], "no page errors");
   await context.close();
 });

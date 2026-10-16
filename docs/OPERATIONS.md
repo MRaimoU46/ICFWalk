@@ -522,6 +522,26 @@ Re-import `config/org-units` (codes are stable identifiers; names and parents up
 map any new SCHOOL unit (`docs/LOCAL_SETUP.md`, step 10). A unit that closes is set inactive by
 import; its walks stay and report under it.
 
+**Networks** (owner, 2026-10-16). Schools grouped by network sit under a `NETWORK` unit between the
+district and the school. Import each network with the district as its parent and re-import each of
+its schools with the network as its parent, in the same file or call:
+
+```json
+{ "orgUnits": [
+  { "code": "network_north", "type": "NETWORK", "name": "North Network", "parentCode": "district" },
+  { "code": "abbott_middle_school", "type": "SCHOOL", "name": "Abbott Middle School", "parentCode": "network_north" }
+] }
+```
+
+An import places every unit it lists under that unit's `parentCode`, and a listed unit without one
+becomes a top-level unit, so list each moved school with its new parent. A school's School mapping,
+walks and releases stay as they are. District-level assignments (`include_descendants`) cover the
+networks and their schools without change; the Reports page shows a Network filter once a person
+covers a network, and never offers a network as a place to start a walk. Keep a network active while
+it holds active schools: scope reaches a school through active units only, so a deactivated network
+cuts its schools off from every district-level person. To retire one, move its schools first, then set
+it inactive.
+
 ### 9.3 Sessions and restarts
 
 A ColdFusion restart ends every session on that server. Open pages are unaffected: the next save is

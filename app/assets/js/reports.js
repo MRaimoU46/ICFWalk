@@ -16,14 +16,15 @@
  * LIVE OR RELEASED (RPT-03 correction). The "Data" control offers current data only when the
  * server says the caller may have it (options.disclosure.liveAvailable: they can open every walk
  * in their scope), and otherwise only released dates. A released report takes the version, network,
- * school, section and question, so those are the only filters shown for it.
+ * school, section and question, so those are the only filters shown for it. The server withholds
+ * small figures before it answers: a withheld figure arrives as null and is shown as "Withheld"; a
+ * figure of which only part could be released arrives with `withheld: true` and is shown as "At
+ * least N". There is no withheld value in the page to reveal.
  *
  * SEVERAL VALUES (owner's decisions 2026-10-16). Network, School and every visit field take several
  * values: a walk matches any value of a filter, and every filter together. The School list narrows to
  * the chosen networks. In a live report a Section or Question counts only the walks where it was
- * shown; a released report keeps counting every released walk, and the page says which applies. The server withholds small figures before it answers: a withheld figure arrives as
- * null and is shown as "Withheld"; a figure of which only part could be released arrives with
- * `withheld: true` and is shown as "At least N". There is no withheld value in the page to reveal.
+ * shown; a released report keeps counting every released walk, and the page says which applies.
  *
  * Every value from the server reaches the page through textContent or an attribute set by the DOM
  * API -- never innerHTML -- so instrument wording and org unit names are always text.
@@ -413,11 +414,12 @@ export function mountReports({ api, apiBase }) {
     return card("Walks in this report", "rr-population", ...lines);
   }
 
-  /** How a chosen Section or Question counted walks, or "" when neither is chosen. */
+  /** How a chosen Section or Question counted walks, or "" when it did not change who is counted. */
   function narrowingNote(r) {
     const f = r.filters || {};
-    if (!f.section && !f.item) return "";
-    if (!f.walksWhereShown) return "Released figures count every released walk. Section and Question only choose which questions are shown.";
+    if (!f.walksWhereShown) {
+      return r.mode === "RELEASE" && (f.section || f.item) ? "Released figures count every released walk. Section and Question only choose which questions are shown." : "";
+    }
     const opts = view.options || { sections: [], items: [] };
     if (f.item) {
       const item = opts.items.find((i) => i.itemKey === f.item);

@@ -221,8 +221,10 @@ component output="false" {
 		var dimensionCodes = structKeyArray(report.filters.dimensions);
 		arraySort(dimensionCodes, "textnocase");
 		for (var code in dimensionCodes) for (var value in report.filters.dimensions[code]) arrayAppend(meta, ["filter_dim_" & code, value]);
-		if (structKeyExists(report.filters, "section") || structKeyExists(report.filters, "item")) {
-			arrayAppend(meta, ["population_rule", report.filters.walksWhereShown ? variables.WALKS_WHERE_SHOWN_NOTE : variables.EVERY_RELEASED_WALK_NOTE]);
+		// Said only when true: a live section with no reportable question beneath it narrows nothing.
+		if (report.filters.walksWhereShown) arrayAppend(meta, ["population_rule", variables.WALKS_WHERE_SHOWN_NOTE]);
+		else if (report.mode == "RELEASE" && (structKeyExists(report.filters, "section") || structKeyExists(report.filters, "item"))) {
+			arrayAppend(meta, ["population_rule", variables.EVERY_RELEASED_WALK_NOTE]);
 		}
 		for (var m in meta) arrayAppend(lines, csvRow(["META", "", m[1], m[2], "", "", "", "", ""]));
 		var pop = report.population;

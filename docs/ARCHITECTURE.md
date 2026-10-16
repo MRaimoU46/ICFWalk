@@ -831,7 +831,12 @@ figures each block's own report publishes. See `docs/DATA_CONTRACT.md`, "Aggrega
 `/api/reports/options`, a query string for `/api/reports/aggregate`, and a link to the CSV route
 (no `download` attribute, so the route's `Content-Disposition` names the file). A "Data" control
 offers current data only when the options say the caller may have it, and otherwise released dates
-only; a release shows only the filters a release takes. Withheld figures arrive as `null` and are
+only; a release shows only the filters a release takes. Network, School and every visit field are
+checkbox lists inside a `<details>` disclosure (operable from the keyboard: Enter opens, Space ticks,
+Escape closes and returns focus), sent as comma lists; choosing networks narrows the School list to
+their schools through `parentOrgUnitId`. Under "Walks in this report" the page says when a Section or
+Question counted only the walks where it was shown, or that a release counts every released walk
+(owner, 2026-10-16). Withheld figures arrive as `null` and are
 shown as "Withheld" ("At least N" for a partly released figure), so the page never holds a value it
 hides. Someone who may release sees a "Release dates" form (`POST /api/reports/releases`). A
 report-only role lands on Reports and never requests `/api/walks` or `/api/instrument/current`;
