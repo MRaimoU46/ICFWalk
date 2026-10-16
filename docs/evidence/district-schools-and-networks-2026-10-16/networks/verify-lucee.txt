@@ -1,0 +1,12 @@
+engine at http://127.0.0.1:8888, database icfwalk_dev
+import org-units.example.json: {"created":51,"imported":51,"schoolValuesMapped":0,"updated":0}
+import org-units.networks.json: {"created":14,"imported":64,"schoolValuesMapped":0,"updated":50}
+ok 1 - org-units.example.json, then org-units.networks.json, imported by file name
+ok 2 - 7 networks, each directly under the district: Bartlett Network, Elgin Network, High School Network, Larkin Network, Middle School Network, South Elgin Network, Streamwood Network
+ok 3 - all 53 listed schools sit under the network the owner listed them in
+ok 4 - the 4 closed schools are inactive and in no scope: Ellis Middle School, Hanover Countryside Elementary School, Lowrie Elementary School, Washington Elementary School
+ok 5 - the 53 open schools are exactly the 2026-10-14 version's School values, code for code
+ok 6 - every existing school keeps its name; only its parent changed
+ok 7 - a second import creates nothing and changes no parent ({"created":0,"imported":64,"schoolValuesMapped":0,"updated":64})
+NETWORKS IMPORT CHECK PASSED
+exit=0

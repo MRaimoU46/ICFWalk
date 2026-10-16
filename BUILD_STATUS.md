@@ -4838,3 +4838,45 @@ was shown. Both decisions are in `docs/OPEN_DECISIONS.md`, verbatim.
 - Not yet in service: deploy. There is no migration in this change.
 - Still open from step 1: whether Performing Arts and Visual Arts continue Music and Art
   (`docs/OPEN_DECISIONS.md`).
+
+## The district's schools and networks (the owner's answers of 2026-10-16)
+
+**Last code commit `f07d5423cdab6b42a690b77ab01a9f84252e1e80`** (tree `f98cacacef7ee56229dd38b56857ec7a6d6cd3d0`), the second of two code
+commits on the report filters' records commit `6feacd4`: `a13af10`, `f07d542`. The records commit that adds
+this section follows it.
+
+The owner sent the district's seven networks and the 53 schools in them, then answered what did not
+match: the four names that differ are the schools matched ("1. correct on the matching"), the seven
+schools the instrument did not list are real, under the names they gave ("2. those names are correct.
+Legacy Middle School. Hawk Hollow Middle School, Laurel Hill Elementary, Spring Trail Elementary,
+Sycamore Trails Elementary."), and the four schools no network lists are closed ("3. Those schools are
+all closed."). All of it is in `docs/OPEN_DECISIONS.md`.
+
+| What | Built |
+| --- | --- |
+| The 2026-10-14 School list (`SCHOOL_AMENDMENT` in `scripts/derive-instrument-revision.mjs`) | The prototype's list less the four closed schools, plus the seven, coded from their labels and each in its network's grade band, alphabetical with Other last. A school that stays keeps its record and code. The document is re-derived (dimension values 104 to 107) and its golden refreshed: definitions checksum `d324ec76...`. The version is still a DRAFT, so nothing published changes, and the 2026-09-17 version still offers the four closed schools for its walks |
+| The district's org units (`config/org-units.networks.json`) | Imported after `config/org-units.example.json`: seven NETWORK units under the district, each of the 53 open schools under its network (four under the names the owner confirmed), the seven new schools under their official names and coded as their 2026-10-14 School values, the four closed schools inactive. Generated from the owner's list; re-importing it changes nothing |
+| Docs | `docs/INSTRUMENT_REVISION_2026-10-14.md` (the change, decision 9, the new checksum, mapping the seven schools once the version is current), `docs/LOCAL_SETUP.md` step 8, `docs/OPERATIONS.md` 9.2 |
+
+### Verification
+
+- **The exact-commit gate of `f07d542`** (`docs/evidence/district-schools-and-networks-2026-10-16/`): GATE
+  PASSED, Node/HTTP/Playwright 327/327 and CFML 559/559 on Lucee 6.2.8.20 and on Adobe ColdFusion 2023
+  Update 25, each on a brand-new database migrated 001 to 008; `test:package` 33/33, `validate:handoff` 51
+  checks. All 326 Node tests the report filters' gate passed pass on both engines under the same names,
+  plus REV-12; the 559 CFML test functions all ran, `InstrumentRevisionTest` compiling the amended document
+  to the golden bytes on each engine.
+- **The org-unit file** (`networks/`): reproduced byte for byte from the owner's list by its generator, and
+  imported after the example on both engines, 7 of 7 each. It gives seven networks under the district and
+  every listed school under the network the owner listed it in. The closed schools are inactive and in no
+  scope, and the open schools are exactly the 2026-10-14 School values, code for code. Names are kept, and
+  a second import changes nothing.
+- On the records commit only `test:package`, `validate:handoff`, the evidence checksums and the restricted
+  diff (records only) were checked.
+
+### Open
+
+- Not yet in service: apply migration 008, deploy, import the two org-unit files, publish the 2026-10-14
+  version, then map the seven new schools to their School values.
+- Still open from step 1: whether Performing Arts and Visual Arts continue Music and Art
+  (`docs/OPEN_DECISIONS.md`).

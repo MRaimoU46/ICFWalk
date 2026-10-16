@@ -1,0 +1,24 @@
+networks: 7; listed schools: 53 (matched 42, confirmed 4, added 7); closed: 4
+
+confirmed:
+  Elgin Network: "Ronald O'Neal" = O'Neal Elementary School (o_neal_elementary_school)
+  High School Network: "Central Schools Program" = Central School (central_school)
+  Larkin Network: "Harriet Gifford" = Gifford Elementary School (gifford_elementary_school)
+  South Elgin Network: "Bartlett" = Bartlett Elementary School (bartlett_elementary_school)
+
+added:
+  Bartlett Network: "Independence" = new unit Independence (independence)
+  Bartlett Network: "Laurel Hill" = new unit Laurel Hill Elementary (laurel_hill_elementary)
+  Bartlett Network: "Spring Trail" = new unit Spring Trail Elementary (spring_trail_elementary)
+  Bartlett Network: "Sycamore Trails" = new unit Sycamore Trails Elementary (sycamore_trails_elementary)
+  Larkin Network: "Illinois Park" = new unit Illinois Park (illinois_park)
+  Middle School Network: "Hawk Hollow Middle" = new unit Hawk Hollow Middle School (hawk_hollow_middle_school)
+  Middle School Network: "Legacy" = new unit Legacy Middle School (legacy_middle_school)
+
+closed:
+  Ellis Middle School (ellis_middle_school)
+  Hanover Countryside Elementary School (hanover_countryside_elementary_school)
+  Lowrie Elementary School (lowrie_elementary_school)
+  Washington Elementary School (washington_elementary_school)
+
+import units: 64; demo schools: 53
