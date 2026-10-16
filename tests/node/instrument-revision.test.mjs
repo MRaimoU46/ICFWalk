@@ -80,7 +80,7 @@ test("REV-03 the document compiles to its recorded checksums and counts", () => 
   assert.equal(Buffer.byteLength(compiled.canonicalJson, "utf8"), GOLDEN.canonicalBytes);
   assert.deepEqual(compiled.counts, GOLDEN.counts);
   assert.deepEqual(DOC.counts, Object.fromEntries(Object.keys(BASE.counts).map((k) => [k, DOC[k].length])));
-  assert.deepEqual(DOC.counts, { sections: 23, items: 166, responseSets: 30, responseOptions: 119, rules: 13, dimensions: 9, dimensionValues: 104, instrumentDimensions: 9 });
+  assert.deepEqual(DOC.counts, { sections: 23, items: 166, responseSets: 30, responseOptions: 119, rules: 13, dimensions: 9, dimensionValues: 107, instrumentDimensions: 9 });
   assert.equal(compiled.counts.placeholders, 17, "the seventeen placeholder prompts are still placeholders");
 });
 
@@ -226,7 +226,7 @@ test("REV-10 the visit fields carry the prototype's labels and option lists, and
   for (const f of P.META_FIELDS) assert.equal(dimensionOf(DOC, f.id).label, f.label, `${f.id} label`);
   assert.equal(dimensionOf(DOC, "content").label, "Content / Subject Area");
   assert.equal(dimensionOf(DOC, "classType").label, "Program");
-  const lists = { grade: P.GRADE_OPTIONS, content: P.CONTENT_OPTIONS, classType: P.CLASS_TYPE_OPTIONS, period: P.PERIOD_OPTIONS, visitTiming: P.VISIT_TIMING_OPTIONS, school: P.SCHOOL_OPTIONS };
+  const lists = { grade: P.GRADE_OPTIONS, content: P.CONTENT_OPTIONS, classType: P.CLASS_TYPE_OPTIONS, period: P.PERIOD_OPTIONS, visitTiming: P.VISIT_TIMING_OPTIONS };
   for (const [code, labels] of Object.entries(lists)) {
     assert.deepEqual(valuesOf(DOC, code).map((v) => v.label), labels, `${code} values in the prototype's order`);
     assert.deepEqual(valuesOf(DOC, code).map((v) => v.valueCode), labels.map(codeOf), `${code} value codes`);
@@ -276,7 +276,7 @@ test("REV-11 nothing else moved: every record the revision does not own is the s
     responseOptions: (o) => o.optionId.startsWith("opt_scale_") || o.optionId.startsWith("opt_part1_adopted_pacing_"),
     rules: (r) => r.ruleKey === "show_content_area" || r.ruleKey === "show_comp_s4_q3",
     dimensions: (d) => d.code === "content" || d.code === "classType" || d.code === "tag",
-    dimensionValues: (v) => v.dimensionId === "dim_content" || v.dimensionId === "dim_classtype",
+    dimensionValues: (v) => v.dimensionId === "dim_content" || v.dimensionId === "dim_classtype" || v.dimensionId === "dim_school",
     instrumentDimensions: (p) => p.dimensionId === "dim_tag",
   };
   const ids = { sections: "sectionId", items: "itemId", responseSets: "responseSetId", responseOptions: "optionId", rules: "ruleId", dimensions: "dimensionId", dimensionValues: "dimensionValueId", instrumentDimensions: "instrumentDimensionId" };
@@ -297,4 +297,37 @@ test("REV-11 nothing else moved: every record the revision does not own is the s
   const { ratings: r1, conditionalSections: c1, ...behaviorBefore } = BASE.behavior;
   assert.deepEqual(behaviorAfter, behaviorBefore, "behavior other than ratings and the renamed content-area entry");
   assert.deepEqual(Object.values(c2), Object.values(c1));
+});
+
+test("REV-12 the School list is the prototype's as the owner amended it on 2026-10-16: four closed schools out, seven in", () => {
+  // docs/OPEN_DECISIONS.md: the seven under the names the owner gave, alphabetical with Other last; a
+  // school that stays is its supplied record, renumbered to its place.
+  const closed = ["ellis_middle_school", "hanover_countryside_elementary_school", "lowrie_elementary_school", "washington_elementary_school"];
+  const added = {
+    hawk_hollow_middle_school: ["Hawk Hollow Middle School", "middle"], illinois_park: ["Illinois Park", "elementary"],
+    independence: ["Independence", "elementary"], laurel_hill_elementary: ["Laurel Hill Elementary", "elementary"],
+    legacy_middle_school: ["Legacy Middle School", "middle"], spring_trail_elementary: ["Spring Trail Elementary", "elementary"],
+    sycamore_trails_elementary: ["Sycamore Trails Elementary", "elementary"],
+  };
+  const schools = valuesOf(DOC, "school");
+  const schoolCodes = schools.map((v) => v.valueCode);
+  assert.equal(schoolCodes.length, P.SCHOOL_OPTIONS.length - closed.length + Object.keys(added).length);
+  for (const code of closed) assert.ok(P.SCHOOL_OPTIONS.map(codeOf).includes(code) && !schoolCodes.includes(code), `${code} is closed`);
+  assert.deepEqual(schoolCodes.filter((c) => !Object.hasOwn(added, c)), P.SCHOOL_OPTIONS.map(codeOf).filter((c) => !closed.includes(c)), "the prototype's schools that stay, in its order");
+  assert.equal(schoolCodes[schoolCodes.length - 1], "other");
+  const schoolLabels = schools.slice(0, -1).map((v) => v.label);
+  assert.deepEqual(schoolLabels, [...schoolLabels].sort((a, b) => a.localeCompare(b, "en")), "alphabetical, Other last");
+  for (const [code, [label, group]] of Object.entries(added)) {
+    const v = schools.find((x) => x.valueCode === code);
+    assert.ok(v, `${code} is offered`);
+    assert.deepEqual([v.label, v.valueGroup, v.reviewStatus, v.active], [label, group, "Owner decision 2026-10-16", true], code);
+    assert.equal(codeOf(v.label), code);
+  }
+  const suppliedSchools = new Map(valuesOf(BASE, "school").map((v) => [v.valueCode, v]));
+  for (const v of schools.filter((x) => suppliedSchools.has(x.valueCode))) {
+    const { displayOrder: renumbered, ...after } = v;
+    const { displayOrder: was, ...before } = suppliedSchools.get(v.valueCode);
+    assert.deepEqual(after, before, `${v.valueCode} is its supplied record`);
+  }
+  assert.deepEqual(schools.map((v) => v.displayOrder), schools.map((_, i) => (i + 1) * 10));
 });

@@ -57,6 +57,7 @@ immutable and records the fingerprint.
 | Content-area card | shown for Music, Art or CTE | shown for **Performing Arts, Visual Arts or CTE** |
 | Other disaggregation tag(s) | a free-text field in Part 1 | **removed** |
 | Grade level, Content / Subject Area, Program, Visit timing (step 2) | one value each | **several values each** (checkboxes), in the version's order |
+| School list (the owner, 2026-10-16) | the prototype's 50 schools and Other | **53 schools** and Other: four closed schools out (Ellis Middle, Hanover Countryside Elementary, Lowrie Elementary, Washington Elementary), seven in (Hawk Hollow Middle School, Illinois Park, Independence, Laurel Hill Elementary, Legacy Middle School, Spring Trail Elementary, Sycamore Trails Elementary), alphabetical with Other last |
 | Header (every version) | "School District U-46" over "ICFWalk · Instructional Clarity Framework" | "School District U-46 · Instructional Clarity Framework" over **INSTRUCTIONAL WALK** |
 
 Counts, 2026-09-17 to 2026-10-14: sections 23 to 23, items 144 to 166 (one rated question and 21 look-for
@@ -98,6 +99,15 @@ values 95 to 104, placements 10 to 9, placeholders 17 to 17.
    own `buildSummaryText()` and `generateEmailDraftFor()` against the server's export of the same walk:
    every line is identical apart from 14.3 and 14.5, and every email draft is identical.
 8. **The header belongs to the shell,** so it changes for every version at once.
+9. **The School list is the owner's of 2026-10-16,** not the prototype's (`SCHOOL_AMENDMENT` in the
+   derivation; `docs/OPEN_DECISIONS.md`). Sending the district's networks, the owner listed seven schools
+   the prototype does not have and none of four it does. Asked, they gave the seven names, verbatim:
+   "those names are correct. Legacy Middle School. Hawk Hollow Middle School, Laurel Hill Elementary,
+   Spring Trail Elementary, Sycamore Trails Elementary." (Independence and Illinois Park as listed). Of the
+   four, they said: "Those schools are all closed." This version therefore offers the seven, coded from
+   their labels like every school (`legacy_middle_school`, ...), each in the grade band of its network,
+   and does not offer the four. The 2026-09-17 version still offers the four, so its walks keep them. A
+   school that stays keeps its record and code; only its place in the list moves.
 
 ## A defect this change exposed, and its correction
 
@@ -113,9 +123,10 @@ cached) before titling. REV-E5 failed without the correction and passes with it.
 1. Import `config/instrument-config-2026-10-14.json`: **Instrument admin**, Import, choose the file; or,
    from the server with maintenance on, `node scripts/seed-instrument.mjs --file instrument-config-2026-10-14.json`.
    The result is a DRAFT labelled `2026-10-14 prototype revision` with definitions checksum
-   `4ac0f64ac250e8b8f452957a657f19bbb344f75038f696b3ab906032084187e4` and the 17 placeholder warnings.
-   (Step 1's document, before its four checkbox fields took several values, had
-   `b9e7d0df0c722a4861d2fdcaddc3b972e7bfc8a24a559f3ad839fecd3d95999a`.) The database must have
+   `d324ec76b61b236620e28de03d03803890ae2817974707d95bdc46f837d2146c` and the 17 placeholder warnings.
+   (Before the owner's School list of 2026-10-16 the document had
+   `4ac0f64ac250e8b8f452957a657f19bbb344f75038f696b3ab906032084187e4`, and step 1's, before its four
+   checkbox fields took several values, `b9e7d0df0c722a4861d2fdcaddc3b972e7bfc8a24a559f3ad839fecd3d95999a`.) The database must have
    migration 008 first (`database/README.md`): an application of this change answers its health
    probe `outdated` (503) until it has.
 2. Preview it, and Compare it with `2026-09-17 aligned prototype`. The comparison lists the changes in
@@ -123,6 +134,9 @@ cached) before titling. REV-E5 failed without the correction and passes with it.
 3. Confirm the source file (see "Source fingerprint and provenance").
 4. Publish it. New walks start on it from that moment. Walks already started stay on 2026-09-17 and open,
    save and export as they did. Retire the 2026-09-17 version when nobody needs to start walks on it.
+5. Map the seven new schools to their School values. Their org units (`config/org-units.networks.json`)
+   are coded as their values, so once this version is current the alignment endpoint proposes them and an
+   operator confirms them (`docs/LOCAL_SETUP.md`, step 10). Until then a walk there carries no School value.
 
 A brand-new installation can seed this document instead of the 2026-09-17 one with the same `--file`
 argument (or `ICFWALK_INSTRUMENT_CONFIG_PATH`). The test suite keeps seeding the 2026-09-17 document,
@@ -178,7 +192,7 @@ these values" (`metaHas`, `metaHasAny`).
 
 | Where | What |
 | --- | --- |
-| `tests/node/instrument-revision.test.mjs` (REV-01 to REV-11, no application) | The document is exactly what the derivation makes; its source fingerprint; its golden checksums; references and keys; every rated item on the prototype's 4-point scale with its exact definitions; the level names; the look-fors; Academic Teaming's third question and its rule; Part 1 order and Pacing; the visit fields, their lists and the content-area triggers; nothing else moved |
+| `tests/node/instrument-revision.test.mjs` (REV-01 to REV-12, no application) | The document is exactly what the derivation makes; its source fingerprint; its golden checksums; references and keys; every rated item on the prototype's 4-point scale with its exact definitions; the level names; the look-fors; Academic Teaming's third question and its rule; Part 1 order and Pacing; the visit fields, their lists and the content-area triggers; nothing else moved; the School list as the owner amended it |
 | `tests/cfml/specs/InstrumentRevisionTest.cfc` (6) | The CFML compiler produces the golden bytes (parity with the reference compiler); the authoring validator accepts it with only the 17 placeholder warnings; the real renderer builds it; the visibility engine follows the new triggers and the third Teaming question; the summary formatter prints 4-point scores |
 | `tests/node/browser-revision.test.mjs` (REV-E1 to REV-E6) | Imported through Instrument admin with the golden definitions checksum, and published; a walk on it is served its own model; it saves, and a 5, a value the version does not offer and the tag field are refused; the server's summary equals the browser formatter's; the editor renders level names, three Teaming questions, the Part 1 order, the visit fields and the header, with keyboard, axe-core and 375 px checks; the prototype's own summary and email code agree |
 | `tests/cfml/specs/MultipleValuesTest.cfc` (7, step 2) | The authoring rules for `settings.multiple`; the model's flags; the shared vectors (parity with the browser engine); the operators over several values; a school change; the save validator's checks and order; the summary, file name and email with several values |

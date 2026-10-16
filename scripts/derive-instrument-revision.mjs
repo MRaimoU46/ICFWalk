@@ -24,6 +24,9 @@
  *   - Grade level, Content / Subject Area, Program and Visit timing take several values: every
  *     META_FIELDS entry of type "checkboxes" gives its placement settings.multiple (step 2, migration
  *     008; docs/INSTRUMENT_REVISION_2026-10-14.md)
+ *   - the School list is the prototype's as the owner amended it on 2026-10-16 (SCHOOL_AMENDMENT): four
+ *     closed schools leave and seven schools the prototype does not list join, in its alphabetical
+ *     order with Other last
  *
  *   node scripts/derive-instrument-revision.mjs           # rewrite the document
  *   node scripts/derive-instrument-revision.mjs --check   # exit 1 when the committed document is stale
@@ -52,7 +55,30 @@ export const REVISION = {
     "level definitions; Academic Teaming question 3; the prototype's look-for lists; Target/Task Alignment " +
     "before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) " +
     "and Program (17 programs) options; Other disaggregation tag(s) removed; Grade level, Content / Subject " +
-    "Area, Program and Visit timing take several values (the prototype's checkboxes).",
+    "Area, Program and Visit timing take several values (the prototype's checkboxes); the School list as the " +
+    "owner amended it on 2026-10-16 (four closed schools removed, seven schools added).",
+};
+
+/**
+ * The owner's School list of 2026-10-16 (docs/OPEN_DECISIONS.md), applied to the prototype's: "Those
+ * schools are all closed." for the four, and "those names are correct. Legacy Middle School. Hawk Hollow
+ * Middle School, Laurel Hill Elementary, Spring Trail Elementary, Sycamore Trails Elementary." for the
+ * seven new schools, named as the owner gave them (Independence and Illinois Park as listed). A new
+ * school's value group is its network's grade band (the Middle School Network's are middle schools; the
+ * others are in elementary networks), which the version's school-to-grade filter reads.
+ */
+export const SCHOOL_AMENDMENT = {
+  decidedOn: "2026-10-16",
+  closed: ["Ellis Middle School", "Hanover Countryside Elementary School", "Lowrie Elementary School", "Washington Elementary School"],
+  added: [
+    { label: "Hawk Hollow Middle School", valueGroup: "middle" },
+    { label: "Illinois Park", valueGroup: "elementary" },
+    { label: "Independence", valueGroup: "elementary" },
+    { label: "Laurel Hill Elementary", valueGroup: "elementary" },
+    { label: "Legacy Middle School", valueGroup: "middle" },
+    { label: "Spring Trail Elementary", valueGroup: "elementary" },
+    { label: "Sycamore Trails Elementary", valueGroup: "elementary" },
+  ],
 };
 
 const PLACEHOLDER = "Placeholder in source";
@@ -343,6 +369,36 @@ export function deriveRevision(base, prototypeBytes) {
       dimensionValueId: `${prefix}${codeOf(label)}`, valueCode: codeOf(label), label, displayOrder: (i + 1) * 10,
       sourceLocation: `${listName}[${i}]`,
     }));
+    const at = doc.dimensionValues.findIndex((v) => v.dimensionId === dim.dimensionId);
+    doc.dimensionValues = [
+      ...doc.dimensionValues.slice(0, at).filter((v) => v.dimensionId !== dim.dimensionId),
+      ...rebuilt,
+      ...doc.dimensionValues.slice(at).filter((v) => v.dimensionId !== dim.dimensionId),
+    ];
+  }
+  // School: the prototype's list as the owner amended it. A school that stays keeps its record, renumbered
+  // to its place; a new school is a record like the others with the owner's decision as its source.
+  {
+    const dim = doc.dimensions.find((d) => d.code === "school");
+    const records = new Map(doc.dimensionValues.filter((v) => v.dimensionId === dim.dimensionId).map((v) => [v.valueCode, v]));
+    const listed = p.SCHOOL_OPTIONS;
+    if (listed[listed.length - 1] !== "Other") throw new Error("The prototype's School list no longer ends with Other.");
+    for (const label of SCHOOL_AMENDMENT.closed) if (!listed.includes(label)) throw new Error(`The prototype does not list the closed school ${label}.`);
+    for (const { label } of SCHOOL_AMENDMENT.added) if (listed.includes(label)) throw new Error(`The prototype already lists ${label}.`);
+    const kept = listed.slice(0, -1).filter((label) => !SCHOOL_AMENDMENT.closed.includes(label));
+    const labels = [...kept, ...SCHOOL_AMENDMENT.added.map((a) => a.label)].sort((a, b) => a.localeCompare(b, "en"));
+    if (labels.filter((l) => kept.includes(l)).join("|") !== kept.join("|")) throw new Error("The prototype's School list is not in the order the amendment sorts by.");
+    const template = records.get(codeOf(kept[0]));
+    const prefix = template.dimensionValueId.slice(0, template.dimensionValueId.length - template.valueCode.length);
+    const rebuilt = [...labels, "Other"].map((label, i) => {
+      const added = SCHOOL_AMENDMENT.added.findIndex((a) => a.label === label);
+      if (added < 0) return like(records.get(codeOf(label)), { displayOrder: (i + 1) * 10 });
+      return like(template, {
+        dimensionValueId: `${prefix}${codeOf(label)}`, valueCode: codeOf(label), label, displayOrder: (i + 1) * 10,
+        valueGroup: SCHOOL_AMENDMENT.added[added].valueGroup, sourceLocation: `SCHOOL_AMENDMENT.added[${added}]`,
+        reviewStatus: `Owner decision ${SCHOOL_AMENDMENT.decidedOn}`,
+      });
+    });
     const at = doc.dimensionValues.findIndex((v) => v.dimensionId === dim.dimensionId);
     doc.dimensionValues = [
       ...doc.dimensionValues.slice(0, at).filter((v) => v.dimensionId !== dim.dimensionId),
