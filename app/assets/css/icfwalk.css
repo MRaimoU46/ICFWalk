@@ -227,6 +227,19 @@ a.btn{display:inline-block;text-decoration:none;line-height:normal}
 .report-filters{margin-top:10px}
 .report-field label{margin-bottom:4px}
 .report-check{display:flex;align-items:center;gap:8px;align-self:end;padding-bottom:6px}
+/* A report filter that takes several values (owner's decision 2026-10-16): a disclosure styled like the
+   selects beside it, its checkboxes opening over the content below, never wider than the control. */
+.report-multi{min-width:0}
+.multi-label{display:block;font-size:11px;font-weight:600;color:var(--gray);letter-spacing:.3px;margin-bottom:4px}
+.multi-select{position:relative}
+.multi-summary{display:block;list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:7px;padding:8px 30px 8px 10px;font-size:13px;background:#fff;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.multi-summary::-webkit-details-marker{display:none}
+.multi-summary::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:2px solid var(--gray);border-bottom:2px solid var(--gray);transform:translateY(-70%) rotate(45deg)}
+.multi-select[open] .multi-summary{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,75,142,.15)}
+.multi-summary:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+.multi-options{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:6px 8px;min-width:0;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(0,52,102,.15);max-height:260px;overflow:auto}
+label.multi-option{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--ink);letter-spacing:0;margin:0;padding:5px 4px;cursor:pointer;overflow-wrap:anywhere}
+.multi-option input{margin:0;width:15px;height:15px;flex-shrink:0;accent-color:var(--navy);cursor:pointer}
 .report-check input{width:auto;margin:0}
 .report-check label{margin:0;font-size:12.5px;font-weight:500;color:var(--ink);letter-spacing:0}
 .report-status{display:block;margin:0 0 12px;min-height:1em}

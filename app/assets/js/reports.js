@@ -15,9 +15,13 @@
  *
  * LIVE OR RELEASED (RPT-03 correction). The "Data" control offers current data only when the
  * server says the caller may have it (options.disclosure.liveAvailable: they can open every walk
- * in their scope), and otherwise only released dates. A released report takes the version, school,
- * section and question -- nothing that narrows who is counted -- so those are the only filters
- * shown for it. The server withholds small figures before it answers: a withheld figure arrives as
+ * in their scope), and otherwise only released dates. A released report takes the version, network,
+ * school, section and question, so those are the only filters shown for it.
+ *
+ * SEVERAL VALUES (owner's decisions 2026-10-16). Network, School and every visit field take several
+ * values: a walk matches any value of a filter, and every filter together. The School list narrows to
+ * the chosen networks. In a live report a Section or Question counts only the walks where it was
+ * shown; a released report keeps counting every released walk, and the page says which applies. The server withholds small figures before it answers: a withheld figure arrives as
  * null and is shown as "Withheld"; a figure of which only part could be released arrives with
  * `withheld: true` and is shown as "At least N". There is no withheld value in the page to reveal.
  *
@@ -115,10 +119,90 @@ export function mountReports({ api, apiBase }) {
   /** Current values of every control, by name; used to keep choices across a version change. */
   function currentValues() {
     const out = {};
-    for (const control of filters.querySelectorAll("select, input")) {
+    for (const control of filters.querySelectorAll("select, input:not([data-multi])")) {
       out[control.id] = control.type === "checkbox" ? control.checked : control.value;
     }
+    for (const m of filters.querySelectorAll("details.multi-select")) out[m.id] = picked(m.id);
     return out;
+  }
+
+  /** The values ticked in one multi-select, in its order. */
+  function picked(id) {
+    const m = $(id);
+    return m ? [...m.querySelectorAll("input[type=checkbox]:checked")].map((c) => c.value) : [];
+  }
+
+  /**
+   * A filter that takes several values: a disclosure holding one checkbox per value, like the
+   * editor's checkbox fields. Its summary says what is chosen (the "none" text, up to two names, or
+   * how many) and is named by the field's label. Enter or Space opens it, Tab moves through the
+   * values, Space ticks one, and Escape closes it; opening one closes the others.
+   */
+  function multiSelect(id, labelText, options, selected = [], noneText = "Any") {
+    const labelId = `${id}-label`;
+    const text = el("span", { id: `${id}-text`, className: "multi-text" });
+    const summary = el("summary", { className: "multi-summary", "aria-labelledby": `${labelId} ${id}-text` }, text);
+    const list = el("fieldset", { className: "multi-options" }, el("legend", { className: "sr-only", text: labelText }));
+    options.forEach((o, i) => {
+      const box = el("input", { type: "checkbox", id: `${id}-o${i}`, value: o.value, "data-multi": "true" });
+      box.checked = selected.includes(o.value);
+      list.append(el("label", { className: "multi-option", for: box.id }, box, el("span", { text: o.label })));
+    });
+    const details = el("details", { className: "multi-select", id }, summary, list);
+    const sync = () => {
+      const names = [...list.querySelectorAll("input:checked")].map((c) => c.nextElementSibling.textContent);
+      text.textContent = !names.length ? noneText : names.length <= 2 ? names.join(", ") : `${names.length} selected`;
+    };
+    list.addEventListener("change", sync);
+    details.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape" || !details.open) return;
+      ev.preventDefault();
+      details.open = false;
+      summary.focus();
+    });
+    details.addEventListener("toggle", () => {
+      if (!details.open) return;
+      for (const other of filters.querySelectorAll("details.multi-select[open]")) if (other !== details) other.open = false;
+    });
+    sync();
+    return el("div", { className: "report-field report-multi" }, el("span", { className: "multi-label", id: labelId, text: labelText }), details);
+  }
+
+  /**
+   * Network and School. Networks are the NETWORK units the caller covers; the School list is every
+   * other unit below a district, narrowed to the chosen networks. A report names the chosen schools,
+   * or else the chosen networks (query()), so the two narrow together.
+   */
+  function appendUnitFilters(opts, keep) {
+    const parentOf = new Map(opts.orgUnits.map((u) => [u.orgUnitId, u.parentOrgUnitId]));
+    const within = (id, ancestors) => {
+      for (let p = parentOf.get(id); p; p = parentOf.get(p)) if (ancestors.includes(p)) return true;
+      return false;
+    };
+    const networks = opts.orgUnits.filter((u) => u.type === "NETWORK");
+    const schools = opts.orgUnits.filter((u) => u.type !== "NETWORK" && u.type !== "DISTRICT");
+    const label = (u) => (u.type === "SCHOOL" ? u.name : `${u.name} (${u.type.toLowerCase()})`);
+    if (networks.length) {
+      const kept = (keep["rf-network"] || []).filter((id) => networks.some((u) => u.orgUnitId === id));
+      filters.append(multiSelect("rf-network", "Network", networks.map((u) => ({ value: u.orgUnitId, label: u.name })), kept, "All networks"));
+    }
+    const schoolField = () => {
+      const chosen = picked("rf-network");
+      const offered = chosen.length ? schools.filter((u) => within(u.orgUnitId, chosen)) : schools;
+      const previous = $("rf-org") ? picked("rf-org") : (keep["rf-org"] || []);
+      const kept = previous.filter((id) => offered.some((u) => u.orgUnitId === id));
+      return multiSelect("rf-org", "School", offered.map((u) => ({ value: u.orgUnitId, label: label(u) })), kept, "All schools I can report on");
+    };
+    let current = schoolField();
+    filters.append(current);
+    if (networks.length) {
+      $("rf-network").addEventListener("change", () => {
+        const next = schoolField();
+        current.replaceWith(next);
+        current = next;
+        updateDownload();
+      });
+    }
   }
 
   /** The release the "Data" control names, or null for current data. */
@@ -156,8 +240,7 @@ export function mountReports({ api, apiBase }) {
     version.addEventListener("change", () => changeVersion(version.value));
     filters.append(field("rf-version", "Instrument version", version));
 
-    const units = [{ value: ALL, label: "All schools I can report on" }, ...opts.orgUnits.map((u) => ({ value: u.orgUnitId, label: u.type === "SCHOOL" ? u.name : `${u.name} (${u.type.toLowerCase()})` }))];
-    filters.append(field("rf-org", "School", select(units, keep["rf-org"] ?? ALL)));
+    appendUnitFilters(opts, keep);
 
     const note = $("report-scope-note");
     if (release) {
@@ -175,10 +258,9 @@ export function mountReports({ api, apiBase }) {
     filters.append(field("rf-from", "Observed from", from), field("rf-to", "Observed to", to));
 
     for (const d of opts.dimensions) {
-      const choices = [{ value: ALL, label: "Any" }, ...d.values.map((v) => ({ value: v.code, label: v.label }))];
       const id = `rf-dim-${d.code}`;
-      const keepValue = d.values.some((v) => v.code === keep[id]) ? keep[id] : ALL;
-      filters.append(field(id, d.label, select(choices, keepValue)));
+      const kept = (keep[id] || []).filter((code) => d.values.some((v) => v.code === code));
+      filters.append(multiSelect(id, d.label, d.values.map((v) => ({ value: v.code, label: v.label })), kept));
     }
 
     const itemChoices = appendContentFilters(opts, keep);
@@ -212,7 +294,10 @@ export function mountReports({ api, apiBase }) {
     updateDownload();
   }
 
-  /** Section and question: what a report shows, not who it counts, so both kinds of report take them. */
+  /**
+   * Section and question: which questions a report shows, and in a live report also which walks it
+   * counts (those where the section or question was shown). Both kinds of report take them.
+   */
   function appendContentFilters(opts, keep) {
     const sectionChoices = [{ value: ALL, label: "All sections" }, ...opts.sections.filter((s) => s.depth > 0).map((s) => ({ value: s.sectionKey, label: `${"— ".repeat(Math.max(0, s.depth - 1))}${s.title}` }))];
     const sectionSelect = select(sectionChoices, opts.sections.some((s) => s.sectionKey === keep["rf-section"]) ? keep["rf-section"] : ALL);
@@ -231,12 +316,16 @@ export function mountReports({ api, apiBase }) {
     const release = selectedRelease();
     if (release) params.set("releaseId", release.releaseId);
     if (value("rf-version")) params.set("versionId", value("rf-version"));
-    if (value("rf-org")) params.set("orgUnitId", value("rf-org"));
+    // A filter with several values is one comma-separated list. The chosen schools, or else the
+    // chosen networks: the School list only offers schools in the chosen networks.
+    const schools = picked("rf-org");
+    const units = schools.length ? schools : picked("rf-network");
+    if (units.length) params.set("orgUnitId", units.join(","));
     if (value("rf-from")) params.set("from", value("rf-from"));
     if (value("rf-to")) params.set("to", value("rf-to"));
     for (const d of view.options ? view.options.dimensions : []) {
-      const v = value(`rf-dim-${d.code}`);
-      if (v) params.set(`dim_${d.code}`, v);
+      const values = picked(`rf-dim-${d.code}`);
+      if (values.length) params.set(`dim_${d.code}`, values.join(","));
     }
     if (value("rf-section")) params.set("section", value("rf-section"));
     if (value("rf-item")) params.set("item", value("rf-item"));
@@ -319,7 +408,23 @@ export function mountReports({ api, apiBase }) {
     if (r.release && !p.withheld) {
       lines.push(el("p", { className: "muted report-meta", text: `Counts below ${r.disclosure.minimumWalks}, and counts that would reveal them, are withheld. "At least" marks a figure of which only part could be released.` }));
     }
+    const counted = narrowingNote(r);
+    if (counted) lines.push(el("p", { className: "muted report-meta report-counted", text: counted }));
     return card("Walks in this report", "rr-population", ...lines);
+  }
+
+  /** How a chosen Section or Question counted walks, or "" when neither is chosen. */
+  function narrowingNote(r) {
+    const f = r.filters || {};
+    if (!f.section && !f.item) return "";
+    if (!f.walksWhereShown) return "Released figures count every released walk. Section and Question only choose which questions are shown.";
+    const opts = view.options || { sections: [], items: [] };
+    if (f.item) {
+      const item = opts.items.find((i) => i.itemKey === f.item);
+      return `Counting only walks where the question ${item ? `"${shorten(item.prompt, 80)}"` : "you chose"} was shown.`;
+    }
+    const section = opts.sections.find((s) => s.sectionKey === f.section);
+    return `Counting only walks where ${section ? section.title : "the section you chose"} was shown.`;
   }
 
   function schoolsCard(r) {
@@ -444,6 +549,10 @@ export function mountReports({ api, apiBase }) {
     view.wired = true;
     form.addEventListener("submit", (ev) => { ev.preventDefault(); run(); });
     form.addEventListener("change", updateDownload);
+    // A click outside an open multi-select closes it, as a native select's list closes.
+    document.addEventListener("click", (ev) => {
+      for (const open of filters.querySelectorAll("details.multi-select[open]")) if (!open.contains(ev.target)) open.open = false;
+    });
     $("report-reset").addEventListener("click", async () => {
       if (!view.options) return;
       // Clearing filters keeps the chosen data: it is not a filter.

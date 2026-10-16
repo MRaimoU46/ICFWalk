@@ -5,7 +5,9 @@
  * answered-only averages (RPT-04/07), the CSV download is the route's own file, a refused filter
  * is announced, a walk user can move between My walks and Reports, stored markup in an org unit
  * name stays text (SEC-02), someone who may release dates can do so from the page, and the view
- * passes keyboard, axe-core (WCAG 2.1 AA) and 375 px checks (A11Y-01/03/05).
+ * passes keyboard, axe-core (WCAG 2.1 AA) and 375 px checks (A11Y-01/03/05). Since the owner's
+ * decisions of 2026-10-16 the schools sit in two networks, the School, Network and visit filters take
+ * several values, and a Section counts only the walks where it was shown.
  *
  * Every walk is dated in a month no other suite uses (a random month in 1975-1999), and before()
  * releases those dates as someone who can open every walk, so the report-only user reads a real
@@ -134,6 +136,15 @@ async function readOwnRelease(page) {
   await waitForReport(page, "Report updated: 3 walks.");
 }
 
+/** Ticks exactly `values` in a report multi-select, then closes it with Escape. */
+async function pick(page, id, values) {
+  await page.click(`#${id} > summary`);
+  for (const box of await page.$$(`#${id} input[type=checkbox]`)) {
+    if ((await box.isChecked()) !== values.includes(await box.getAttribute("value"))) await box.click();
+  }
+  await page.keyboard.press("Escape");
+}
+
 async function waitForReport(page, text) {
   try {
     await page.waitForFunction((t) => document.getElementById("report-status").textContent === t, text, { timeout: 20000 });
@@ -156,8 +167,10 @@ before(async () => {
   if (skip) return;
   const imported = await api(env, "POST", "/api/maintenance/org-units/import", { token, body: { orgUnits: [
     { code: `${tag}-district`, type: "DISTRICT", name: "Report browser district", parentCode: null },
-    { code: `${tag}-school-a`, type: "SCHOOL", name: "Report browser school A", parentCode: `${tag}-district` },
-    { code: `${tag}-school-b`, type: "SCHOOL", name: XSS_NAME, parentCode: `${tag}-district` },
+    { code: `${tag}-network-1`, type: "NETWORK", name: "Report browser network 1", parentCode: `${tag}-district` },
+    { code: `${tag}-network-2`, type: "NETWORK", name: "Report browser network 2", parentCode: `${tag}-district` },
+    { code: `${tag}-school-a`, type: "SCHOOL", name: "Report browser school A", parentCode: `${tag}-network-1` },
+    { code: `${tag}-school-b`, type: "SCHOOL", name: XSS_NAME, parentCode: `${tag}-network-2` },
   ] } });
   assert.equal(imported.status, 200, imported.text);
   for (const [subject, roleCode, unit, descendants] of [[walkerA, "SCHOOL_WALK_REPORT", "school-a", false], [walkerB, "SCHOOL_WALK_REPORT", "school-b", false],
@@ -234,7 +247,7 @@ test("RPT-03 (browser): a report-only user reads released figures only and is ne
   assert.ok(!pageText.includes(`${tag}-NOTE`), "no note text");
   assert.ok(!pageText.includes(`Fixture ${walkerA}`), "no owner name");
   // A school with one walk is withheld, and says so without a count.
-  await page.selectOption("#rf-org", units.b);
+  await pick(page, "rf-org", [units.b]);
   await page.click("#report-run");
   await waitForReport(page, "Report updated. Results are withheld for this selection.");
   assert.equal(await page.textContent("#report-results .report-suppressed"), "Nothing is released for this selection: groups of fewer than 3 walks are never released.");
@@ -247,7 +260,7 @@ test("RPT-07 (browser): filters narrow the population and the CSV download is th
   await openReports(page);
   await waitForReport(page, "Report updated: 4 walks.");
   assert.equal(await page.$eval("#rf-source", (s) => s.value), "live", "current data first for someone who can open every walk");
-  await page.selectOption("#rf-org", units.a);
+  await pick(page, "rf-org", [units.a]);
   await page.click("#report-run");
   await waitForReport(page, "Report updated: 3 walks.");
   assert.equal(await page.locator('.report-item[data-item-key="comp_s1_q1"] .report-avg').textContent(), "Average 3.33 from 3 rated responses");
@@ -314,8 +327,10 @@ test("a walk user moves between My walks and Reports and sees only their own sco
   await waitForReport(page, "Report updated: 3 walks.");
   assert.equal(await page.isVisible("#view-list"), false);
   assert.equal(await page.isVisible("#nav-list-btn"), true);
-  const units = await page.$$eval("#rf-org option", (options) => options.map((o) => o.textContent));
-  assert.deepEqual(units, ["All schools I can report on", "Report browser school A"], "a school walker reports on their school only");
+  assert.equal(await page.textContent("#rf-org-text"), "All schools I can report on");
+  const units = await page.$$eval("#rf-org .multi-option span", (names) => names.map((n) => n.textContent));
+  assert.deepEqual(units, ["Report browser school A"], "a school walker reports on their school only");
+  assert.equal(await page.locator("#rf-network").count(), 0, "and is offered no network: they cover none");
   await page.click("#nav-list-btn");
   await page.waitForSelector("#view-list:not([hidden])");
   assert.equal(await page.locator(".walk-card").count(), 3, "My walks is intact");
@@ -331,8 +346,11 @@ test("SEC-02 (browser): stored markup in an org unit name is shown as text and n
   assert.ok(cells.includes(XSS_NAME), "the name is printed literally");
   assert.equal(await page.locator("#report-results img").count(), 0, "no element was created from it");
   assert.equal(await page.evaluate(() => window.__rptXss), undefined, "and no handler ran");
-  const options = await page.$$eval("#rf-org option", (o) => o.map((x) => x.textContent));
+  const options = await page.$$eval("#rf-org .multi-option span", (o) => o.map((x) => x.textContent));
   assert.ok(options.includes(XSS_NAME));
+  await pick(page, "rf-org", [units.b]);
+  assert.equal(await page.textContent("#rf-org-text"), XSS_NAME, "and in the filter's summary");
+  assert.equal(await page.evaluate(() => window.__rptXss), undefined);
   await context.close();
 });
 
@@ -374,10 +392,18 @@ test("A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px with
   const unnamed = await page.$$eval("#report-form select, #report-form input, #report-form button, #report-form a", (els) =>
     els.filter((e) => !(e.labels && e.labels.length) && !e.getAttribute("aria-label") && !e.textContent.trim()).map((e) => e.id || e.tagName));
   assert.deepEqual(unnamed, []);
-  await page.focus("#rf-org");
-  await page.keyboard.press("End");
-  const chosen = await page.$eval("#rf-org", (s) => s.value);
-  assert.ok(chosen === units.a || chosen === units.b, "End chose the last school in the list");
+  // A multi-select: Enter opens it, Tab reaches its first value, Space ticks it, Escape closes it.
+  await page.focus("#rf-org > summary");
+  await page.keyboard.press("Enter");
+  assert.equal(await page.$eval("#rf-org", (d) => d.open), true, "Enter opens the list");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Space");
+  const chosen = await page.$eval("#rf-org input:checked", (c) => c.value);
+  assert.ok(chosen === units.a || chosen === units.b, "Space ticked the first school in the list");
+  assert.deepEqual(await axe(page), [], "an open multi-select");
+  await page.keyboard.press("Escape");
+  assert.equal(await page.$eval("#rf-org", (d) => d.open), false, "Escape closes it");
+  assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.parentElement.id), "rf-org", "and returns to its summary");
   await page.focus("#report-run");
   await page.keyboard.press("Enter");
   await waitForReport(page, chosen === units.a ? "Report updated: 3 walks." : "Report updated: 1 walk.");
@@ -412,4 +438,54 @@ test("A11Y-01 / A11Y-03 / A11Y-05: keyboard operation, axe-core, and 375 px with
   assert.ok(overflow <= 0, `no horizontal overflow on the released view (${overflow}px)`);
   assert.deepEqual(pageErrors, [], "no page errors");
   await released.context.close();
+});
+
+test("owner 2026-10-16 (browser): networks narrow the School list, filters take several values, and a Section counts the walks where it was shown", { skip }, async () => {
+  const { context, page } = await newContext(districtWalker);
+  const axeSource = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+  await page.route("**/assets/js/axe.min.js", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: axeSource }));
+  await openReports(page);
+  await waitForReport(page, "Report updated: 4 walks.");
+  const names = async (id) => page.$$eval(`#${id} .multi-option span`, (s) => s.map((x) => x.textContent));
+  assert.deepEqual(await names("rf-network"), ["Report browser network 1", "Report browser network 2"]);
+  assert.equal((await names("rf-org")).length, 2, "every school before a network is chosen");
+
+  // A network: the School list keeps only its schools, and the report draws on the network.
+  const networks = await page.$$eval("#rf-network input", (b) => b.map((x) => x.value));
+  await pick(page, "rf-network", [networks[0]]);
+  assert.deepEqual(await names("rf-org"), ["Report browser school A"], "the School list follows the chosen network");
+  await page.click("#report-run");
+  await waitForReport(page, "Report updated: 3 walks.");
+  let url = new URL(await page.getAttribute("#report-download", "href"), home);
+  assert.equal(url.searchParams.get("orgUnitId"), networks[0], "the network, while no school is chosen");
+  await pick(page, "rf-org", [units.a]);
+  url = new URL(await page.getAttribute("#report-download", "href"), home);
+  assert.equal(url.searchParams.get("orgUnitId"), units.a, "the chosen schools once there are some");
+
+  // Both networks, and two grades: any of them. Every walk here is grade 7.
+  await pick(page, "rf-network", networks);
+  assert.equal((await names("rf-org")).length, 2);
+  assert.equal(await page.textContent("#rf-org-text"), "Report browser school A", "a school still in the chosen networks stays chosen");
+  await pick(page, "rf-org", []);
+  await pick(page, "rf-dim-grade", ["7", "8"]);
+  assert.equal(await page.textContent("#rf-dim-grade-text"), "7, 8");
+  await page.click("#report-run");
+  await waitForReport(page, "Report updated: 4 walks.");
+  url = new URL(await page.getAttribute("#report-download", "href"), home);
+  assert.equal(url.searchParams.get("dim_grade"), "7,8");
+  assert.equal(url.searchParams.get("orgUnitId"), networks.join(","));
+
+  // A Section: only the walks where it was shown, and the page says so.
+  await page.selectOption("#rf-section", "dual_language_classroom");
+  await page.click("#report-run");
+  await waitForReport(page, "Report updated: 0 walks.");
+  assert.equal(await page.textContent("#report-results .report-counted"), "Counting only walks where Dual Language Classroom was shown.");
+  // In a release the Section only chooses questions, and the page says that instead.
+  await page.selectOption("#rf-source", release.releaseId);
+  await page.click("#report-run");
+  await waitForReport(page, "Report updated: 3 walks.");
+  assert.equal(await page.textContent("#report-results .report-counted"), "Released figures count every released walk. Section and Question only choose which questions are shown.");
+  assert.deepEqual(await axe(page), [], "the filters and results");
+  assert.deepEqual(pageErrors, [], "no page errors");
+  await context.close();
 });

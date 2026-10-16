@@ -180,8 +180,10 @@ async function check(page, view, layout) {
 async function keyboardTraversal(page, view) {
   const result = await page.evaluate(async () => {
     const main = document.getElementById("main") || document.body;
+    // checkVisibility() also leaves out the options of a closed disclosure (a Reports filter that takes
+    // several values): Chromium keeps a layout box for them, so offsetParent alone counts them as shown.
     const expected = [...main.querySelectorAll("button, a[href], input, select, textarea, [tabindex]:not([tabindex='-1'])")]
-      .filter((e) => !e.disabled && e.offsetParent !== null && getComputedStyle(e).visibility !== "hidden" && !e.closest("[hidden]") && e.tabIndex >= 0);
+      .filter((e) => !e.disabled && e.offsetParent !== null && getComputedStyle(e).visibility !== "hidden" && !e.closest("[hidden]") && e.tabIndex >= 0 && e.checkVisibility());
     return { expected: expected.length };
   });
   const seen = new Set();
