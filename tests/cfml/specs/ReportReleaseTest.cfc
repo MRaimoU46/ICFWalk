@@ -271,7 +271,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 			for (var kind in ["ITEM", "OPTION", "DIMENSION_VALUE", "DIMENSION_STATE", "ITEM_STATE", "SECTION", "ORG_UNIT"]) assertFalse(find(chr(10) & kind & ",", csv) > 0, name & ": no " & kind & " record");
 			var copy = duplicate(r);
 			structDelete(copy, "generatedAt");
-			structDelete(copy.filters, "orgUnitId");
+			structDelete(copy.filters, "orgUnitIds");
 			shapes[name] = json.serialize(copy);
 		}
 		assertExactTextEquals(shapes.e, shapes.a, "one walk looks exactly like no walk");
@@ -610,7 +610,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var details = deserializeJSON(exportAudit.details_json[1]);
 		var keys = structKeyArray(details);
 		arraySort(keys, "text");
-		assertExactJsonEquals(["attempts", "bytes", "filters", "mode", "orgUnitId", "releaseId", "rows", "versionId", "walks", "withheld"], keys, "identifiers and counts only");
+		assertExactJsonEquals(["attempts", "bytes", "filters", "mode", "orgUnitIds", "releaseId", "rows", "versionId", "walks", "withheld"], keys, "identifiers and counts only");
 		assertEquals(-1, details.walks, "a withheld population is not recorded as a count");
 		assertTrue(details.withheld);
 		var generated = 0;

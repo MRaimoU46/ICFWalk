@@ -460,7 +460,7 @@ test("SEC-01: injection payloads in any parameter are refused as data, and nothi
 test("options describe the version, the scope, the releases and the reportable surface only", { skip }, async () => {
   const r = await who.districtReport.call("GET", "/api/reports/options");
   assert.equal(r.status, 200, r.text);
-  assert.equal(r.json.format, "icfwalk-aggregate-report/2");
+  assert.equal(r.json.format, "icfwalk-aggregate-report/3");
   assert.ok(r.json.versions.some((v) => v.isCurrent && v.versionId === r.json.version.versionId));
   assert.deepEqual(r.json.dimensions.map((d) => d.code), ["grade", "content", "period", "classType", "visitTiming"]);
   assert.ok(r.json.items.length > 0 && r.json.items.every((i) => Array.isArray(i.options) && i.options.length > 0), "choice items only");
@@ -475,4 +475,53 @@ test("options describe the version, the scope, the releases and the reportable s
   assert.equal((await who.releaser.call("GET", "/api/reports/options")).json.canRelease, true);
   assert.equal((await who.districtReport.call("GET", `/api/reports/options?versionId=${uuid()}`)).status, 404);
   assert.equal((await who.districtReport.call("GET", "/api/reports/options?orgUnitId=x")).json.error.code, "REPORT_FILTER_UNKNOWN");
+});
+
+test("owner 2026-10-16: a repeated parameter is a list, several schools and values narrow together, and a Section counts the walks where it was shown, live only", { skip }, async () => {
+  const live = async (qs) => {
+    const r = await who.districtWalker.call("GET", `/api/reports/aggregate?${qs}`);
+    assert.equal(r.status, 200, `${qs}: ${r.text}`);
+    return r.json;
+  };
+  // Earlier tests may add walks to the district, so figures are compared with the whole scope's.
+  const all = (await live("")).population.walks;
+  const inB = (await live(`orgUnitId=${units.b}`)).population.walks;
+  assert.ok(all >= 4 && inB >= 1 && inB < all);
+  // Several schools: a repeated parameter (joined with commas by the engine) and a comma list alike.
+  assert.equal((await live(`orgUnitId=${units.a}&orgUnitId=${units.b}`)).population.walks, all);
+  const listed = await live(`orgUnitId=${units.a},${units.b}`);
+  assert.equal(listed.population.walks, all);
+  assert.deepEqual(listed.filters.orgUnitIds, [units.a, units.b]);
+  assert.equal((await who.districtWalker.call("GET", `/api/reports/aggregate?orgUnitId=${units.b}&orgUnitId=${units.c}`)).status, 404, "one unit outside the scope refuses the request");
+
+  // Several values of one field: any of them. The suite's walks are grade 7.
+  const seven = (await live("dim_grade=7")).population.walks;
+  assert.ok(seven >= 4);
+  const grades = await live("dim_grade=7&dim_grade=8");
+  assert.equal(grades.population.walks, seven);
+  assert.deepEqual(grades.filters.dimensions.grade, ["7", "8"]);
+  assert.equal((await live("dim_grade=8,9")).population.walks, 0);
+  assert.equal((await who.districtWalker.call("GET", "/api/reports/aggregate?dim_grade=7&dim_grade=13")).status, 400, "every listed value must be one of the field's values");
+
+  // Section: the walks where it was shown. No walk here has a Dual Language program; component 1
+  // is shown on every walk.
+  const hidden = await live("section=dual_language_classroom");
+  assert.equal(hidden.population.walks, 0);
+  assert.equal(hidden.filters.walksWhereShown, true);
+  const everywhere = await live("section=s1");
+  assert.equal(everywhere.population.walks, all);
+  assert.equal(everywhere.filters.walksWhereShown, true);
+  assert.equal((await live("item=dual_language_q1")).population.walks, 0, "a Question counts the same way");
+  const csv = await who.districtWalker.call("GET", "/api/reports/aggregate.csv?section=dual_language_classroom");
+  assert.equal(csv.status, 200);
+  assert.ok(csv.text.includes("\r\nMETA,,population_rule,Walks where the chosen section or question was shown.,,,,,\r\n"), "the export says how walks were counted");
+
+  // A release holds totals, not walks: there the Section only chooses questions, and the report says so.
+  const rel = await who.districtReport.call("GET", released("/api/reports/aggregate", "&section=dual_language_classroom"));
+  assert.equal(rel.status, 200, rel.text);
+  assert.equal(rel.json.population.walks, 3, "every released walk");
+  assert.equal(rel.json.filters.walksWhereShown, false);
+  const relUnits = await who.districtReport.call("GET", released("/api/reports/aggregate", `&orgUnitId=${units.a}&orgUnitId=${units.b}`));
+  assert.equal(relUnits.status, 200, relUnits.text);
+  assert.equal(relUnits.json.population.walks, 3, "several units in a release: A's block; B's single walk was never released");
 });

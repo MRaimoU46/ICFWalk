@@ -65,10 +65,15 @@
  */
 component output="false" {
 
-	variables.FORMAT = "icfwalk-aggregate-report/2";
+	variables.FORMAT = "icfwalk-aggregate-report/3";
 	variables.MAX_ATTEMPTS = 3;
 	variables.MAX_VISIBILITY_TUPLES = 512;
 	variables.PARAM_MAX_LENGTH = 100;
+	// A filter that takes several values (orgUnitId and every dim_ parameter, owner's decision
+	// 2026-10-16) is a comma-separated list, which is also what CFML makes of a repeated query
+	// parameter: up to LIST_MAX_VALUES values of at most PARAM_MAX_LENGTH characters each.
+	variables.LIST_MAX_VALUES = 200;
+	variables.LIST_PARAMS = ["orgUnitId"];
 	variables.REPORT_PARAMS = ["versionId", "orgUnitId", "releaseId", "from", "to", "section", "item", "optionItem", "option", "includeDrafts"];
 	// Parameters that change who is counted. A released report takes none of them.
 	variables.LIVE_ONLY_PARAMS = ["from", "to", "optionItem", "option", "includeDrafts"];
@@ -85,6 +90,9 @@ component output="false" {
 	// docs/OPEN_DECISIONS.md: "Breakdown totals can add up to more than the number of walks, and I'd
 	// label them that way"). The browser shows the same words from reports.js.
 	variables.MULTIPLE_VALUES_NOTE = "A walk can be counted under more than one value, so these counts can add up to more than the number of walks.";
+	// How a report with a Section or Question counts walks (owner's decision 2026-10-16); the CSV says which.
+	variables.WALKS_WHERE_SHOWN_NOTE = "Walks where the chosen section or question was shown.";
+	variables.EVERY_RELEASED_WALK_NOTE = "Every released walk: in released figures the section and question choose which questions are shown.";
 
 	public ReportService function init(
 		required struct config, required any db, required any errors, required any logger, required any auditRepository,
@@ -205,12 +213,17 @@ component output="false" {
 			arrayAppend(meta, ["release_observed_to", report.release.observedTo]);
 			arrayAppend(meta, ["release_released_at", report.release.releasedAt]);
 		}
-		for (var key in ["orgUnitId", "from", "to", "section", "item", "optionItem", "option"]) {
+		// A filter with several values has one row per value.
+		for (var unitId in report.filters.orgUnitIds) arrayAppend(meta, ["filter_orgUnitId", unitId]);
+		for (var key in ["from", "to", "section", "item", "optionItem", "option"]) {
 			if (structKeyExists(report.filters, key)) arrayAppend(meta, ["filter_" & key, report.filters[key]]);
 		}
 		var dimensionCodes = structKeyArray(report.filters.dimensions);
 		arraySort(dimensionCodes, "textnocase");
-		for (var code in dimensionCodes) arrayAppend(meta, ["filter_dim_" & code, report.filters.dimensions[code]]);
+		for (var code in dimensionCodes) for (var value in report.filters.dimensions[code]) arrayAppend(meta, ["filter_dim_" & code, value]);
+		if (structKeyExists(report.filters, "section") || structKeyExists(report.filters, "item")) {
+			arrayAppend(meta, ["population_rule", report.filters.walksWhereShown ? variables.WALKS_WHERE_SHOWN_NOTE : variables.EVERY_RELEASED_WALK_NOTE]);
+		}
 		for (var m in meta) arrayAppend(lines, csvRow(["META", "", m[1], m[2], "", "", "", "", ""]));
 		var pop = report.population;
 		arrayAppend(lines, csvRow(["POPULATION", "", "walks", "", cell(pop, "walks"), flag(pop.withheld), "", "", ""]));
@@ -246,7 +259,7 @@ component output="false" {
 			"versionId": report.version.versionId, "mode": report.mode, "walks": pop.withheld ? -1 : pop.walks, "withheld": pop.withheld ? true : false,
 			"rows": arrayLen(lines) - 1, "bytes": bytes, "filters": report.filterCount, "attempts": report.attempts
 		};
-		if (structKeyExists(report.filters, "orgUnitId")) details["orgUnitId"] = report.filters.orgUnitId;
+		if (arrayLen(report.filters.orgUnitIds)) details["orgUnitIds"] = report.filters.orgUnitIds;
 		if (structKeyExists(report, "release")) details["releaseId"] = report.release.releaseId;
 		variables.audit.record("REPORT", "", "REPORT_EXPORTED", arguments.principal.userId, details);
 		variables.logger.info("report.exported", details);
@@ -546,23 +559,34 @@ component output="false" {
 		var version = resolveVersion(structKeyExists(named, "versionId") ? named.versionId : "");
 		var catalog = catalogFor(version.versionId);
 		var f = {
-			"version": version, "catalog": catalog, "orgUnitId": "", "unitIds": [], "from": "", "to": "",
+			"version": version, "catalog": catalog, "orgUnitIds": [], "unitIds": [], "from": "", "to": "",
 			"observedFrom": "", "observedBefore": "", "dimensions": {}, "dimensionFilters": [],
-			"section": "", "item": "", "optionItem": "", "option": "", "optionFilter": {},
+			"section": "", "item": "", "shownItemIds": [], "optionItem": "", "option": "", "optionFilter": {},
 			"includeDrafts": false, "statuses": ["COMPLETED"], "mode": "LIVE", "release": {}, "protected": false
 		};
 
-		// Scope: the caller's covered units, narrowed (never widened) by a named unit.
+		// Scope: the caller's covered units, narrowed (never widened) by the named units -- schools,
+		// networks or any unit the caller covers, each checked on its own; the report draws on all of
+		// them together (their covered descendants, each once).
 		var covered = variables.authz.visibleOrgUnitIds(arguments.principal, "report.view");
-		if (structKeyExists(named, "orgUnitId")) {
-			if (!variables.db.isGuid(named.orgUnitId)) filterRefused("INVALID_ORG_UNIT", "orgUnitId", "orgUnitId is not a valid identifier.");
-			variables.authz.requirePermission(arguments.principal, "report.view", named.orgUnitId, "ORG_UNIT", named.orgUnitId);
-			f.orgUnitId = uCase(trim(named.orgUnitId));
+		var namedUnits = structKeyExists(named, "orgUnitId") ? splitList(named.orgUnitId, "orgUnitId") : [];
+		if (arrayLen(namedUnits)) {
 			var tree = variables.orgUnits.loadActiveTree();
-			var coveredSet = {};
-			for (var id in covered) coveredSet[uCase(id)] = true;
-			for (var id in variables.orgUnits.descendantIds(f.orgUnitId, tree)) {
-				if (structKeyExists(coveredSet, uCase(id))) arrayAppend(f.unitIds, uCase(id));
+			var coveredSet = unitSet(covered);
+			var inScope = {};
+			for (var raw in namedUnits) {
+				if (!variables.db.isGuid(raw)) filterRefused("INVALID_ORG_UNIT", "orgUnitId", "orgUnitId is not a valid identifier.");
+				var unitId = uCase(raw);
+				if (arrayFind(f.orgUnitIds, unitId)) continue;
+				variables.authz.requirePermission(arguments.principal, "report.view", raw, "ORG_UNIT", raw);
+				arrayAppend(f.orgUnitIds, unitId);
+				for (var id in variables.orgUnits.descendantIds(unitId, tree)) {
+					var descendant = uCase(id);
+					if (structKeyExists(coveredSet, descendant) && !structKeyExists(inScope, descendant)) {
+						inScope[descendant] = true;
+						arrayAppend(f.unitIds, descendant);
+					}
+				}
 			}
 		} else {
 			for (var id in covered) arrayAppend(f.unitIds, uCase(id));
@@ -599,18 +623,40 @@ component output="false" {
 			variables.errors.validation("The report's start date must not be after its end date.", "REPORT_DATE_RANGE_INVALID", { "issues": [{ "parameter": "from", "code": "REPORT_DATE_RANGE_INVALID" }] });
 		}
 
-		// Controlled-list dimensions.
+		// Controlled-list dimensions: each takes one value or several. A walk matches a dimension when
+		// it holds any of the listed values (visible), and every dimension filter together.
 		for (var raw in structKeyArray(params.dimensions)) {
 			var d = findDimension(catalog, raw);
-			if (structIsEmpty(d)) filterRefused("REPORT_FILTER_UNKNOWN", variables.DIMENSION_PREFIX & raw, "Unknown or non-reportable dimension.");
-			var code = params.dimensions[raw];
-			var value = findValue(d, code);
-			if (structIsEmpty(value)) filterRefused("REPORT_FILTER_VALUE_INVALID", variables.DIMENSION_PREFIX & raw, "The value is not one of this version's values for the dimension.");
-			f.dimensions[d.code] = value.code;
-			arrayAppend(f.dimensionFilters, { "dimension": d, "value": value });
+			var parameter = variables.DIMENSION_PREFIX & raw;
+			if (structIsEmpty(d)) filterRefused("REPORT_FILTER_UNKNOWN", parameter, "Unknown or non-reportable dimension.");
+			var text = params.dimensions[raw];
+			// The whole text first, so a value whose code holds a comma still matches; then its parts.
+			var wanted = [];
+			var whole = findValue(d, text);
+			if (!structIsEmpty(whole)) arrayAppend(wanted, whole);
+			else {
+				for (var code in splitList(text, parameter)) {
+					var value = findValue(d, code);
+					if (structIsEmpty(value)) filterRefused("REPORT_FILTER_VALUE_INVALID", parameter, "The value is not one of this version's values for the dimension.");
+					arrayAppend(wanted, value);
+				}
+			}
+			if (!arrayLen(wanted)) continue;
+			// In the version's value order, each once.
+			var values = [];
+			var codes = [];
+			for (var v in d.values) {
+				for (var w in wanted) {
+					if (compare(v.code, w.code) == 0) { arrayAppend(values, v); arrayAppend(codes, v.code); break; }
+				}
+			}
+			f.dimensions[d.code] = codes;
+			arrayAppend(f.dimensionFilters, { "dimension": d, "values": values });
 		}
 
-		// Section and item restrict which items are reported; they do not change the population.
+		// Section and item restrict which items are reported. In a live report they also count only
+		// the walks where the section (or the question) was shown (owner's decision 2026-10-16); a
+		// release holds totals, not walks, so a released report keeps counting every released walk.
 		if (structKeyExists(named, "section")) {
 			if (!structKeyExists(catalog.sectionIndex, named.section)) filterRefused("REPORT_FILTER_VALUE_INVALID", "section", "Unknown section.");
 			f.section = named.section;
@@ -621,6 +667,10 @@ component output="false" {
 				filterRefused("REPORT_FILTER_VALUE_INVALID", "item", "The item is not in the selected section.");
 			}
 			f.item = named.item;
+		}
+		if (f.mode == "LIVE") {
+			if (len(f.item)) arrayAppend(f.shownItemIds, catalog.itemIndex[f.item].itemId);
+			else if (len(f.section)) for (var key in catalog.sectionIndex[f.section].subtreeItemKeys) arrayAppend(f.shownItemIds, catalog.itemIndex[key].itemId);
 		}
 
 		// Response option: restricts the population to walks that answered one item with one option.
@@ -679,7 +729,12 @@ component output="false" {
 						// S1: walk rows only, row versions captured.
 						reports.selectCandidates(population, f.version.versionId, f.statuses, f.observedFrom, f.observedBefore);
 						// S2: population filters and every aggregate read child rows.
-						for (var df in f.dimensionFilters) reports.restrictToDimensionValue(population, df.dimension.dimensionId, df.value.valueId, df.dimension.visibility);
+						for (var df in f.dimensionFilters) {
+							var valueIds = [];
+							for (var v in df.values) arrayAppend(valueIds, v.valueId);
+							reports.restrictToDimensionValues(population, df.dimension.dimensionId, valueIds, df.dimension.visibility);
+						}
+						if (arrayLen(f.shownItemIds)) reports.restrictToShown(population, f.shownItemIds);
 						if (!structIsEmpty(f.optionFilter)) reports.restrictToOption(population, f.optionFilter.itemId, f.optionFilter.optionId);
 						result.units = reports.unitStatusCounts(population);
 						for (var d in catalog.dimensions) {
@@ -1496,14 +1551,16 @@ component output="false" {
 			var shown = left(key, 60);
 			if (!structKeyExists(local, "value") || !isSimpleValue(value)) filterRefused("REPORT_FILTER_VALUE_INVALID", shown, "Filter values are plain text.");
 			value = trim(toString(value));
-			if (len(value) > variables.PARAM_MAX_LENGTH) filterRefused("REPORT_FILTER_VALUE_INVALID", shown, "Filter value is too long.");
 			var canonical = "";
 			for (var name in arguments.allowed) if (compareNoCase(name, key) == 0) canonical = name;
+			var isDimension = !len(canonical) && arguments.allowDimensions && len(key) > len(variables.DIMENSION_PREFIX) && compareNoCase(left(key, len(variables.DIMENSION_PREFIX)), variables.DIMENSION_PREFIX) == 0;
+			var limit = (isDimension || (len(canonical) && arrayFindNoCase(variables.LIST_PARAMS, canonical))) ? variables.LIST_MAX_VALUES * (variables.PARAM_MAX_LENGTH + 1) : variables.PARAM_MAX_LENGTH;
+			if (len(value) > limit) filterRefused("REPORT_FILTER_VALUE_INVALID", shown, "Filter value is too long.");
 			if (len(canonical)) {
 				if (len(value)) out.named[canonical] = value;
 				continue;
 			}
-			if (arguments.allowDimensions && len(key) > len(variables.DIMENSION_PREFIX) && compareNoCase(left(key, len(variables.DIMENSION_PREFIX)), variables.DIMENSION_PREFIX) == 0) {
+			if (isDimension) {
 				if (len(value)) out.dimensions[mid(key, len(variables.DIMENSION_PREFIX) + 1, len(key))] = value;
 				continue;
 			}
@@ -1533,6 +1590,25 @@ component output="false" {
 		return {};
 	}
 
+	/**
+	 * The values of a filter that takes several: its comma-separated parts, trimmed, empty parts
+	 * dropped, each once (compared as exact text) in the order given. At most LIST_MAX_VALUES, each
+	 * at most PARAM_MAX_LENGTH characters.
+	 */
+	private array function splitList(required string text, required string parameter) {
+		var out = [];
+		for (var part in listToArray(arguments.text, ",")) {
+			var value = trim(part);
+			if (!len(value)) continue;
+			if (len(value) > variables.PARAM_MAX_LENGTH) filterRefused("REPORT_FILTER_VALUE_INVALID", arguments.parameter, "Filter value is too long.");
+			var seen = false;
+			for (var earlier in out) if (compare(earlier, value) == 0) { seen = true; break; }
+			if (!seen) arrayAppend(out, value);
+		}
+		if (arrayLen(out) > variables.LIST_MAX_VALUES) filterRefused("REPORT_FILTER_VALUE_INVALID", arguments.parameter, "Too many values.");
+		return out;
+	}
+
 	private void function filterRefused(required string code, required string parameter, required string message) {
 		variables.errors.validation(arguments.message, arguments.code, { "issues": [{ "parameter": arguments.parameter, "code": arguments.code }] });
 	}
@@ -1540,13 +1616,14 @@ component output="false" {
 	private struct function filterEcho(required struct f) {
 		return {
 			"versionId": arguments.f.version.versionId,
-			"orgUnitId": orNull(arguments.f.orgUnitId),
+			"orgUnitIds": arguments.f.orgUnitIds,
 			"releaseId": arguments.f.mode == "RELEASE" ? arguments.f.release.releaseId : javaCast("null", ""),
 			"from": orNull(arguments.f.from),
 			"to": orNull(arguments.f.to),
 			"dimensions": arguments.f.dimensions,
 			"section": orNull(arguments.f.section),
 			"item": orNull(arguments.f.item),
+			"walksWhereShown": arrayLen(arguments.f.shownItemIds) > 0,
 			"optionItem": orNull(arguments.f.optionItem),
 			"option": orNull(arguments.f.option),
 			"includeDrafts": arguments.f.includeDrafts ? true : false,
@@ -1562,7 +1639,8 @@ component output="false" {
 
 	private numeric function filterCount(required struct f) {
 		var n = structCount(arguments.f.dimensions);
-		for (var k in ["orgUnitId", "from", "to", "section", "item", "optionItem"]) if (len(arguments.f[k])) n++;
+		if (arrayLen(arguments.f.orgUnitIds)) n++;
+		for (var k in ["from", "to", "section", "item", "optionItem"]) if (len(arguments.f[k])) n++;
 		if (arguments.f.includeDrafts) n++;
 		return n;
 	}
@@ -1572,9 +1650,10 @@ component output="false" {
 	private string function typeRank(required string type) {
 		switch (uCase(arguments.type)) {
 			case "DISTRICT": return "1";
-			case "SCHOOL": return "2";
+			case "NETWORK": return "2";
+			case "SCHOOL": return "3";
 		}
-		return "3";
+		return "4";
 	}
 
 	private string function num(any value) {

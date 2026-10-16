@@ -226,17 +226,46 @@ component output="false" {
 	}
 
 	/**
-	 * Keeps only walks whose dimension carries the given value AND whose dimension is visible under
-	 * the given visibility condition (see visibilitySql). A hidden retained value never matches.
+	 * Keeps only walks whose dimension carries at least one of the given values AND whose dimension
+	 * is visible under the given visibility condition (see visibilitySql). A hidden retained value
+	 * never matches. A walk holding several values of the dimension matches when any of them is
+	 * listed (the owner's rule, docs/OPEN_DECISIONS.md).
 	 */
-	public void function restrictToDimensionValue(required struct population, required string dimensionId, required string valueId, required struct visibility) {
-		var params = { "dimension": variables.db.guid(arguments.dimensionId), "value": variables.db.guid(arguments.valueId) };
+	public void function restrictToDimensionValues(required struct population, required string dimensionId, required array valueIds, required struct visibility) {
+		var params = { "dimension": variables.db.guid(arguments.dimensionId) };
+		var names = [];
+		for (var i = 1; i <= arrayLen(arguments.valueIds); i++) {
+			arrayAppend(names, ":fv" & i);
+			params["fv" & i] = variables.db.guid(arguments.valueIds[i]);
+		}
 		var vis = visibilitySql(arguments.visibility, "p", params);
 		variables.db.run(
 			"DELETE p FROM " & popTable(arguments.population) & " p
 			  WHERE NOT EXISTS (SELECT 1 FROM [icf].[walk_dimension_value] x
-			                     WHERE x.walk_id = p.walk_id AND x.dimension_id = :dimension AND x.selected_value_id = :value)
+			                     WHERE x.walk_id = p.walk_id AND x.dimension_id = :dimension AND x.selected_value_id IN (" & arrayToList(names, ", ") & "))
 			     OR NOT (" & vis & ")",
+			params
+		);
+	}
+
+	/**
+	 * Keeps only walks in which at least one of the given items was shown: its response row's state
+	 * is not HIDDEN. The items of one section share its visibility, so for a section's items this is
+	 * "the walks where the section was shown" (owner's decision 2026-10-16). Every saved walk has a
+	 * row for each response item of its version, HIDDEN when the item was hidden.
+	 */
+	public void function restrictToShown(required struct population, required array itemIds) {
+		var params = {};
+		var names = [];
+		for (var i = 1; i <= arrayLen(arguments.itemIds); i++) {
+			arrayAppend(names, ":si" & i);
+			params["si" & i] = variables.db.guid(arguments.itemIds[i]);
+		}
+		variables.db.run(
+			"DELETE p FROM " & popTable(arguments.population) & " p
+			  WHERE NOT EXISTS (SELECT 1 FROM [icf].[walk_response] r
+			                     WHERE r.walk_id = p.walk_id AND r.item_id IN (" & arrayToList(names, ", ") & ")
+			                       AND r.response_state <> N'HIDDEN')",
 			params
 		);
 	}

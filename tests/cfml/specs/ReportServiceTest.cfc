@@ -321,7 +321,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var hidden = makeWalk(s.walker, s.id, {}, { "comp_s3_applicable": { "storedCode": "yes" }, "comp_s3_q1": { "storedCode": "5" } });
 		forceResponseState(hidden, "comp_s3_q1", "HIDDEN");
 
-		var it = itemOf(report(analyst, { "orgUnitId": s.id, "item": "comp_s3_q1" }), "comp_s3_q1");
+		var it = itemOf(report(analyst, { "orgUnitId": s.id }), "comp_s3_q1");
 		assertEquals(2, it.states.ANSWERED);
 		assertEquals(1, it.states.UNANSWERED);
 		assertEquals(1, it.states.HIDDEN);
@@ -333,6 +333,18 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(2, it.scored.responses, "denominator 2");
 		assertEquals(6, it.scored.sum);
 		assertEquals(3, it.scored.mean, "mean 3.0");
+
+		// Choosing the question counts only the walks where it was shown (owner's decision
+		// 2026-10-16): the walk whose row is hidden leaves the report, and every other figure stays.
+		var shown = report(analyst, { "orgUnitId": s.id, "item": "comp_s3_q1" });
+		assertEquals(4, shown.population.walks);
+		assertTrue(shown.filters.walksWhereShown);
+		var only = itemOf(shown, "comp_s3_q1");
+		assertEquals(2, only.states.ANSWERED);
+		assertEquals(1, only.states.UNANSWERED);
+		assertEquals(0, only.states.HIDDEN);
+		assertEquals(1, only.states.NOT_APPLICABLE, "a walk that marked the component not applicable was shown it");
+		assertEquals(3, only.scored.mean);
 	}
 
 	/** RPT-05: item-level pooling, never an unweighted average of walk (or component) averages. */
@@ -349,7 +361,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertEquals(3, itemOf(r, "comp_s1_q1").scored.mean);
 		assertEquals(1, itemOf(r, "comp_s1_q2").scored.mean);
 		assertEquals(2, arrayLen(r.items), "section restricts the reported items to that component");
-		assertEquals(2, r.population.walks, "without changing the population");
+		assertEquals(2, r.population.walks, "component 1 is shown on every walk, so both walks count");
 
 		// Across the whole instrument: Part 1's four ratings per walk (3, 4, 5, 2) weigh in by count.
 		var all = report(analyst, { "orgUnitId": s.id });
@@ -483,7 +495,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 
 		// Filters are echoed as understood.
 		var echoed = q({ "dim_GRADE": "7", "from": "2026-03-01" });
-		assertExactTextEquals("7", echoed.filters.dimensions.grade, "dimension parameter names match case-insensitively");
+		assertExactJsonEquals(["7"], echoed.filters.dimensions.grade, "dimension parameter names match case-insensitively; a dimension filter is a list");
 		assertExactTextEquals("2026-03-01", echoed.filters.from);
 		assertExactJsonEquals(["COMPLETED"], echoed.filters.statuses);
 		assertEquals(2, echoed.population.walks);
@@ -652,7 +664,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var details = deserializeJSON(audit.details_json[1]);
 		var keys = structKeyArray(details);
 		arraySort(keys, "text");
-		assertExactJsonEquals(["attempts", "bytes", "filters", "mode", "orgUnitId", "rows", "versionId", "walks", "withheld"], keys, "identifiers and counts only");
+		assertExactJsonEquals(["attempts", "bytes", "filters", "mode", "orgUnitIds", "rows", "versionId", "walks", "withheld"], keys, "identifiers and counts only");
 		assertEquals(1, details.walks);
 	}
 
@@ -705,11 +717,99 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		makeWalk(s.walker, s.id, { "classType": { "selectedValueCode": "dual_language" } }, { "dual_language_q1": { "storedCode": "yes" } }, true,
 			{ "dimensions": { "classType": { "selectedValueCode": "general_education" } }, "responses": {} });
 		makeWalk(s.walker, s.id, { "classType": { "selectedValueCode": "dual_language" } }, { "dual_language_q1": { "storedCode": "no" } });
-		var it = itemOf(report(analyst, { "orgUnitId": s.id, "item": "dual_language_q1" }), "dual_language_q1");
+		var it = itemOf(report(analyst, { "orgUnitId": s.id }), "dual_language_q1");
 		assertEquals(1, it.states.ANSWERED);
 		assertEquals(1, it.states.HIDDEN);
 		assertEquals(1, optionCount(it, "no"));
 		assertEquals(0, optionCount(it, "yes"), "the retained yes of the walk that hides the section is not counted");
 		assertTrue(isNull(it.scored), "a yes/no item has no score");
+
+		// Choosing the section (or its question) counts only the walks where it was shown (owner's
+		// decision 2026-10-16): the walk that hides it is not in the report at all.
+		for (var narrowed in [{ "section": "dual_language_classroom" }, { "item": "dual_language_q1" }]) {
+			var narrowedQuery = { "orgUnitId": s.id };
+			structAppend(narrowedQuery, narrowed);
+			var shown = report(analyst, narrowedQuery);
+			assertEquals(1, shown.population.walks, serializeJSON(narrowed));
+			var only = itemOf(shown, "dual_language_q1");
+			assertEquals(1, only.states.ANSWERED);
+			assertEquals(0, only.states.HIDDEN);
+			assertEquals(0, optionCount(only, "yes"));
+		}
+	}
+
+	/**
+	 * Owner's decision 2026-10-16: a report filter takes several values. A walk matches a filter when
+	 * it holds any of the filter's values, and every filter together; a list is comma-separated (what
+	 * CFML also makes of a repeated parameter), echoed in the version's value order, one CSV row each.
+	 */
+	public void function testSeveralValuesOfAFilterCountAnyOfThem() {
+		var s = school("rptlist");
+		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "6" }, "content": { "selectedValueCode": "ela" } });
+		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "7" }, "content": { "selectedValueCode": "math" } });
+		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "8" }, "content": { "selectedValueCode": "ela" } });
+		makeWalk(s.walker, s.id, { "grade": { "selectedValueCode": "8" }, "content": { "selectedValueCode": "math" } });
+
+		assertEquals(3, report(analyst, { "orgUnitId": s.id, "dim_grade": "7,8" }).population.walks, "any of the listed grades");
+		assertEquals(3, report(analyst, { "orgUnitId": s.id, "dim_grade": " 8 , 7 ,, 8 " }).population.walks, "spaces, empty parts and repeats change nothing");
+		var both = report(analyst, { "orgUnitId": s.id, "dim_grade": "8,7", "dim_content": "math" });
+		assertEquals(2, both.population.walks, "and every dimension filter together");
+		assertExactJsonEquals(["7", "8"], both.filters.dimensions.grade, "echoed in the version's value order");
+		assertExactJsonEquals(["math"], both.filters.dimensions.content);
+		assertEquals(4, report(analyst, { "orgUnitId": s.id, "dim_grade": ",," }).population.walks, "a list with nothing in it is no filter");
+
+		assertThrows(function() { report(analyst, { "orgUnitId": s.id, "dim_grade": "7,13" }); }, "ICFWalk.Validation", "REPORT_FILTER_VALUE_INVALID");
+		var tooMany = [];
+		for (var i = 1; i <= 201; i++) arrayAppend(tooMany, "x" & i);
+		assertThrows(function() { report(analyst, { "orgUnitId": s.id, "dim_grade": arrayToList(tooMany) }); }, "ICFWalk.Validation", "REPORT_FILTER_VALUE_INVALID");
+
+		var csv = svc.exportCsv(p(analyst), { "orgUnitId": s.id, "dim_grade": "8,7" }).text;
+		assertTrue(find(chr(10) & "META,,filter_dim_grade,7,", csv) > 0, "one CSV row per value");
+		assertTrue(find(chr(10) & "META,,filter_dim_grade,8,", csv) > 0);
+		assertTrue(find(chr(10) & "META,,filter_orgUnitId," & uCase(s.id) & ",", csv) > 0);
+	}
+
+	/**
+	 * Owner's decision 2026-10-16: schools are grouped into networks (NETWORK org units between the
+	 * district and its schools), and a report takes several units at once: their covered walks
+	 * together, each walk once. Every named unit is checked on its own, so one outside the caller's
+	 * scope refuses the whole request as it always did.
+	 */
+	public void function testNetworksAndSeveralUnitsNarrowTogetherWithinScope() {
+		var DN = fx.orgUnit("dn", "DISTRICT");
+		var N1 = fx.orgUnit("n1", "NETWORK", DN);
+		var N2 = fx.orgUnit("n2", "NETWORK", DN);
+		var A = fx.orgUnit("na", "SCHOOL", N1);
+		var B = fx.orgUnit("nb", "SCHOOL", N1);
+		var C = fx.orgUnit("nc", "SCHOOL", N2);
+		var walker = fx.user("nwalker");
+		for (var unit in [A, B, C]) fx.assign(walker.userId, "SCHOOL_WALK_REPORT", unit, false);
+		var lead = fx.user("nlead");
+		fx.assign(lead.userId, "DISTRICT_WALK_REPORT", DN, true);
+		makeWalk(walker, A);
+		makeWalk(walker, A);
+		makeWalk(walker, B);
+		makeWalk(walker, C);
+
+		assertEquals(4, report(lead, {}).population.walks, "the district through its networks");
+		assertEquals(3, report(lead, { "orgUnitId": N1 }).population.walks, "a network is its schools");
+		assertEquals(3, report(lead, { "orgUnitId": A & "," & C }).population.walks, "several schools together");
+		assertEquals(4, report(lead, { "orgUnitId": N1 & "," & N2 }).population.walks, "several networks together");
+		var overlap = report(lead, { "orgUnitId": N1 & "," & A & "," & N1 });
+		assertEquals(3, overlap.population.walks, "a school inside a named network counts once");
+		assertExactJsonEquals([uCase(N1), uCase(A)], overlap.filters.orgUnitIds, "each named unit once, in the order given");
+		assertEquals(1, overlap.filterCount, "the units are one filter");
+
+		var opts = svc.options(p(lead), {});
+		var types = [];
+		for (var u in opts.orgUnits) arrayAppend(types, u.type);
+		assertExactJsonEquals(["DISTRICT", "NETWORK", "NETWORK", "SCHOOL", "SCHOOL", "SCHOOL"], types, "networks between the district and its schools");
+
+		// A walker of all three schools does not cover the networks themselves; one unit outside the
+		// caller's scope, listed with others, refuses the request without saying whether it exists.
+		assertEquals(3, report(walker, { "orgUnitId": A & "," & B }).population.walks);
+		assertThrows(function() { report(walker, { "orgUnitId": N1 }); }, "ICFWalk.NotFound");
+		assertThrows(function() { report(walker, { "orgUnitId": A & "," & S1 }); }, "ICFWalk.NotFound");
+		assertThrows(function() { report(lead, { "orgUnitId": A & ",not-a-guid" }); }, "ICFWalk.Validation", "INVALID_ORG_UNIT");
 	}
 }
