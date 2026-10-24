@@ -4880,3 +4880,42 @@ all closed."). All of it is in `docs/OPEN_DECISIONS.md`.
   version, then map the seven new schools to their School values.
 - Still open from step 1: whether Performing Arts and Visual Arts continue Music and Art
   (`docs/OPEN_DECISIONS.md`).
+
+## Period removed from the 2026-10-14 version (the owner's decision of 2026-10-24)
+
+**Code commit `6a39e4cf13b81ddeea62a7dc533b28d06618409f`** (tree `4bbd26b3a3acf6429c876cf1a0fd6444c0b5041b`, only parent the district changes'
+records commit `f81763d`); the records commit that adds this section follows it.
+
+The owner: "in reports we dont need the period filter anymore because we aren't collecting i[t]". The
+2026-10-14 prototype still has Period on the walk form, so they were asked whether it should leave the
+form too, and chose to remove it from the form and reports (`docs/OPEN_DECISIONS.md`).
+
+The derivation drops Period from the 2026-10-14 version (`REMOVED_FIELDS`) the way the tag field is
+dropped: its dimension, its eight values, its placement, the rule that showed it for grades 6-12 and its
+conditional-section note (rules 13 to 12, dimensions 9 to 8, values 107 to 99, placements 9 to 8;
+definitions checksum `aa5542cd...`). A walk on the version that sends a Period is refused
+(`UNKNOWN_DIMENSION`). Its reports have no Period filter or table without any change to the report
+code, which reads its fields from the version. The 2026-09-17 version keeps Period for its walks.
+
+### Verification
+
+- **The exact-commit gate of `6a39e4c`** (`docs/evidence/period-removed-2026-10-24/`): GATE PASSED,
+  Node/HTTP/Playwright 328/328 and CFML 559/559 on Lucee 6.2.8.20 and on Adobe ColdFusion 2023 Update 25,
+  each on a brand-new database migrated 001 to 008; `test:package` 34/34, `validate:handoff` 51 checks. All
+  327 Node tests the district changes' gate passed pass on both engines under the same names, plus REV-13.
+  The 559 CFML test functions all ran, `InstrumentRevisionTest` compiling the version without Period to
+  the golden bytes on each engine.
+- **Tests that used Period on this version** now use School (several values refused for a field that takes
+  one) or Topic (a single value keeping its shape). REV-E3 refuses a Period like the tag field, REV-E5 and
+  MULTI-E5 find none in the editor, the summary tests print no Period line, and the shared multiple-value
+  vectors lost their Period keys. The two vectors that named Period are named for the PreK-K card they
+  still check.
+- On the records commit only `test:package`, `validate:handoff`, the evidence checksums and the restricted
+  diff (records only) were checked.
+
+### Open
+
+- Not yet in service: with the 2026-10-14 version (apply migration 008, deploy, import the org-unit files,
+  publish the version, map the seven new schools).
+- Still open from step 1: whether Performing Arts and Visual Arts continue Music and Art
+  (`docs/OPEN_DECISIONS.md`).
