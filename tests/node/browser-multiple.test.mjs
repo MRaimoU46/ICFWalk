@@ -135,7 +135,6 @@ const STATE = {
     observer: { textValue: "Multiple Walker" },
     grade: { selectedValueCodes: ["7", "8"] },
     content: { selectedValueCodes: ["ela", "visual_arts", "other"], otherText: "Robotics" },
-    period: { selectedValueCode: "second" },
     classType: { selectedValueCodes: ["dhh", "esl"] },
     visitTiming: { selectedValueCodes: ["beginning_of_lesson", "middle_of_the_lesson"] },
     topic: { textValue: "RL.7.2" },
@@ -267,7 +266,8 @@ test("MULTI-E3 several values save in the version's order, one row each, and eve
   }
   assert.equal(state.dimensions.content.otherText, "Robotics");
   assert.equal(Object.hasOwn(state.dimensions.classType, "otherText"), false, "Other's text goes only with Other");
-  assert.deepEqual(state.dimensions.period, { selectedValueCode: "second" }, "a field that takes one value keeps its shape");
+  assert.deepEqual(state.dimensions.topic, { textValue: "RL.7.2" }, "a field that takes one value keeps its shape");
+  assert.equal(Object.hasOwn(state.dimensions, "period"), false, "this version has no Period (owner, 2026-10-24)");
 
   // One row per value, ordinal 0.. in the version's order; the Other text on the Other row only.
   const rows = await query(
@@ -298,7 +298,7 @@ test("MULTI-E3 several values save in the version's order, one row each, and eve
 
   const refusals = [
     [{ grade: { selectedValueCode: "7" } }, "dimensions.grade.selectedValueCode"],
-    [{ period: { selectedValueCodes: ["second"] } }, "dimensions.period.selectedValueCodes"],
+    [{ school: { selectedValueCodes: ["abbott_middle_school"] } }, "dimensions.school.selectedValueCodes"],
     [{ grade: { selectedValueCodes: ["7", "7"] } }, "dimensions.grade.selectedValueCodes[1]"],
     [{ grade: { selectedValueCodes: ["7", "13"] } }, "dimensions.grade.selectedValueCodes[1]"],
     [{ grade: { selectedValueCodes: ["7", 8] } }, "dimensions.grade.selectedValueCodes[1]"],
@@ -323,9 +323,10 @@ test("MULTI-E4 the summary and the email draft list several values as the 2026-1
   const text = server.text;
   assert.equal(text, summaryText(model, state, evaluate(model, state)), "the CFML and JavaScript formatters agree byte for byte");
   const lines = text.split("\n");
-  for (const line of ["Grade level: 7, 8", "Content / Subject Area: ELA, Visual Arts, Robotics", "Program: DHH, ESL", "Visit occurred at the: Beginning of Lesson, Middle of the Lesson", "Period: Second"]) {
+  for (const line of ["Grade level: 7, 8", "Content / Subject Area: ELA, Visual Arts, Robotics", "Program: DHH, ESL", "Visit occurred at the: Beginning of Lesson, Middle of the Lesson"]) {
     assert.ok(lines.includes(line), `summary has ${JSON.stringify(line)}\n${text}`);
   }
+  assert.ok(!lines.some((l) => l.startsWith("Period:")), "no Period line: this version has no Period (owner, 2026-10-24)");
   assert.equal(server.headers.get("content-disposition"), 'attachment; filename="ICFWalk_7_8_ELA_Visual_Arts_Robotics_2026-10-15.txt"');
 
   // The prototype's own code, on the same walk.
@@ -381,11 +382,13 @@ test("MULTI-E5 the editor: checkboxes per field from the keyboard, Other's text,
   await page.getByRole("button", { name: "Open 7, 8 · ELA, Visual Arts, Robotics" }).click();
   await page.waitForSelector("#view-walk:not([hidden])");
 
-  // One fieldset per checkbox field, named by its legend; the period keeps its select.
+  // One fieldset per checkbox field, named by its legend; School keeps its select, and Period is not on
+  // this version (owner, 2026-10-24).
   for (const [code, label] of [["grade", "Grade level"], ["content", "Content / Subject Area"], ["classType", "Program"], ["visitTiming", "Visit occurred at the:"]]) {
     assert.equal(await page.textContent(`[data-dimension-code="${code}"] fieldset legend`), label);
   }
-  assert.equal(await page.locator('[data-dimension-code="period"] select').count(), 1);
+  assert.equal(await page.locator('[data-dimension-code="school"] select').count(), 1);
+  assert.equal(await page.locator('[data-dimension-code="period"]').count(), 0);
   const ticked = (code) => page.$$eval(`[data-dimension-code="${code}"] input[type=checkbox]:checked`, (bs) => bs.map((b) => b.value));
   assert.deepEqual(await ticked("grade"), ["7", "8"]);
   assert.deepEqual(await ticked("content"), ["ela", "visual_arts", "other"]);
@@ -483,7 +486,7 @@ function prototypeWalk() {
   return {
     meta: {
       date: "2026-10-15", observer: "Multiple Walker", school: "", school_other: "",
-      grade: ["7", "8"], content: ["ELA", "Visual Arts", "Other"], content_other: "Robotics", period: "Second", period_other: "",
+      grade: ["7", "8"], content: ["ELA", "Visual Arts", "Other"], content_other: "Robotics", period: "", period_other: "",
       classType: ["DHH", "ESL"], classType_other: "", visitTiming: ["Beginning of Lesson", "Middle of the Lesson"], topic: "RL.7.2", tag: "",
     },
     part1: { p1q1: r("p1q1"), p1q2: r("p1q2"), p1q3: r("p1q3") },

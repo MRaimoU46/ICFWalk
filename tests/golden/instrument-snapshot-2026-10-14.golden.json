@@ -1,17 +1,17 @@
 {
   "configPath": "config/instrument-config-2026-10-14.json",
-  "checksum": "2f2d62fe2473d04808c2091f76bc56ca74a0824a9886a05b21952e5f1652b686",
-  "definitionsChecksum": "d324ec76b61b236620e28de03d03803890ae2817974707d95bdc46f837d2146c",
-  "canonicalBytes": 233112,
+  "checksum": "cf63e781f9cd61fa6b7ed1e94bb49477f17a4ab30a3651d72927e0d27738631b",
+  "definitionsChecksum": "aa5542cdb2dec11aebc64b8fa4a81ec3fa10b9dfa15b9028457c198d690a967a",
+  "canonicalBytes": 229496,
   "counts": {
     "sections": 23,
     "items": 166,
     "responseSets": 30,
     "responseOptions": 119,
-    "rules": 13,
-    "dimensions": 9,
-    "dimensionValues": 107,
-    "instrumentDimensions": 9,
+    "rules": 12,
+    "dimensions": 8,
+    "dimensionValues": 99,
+    "instrumentDimensions": 8,
     "placeholders": 17
   }
 }

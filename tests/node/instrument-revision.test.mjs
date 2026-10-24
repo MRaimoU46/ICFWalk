@@ -80,7 +80,7 @@ test("REV-03 the document compiles to its recorded checksums and counts", () => 
   assert.equal(Buffer.byteLength(compiled.canonicalJson, "utf8"), GOLDEN.canonicalBytes);
   assert.deepEqual(compiled.counts, GOLDEN.counts);
   assert.deepEqual(DOC.counts, Object.fromEntries(Object.keys(BASE.counts).map((k) => [k, DOC[k].length])));
-  assert.deepEqual(DOC.counts, { sections: 23, items: 166, responseSets: 30, responseOptions: 119, rules: 13, dimensions: 9, dimensionValues: 107, instrumentDimensions: 9 });
+  assert.deepEqual(DOC.counts, { sections: 23, items: 166, responseSets: 30, responseOptions: 119, rules: 12, dimensions: 8, dimensionValues: 99, instrumentDimensions: 8 });
   assert.equal(compiled.counts.placeholders, 17, "the seventeen placeholder prompts are still placeholders");
 });
 
@@ -223,10 +223,11 @@ test("REV-09 Part 1: Target/Task Alignment before Adopted Curriculum, and Pacing
 });
 
 test("REV-10 the visit fields carry the prototype's labels and option lists, and Part 1's tag field is gone", () => {
-  for (const f of P.META_FIELDS) assert.equal(dimensionOf(DOC, f.id).label, f.label, `${f.id} label`);
+  // Period is the prototype's but not this version's (REV-13).
+  for (const f of P.META_FIELDS.filter((f) => f.id !== "period")) assert.equal(dimensionOf(DOC, f.id).label, f.label, `${f.id} label`);
   assert.equal(dimensionOf(DOC, "content").label, "Content / Subject Area");
   assert.equal(dimensionOf(DOC, "classType").label, "Program");
-  const lists = { grade: P.GRADE_OPTIONS, content: P.CONTENT_OPTIONS, classType: P.CLASS_TYPE_OPTIONS, period: P.PERIOD_OPTIONS, visitTiming: P.VISIT_TIMING_OPTIONS };
+  const lists = { grade: P.GRADE_OPTIONS, content: P.CONTENT_OPTIONS, classType: P.CLASS_TYPE_OPTIONS, visitTiming: P.VISIT_TIMING_OPTIONS };
   for (const [code, labels] of Object.entries(lists)) {
     assert.deepEqual(valuesOf(DOC, code).map((v) => v.label), labels, `${code} values in the prototype's order`);
     assert.deepEqual(valuesOf(DOC, code).map((v) => v.valueCode), labels.map(codeOf), `${code} value codes`);
@@ -248,7 +249,7 @@ test("REV-10 the visit fields carry the prototype's labels and option lists, and
   assert.equal(P.markup.hasTagField, false);
   assert.equal(dimensionOf(DOC, "tag"), undefined);
   assert.ok(!DOC.instrumentDimensions.some((p) => p.dimensionId === "dim_tag"));
-  assert.deepEqual(DOC.instrumentDimensions.map((p) => p.dimensionId), BASE.instrumentDimensions.map((p) => p.dimensionId).filter((id) => id !== "dim_tag"));
+  assert.deepEqual(DOC.instrumentDimensions.map((p) => p.dimensionId), BASE.instrumentDimensions.map((p) => p.dimensionId).filter((id) => id !== "dim_tag" && id !== "dim_period"));
   // The prototype's checkboxes (step 2): exactly the fields of type "checkboxes" take several values,
   // and the 2026-09-17 document has no such field.
   const checkboxes = P.META_FIELDS.filter((f) => f.type === "checkboxes").map((f) => f.id);
@@ -274,10 +275,10 @@ test("REV-11 nothing else moved: every record the revision does not own is the s
     items: (i) => ratedKeys.has(i.itemKey) || i.itemType === "DISPLAY_HEADING" || i.itemType === "DISPLAY_GUIDANCE" || i.itemKey === "part1_adopted_pacing",
     responseSets: (s) => s.setKey.startsWith("scale_") || s.setKey === "part1_adopted_pacing",
     responseOptions: (o) => o.optionId.startsWith("opt_scale_") || o.optionId.startsWith("opt_part1_adopted_pacing_"),
-    rules: (r) => r.ruleKey === "show_content_area" || r.ruleKey === "show_comp_s4_q3",
-    dimensions: (d) => d.code === "content" || d.code === "classType" || d.code === "tag",
-    dimensionValues: (v) => v.dimensionId === "dim_content" || v.dimensionId === "dim_classtype" || v.dimensionId === "dim_school",
-    instrumentDimensions: (p) => p.dimensionId === "dim_tag",
+    rules: (r) => r.ruleKey === "show_content_area" || r.ruleKey === "show_comp_s4_q3" || r.ruleKey === "show_period_for_grades_6_12",
+    dimensions: (d) => d.code === "content" || d.code === "classType" || d.code === "tag" || d.code === "period",
+    dimensionValues: (v) => v.dimensionId === "dim_content" || v.dimensionId === "dim_classtype" || v.dimensionId === "dim_school" || v.dimensionId === "dim_period",
+    instrumentDimensions: (p) => p.dimensionId === "dim_tag" || p.dimensionId === "dim_period",
   };
   const ids = { sections: "sectionId", items: "itemId", responseSets: "responseSetId", responseOptions: "optionId", rules: "ruleId", dimensions: "dimensionId", dimensionValues: "dimensionValueId", instrumentDimensions: "instrumentDimensionId" };
   // A placement's settings.multiple is the revision's (REV-10); everything else about it is not.
@@ -296,7 +297,7 @@ test("REV-11 nothing else moved: every record the revision does not own is the s
   const { ratings: r2, conditionalSections: c2, ...behaviorAfter } = DOC.behavior;
   const { ratings: r1, conditionalSections: c1, ...behaviorBefore } = BASE.behavior;
   assert.deepEqual(behaviorAfter, behaviorBefore, "behavior other than ratings and the renamed content-area entry");
-  assert.deepEqual(Object.values(c2), Object.values(c1));
+  assert.deepEqual(Object.values(c2), Object.values(c1).filter((v) => v !== c1.grades6To12), "the notes, less Period's (REV-13)");
 });
 
 test("REV-12 the School list is the prototype's as the owner amended it on 2026-10-16: four closed schools out, seven in", () => {
@@ -330,4 +331,20 @@ test("REV-12 the School list is the prototype's as the owner amended it on 2026-
     assert.deepEqual(after, before, `${v.valueCode} is its supplied record`);
   }
   assert.deepEqual(schools.map((v) => v.displayOrder), schools.map((_, i) => (i + 1) * 10));
+});
+
+test("REV-13 Period is gone from this version, as the owner decided on 2026-10-24, and the 2026-09-17 version keeps it", () => {
+  // "in reports we dont need the period filter anymore because we aren't collecting i[t]"; asked whether it
+  // should leave the walk form too: "Remove from form and reports" (docs/OPEN_DECISIONS.md).
+  assert.equal(dimensionOf(DOC, "period"), undefined, "no dimension");
+  assert.ok(!DOC.dimensionValues.some((v) => v.dimensionId === "dim_period"), "no values");
+  assert.ok(!DOC.instrumentDimensions.some((p) => p.dimensionId === "dim_period"), "no placement");
+  assert.ok(!DOC.rules.some((r) => r.targetId === "dim_period"), "no rule shows or hides it");
+  assert.ok(!DOC.rules.some((r) => JSON.parse(r.conditionsJson).conditions.some((c) => c.sourceKey === "period")), "no rule reads it");
+  assert.ok(!Object.hasOwn(DOC.behavior.conditionalSections, "grades6To12"), "no conditional-section note");
+  assert.ok(P.META_FIELDS.some((f) => f.id === "period"), "the prototype still has it: this is the owner's decision");
+  assert.ok(dimensionOf(BASE, "period"), "the 2026-09-17 version keeps the dimension");
+  assert.ok(BASE.instrumentDimensions.some((p) => p.dimensionId === "dim_period"));
+  assert.equal(BASE.dimensionValues.filter((v) => v.dimensionId === "dim_period").length, P.PERIOD_OPTIONS.length);
+  assert.ok(BASE.rules.some((r) => r.ruleKey === "show_period_for_grades_6_12"));
 });

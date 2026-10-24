@@ -23,7 +23,7 @@
       "sourceFile": "prototype-2026-10-14.html",
       "sourceSha256": "25cd1be1ea475e9de096e09afb9a980ab70184eb17165fd45e2b00e009517cc8",
       "reviewStatus": "Aligned to the 2026-10-14 prototype",
-      "revisionNotes": "Supersedes the 2026-09-17 aligned prototype version: 4-point rating scale with level names and new level definitions; Academic Teaming question 3; the prototype's look-for lists; Target/Task Alignment before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) and Program (17 programs) options; Other disaggregation tag(s) removed; Grade level, Content / Subject Area, Program and Visit timing take several values (the prototype's checkboxes); the School list as the owner amended it on 2026-10-16 (four closed schools removed, seven schools added)."
+      "revisionNotes": "Supersedes the 2026-09-17 aligned prototype version: 4-point rating scale with level names and new level definitions; Academic Teaming question 3; the prototype's look-for lists; Target/Task Alignment before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) and Program (17 programs) options; Other disaggregation tag(s) removed; Grade level, Content / Subject Area, Program and Visit timing take several values (the prototype's checkboxes); the School list as the owner amended it on 2026-10-16 (four closed schools removed, seven schools added); Period removed (the owner, 2026-10-24)."
     }
   },
   "sections": [
@@ -6649,25 +6649,6 @@
       "revisionNotes": null
     },
     {
-      "ruleId": "rule_show_period_for_grades_6_12",
-      "versionId": "ver_icfwalk_2026_10_14",
-      "ruleKey": "show_period_for_grades_6_12",
-      "targetType": "DIMENSION",
-      "targetId": "dim_period",
-      "effect": "SHOW",
-      "effectValue": null,
-      "sourceType": "DIMENSION",
-      "sourceId": "grade",
-      "operator": "IN",
-      "comparisonValue": "[\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\"]",
-      "conditionLogic": "AND",
-      "conditionsJson": "{\"logic\":\"AND\",\"conditions\":[{\"sourceType\":\"DIMENSION\",\"sourceKey\":\"grade\",\"operator\":\"IN\",\"comparisonValue\":[\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\"]}]}",
-      "active": true,
-      "sourceLocation": "updatePeriodVisibility",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
       "ruleId": "rule_show_comp_s3_q1",
       "versionId": "ver_icfwalk_2026_10_14",
       "ruleKey": "show_comp_s3_q1",
@@ -6836,21 +6817,6 @@
       "active": true,
       "settings": {},
       "sourceLocation": "META_FIELDS[content]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionId": "dim_period",
-      "code": "period",
-      "label": "Period",
-      "dataType": "LIST",
-      "valueMode": "CONTROLLED_LIST",
-      "reportable": true,
-      "sensitive": false,
-      "allowOther": true,
-      "active": true,
-      "settings": {},
-      "sourceLocation": "META_FIELDS[period]",
       "reviewStatus": "Source baseline",
       "revisionNotes": null
     },
@@ -8087,126 +8053,6 @@
       "revisionNotes": null
     },
     {
-      "dimensionValueId": "dval_period_first",
-      "dimensionId": "dim_period",
-      "valueCode": "first",
-      "label": "First",
-      "displayOrder": 10,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[0]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_second",
-      "dimensionId": "dim_period",
-      "valueCode": "second",
-      "label": "Second",
-      "displayOrder": 20,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[1]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_third",
-      "dimensionId": "dim_period",
-      "valueCode": "third",
-      "label": "Third",
-      "displayOrder": 30,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[2]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_fourth",
-      "dimensionId": "dim_period",
-      "valueCode": "fourth",
-      "label": "Fourth",
-      "displayOrder": 40,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[3]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_fifth",
-      "dimensionId": "dim_period",
-      "valueCode": "fifth",
-      "label": "Fifth",
-      "displayOrder": 50,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[4]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_sixth",
-      "dimensionId": "dim_period",
-      "valueCode": "sixth",
-      "label": "Sixth",
-      "displayOrder": 60,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[5]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_seventh",
-      "dimensionId": "dim_period",
-      "valueCode": "seventh",
-      "label": "Seventh",
-      "displayOrder": 70,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[6]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
-      "dimensionValueId": "dval_period_eighth",
-      "dimensionId": "dim_period",
-      "valueCode": "eighth",
-      "label": "Eighth",
-      "displayOrder": 80,
-      "valueGroup": null,
-      "gradeBand": null,
-      "active": true,
-      "effectiveStart": null,
-      "effectiveEnd": null,
-      "sourceLocation": "PERIOD_OPTIONS[7]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
       "dimensionValueId": "dval_classtype_advanced_placement",
       "dimensionId": "dim_classtype",
       "valueCode": "advanced_placement",
@@ -8599,23 +8445,6 @@
       "revisionNotes": null
     },
     {
-      "instrumentDimensionId": "inst_dim_period",
-      "versionId": "ver_icfwalk_2026_10_14",
-      "dimensionId": "dim_period",
-      "sectionId": "sec_visit_information",
-      "displayOrder": 60,
-      "required": false,
-      "visibleByDefault": false,
-      "ruleKey": "show_period_for_grades_6_12",
-      "labelOverride": null,
-      "placeholder": "Select...",
-      "active": true,
-      "settings": {},
-      "sourceLocation": "META_FIELDS[period]",
-      "reviewStatus": "Source baseline",
-      "revisionNotes": null
-    },
-    {
       "instrumentDimensionId": "inst_dim_classtype",
       "versionId": "ver_icfwalk_2026_10_14",
       "dimensionId": "dim_classtype",
@@ -8687,8 +8516,7 @@
       "ignite": "Show Ignite Classroom",
       "avid": "Show AVID Classroom",
       "esl": "Show ESL Classroom",
-      "performingArtsVisualArtsOrCte": "Show Content-Area Look-Fors",
-      "grades6To12": "Show Period"
+      "performingArtsVisualArtsOrCte": "Show Content-Area Look-Fors"
     },
     "gradeFiltering": {
       "elementarySchools": [
@@ -8944,9 +8772,9 @@
     "items": 166,
     "responseSets": 30,
     "responseOptions": 119,
-    "rules": 13,
-    "dimensions": 9,
-    "dimensionValues": 107,
-    "instrumentDimensions": 9
+    "rules": 12,
+    "dimensions": 8,
+    "dimensionValues": 99,
+    "instrumentDimensions": 8
   }
 }

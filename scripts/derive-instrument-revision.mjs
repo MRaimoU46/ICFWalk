@@ -27,6 +27,8 @@
  *   - the School list is the prototype's as the owner amended it on 2026-10-16 (SCHOOL_AMENDMENT): four
  *     closed schools leave and seven schools the prototype does not list join, in its alphabetical
  *     order with Other last
+ *   - Period is gone, as the owner decided on 2026-10-24 (REMOVED_FIELDS): dropped like the tag field,
+ *     with the rule that showed it and its conditional-section note
  *
  *   node scripts/derive-instrument-revision.mjs           # rewrite the document
  *   node scripts/derive-instrument-revision.mjs --check   # exit 1 when the committed document is stale
@@ -56,7 +58,8 @@ export const REVISION = {
     "before Adopted Curriculum; Pacing NOT evident; Content / Subject Area (Performing Arts, Visual Arts) " +
     "and Program (17 programs) options; Other disaggregation tag(s) removed; Grade level, Content / Subject " +
     "Area, Program and Visit timing take several values (the prototype's checkboxes); the School list as the " +
-    "owner amended it on 2026-10-16 (four closed schools removed, seven schools added).",
+    "owner amended it on 2026-10-16 (four closed schools removed, seven schools added); Period removed (the " +
+    "owner, 2026-10-24).",
 };
 
 /**
@@ -67,6 +70,15 @@ export const REVISION = {
  * school's value group is its network's grade band (the Middle School Network's are middle schools; the
  * others are in elementary networks), which the version's school-to-grade filter reads.
  */
+/**
+ * Visit fields the owner took out of this version, though the prototype still has them: "in reports we
+ * dont need the period filter anymore because we aren't collecting i[t]" (2026-10-24), and, asked whether
+ * Period should leave the walk form too, "Remove from form and reports" (docs/OPEN_DECISIONS.md). A field
+ * here is dropped like the tag field -- its dimension, its values, its placement -- with every rule that
+ * shows or hides it and its conditional-section note. The 2026-09-17 version keeps it for its walks.
+ */
+export const REMOVED_FIELDS = { decidedOn: "2026-10-24", codes: ["period"], notes: { period: "grades6To12" } };
+
 export const SCHOOL_AMENDMENT = {
   decidedOn: "2026-10-16",
   closed: ["Ellis Middle School", "Hanover Countryside Elementary School", "Lowrie Elementary School", "Washington Elementary School"],
@@ -356,6 +368,10 @@ export function deriveRevision(base, prototypeBytes) {
   const OPTION_LISTS = { content: ["CONTENT_OPTIONS", p.CONTENT_OPTIONS], classType: ["CLASS_TYPE_OPTIONS", p.CLASS_TYPE_OPTIONS] };
   const dropped = new Set();
   if (!p.markup.hasTagField) dropped.add("tag");
+  for (const code of REMOVED_FIELDS.codes) {
+    if (!p.META_FIELDS.some((f) => f.id === code)) throw new Error(`The prototype has no field ${code} to remove.`);
+    dropped.add(code);
+  }
   for (const d of doc.dimensions) {
     const field = metaById.get(d.code);
     if (field) d.label = field.label;
@@ -407,6 +423,12 @@ export function deriveRevision(base, prototypeBytes) {
     ];
   }
   const droppedIds = new Set(doc.dimensions.filter((d) => dropped.has(d.code)).map((d) => d.dimensionId));
+  // A dropped field takes the rules that show or hide it; no rule reads one (checked).
+  for (const r of doc.rules) {
+    const reads = JSON.parse(r.conditionsJson).conditions.some((c) => c.sourceType === "DIMENSION" && dropped.has(c.sourceKey));
+    if (reads) throw new Error(`Rule ${r.ruleKey} reads a dropped field.`);
+  }
+  doc.rules = doc.rules.filter((r) => !(r.targetType === "DIMENSION" && droppedIds.has(r.targetId)));
   doc.dimensions = doc.dimensions.filter((d) => !droppedIds.has(d.dimensionId));
   doc.dimensionValues = doc.dimensionValues.filter((v) => !droppedIds.has(v.dimensionId));
   // The prototype's checkboxes: a field of type "checkboxes" takes several values.
@@ -417,7 +439,9 @@ export function deriveRevision(base, prototypeBytes) {
 
   // ---- behavior and content review ------------------------------------------------------------------
   const cs = doc.behavior.conditionalSections;
-  doc.behavior.conditionalSections = Object.fromEntries(Object.entries(cs).map(([key, value]) =>
+  const removedNotes = new Set(REMOVED_FIELDS.codes.map((code) => REMOVED_FIELDS.notes[code]));
+  for (const note of removedNotes) if (!Object.hasOwn(cs, note)) throw new Error(`No conditional-section note ${note}.`);
+  doc.behavior.conditionalSections = Object.fromEntries(Object.entries(cs).filter(([key]) => !removedNotes.has(key)).map(([key, value]) =>
     key === "artMusicOrCte" ? ["performingArtsVisualArtsOrCte", value] : [key, value]));
   doc.behavior.ratings = {
     scale: scale.map(Number),

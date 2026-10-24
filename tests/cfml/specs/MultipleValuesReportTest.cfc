@@ -89,7 +89,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		var content = dimensionOf(r, "content");
 		assertEquals(2, walksOf(content, "ela"));
 		assertEquals(1, walksOf(content, "math"));
-		assertFalse(dimensionOf(r, "period").multiple);
+		for (var d in r.dimensions) assertExactTextNotEquals("period", d.code, "this version has no Period (owner, 2026-10-24)");
 
 		var filtered = svc.aggregate(p(walker), { "versionId": versionId, "orgUnitId": DL, "dim_grade": "7" });
 		assertEquals(2, filtered.population.walks, "the 7 walk and the 7-and-8 walk");
@@ -99,7 +99,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		for (var field in ["grade", "content", "classType", "visitTiming"]) {
 			assertTrue(find(chr(13) & chr(10) & "DIMENSION_NOTE," & field & ",MULTIPLE_VALUES,""" & variables.note & """,,,,," & chr(13) & chr(10), csv) > 0, "the CSV labels " & field);
 		}
-		assertTrue(find("DIMENSION_NOTE,period,", csv) == 0, "and no field that takes one value");
+		assertTrue(find("DIMENSION_STATE,period,", csv) == 0 && find("DIMENSION_VALUE,period,", csv) == 0, "and no Period: this version does not have it");
 	}
 
 	/** Release: combinations are one partition; a value is the sum of its published combinations. */

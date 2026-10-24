@@ -24,9 +24,10 @@ component extends="icfwalktests.BaseSpec" output="false" {
 	/** Exactly the four checkbox fields take several values, in the model and on their placements. */
 	public void function testTheFourCheckboxFieldsTakeSeveralValues() {
 		for (var code in ["grade", "content", "classType", "visitTiming"]) assertTrue(variables.model.dimensions[code].multiple, code);
-		for (var code in ["date", "observer", "school", "period", "topic"]) assertFalse(variables.model.dimensions[code].multiple, code);
+		for (var code in ["date", "observer", "school", "topic"]) assertFalse(variables.model.dimensions[code].multiple, code);
+		assertFalse(structKeyExists(variables.model.dimensions, "period"), "Period is not in this version (owner, 2026-10-24)");
 		var visit = findSection(variables.model.root, "visit_information");
-		assertTrue(arrayLen(visit.placements) >= 8, "the visit fields");
+		assertEquals(7, arrayLen(visit.placements), "the visit fields");
 		for (var p in visit.placements) {
 			assertEquals(variables.model.dimensions[p.dimensionCode].multiple, p.multiple, "placement " & p.dimensionCode);
 		}
@@ -137,7 +138,7 @@ component extends="icfwalktests.BaseSpec" output="false" {
 				"content": { "selectedValueCodes": ["other", "ela"], "otherText": "Robotics" },
 				"classType": { "selectedValueCodes": ["dhh"], "otherText": "dropped: Other is not selected" },
 				"visitTiming": { "selectedValueCodes": [] },
-				"period": { "selectedValueCode": "second" }
+				"school": { "selectedValueCode": "abbott_middle_school" }
 			},
 			"responses": {}
 		});
@@ -147,14 +148,14 @@ component extends="icfwalktests.BaseSpec" output="false" {
 		assertExactTextEquals("Robotics", v.state.dimensions.content.otherText);
 		assertFalse(structKeyExists(v.state.dimensions.classType, "otherText"), "Other's text goes only with Other");
 		assertFalse(structKeyExists(v.state.dimensions, "visitTiming"), "an empty list is no value");
-		assertExactTextEquals("second", v.state.dimensions.period.selectedValueCode);
+		assertExactTextEquals("abbott_middle_school", v.state.dimensions.school.selectedValueCode, "a field that takes one value keeps its shape");
 
 		assertRefused({ "grade": { "selectedValueCodes": ["7", "7"] } }, "dimensions.grade.selectedValueCodes[1]", "listed twice");
 		assertRefused({ "grade": { "selectedValueCodes": ["7", "13"] } }, "dimensions.grade.selectedValueCodes[1]", "not a value");
 		assertRefused({ "grade": { "selectedValueCodes": ["7", 8] } }, "dimensions.grade.selectedValueCodes[1]", "a number");
 		assertRefused({ "grade": { "selectedValueCodes": "7" } }, "dimensions.grade.selectedValueCodes", "not an array");
 		assertRefused({ "grade": { "selectedValueCode": "7" } }, "dimensions.grade.selectedValueCode", "one value for a field that takes several");
-		assertRefused({ "period": { "selectedValueCodes": ["second"] } }, "dimensions.period.selectedValueCodes", "several values for a field that takes one");
+		assertRefused({ "school": { "selectedValueCodes": ["abbott_middle_school"] } }, "dimensions.school.selectedValueCodes", "several values for a field that takes one");
 	}
 
 	// ---- the summary --------------------------------------------------------------------------

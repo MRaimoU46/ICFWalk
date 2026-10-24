@@ -115,7 +115,6 @@ const STATE = {
     // tests/node/browser-multiple.test.mjs.
     grade: { selectedValueCodes: ["7"] },
     content: { selectedValueCodes: ["visual_arts"] },
-    period: { selectedValueCode: "second" },
     classType: { selectedValueCodes: ["dhh"] },
     visitTiming: { selectedValueCodes: ["middle_of_the_lesson"] },
     topic: { textValue: "RL.7.2" },
@@ -252,6 +251,8 @@ test("REV-E3 the walk saves on the 4-point scale and refuses a 5, a value this v
     [{ dimensions: STATE.dimensions, responses: { ...STATE.responses, comp_s1_q1: { storedCode: "5" } } }, "INVALID_OPTION", "responses.comp_s1_q1.storedCode"],
     [{ dimensions: { ...STATE.dimensions, content: { selectedValueCodes: ["music"] } }, responses: STATE.responses }, "INVALID_DIMENSION_VALUE", "dimensions.content"],
     [{ dimensions: { ...STATE.dimensions, tag: { textValue: "cohort B" } }, responses: STATE.responses }, "UNKNOWN_DIMENSION", "dimensions.tag"],
+    // Period is gone from this version too (owner, 2026-10-24).
+    [{ dimensions: { ...STATE.dimensions, period: { selectedValueCode: "second" } }, responses: STATE.responses }, "UNKNOWN_DIMENSION", "dimensions.period"],
   ];
   for (const [body, code, at] of refusals) {
     const r = await put(body);
@@ -288,7 +289,7 @@ test("REV-E4 the server summary equals the browser formatter's and reads as the 
   has("Content / Subject Area: Visual Arts");
   has("Program: DHH");
   has("Visit occurred at the: Middle of the Lesson");
-  has("Period: Second");
+  assert.ok(!/^Period:/m.test(text), "no Period line: this version has no Period (owner, 2026-10-24)");
   has("Lesson Standard: RL.7.2");
   has("- Pacing:  [Pacing NOT evident]");
   has(`- ${P.PART1_SECTIONS[0].qs[0].text}  [4/4]`);
@@ -328,7 +329,7 @@ test("REV-E5 the editor renders the new version: level names, the third Teaming 
 
   // Visit fields: the new labels and lists, the prototype's checkboxes, and no tag field.
   const dims = await page.$$eval("[data-dimension-code]", (els) => els.map((e) => e.dataset.dimensionCode));
-  assert.deepEqual(dims, ["date", "observer", "school", "grade", "content", "period", "classType", "visitTiming", "topic"]);
+  assert.deepEqual(dims, ["date", "observer", "school", "grade", "content", "classType", "visitTiming", "topic"], "no tag field, and no Period (owner, 2026-10-24)");
   assert.equal(await page.textContent('[data-dimension-code="classType"] legend'), "Program");
   assert.equal(await page.textContent('[data-dimension-code="content"] legend'), "Content / Subject Area");
   const optionLabels = (code) => page.$$eval(`[data-dimension-code="${code}"] .check-option span`, (os) => os.map((o) => o.textContent));
@@ -425,7 +426,7 @@ function prototypeWalk() {
   return {
     meta: {
       date: "2026-10-14", observer: "Revision Walker", school: "", school_other: "",
-      grade: ["7"], content: ["Visual Arts"], content_other: "", period: "Second", period_other: "",
+      grade: ["7"], content: ["Visual Arts"], content_other: "", period: "", period_other: "",
       classType: ["DHH"], classType_other: "", visitTiming: ["Middle of the Lesson"], topic: "RL.7.2", tag: "",
     },
     part1: { p1q1: r("p1q1"), p1q2: r("p1q2"), p1q3: r("p1q3") },

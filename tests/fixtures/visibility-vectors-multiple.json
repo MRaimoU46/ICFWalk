@@ -3,7 +3,7 @@
   "source": "config/instrument-config-2026-10-14.json (fields that take several values; step 2)",
   "vectors": [
     {
-      "name": "several grades: K among them shows the PreK-K card, 7 among them shows Period",
+      "name": "several grades: K among them shows the PreK-K card",
       "state": {
         "dimensions": {
           "grade": {
@@ -54,7 +54,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": true,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -159,7 +158,6 @@
           "school": "UNANSWERED",
           "grade": "ANSWERED",
           "content": "UNANSWERED",
-          "period": "UNANSWERED",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -242,7 +240,7 @@
       }
     },
     {
-      "name": "several grades all below 6: Period stays hidden",
+      "name": "several grades, none of them PreK or K: the PreK-K card stays hidden",
       "state": {
         "dimensions": {
           "grade": {
@@ -293,7 +291,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -398,7 +395,6 @@
           "school": "UNANSWERED",
           "grade": "ANSWERED",
           "content": "UNANSWERED",
-          "period": "HIDDEN",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -536,7 +532,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -641,7 +636,6 @@
           "school": "UNANSWERED",
           "grade": "UNANSWERED",
           "content": "ANSWERED",
-          "period": "HIDDEN",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -773,7 +767,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -878,7 +871,6 @@
           "school": "UNANSWERED",
           "grade": "UNANSWERED",
           "content": "ANSWERED",
-          "period": "HIDDEN",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -1016,7 +1008,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -1121,7 +1112,6 @@
           "school": "UNANSWERED",
           "grade": "UNANSWERED",
           "content": "UNANSWERED",
-          "period": "HIDDEN",
           "classType": "ANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -1255,7 +1245,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -1360,7 +1349,6 @@
           "school": "UNANSWERED",
           "grade": "UNANSWERED",
           "content": "UNANSWERED",
-          "period": "HIDDEN",
           "classType": "ANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -1494,7 +1482,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": true,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -1588,7 +1575,6 @@
           "school": "ANSWERED",
           "grade": "ANSWERED",
           "content": "UNANSWERED",
-          "period": "UNANSWERED",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -1747,7 +1733,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": true,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -1845,7 +1830,6 @@
           "school": "ANSWERED",
           "grade": "ANSWERED",
           "content": "UNANSWERED",
-          "period": "UNANSWERED",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -1995,7 +1979,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": true,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -2100,7 +2083,6 @@
           "school": "ANSWERED",
           "grade": "ANSWERED",
           "content": "UNANSWERED",
-          "period": "UNANSWERED",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -2242,7 +2224,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -2347,7 +2328,6 @@
           "school": "UNANSWERED",
           "grade": "UNANSWERED",
           "content": "UNANSWERED",
-          "period": "HIDDEN",
           "classType": "UNANSWERED",
           "visitTiming": "UNANSWERED",
           "topic": "UNANSWERED"
@@ -2492,7 +2472,6 @@
           "school": true,
           "grade": true,
           "content": true,
-          "period": false,
           "classType": true,
           "visitTiming": true,
           "topic": true
@@ -2597,7 +2576,6 @@
           "school": "UNANSWERED",
           "grade": "UNANSWERED",
           "content": "ANSWERED",
-          "period": "HIDDEN",
           "classType": "UNANSWERED",
           "visitTiming": "ANSWERED",
           "topic": "UNANSWERED"
